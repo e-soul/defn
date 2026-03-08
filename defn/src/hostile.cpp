@@ -1,0 +1,192 @@
+#include "hostile.h"
+#include "defender.h"
+#include "grid_manager.h"
+#include <godot_cpp/classes/sprite_frames.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
+
+namespace defn {
+
+Hostile::Hostile() = default;
+
+void Hostile::_bind_methods() {
+    ADD_SIGNAL(MethodInfo("enemy_breached"));
+}
+
+void Hostile::_ready() {
+    Entity::_ready();
+    init_stats(100, 15, 1.0, 0.5);
+    bounty = 5;
+
+    // Health bar red for enemies
+    if (health_bar_fill) {
+        health_bar_fill->set_color(Color(0.9, 0.15, 0.15, 0.9));
+    }
+
+    setup_sprite_frames();
+    set_anim_state(AnimState::WALK);
+
+    sprite->connect("animation_finished", callable_mp(this, &Hostile::on_animation_finished));
+}
+
+void Hostile::_process(double delta) {
+    Entity::_process(delta);
+
+    if (fading) {
+        fade_timer -= delta;
+        double alpha = fade_timer > 0.0 ? fade_timer / 0.5 : 0.0;
+        set_modulate(Color(1, 1, 1, alpha));
+        if (fade_timer <= 0.0) {
+            queue_free();
+        }
+        return;
+    }
+
+    if (anim_state == AnimState::DEATH) return;
+
+    check_breach();
+    find_target();
+
+    if (engaged && target && !target->is_dead()) {
+        do_attack(delta);
+    } else {
+        engaged = false;
+        target = nullptr;
+        if (anim_state == AnimState::ATTACK) {
+            set_anim_state(AnimState::WALK);
+        }
+        do_movement(delta);
+    }
+}
+
+void Hostile::setup_sprite_frames() {
+    auto *loader = ResourceLoader::get_singleton();
+    Ref<SpriteFrames> frames;
+    frames.instantiate();
+
+    // Walk animation: left-facing frames 07-13
+    frames->add_animation("walk");
+    frames->set_animation_speed("walk", 8.0);
+    frames->set_animation_loop("walk", true);
+    for (int i = 7; i <= 13; ++i) {
+        String path = vformat("res://assets/PIPOYA_Character_Sprites/Single_Image/Enemy/Enemy003a/All/02walk/e003a_02walk_%02d.png", i);
+        Ref<Texture2D> tex = loader->load(path);
+        if (tex.is_valid()) {
+            frames->add_frame("walk", tex);
+        }
+    }
+
+    // Attack animation: left-facing swinging frames 04-07
+    frames->add_animation("attack");
+    frames->set_animation_speed("attack", 4.0);
+    frames->set_animation_loop("attack", false);
+    for (int i = 4; i <= 7; ++i) {
+        String path = vformat("res://assets/PIPOYA_Character_Sprites/Single_Image/Enemy/Enemy003a/All/10swinging/e003a_10swinging_%02d.png", i);
+        Ref<Texture2D> tex = loader->load(path);
+        if (tex.is_valid()) {
+            frames->add_frame("attack", tex);
+        }
+    }
+
+    // Death: single frame
+    frames->add_animation("death");
+    frames->set_animation_speed("death", 1.0);
+    frames->set_animation_loop("death", false);
+    {
+        String path = "res://assets/PIPOYA_Character_Sprites/Single_Image/Enemy/Enemy003a/All/18down/e003a_18down_00.png";
+        Ref<Texture2D> tex = loader->load(path);
+        if (tex.is_valid()) {
+            frames->add_frame("death", tex);
+        }
+    }
+
+    sprite->set_sprite_frames(frames);
+    // Scale to fit 128px tile: 128/480 ≈ 0.267
+    set_scale(Vector2(0.267, 0.267));
+
+    // Remove default animation if it exists
+    if (frames->has_animation("default")) {
+        frames->remove_animation("default");
+    }
+}
+
+void Hostile::find_target() {
+    if (anim_state == AnimState::DEATH) return;
+
+    // Check if current target is still valid
+    if (target && !target->is_dead()) {
+        double dist = get_position().x - target->get_position().x;
+        if (dist >= 0 && dist <= GridManager::TILE_SIZE) {
+            return;
+        }
+    }
+
+    target = nullptr;
+    engaged = false;
+
+    Node *parent = get_parent();
+    if (!parent) return;
+
+    double closest_dist = 1e9;
+    int child_count = parent->get_child_count();
+    for (int i = 0; i < child_count; ++i) {
+        auto *defender = Object::cast_to<Defender>(parent->get_child(i));
+        if (!defender || defender->is_dead() || defender->get_lane() != lane) continue;
+
+        // Defender must be ahead (to the left, lower X)
+        double dist = get_position().x - defender->get_position().x;
+        if (dist >= 0 && dist <= GridManager::TILE_SIZE && dist < closest_dist) {
+            closest_dist = dist;
+            target = defender;
+            engaged = true;
+        }
+    }
+
+    if (engaged && anim_state != AnimState::ATTACK) {
+        set_anim_state(AnimState::ATTACK);
+        attack_timer = 0.0;
+    }
+}
+
+void Hostile::do_attack(double delta) {
+    attack_timer += delta;
+    if (attack_timer >= 1.0 / attack_speed) {
+        attack_timer -= 1.0 / attack_speed;
+        if (target && !target->is_dead()) {
+            target->take_damage(damage);
+            target->flash_damage(Color(1, 1, 1));
+        }
+    }
+}
+
+void Hostile::do_movement(double delta) {
+    Vector2 pos = get_position();
+    pos.x -= move_speed * GridManager::TILE_SIZE * delta;
+    set_position(pos);
+}
+
+void Hostile::check_breach() {
+    if (get_position().x < GridManager::BASE_X_THRESHOLD) {
+        emit_signal("enemy_breached");
+        queue_free();
+    }
+}
+
+void Hostile::on_animation_finished() {
+    if (anim_state == AnimState::DEATH) {
+        start_death_fade();
+        return;
+    }
+    if (anim_state == AnimState::ATTACK && engaged && target && !target->is_dead()) {
+        sprite->play("attack");
+    }
+}
+
+void Hostile::start_death_fade() {
+    fading = true;
+    fade_timer = 0.5;
+}
+
+} // namespace defn

@@ -13,24 +13,36 @@ env = Environment(variables=opts)
 env = SConscript("../godot-cpp/SConstruct", exports="env")
 
 # 3. Add your local include directory and godot-cpp includes
-env.Append(CPPPATH=["src/", "../godot-cpp/gen/include/", "../godot-cpp/include/"])
+env.Append(CPPPATH=[".", "src/", "../godot-cpp/gen/include/", "../godot-cpp/include/"])
 
-# 4. Define your sources (Update paths if your files are in a 'src' subfolder)
+# Enable C++23
+if env["platform"] == "windows":
+    env.Append(CXXFLAGS=["/std:c++latest"])
+else:
+    env.Append(CXXFLAGS=["-std=c++23"])
+
+# 4. Define your sources
 sources = [
     "hello.cpp",
     "register_types.cpp",
+    "src/grid_manager.cpp",
+    "src/entity.cpp",
+    "src/defender.cpp",
+    "src/hostile.cpp",
+    "src/wave_manager.cpp",
+    "src/game_manager.cpp",
+    "src/hud.cpp",
 ]
 
 # 5. Compile into a dedicated object directory
 obj_dir = os.path.join("build", "obj")
 objects = []
 for src in sources:
-    obj_name = os.path.splitext(os.path.basename(src))[0]
+    obj_name = os.path.splitext(src.replace(os.sep, "_").replace("/", "_"))[0]
     obj_target = os.path.join(obj_dir, obj_name)
     objects.append(env.SharedObject(target=obj_target, source=src))
 
 # 6. Build the Shared Library (The DLL)
-# We use 'target_name' to prevent SCons from getting confused by the folder name
 library = env.SharedLibrary(
     target="bin/hello", 
     source=objects,

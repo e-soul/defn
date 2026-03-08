@@ -1,9 +1,16 @@
 #include <godot_cpp/godot.hpp>
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/core/defs.hpp> // Add this for GDE_EXPORT
-#include <gdextension_interface.h> // Add this for the low-level types
+#include <godot_cpp/core/defs.hpp>
+#include <gdextension_interface.h>
 
 #include "hello.h"
+#include "src/grid_manager.h"
+#include "src/entity.h"
+#include "src/defender.h"
+#include "src/hostile.h"
+#include "src/wave_manager.h"
+#include "src/game_manager.h"
+#include "src/hud.h"
 
 using namespace godot;
 
@@ -13,6 +20,13 @@ void initialize_module(ModuleInitializationLevel p_level) {
     }
 
     ClassDB::register_class<Hello>();
+    ClassDB::register_class<defn::GridManager>();
+    ClassDB::register_class<defn::Entity>();
+    ClassDB::register_class<defn::Defender>();
+    ClassDB::register_class<defn::Hostile>();
+    ClassDB::register_class<defn::WaveManager>();
+    ClassDB::register_class<defn::GameManager>();
+    ClassDB::register_class<defn::HUD>();
 }
 
 void uninitialize_module(ModuleInitializationLevel p_level) {
