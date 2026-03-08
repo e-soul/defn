@@ -23,8 +23,7 @@ else:
 
 # 4. Define your sources
 sources = [
-    "hello.cpp",
-    "register_types.cpp",
+    "src/register_types.cpp",
     "src/grid_manager.cpp",
     "src/entity.cpp",
     "src/defender.cpp",
@@ -44,7 +43,7 @@ for src in sources:
 
 # 6. Build the Shared Library (The DLL)
 library = env.SharedLibrary(
-    target="bin/hello", 
+    target="bin/defn_core", 
     source=objects,
 )
 

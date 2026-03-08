@@ -3,14 +3,13 @@
 #include <godot_cpp/core/defs.hpp>
 #include <gdextension_interface.h>
 
-#include "hello.h"
-#include "src/grid_manager.h"
-#include "src/entity.h"
-#include "src/defender.h"
-#include "src/hostile.h"
-#include "src/wave_manager.h"
-#include "src/game_manager.h"
-#include "src/hud.h"
+#include "grid_manager.h"
+#include "entity.h"
+#include "defender.h"
+#include "hostile.h"
+#include "wave_manager.h"
+#include "game_manager.h"
+#include "hud.h"
 
 using namespace godot;
 
@@ -19,7 +18,6 @@ void initialize_module(ModuleInitializationLevel p_level) {
         return;
     }
 
-    ClassDB::register_class<Hello>();
     ClassDB::register_class<defn::GridManager>();
     ClassDB::register_class<defn::Entity>();
     ClassDB::register_class<defn::Defender>();
@@ -37,11 +35,10 @@ void uninitialize_module(ModuleInitializationLevel p_level) {
 
 extern "C" {
 
-// Note the change in the first parameter!
 GDExtensionBool GDE_EXPORT
-hello_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address,
-                   const GDExtensionClassLibraryPtr p_library,
-                   GDExtensionInitialization *r_initialization) {
+defn_core_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address,
+                       const GDExtensionClassLibraryPtr p_library,
+                       GDExtensionInitialization *r_initialization) {
 
     GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 
