@@ -1,0 +1,39 @@
+import os
+
+# 1. Setup the basic SCons environment
+opts = Variables()
+opts.Add(EnumVariable("platform", "The platform to build for", "windows", ["windows", "linux", "macos", "android", "ios"]))
+opts.Add(EnumVariable("target", "The target to build for", "template_debug", ["template_debug", "template_release", "editor"]))
+opts.Add(EnumVariable("precision", "Floating-point precision", "single", ["single", "double"]))
+
+env = Environment(variables=opts)
+
+# 2. Import the godot-cpp configuration
+# This allows us to use the same compiler flags godot-cpp uses
+env = SConscript("../godot-cpp/SConstruct", exports="env")
+
+# 3. Add your local include directory and godot-cpp includes
+env.Append(CPPPATH=["src/", "../godot-cpp/gen/include/", "../godot-cpp/include/"])
+
+# 4. Define your sources (Update paths if your files are in a 'src' subfolder)
+sources = [
+    "hello.cpp",
+    "register_types.cpp",
+]
+
+# 5. Compile into a dedicated object directory
+obj_dir = os.path.join("build", "obj")
+objects = []
+for src in sources:
+    obj_name = os.path.splitext(os.path.basename(src))[0]
+    obj_target = os.path.join(obj_dir, obj_name)
+    objects.append(env.SharedObject(target=obj_target, source=src))
+
+# 6. Build the Shared Library (The DLL)
+# We use 'target_name' to prevent SCons from getting confused by the folder name
+library = env.SharedLibrary(
+    target="bin/hello", 
+    source=objects,
+)
+
+Default(library)
