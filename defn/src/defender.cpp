@@ -94,6 +94,9 @@ void Defender::setup_sprite_frames() {
     // Scale to fit 128px tile: 128/475 ≈ 0.27
     set_scale(Vector2(0.27, 0.27));
 
+    // Setup detection areas after scaling: hitbox on layer 1, detect hostiles on layer 2
+    setup_detection(1, 2);
+
     // Remove default animation if it exists
     if (frames->has_animation("default")) {
         frames->remove_animation("default");
@@ -111,21 +114,21 @@ void Defender::find_target() {
         }
     }
 
-    // Scan for any hostile within attack range (regardless of Y position)
     target = nullptr;
     engaged = false;
 
-    Node *parent = get_parent();
-    if (!parent) return;
+    if (!detection_area) return;
 
     double closest_dist = 1e9;
-    int child_count = parent->get_child_count();
-    for (int i = 0; i < child_count; ++i) {
-        auto *hostile = Object::cast_to<Hostile>(parent->get_child(i));
+    TypedArray<Area2D> areas = detection_area->get_overlapping_areas();
+    for (int i = 0; i < areas.size(); ++i) {
+        auto *area = Object::cast_to<Area2D>(areas[i].operator Object *());
+        if (!area) continue;
+        auto *hostile = Object::cast_to<Hostile>(area->get_parent());
         if (!hostile || hostile->is_dead()) continue;
 
         double dist = hostile->get_position().x - get_position().x;
-        if (dist >= 0 && dist <= attack_range && dist < closest_dist) {
+        if (dist >= 0 && dist < closest_dist) {
             closest_dist = dist;
             target = hostile;
             engaged = true;

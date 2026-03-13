@@ -3,6 +3,7 @@
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/animated_sprite2d.hpp>
+#include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
@@ -41,6 +42,7 @@ public:
     void flash_damage(const Color &color);
 
     AnimatedSprite2D *get_sprite() const { return sprite; }
+    Area2D *get_detection_area() const { return detection_area; }
 
     void _ready() override;
     void _process(double delta) override;
@@ -50,6 +52,7 @@ protected:
 
     void setup_health_bar();
     void update_health_bar();
+    void setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask);
 
     int max_hp = 100;
     int current_hp = 100;
@@ -65,6 +68,10 @@ protected:
     // Health bar
     ColorRect *health_bar_bg = nullptr;
     ColorRect *health_bar_fill = nullptr;
+
+    // Collision detection
+    Area2D *hitbox = nullptr;
+    Area2D *detection_area = nullptr;
 
     // Flash effect
     double flash_timer = 0.0;

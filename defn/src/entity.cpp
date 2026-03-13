@@ -1,5 +1,7 @@
 #include "entity.h"
 #include "grid_manager.h"
+#include <godot_cpp/classes/collision_shape2d.hpp>
+#include <godot_cpp/classes/circle_shape2d.hpp>
 #include <cstdlib>
 
 namespace defn {
@@ -110,6 +112,38 @@ void Entity::update_health_bar() {
         double bar_width = 102.0 * ratio;
         health_bar_fill->set_size(Vector2(bar_width, 6.0));
     }
+}
+
+void Entity::setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask) {
+    double scale_x = get_scale().x;
+
+    // Hitbox: small circle marking this entity's position
+    hitbox = memnew(Area2D);
+    hitbox->set_collision_layer(hitbox_layer);
+    hitbox->set_collision_mask(0);
+    hitbox->set_monitoring(false);
+    hitbox->set_monitorable(true);
+    auto *hitbox_shape = memnew(CollisionShape2D);
+    Ref<CircleShape2D> hitbox_circle;
+    hitbox_circle.instantiate();
+    hitbox_circle->set_radius(5.0 / scale_x);
+    hitbox_shape->set_shape(hitbox_circle);
+    hitbox->add_child(hitbox_shape);
+    add_child(hitbox);
+
+    // Detection area: attack range sensor
+    detection_area = memnew(Area2D);
+    detection_area->set_collision_layer(0);
+    detection_area->set_collision_mask(sensor_mask);
+    detection_area->set_monitoring(true);
+    detection_area->set_monitorable(false);
+    auto *sensor_shape = memnew(CollisionShape2D);
+    Ref<CircleShape2D> sensor_circle;
+    sensor_circle.instantiate();
+    sensor_circle->set_radius(attack_range / scale_x);
+    sensor_shape->set_shape(sensor_circle);
+    detection_area->add_child(sensor_shape);
+    add_child(detection_area);
 }
 
 } // namespace defn
