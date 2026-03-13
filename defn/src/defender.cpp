@@ -106,12 +106,12 @@ void Defender::find_target() {
     // Check if current target is still valid
     if (target && !target->is_dead()) {
         double dist = target->get_position().x - get_position().x;
-        if (dist >= 0 && dist <= GridManager::TILE_SIZE) {
+        if (dist >= 0 && dist <= attack_range) {
             return; // still engaged with valid target
         }
     }
 
-    // Scan for hostiles in same lane
+    // Scan for any hostile within attack range (regardless of Y position)
     target = nullptr;
     engaged = false;
 
@@ -122,10 +122,10 @@ void Defender::find_target() {
     int child_count = parent->get_child_count();
     for (int i = 0; i < child_count; ++i) {
         auto *hostile = Object::cast_to<Hostile>(parent->get_child(i));
-        if (!hostile || hostile->is_dead() || hostile->get_lane() != lane) continue;
+        if (!hostile || hostile->is_dead()) continue;
 
         double dist = hostile->get_position().x - get_position().x;
-        if (dist >= 0 && dist <= GridManager::TILE_SIZE && dist < closest_dist) {
+        if (dist >= 0 && dist <= attack_range && dist < closest_dist) {
             closest_dist = dist;
             target = hostile;
             engaged = true;
@@ -150,10 +150,10 @@ void Defender::do_attack(double delta) {
 }
 
 void Defender::do_movement(double delta) {
-    double max_x = GridManager::column_center_x(GridManager::COLUMN_COUNT - 1);
+    double max_x = GridManager::SPAWN_X - 100.0; // don't walk off-screen right
     Vector2 pos = get_position();
     if (pos.x < max_x) {
-        pos.x += move_speed * GridManager::TILE_SIZE * delta;
+        pos.x += move_speed * GridManager::ATTACK_RANGE * delta;
         if (pos.x > max_x) pos.x = max_x;
         set_position(pos);
     }

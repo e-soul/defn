@@ -120,7 +120,7 @@ void Hostile::find_target() {
     // Check if current target is still valid
     if (target && !target->is_dead()) {
         double dist = get_position().x - target->get_position().x;
-        if (dist >= 0 && dist <= GridManager::TILE_SIZE) {
+        if (dist >= 0 && dist <= attack_range) {
             return;
         }
     }
@@ -135,11 +135,11 @@ void Hostile::find_target() {
     int child_count = parent->get_child_count();
     for (int i = 0; i < child_count; ++i) {
         auto *defender = Object::cast_to<Defender>(parent->get_child(i));
-        if (!defender || defender->is_dead() || defender->get_lane() != lane) continue;
+        if (!defender || defender->is_dead()) continue;
 
         // Defender must be ahead (to the left, lower X)
         double dist = get_position().x - defender->get_position().x;
-        if (dist >= 0 && dist <= GridManager::TILE_SIZE && dist < closest_dist) {
+        if (dist >= 0 && dist <= attack_range && dist < closest_dist) {
             closest_dist = dist;
             target = defender;
             engaged = true;
@@ -165,12 +165,12 @@ void Hostile::do_attack(double delta) {
 
 void Hostile::do_movement(double delta) {
     Vector2 pos = get_position();
-    pos.x -= move_speed * GridManager::TILE_SIZE * delta;
+    pos.x -= move_speed * GridManager::ATTACK_RANGE * delta;
     set_position(pos);
 }
 
 void Hostile::check_breach() {
-    if (get_position().x < GridManager::BASE_X_THRESHOLD) {
+    if (get_position().x < GridManager::BREACH_X) {
         emit_signal("enemy_breached");
         queue_free();
     }

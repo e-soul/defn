@@ -11,7 +11,6 @@ using namespace godot;
 
 struct SpawnEvent {
     double time = 0.0;
-    int lane = 1;
     String type = "grunt";
 };
 
@@ -55,7 +54,6 @@ private:
     // Flattened list of all spawns with absolute times, for simpler processing
     struct FlatSpawn {
         double time;
-        int lane;
         String type;
         int wave; // which wave this belongs to
     };

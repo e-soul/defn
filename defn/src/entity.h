@@ -33,8 +33,7 @@ public:
     int get_damage() const { return damage; }
     double get_attack_speed() const { return attack_speed; }
     double get_move_speed() const { return move_speed; }
-    int get_lane() const { return lane; }
-    void set_lane(int p_lane) { lane = p_lane; }
+    double get_attack_range() const { return attack_range; }
 
     AnimState get_anim_state() const { return anim_state; }
     void set_anim_state(AnimState state);
@@ -58,7 +57,7 @@ protected:
     double attack_speed = 1.0;
     double attack_timer = 0.0;
     double move_speed = 0.5;
-    int lane = 1;
+    double attack_range = 128.0;
 
     AnimState anim_state = AnimState::WALK;
     AnimatedSprite2D *sprite = nullptr;

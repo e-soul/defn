@@ -12,17 +12,16 @@ class GridManager : public Node {
     GDCLASS(GridManager, Node)
 
 public:
-    static constexpr int LANE_COUNT = 5;
-    static constexpr int COLUMN_COUNT = 10;
-    static constexpr double TILE_SIZE = 128.0;
-    static constexpr double GRID_ORIGIN_X = 288.0;  // ~15% of 1920
-    static constexpr double GRID_ORIGIN_Y = 64.0;   // top bar height
-    static constexpr double BASE_X_THRESHOLD = GRID_ORIGIN_X; // breach threshold
+    // Belt scroller constants (viewport 1920x1080)
+    static constexpr double BELT_TOP_Y = 650.0;     // top of walkable belt
+    static constexpr double BELT_BOTTOM_Y = 800.0;  // bottom of walkable belt
+    static constexpr double DEPLOY_X = 150.0;       // left edge where defenders deploy
+    static constexpr double BREACH_X = 50.0;        // breach threshold
+    static constexpr double SPAWN_X = 2000.0;       // right edge spawn (just off-screen)
+    static constexpr double ATTACK_RANGE = 128.0;   // melee attack range in pixels
 
-    static double lane_center_y(int lane);  // lane is 1-indexed
-    static double column_center_x(int col); // col is 0-indexed
-    static int screen_to_lane(double screen_y);
-    static double spawn_x(); // right edge spawn position
+    static double random_belt_y();                   // random Y within the belt area
+    static double spawn_x();                         // right edge spawn position
 
 protected:
     static void _bind_methods();

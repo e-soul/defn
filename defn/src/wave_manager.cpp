@@ -34,8 +34,7 @@ void WaveManager::_process(double delta) {
 
         // Create the hostile
         auto *enemy = memnew(Hostile);
-        enemy->set_lane(spawn.lane);
-        double y = GridManager::lane_center_y(spawn.lane);
+        double y = GridManager::random_belt_y();
         double x = GridManager::spawn_x();
         enemy->set_position(Vector2(x, y));
 
@@ -85,13 +84,11 @@ void WaveManager::load_level(const String &path) {
             Dictionary spawn_dict = spawns_array[s];
             SpawnEvent se;
             se.time = static_cast<double>(spawn_dict.get("time", 0.0));
-            se.lane = static_cast<int>(spawn_dict.get("lane", 1));
             se.type = String(spawn_dict.get("type", "grunt"));
             wd.spawns.push_back(se);
 
             FlatSpawn fs;
             fs.time = se.time;
-            fs.lane = se.lane;
             fs.type = se.type;
             fs.wave = wd.wave_number;
             all_spawns.push_back(fs);

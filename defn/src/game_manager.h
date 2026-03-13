@@ -30,9 +30,8 @@ protected:
 
 private:
     void setup_background();
-    void setup_lane_visuals();
     void setup_base_visual();
-    void deploy_swordsman(int lane);
+    void deploy_swordsman();
 
     // Signal callbacks
     void on_enemy_spawned(Node *enemy_node);

@@ -21,12 +21,11 @@ GameManager::GameManager() = default;
 void GameManager::_bind_methods() {}
 
 void GameManager::_ready() {
-    UtilityFunctions::print("GameManager: Initializing lane defense game...");
+    UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
     // Setup visual layers
     setup_background();
     setup_base_visual();
-    setup_lane_visuals();
 
     // Entity container
     entity_container = memnew(Node2D);
@@ -84,19 +83,16 @@ void GameManager::_input(const Ref<InputEvent> &event) {
         return;
     }
 
-    Vector2 click_pos = mb->get_position();
-    int lane = GridManager::screen_to_lane(click_pos.y);
-
-    if (lane >= 1 && lane <= GridManager::LANE_COUNT && aether >= SWORDSMAN_COST) {
-        deploy_swordsman(lane);
+    if (aether >= SWORDSMAN_COST) {
+        deploy_swordsman();
     }
 }
 
 void GameManager::setup_background() {
     auto *loader = ResourceLoader::get_singleton();
 
-    // Full-screen background
-    Ref<Texture2D> bg_tex = loader->load("res://assets/stick_figure/Extras/background1.png");
+    // Full-screen background — middle east ruins street
+    Ref<Texture2D> bg_tex = loader->load("res://assets/backgrounds/middle_east_ruins.png");
     if (bg_tex.is_valid()) {
         auto *bg = memnew(Sprite2D);
         bg->set_texture(bg_tex);
@@ -108,69 +104,18 @@ void GameManager::setup_background() {
         bg->set_scale(Vector2(1920.0 / tex_size.x, 1080.0 / tex_size.y));
         add_child(bg);
     }
-
-    // Ground along the bottom
-    Ref<Texture2D> ground_tex = loader->load("res://assets/stick_figure/Extras/groundBig.png");
-    if (ground_tex.is_valid()) {
-        auto *ground = memnew(Sprite2D);
-        ground->set_texture(ground_tex);
-        ground->set_name("Ground");
-        Vector2 tex_size = ground_tex->get_size();
-        ground->set_position(Vector2(960, 1080 - tex_size.y * 0.5));
-        ground->set_scale(Vector2(1920.0 / tex_size.x, 1.0));
-        add_child(ground);
-    }
 }
 
 void GameManager::setup_base_visual() {
-    auto *loader = ResourceLoader::get_singleton();
-    Ref<Texture2D> base_tex = loader->load("res://assets/stick_figure/Extras/building1.png");
-    if (base_tex.is_valid()) {
-        auto *base_sprite = memnew(Sprite2D);
-        base_sprite->set_texture(base_tex);
-        base_sprite->set_name("BaseZone");
-        // Position on the left side
-        base_sprite->set_position(Vector2(144, 400));
-        add_child(base_sprite);
-    }
+    // No base building in belt scroller mode
 }
 
-void GameManager::setup_lane_visuals() {
-    auto *lane_visuals = memnew(Node2D);
-    lane_visuals->set_name("LaneVisuals");
-    add_child(lane_visuals);
-
-    for (int lane = 1; lane <= GridManager::LANE_COUNT; ++lane) {
-        auto *lane_rect = memnew(ColorRect);
-        double y = GridManager::GRID_ORIGIN_Y + (lane - 1) * GridManager::TILE_SIZE;
-        lane_rect->set_position(Vector2(GridManager::GRID_ORIGIN_X, y));
-        lane_rect->set_size(Vector2(GridManager::COLUMN_COUNT * GridManager::TILE_SIZE, GridManager::TILE_SIZE));
-
-        // Alternate lane colors for visibility
-        float alpha = (lane % 2 == 0) ? 0.08f : 0.04f;
-        lane_rect->set_color(Color(1, 1, 1, alpha));
-
-        lane_visuals->add_child(lane_rect);
-    }
-
-    // Lane separator lines
-    for (int lane = 0; lane <= GridManager::LANE_COUNT; ++lane) {
-        auto *line = memnew(ColorRect);
-        double y = GridManager::GRID_ORIGIN_Y + lane * GridManager::TILE_SIZE;
-        line->set_position(Vector2(GridManager::GRID_ORIGIN_X, y - 1));
-        line->set_size(Vector2(GridManager::COLUMN_COUNT * GridManager::TILE_SIZE, 2));
-        line->set_color(Color(1, 1, 1, 0.15));
-        lane_visuals->add_child(line);
-    }
-}
-
-void GameManager::deploy_swordsman(int lane) {
+void GameManager::deploy_swordsman() {
     aether -= SWORDSMAN_COST;
 
     auto *swordsman = memnew(Defender);
-    swordsman->set_lane(lane);
-    double x = GridManager::column_center_x(0);
-    double y = GridManager::lane_center_y(lane);
+    double x = GridManager::DEPLOY_X;
+    double y = GridManager::random_belt_y();
     swordsman->set_position(Vector2(x, y));
 
     swordsman->connect("entity_died", callable_mp(this, &GameManager::on_defender_died));

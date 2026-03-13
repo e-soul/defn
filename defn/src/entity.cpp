@@ -1,9 +1,15 @@
 #include "entity.h"
 #include "grid_manager.h"
+#include <cstdlib>
 
 namespace defn {
 
-Entity::Entity() = default;
+Entity::Entity() {
+    // ±20% random variation on base attack range to prevent perfect alignment
+    double t = static_cast<double>(std::rand()) / RAND_MAX; // 0..1
+    double variation = 0.8 + t * 0.4; // 0.8 .. 1.2
+    attack_range = GridManager::ATTACK_RANGE * variation;
+}
 
 void Entity::_bind_methods() {
     ADD_SIGNAL(MethodInfo("entity_died", PropertyInfo(Variant::OBJECT, "entity")));

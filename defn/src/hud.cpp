@@ -65,7 +65,7 @@ void HUD::build_ui() {
     // Bottom bar
     // ==========================================================
     deploy_label = memnew(Label);
-    deploy_label->set_text(String::utf8("\U0001F5E1 Deploy Swordsman: 25 Aether"));
+    deploy_label->set_text(String::utf8("\U0001F5E1 Click to Deploy Swordsman: 25 Aether"));
     deploy_label->set_anchors_preset(Control::PRESET_BOTTOM_WIDE);
     deploy_label->set_offset(Side::SIDE_TOP, -48.0);
     deploy_label->set_offset(Side::SIDE_BOTTOM, -8.0);
