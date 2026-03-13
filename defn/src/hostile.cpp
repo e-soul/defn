@@ -21,8 +21,8 @@ void Hostile::_ready() {
     bounty = 5;
 
     // Health bar red for enemies
-    if (health_bar_fill) {
-        health_bar_fill->set_color(Color(0.9, 0.15, 0.15, 0.9));
+    if (health_bar_fill_style.is_valid()) {
+        health_bar_fill_style->set_bg_color(Color(0.9, 0.15, 0.15, 0.9));
     }
 
     setup_sprite_frames();

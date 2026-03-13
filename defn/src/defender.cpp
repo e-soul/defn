@@ -20,8 +20,8 @@ void Defender::_ready() {
     init_stats(300, 15, 1.0, 0.5);
 
     // Health bar green for defenders
-    if (health_bar_fill) {
-        health_bar_fill->set_color(Color(0.2, 0.9, 0.2, 0.9));
+    if (health_bar_fill_style.is_valid()) {
+        health_bar_fill_style->set_bg_color(Color(0.2, 0.9, 0.2, 0.9));
     }
 
     setup_sprite_frames();

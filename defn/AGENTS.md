@@ -24,3 +24,7 @@ This is a **Godot 4.6** game built as a **Belt Scroller** (2.5D side-scroller). 
 - `scenes/` — Minimal `.tscn` files (only when unavoidable)
 - `assets/` — Art and sprite assets
 - `godot-cpp/` — GDExtension bindings (submodule, do not modify)
+
+## Build Instructions
+
+Activate the python venv in the repo root (/.venv) and execute `scons platform=windows` to run the build.

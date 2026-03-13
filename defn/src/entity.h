@@ -4,7 +4,8 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/animated_sprite2d.hpp>
 #include <godot_cpp/classes/area2d.hpp>
-#include <godot_cpp/classes/color_rect.hpp>
+#include <godot_cpp/classes/progress_bar.hpp>
+#include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 namespace defn {
@@ -66,8 +67,9 @@ protected:
     AnimatedSprite2D *sprite = nullptr;
 
     // Health bar
-    ColorRect *health_bar_bg = nullptr;
-    ColorRect *health_bar_fill = nullptr;
+    ProgressBar *health_bar = nullptr;
+    Ref<StyleBoxFlat> health_bar_fill_style;
+    Ref<StyleBoxFlat> health_bar_bg_style;
 
     // Collision detection
     Area2D *hitbox = nullptr;
