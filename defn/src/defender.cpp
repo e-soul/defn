@@ -54,36 +54,36 @@ void Defender::setup_sprite_frames() {
     Ref<SpriteFrames> frames;
     frames.instantiate();
 
-    // Walk animation: sword_walk_0009 through sword_walk_0016 (8 frames)
+    // Walk animation: Walk__000 through Walk__009 (10 frames)
     frames->add_animation("walk");
-    frames->set_animation_speed("walk", 8.0);
+    frames->set_animation_speed("walk", 10.0);
     frames->set_animation_loop("walk", true);
-    for (int i = 9; i <= 16; ++i) {
-        String path = vformat("res://assets/stick_figure/Sword_sprites/sword_walk_%04d.png", i);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Walk__%03d.png", i);
         Ref<Texture2D> tex = loader->load(path);
         if (tex.is_valid()) {
             frames->add_frame("walk", tex);
         }
     }
 
-    // Attack animation: sword_combo_0065 through sword_combo_0075 (11 frames)
+    // Attack animation: Melee__000 through Melee__009 (10 frames)
     frames->add_animation("attack");
-    frames->set_animation_speed("attack", 11.0);
+    frames->set_animation_speed("attack", 10.0);
     frames->set_animation_loop("attack", false);
-    for (int i = 65; i <= 75; ++i) {
-        String path = vformat("res://assets/stick_figure/Sword_sprites/sword_combo_%04d.png", i);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Melee__%03d.png", i);
         Ref<Texture2D> tex = loader->load(path);
         if (tex.is_valid()) {
             frames->add_frame("attack", tex);
         }
     }
 
-    // Death animation: sword_death_0052 through sword_death_0061 (10 frames)
+    // Death animation: Dead__000 through Dead__009 (10 frames)
     frames->add_animation("death");
     frames->set_animation_speed("death", 8.0);
     frames->set_animation_loop("death", false);
-    for (int i = 52; i <= 61; ++i) {
-        String path = vformat("res://assets/stick_figure/Sword_sprites/sword_death_%04d.png", i);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Dead__%03d.png", i);
         Ref<Texture2D> tex = loader->load(path);
         if (tex.is_valid()) {
             frames->add_frame("death", tex);
@@ -91,8 +91,8 @@ void Defender::setup_sprite_frames() {
     }
 
     sprite->set_sprite_frames(frames);
-    // Scale to fit 128px tile: 128/512 = 0.25
-    set_scale(Vector2(0.25, 0.25));
+    // Scale to fit 128px tile: 128/475 ≈ 0.27
+    set_scale(Vector2(0.27, 0.27));
 
     // Remove default animation if it exists
     if (frames->has_animation("default")) {

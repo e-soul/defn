@@ -66,36 +66,36 @@ void Hostile::setup_sprite_frames() {
     Ref<SpriteFrames> frames;
     frames.instantiate();
 
-    // Walk animation: left-facing frames 07-13
+    // Walk animation: Walk__000 through Walk__009 (10 frames)
     frames->add_animation("walk");
-    frames->set_animation_speed("walk", 8.0);
+    frames->set_animation_speed("walk", 10.0);
     frames->set_animation_loop("walk", true);
-    for (int i = 7; i <= 13; ++i) {
-        String path = vformat("res://assets/PIPOYA_Character_Sprites/Single_Image/Enemy/Enemy003a/All/02walk/e003a_02walk_%02d.png", i);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Walk__%03d.png", i);
         Ref<Texture2D> tex = loader->load(path);
         if (tex.is_valid()) {
             frames->add_frame("walk", tex);
         }
     }
 
-    // Attack animation: left-facing swinging frames 04-07
+    // Attack animation: Melee__000 through Melee__009 (10 frames)
     frames->add_animation("attack");
-    frames->set_animation_speed("attack", 4.0);
+    frames->set_animation_speed("attack", 10.0);
     frames->set_animation_loop("attack", false);
-    for (int i = 4; i <= 7; ++i) {
-        String path = vformat("res://assets/PIPOYA_Character_Sprites/Single_Image/Enemy/Enemy003a/All/10swinging/e003a_10swinging_%02d.png", i);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Melee__%03d.png", i);
         Ref<Texture2D> tex = loader->load(path);
         if (tex.is_valid()) {
             frames->add_frame("attack", tex);
         }
     }
 
-    // Death: single frame
+    // Death animation: Dead__000 through Dead__009 (10 frames)
     frames->add_animation("death");
-    frames->set_animation_speed("death", 1.0);
+    frames->set_animation_speed("death", 8.0);
     frames->set_animation_loop("death", false);
-    {
-        String path = "res://assets/PIPOYA_Character_Sprites/Single_Image/Enemy/Enemy003a/All/18down/e003a_18down_00.png";
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Dead__%03d.png", i);
         Ref<Texture2D> tex = loader->load(path);
         if (tex.is_valid()) {
             frames->add_frame("death", tex);
@@ -103,8 +103,10 @@ void Hostile::setup_sprite_frames() {
     }
 
     sprite->set_sprite_frames(frames);
-    // Scale to fit 128px tile: 128/480 ≈ 0.267
-    set_scale(Vector2(0.267, 0.267));
+    // Flip horizontally so hostile faces left
+    sprite->set_flip_h(true);
+    // Scale to fit 128px tile: 128/518 ≈ 0.247
+    set_scale(Vector2(0.247, 0.247));
 
     // Remove default animation if it exists
     if (frames->has_animation("default")) {
