@@ -23,7 +23,7 @@ public:
 private:
     void setup_sprite_frames();
     void find_target();
-    void do_attack(double delta);
+    void on_attack_timeout();
     void do_movement(double delta);
     void check_breach();
     void on_animation_finished();
@@ -32,8 +32,6 @@ private:
     int bounty = 5;
     bool engaged = false;
     Defender *target = nullptr;
-    double fade_timer = 0.0;
-    bool fading = false;
 
 protected:
     static void _bind_methods();

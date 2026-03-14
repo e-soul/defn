@@ -6,6 +6,9 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/classes/tween.hpp>
+#include <godot_cpp/classes/callback_tweener.hpp>
+#include <godot_cpp/classes/property_tweener.hpp>
 
 namespace defn {
 
@@ -29,20 +32,11 @@ void Hostile::_ready() {
     set_anim_state(AnimState::WALK);
 
     sprite->connect("animation_finished", callable_mp(this, &Hostile::on_animation_finished));
+    attack_timer_node->connect("timeout", callable_mp(this, &Hostile::on_attack_timeout));
 }
 
 void Hostile::_process(double delta) {
     Entity::_process(delta);
-
-    if (fading) {
-        fade_timer -= delta;
-        double alpha = fade_timer > 0.0 ? fade_timer / 0.5 : 0.0;
-        set_modulate(Color(1, 1, 1, alpha));
-        if (fade_timer <= 0.0) {
-            queue_free();
-        }
-        return;
-    }
 
     if (anim_state == AnimState::DEATH) return;
 
@@ -50,10 +44,11 @@ void Hostile::_process(double delta) {
     find_target();
 
     if (engaged && target && !target->is_dead()) {
-        do_attack(delta);
+        // Timer handles attack damage via on_attack_timeout
     } else {
         engaged = false;
         target = nullptr;
+        attack_timer_node->stop();
         if (anim_state == AnimState::ATTACK) {
             set_anim_state(AnimState::WALK);
         }
@@ -152,18 +147,14 @@ void Hostile::find_target() {
 
     if (engaged && anim_state != AnimState::ATTACK) {
         set_anim_state(AnimState::ATTACK);
-        attack_timer = 0.0;
+        attack_timer_node->start();
     }
 }
 
-void Hostile::do_attack(double delta) {
-    attack_timer += delta;
-    if (attack_timer >= 1.0 / attack_speed) {
-        attack_timer -= 1.0 / attack_speed;
-        if (target && !target->is_dead()) {
-            target->take_damage(damage);
-            target->flash_damage(Color(1, 1, 1));
-        }
+void Hostile::on_attack_timeout() {
+    if (target && !target->is_dead()) {
+        target->take_damage(damage);
+        target->flash_damage(Color(1, 1, 1));
     }
 }
 
@@ -191,8 +182,9 @@ void Hostile::on_animation_finished() {
 }
 
 void Hostile::start_death_fade() {
-    fading = true;
-    fade_timer = 0.5;
+    Ref<Tween> tween = create_tween();
+    tween->tween_property(this, NodePath("modulate"), Color(1, 1, 1, 0), 0.5);
+    tween->tween_callback(Callable(this, "queue_free"));
 }
 
 } // namespace defn

@@ -6,6 +6,7 @@
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/progress_bar.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
+#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 namespace defn {
@@ -59,7 +60,7 @@ protected:
     int current_hp = 100;
     int damage = 15;
     double attack_speed = 1.0;
-    double attack_timer = 0.0;
+    Timer *attack_timer_node = nullptr;
     double move_speed = 0.5;
     double attack_range = 128.0;
 

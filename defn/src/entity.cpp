@@ -24,6 +24,10 @@ void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, doubl
     attack_speed = p_attack_speed;
     move_speed = p_move_speed;
 
+    if (attack_timer_node) {
+        attack_timer_node->set_wait_time(1.0 / attack_speed);
+    }
+
     if (health_bar) {
         health_bar->set_max(max_hp);
         health_bar->set_value(max_hp);
@@ -33,6 +37,11 @@ void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, doubl
 void Entity::_ready() {
     sprite = memnew(AnimatedSprite2D);
     add_child(sprite);
+
+    attack_timer_node = memnew(Timer);
+    attack_timer_node->set_one_shot(false);
+    attack_timer_node->set_autostart(false);
+    add_child(attack_timer_node);
 
     setup_health_bar();
 }
@@ -64,6 +73,10 @@ void Entity::take_damage(int amount) {
 void Entity::set_anim_state(AnimState state) {
     if (anim_state == AnimState::DEATH) return; // can't leave death state
     anim_state = state;
+
+    if (state == AnimState::DEATH && attack_timer_node) {
+        attack_timer_node->stop();
+    }
 
     if (!sprite) return;
 

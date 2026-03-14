@@ -6,6 +6,9 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/classes/tween.hpp>
+#include <godot_cpp/classes/callback_tweener.hpp>
+#include <godot_cpp/classes/property_tweener.hpp>
 
 namespace defn {
 
@@ -28,6 +31,7 @@ void Defender::_ready() {
     set_anim_state(AnimState::WALK);
 
     sprite->connect("animation_finished", callable_mp(this, &Defender::on_animation_finished));
+    attack_timer_node->connect("timeout", callable_mp(this, &Defender::on_attack_timeout));
 }
 
 void Defender::_process(double delta) {
@@ -38,10 +42,11 @@ void Defender::_process(double delta) {
     find_target();
 
     if (engaged && target && !target->is_dead()) {
-        do_attack(delta);
+        // Timer handles attack damage via on_attack_timeout
     } else {
         engaged = false;
         target = nullptr;
+        attack_timer_node->stop();
         if (anim_state == AnimState::ATTACK) {
             set_anim_state(AnimState::WALK);
         }
@@ -137,18 +142,14 @@ void Defender::find_target() {
 
     if (engaged && anim_state != AnimState::ATTACK) {
         set_anim_state(AnimState::ATTACK);
-        attack_timer = 0.0;
+        attack_timer_node->start();
     }
 }
 
-void Defender::do_attack(double delta) {
-    attack_timer += delta;
-    if (attack_timer >= 1.0 / attack_speed) {
-        attack_timer -= 1.0 / attack_speed;
-        if (target && !target->is_dead()) {
-            target->take_damage(damage);
-            target->flash_damage(Color(1, 0.2, 0.2));
-        }
+void Defender::on_attack_timeout() {
+    if (target && !target->is_dead()) {
+        target->take_damage(damage);
+        target->flash_damage(Color(1, 0.2, 0.2));
     }
 }
 
@@ -164,12 +165,18 @@ void Defender::do_movement(double delta) {
 
 void Defender::on_animation_finished() {
     if (anim_state == AnimState::DEATH) {
-        queue_free();
+        start_death_fade();
         return;
     }
     if (anim_state == AnimState::ATTACK && engaged && target && !target->is_dead()) {
         sprite->play("attack");
     }
+}
+
+void Defender::start_death_fade() {
+    Ref<Tween> tween = create_tween();
+    tween->tween_property(this, NodePath("modulate"), Color(1, 1, 1, 0), 0.5);
+    tween->tween_callback(Callable(this, "queue_free"));
 }
 
 } // namespace defn

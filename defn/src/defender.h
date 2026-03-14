@@ -24,9 +24,10 @@ public:
 private:
     void setup_sprite_frames();
     void find_target();
-    void do_attack(double delta);
+    void on_attack_timeout();
     void do_movement(double delta);
     void on_animation_finished();
+    void start_death_fade();
 
     int cost = 25;
     bool engaged = false;

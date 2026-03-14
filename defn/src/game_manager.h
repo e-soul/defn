@@ -3,6 +3,7 @@
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <vector>
 
@@ -40,12 +41,12 @@ private:
     void on_enemy_died(Node *entity);
     void on_defender_died(Node *entity);
     void on_enemy_breached();
+    void on_aether_tick();
 
     void check_victory();
 
     // Game state
     int aether = 100;
-    double aether_accum = 0.0;
     int base_integrity = 3;
     bool game_over = false;
     bool all_spawned = false;
@@ -57,6 +58,7 @@ private:
     WaveManager *wave_manager = nullptr;
     HUD *hud = nullptr;
     Node2D *entity_container = nullptr;
+    Timer *aether_timer = nullptr;
 
     static constexpr int SWORDSMAN_COST = 25;
 };

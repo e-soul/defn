@@ -55,22 +55,20 @@ void GameManager::_ready() {
     hud->update_hearts(base_integrity);
     hud->update_deploy_button(aether >= SWORDSMAN_COST);
 
+    // Aether generation timer: +1/sec
+    aether_timer = memnew(Timer);
+    aether_timer->set_wait_time(1.0);
+    aether_timer->set_one_shot(false);
+    aether_timer->connect("timeout", callable_mp(this, &GameManager::on_aether_tick));
+    add_child(aether_timer);
+    aether_timer->start();
+
     // Start the game
     wave_manager->start();
 }
 
 void GameManager::_process(double delta) {
     if (game_over) return;
-
-    // Passive aether generation: +1/sec
-    aether_accum += delta;
-    while (aether_accum >= 1.0) {
-        aether += 1;
-        aether_accum -= 1.0;
-    }
-
-    hud->update_aether(aether);
-    hud->update_deploy_button(aether >= SWORDSMAN_COST);
 
     check_victory();
 }
@@ -151,6 +149,7 @@ void GameManager::on_enemy_died(Node *entity) {
     if (hostile && !hostile->is_queued_for_deletion()) {
         aether += hostile->get_bounty();
         hud->update_aether(aether);
+        hud->update_deploy_button(aether >= SWORDSMAN_COST);
     }
     --living_enemies;
     if (living_enemies < 0) living_enemies = 0;
@@ -158,6 +157,12 @@ void GameManager::on_enemy_died(Node *entity) {
 
 void GameManager::on_defender_died(Node * /*entity*/) {
     // Defender died — no special handling needed beyond removal
+}
+
+void GameManager::on_aether_tick() {
+    aether += 1;
+    hud->update_aether(aether);
+    hud->update_deploy_button(aether >= SWORDSMAN_COST);
 }
 
 void GameManager::on_enemy_breached() {
@@ -169,6 +174,7 @@ void GameManager::on_enemy_breached() {
 
     if (base_integrity <= 0) {
         game_over = true;
+        aether_timer->stop();
         hud->show_defeat();
         wave_manager->stop();
     }
@@ -177,6 +183,7 @@ void GameManager::on_enemy_breached() {
 void GameManager::check_victory() {
     if (all_spawned && living_enemies <= 0) {
         game_over = true;
+        aether_timer->stop();
         hud->show_victory();
         wave_manager->stop();
     }

@@ -15,15 +15,14 @@ This is a **Godot 4.6** game built as a **Belt Scroller** (2.5D side-scroller). 
 - **Engine**: Godot 4.6
 - **Language**: C++23 via godot-cpp (GDExtension)
 - **Build**: SCons
-- **Data**: JSON for level and unit definitions (`data/`)
+- **Data**: JSON for level and unit definitions (`defn/data/`)
 
 ## Project Structure
 
-- `src/` — All C++ game source (entities, managers, HUD)
-- `data/` — JSON data files (levels, unit stats)
-- `scenes/` — Minimal `.tscn` files (only when unavoidable)
-- `assets/` — Art and sprite assets
-- `godot-cpp/` — GDExtension bindings (submodule, do not modify)
+- `defn/` - Godot project directory
+- `defn/src/` - All C++ game source (entities, managers, HUD)
+- `defn/assets/` - Art and sprite assets (submodule)
+- `godot-cpp/` - GDExtension bindings (submodule, do not modify)
 
 ## Build Instructions
 
