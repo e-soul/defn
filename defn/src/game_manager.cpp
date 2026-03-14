@@ -165,13 +165,15 @@ void GameManager::update_camera_scroll(double delta) {
     } else {
         camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
     }
+
+    GridManager::set_camera_x(camera->get_position().x);
 }
 
 void GameManager::deploy_swordsman() {
     aether -= SWORDSMAN_COST;
 
     auto *swordsman = memnew(Defender);
-    double x = GridManager::DEPLOY_X;
+    double x = GridManager::deploy_x();
     double y = GridManager::random_belt_y();
     swordsman->set_position(Vector2(x, y));
 
