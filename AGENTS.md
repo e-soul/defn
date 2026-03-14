@@ -26,4 +26,8 @@ This is a **Godot 4.6** game built as a **Belt Scroller** (2.5D side-scroller). 
 
 ## Build Instructions
 
-Activate the python venv in the repo root (/.venv) and execute `scons platform=windows` to run the build.
+```
+.venv\Scripts\activate
+cd defn
+scons platform=windows
+```

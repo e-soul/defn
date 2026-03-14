@@ -9,6 +9,7 @@
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
 #include <godot_cpp/classes/property_tweener.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
 
 namespace defn {
 
@@ -27,6 +28,8 @@ void Hostile::_ready() {
     if (health_bar_fill_style.is_valid()) {
         health_bar_fill_style->set_bg_color(Color(0.9, 0.15, 0.15, 0.9));
     }
+
+    add_to_group("hostiles");
 
     setup_sprite_frames();
     set_anim_state(AnimState::WALK);
@@ -126,19 +129,15 @@ void Hostile::find_target() {
     target = nullptr;
     engaged = false;
 
-    if (!detection_area) return;
-
     double closest_dist = 1e9;
-    TypedArray<Area2D> areas = detection_area->get_overlapping_areas();
-    for (int i = 0; i < areas.size(); ++i) {
-        auto *area = Object::cast_to<Area2D>(areas[i].operator Object *());
-        if (!area) continue;
-        auto *defender = Object::cast_to<Defender>(area->get_parent());
+    TypedArray<Node> defenders = get_tree()->get_nodes_in_group("defenders");
+    for (int i = 0; i < defenders.size(); ++i) {
+        auto *defender = Object::cast_to<Defender>(defenders[i].operator Object *());
         if (!defender || defender->is_dead()) continue;
 
         // Defender must be ahead (to the left, lower X)
         double dist = get_position().x - defender->get_position().x;
-        if (dist >= 0 && dist < closest_dist) {
+        if (dist >= 0 && dist <= attack_range && dist < closest_dist) {
             closest_dist = dist;
             target = defender;
             engaged = true;
