@@ -18,8 +18,8 @@ public:
     static constexpr int WORLD_MULTIPLIER = 4;       // world is N× the background width
 
     // Belt scroller constants
-    static constexpr double BELT_TOP_Y = 650.0;      // top of walkable belt
-    static constexpr double BELT_BOTTOM_Y = 800.0;   // bottom of walkable belt
+    static constexpr double BELT_TOP_Y = 750.0;      // top of walkable belt
+    static constexpr double BELT_BOTTOM_Y = 850.0;   // bottom of walkable belt
     static constexpr double BREACH_X = 50.0;         // breach threshold
     static constexpr double ATTACK_RANGE = 128.0;    // melee attack range in pixels
     static constexpr double SPAWN_OFFSET = 100.0;    // pixels off-screen for spawning
