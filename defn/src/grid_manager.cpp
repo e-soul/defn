@@ -1,14 +1,14 @@
 #include "grid_manager.h"
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <cstdlib>
 
 namespace defn {
+
+using godot::UtilityFunctions;
 
 void GridManager::_bind_methods() {}
 
 double GridManager::random_belt_y() {
-    double t = static_cast<double>(std::rand()) / RAND_MAX;
-    return BELT_TOP_Y + t * (BELT_BOTTOM_Y - BELT_TOP_Y);
+    return UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y);
 }
 
 double GridManager::spawn_x() {

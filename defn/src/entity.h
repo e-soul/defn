@@ -1,7 +1,7 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
-#include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/classes/animated_sprite2d.hpp>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/progress_bar.hpp>
@@ -19,8 +19,8 @@ enum class AnimState {
     DEATH
 };
 
-class Entity : public Node2D {
-    GDCLASS(Entity, Node2D)
+class Entity : public CharacterBody2D {
+    GDCLASS(Entity, CharacterBody2D)
 
 public:
     Entity();

@@ -2,14 +2,15 @@
 #include "grid_manager.h"
 #include <godot_cpp/classes/collision_shape2d.hpp>
 #include <godot_cpp/classes/circle_shape2d.hpp>
-#include <cstdlib>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
 
+using godot::UtilityFunctions;
+
 Entity::Entity() {
     // ±20% random variation on base attack range to prevent perfect alignment
-    double t = static_cast<double>(std::rand()) / RAND_MAX; // 0..1
-    double variation = 0.8 + t * 0.4; // 0.8 .. 1.2
+    double variation = UtilityFunctions::randf_range(0.8, 1.2);
     attack_range = GridManager::ATTACK_RANGE * variation;
 }
 
@@ -65,6 +66,7 @@ void Entity::take_damage(int amount) {
     if (current_hp < 0) current_hp = 0;
 
     if (current_hp <= 0) {
+        set_velocity(Vector2(0, 0));
         set_anim_state(AnimState::DEATH);
         emit_signal("entity_died", this);
     }

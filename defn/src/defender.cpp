@@ -45,7 +45,7 @@ void Defender::_process(double delta) {
     find_target();
 
     if (engaged && target && !target->is_dead()) {
-        // Timer handles attack damage via on_attack_timeout
+        set_velocity(Vector2(0, 0));
     } else {
         engaged = false;
         target = nullptr;
@@ -154,11 +154,17 @@ void Defender::on_attack_timeout() {
 
 void Defender::do_movement(double delta) {
     double max_x = GridManager::SPAWN_X - 100.0; // don't walk off-screen right
-    Vector2 pos = get_position();
-    if (pos.x < max_x) {
-        pos.x += move_speed * GridManager::ATTACK_RANGE * delta;
-        if (pos.x > max_x) pos.x = max_x;
-        set_position(pos);
+    if (get_position().x < max_x) {
+        double speed = move_speed * GridManager::ATTACK_RANGE;
+        set_velocity(Vector2(speed, 0));
+        move_and_slide();
+        // Clamp to max_x after sliding
+        if (get_position().x > max_x) {
+            set_position(Vector2(max_x, get_position().y));
+            set_velocity(Vector2(0, 0));
+        }
+    } else {
+        set_velocity(Vector2(0, 0));
     }
 }
 

@@ -47,7 +47,7 @@ void Hostile::_process(double delta) {
     find_target();
 
     if (engaged && target && !target->is_dead()) {
-        // Timer handles attack damage via on_attack_timeout
+        set_velocity(Vector2(0, 0));
     } else {
         engaged = false;
         target = nullptr;
@@ -158,9 +158,9 @@ void Hostile::on_attack_timeout() {
 }
 
 void Hostile::do_movement(double delta) {
-    Vector2 pos = get_position();
-    pos.x -= move_speed * GridManager::ATTACK_RANGE * delta;
-    set_position(pos);
+    double speed = move_speed * GridManager::ATTACK_RANGE;
+    set_velocity(Vector2(-speed, 0));
+    move_and_slide();
 }
 
 void Hostile::check_breach() {
