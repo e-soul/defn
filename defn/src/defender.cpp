@@ -153,7 +153,7 @@ void Defender::on_attack_timeout() {
 }
 
 void Defender::do_movement(double delta) {
-    double max_x = GridManager::SPAWN_X - 100.0; // don't walk off-screen right
+    double max_x = GridManager::get_world_width() - 100.0;
     if (get_position().x < max_x) {
         double speed = move_speed * GridManager::ATTACK_RANGE;
         set_velocity(Vector2(speed, 0));

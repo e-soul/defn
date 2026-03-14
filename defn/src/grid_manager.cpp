@@ -5,6 +5,8 @@ namespace defn {
 
 using godot::UtilityFunctions;
 
+double GridManager::world_width_ = VIEWPORT_WIDTH * WORLD_MULTIPLIER;
+
 void GridManager::_bind_methods() {}
 
 double GridManager::random_belt_y() {
@@ -12,7 +14,15 @@ double GridManager::random_belt_y() {
 }
 
 double GridManager::spawn_x() {
-    return SPAWN_X;
+    return world_width_ + 100.0;
+}
+
+void GridManager::set_world_width(double w) {
+    world_width_ = w;
+}
+
+double GridManager::get_world_width() {
+    return world_width_;
 }
 
 } // namespace defn

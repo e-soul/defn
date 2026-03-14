@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/timer.hpp>
+#include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <vector>
 
@@ -32,7 +33,9 @@ protected:
 private:
     void setup_background();
     void setup_base_visual();
+    void setup_camera();
     void deploy_swordsman();
+    void update_camera_scroll(double delta);
 
     // Signal callbacks
     void on_enemy_spawned(Node *enemy_node);
@@ -59,6 +62,11 @@ private:
     HUD *hud = nullptr;
     Node2D *entity_container = nullptr;
     Timer *aether_timer = nullptr;
+    Camera2D *camera = nullptr;
+
+    // Scrolling state
+    double camera_target_x = 960.0;
+    double world_width = 7680.0;
 
     static constexpr int SWORDSMAN_COST = 25;
 };

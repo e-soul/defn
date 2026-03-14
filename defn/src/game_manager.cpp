@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
+#include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -23,9 +24,9 @@ void GameManager::_bind_methods() {}
 void GameManager::_ready() {
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
-    // Setup visual layers
+    // Setup camera and visual layers
     setup_background();
-    setup_base_visual();
+    setup_camera();
 
     // Entity container (y-sort so closer-to-bottom entities render in front)
     entity_container = memnew(Node2D);
@@ -71,6 +72,7 @@ void GameManager::_ready() {
 void GameManager::_process(double delta) {
     if (game_over) return;
 
+    update_camera_scroll(delta);
     check_victory();
 }
 
@@ -90,23 +92,79 @@ void GameManager::_input(const Ref<InputEvent> &event) {
 void GameManager::setup_background() {
     auto *loader = ResourceLoader::get_singleton();
 
-    // Full-screen background — middle east ruins street
-    Ref<Texture2D> bg_tex = loader->load("res://assets/backgrounds/middle_east_ruins.png");
-    if (bg_tex.is_valid()) {
-        auto *bg = memnew(Sprite2D);
-        bg->set_texture(bg_tex);
-        bg->set_name("Background");
-        // Center on screen
-        bg->set_position(Vector2(960, 540));
-        // Scale to fill viewport
-        Vector2 tex_size = bg_tex->get_size();
-        bg->set_scale(Vector2(1920.0 / tex_size.x, 1080.0 / tex_size.y));
-        add_child(bg);
+    Ref<Texture2D> bg_tex = loader->load("res://assets/backgrounds/middle_east_ruin_tiling.png");
+    if (!bg_tex.is_valid()) {
+        UtilityFunctions::printerr("GameManager: Failed to load tiling background");
+        return;
     }
+
+    Vector2 tex_size = bg_tex->get_size();
+    double scale_factor = GridManager::VIEWPORT_HEIGHT / tex_size.y;
+    double display_width = tex_size.x * scale_factor;
+
+    world_width = display_width * GridManager::WORLD_MULTIPLIER;
+    GridManager::set_world_width(world_width);
+
+    auto *parallax = memnew(Parallax2D);
+    parallax->set_name("Background");
+    parallax->set_repeat_size(Vector2(display_width, 0));
+    parallax->set_repeat_times(GridManager::WORLD_MULTIPLIER);
+    parallax->set_scroll_scale(Vector2(1.0, 1.0));
+
+    auto *sprite = memnew(Sprite2D);
+    sprite->set_texture(bg_tex);
+    sprite->set_centered(false);
+    sprite->set_scale(Vector2(scale_factor, scale_factor));
+    parallax->add_child(sprite);
+
+    add_child(parallax);
 }
 
-void GameManager::setup_base_visual() {
-    // No base building in belt scroller mode
+void GameManager::setup_camera() {
+    camera = memnew(Camera2D);
+    camera->set_name("Camera");
+
+    camera_target_x = GridManager::VIEWPORT_WIDTH / 2.0;
+    camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+
+    camera->set_limit(SIDE_LEFT, 0);
+    camera->set_limit(SIDE_TOP, 0);
+    camera->set_limit(SIDE_RIGHT, static_cast<int32_t>(world_width));
+    camera->set_limit(SIDE_BOTTOM, static_cast<int32_t>(GridManager::VIEWPORT_HEIGHT));
+
+    add_child(camera);
+}
+
+void GameManager::update_camera_scroll(double delta) {
+    constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
+    constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
+
+    // Trigger: any living defender within 25% of the right edge of the visible area
+    double trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
+    double max_target = world_width - VIEWPORT_W / 2.0;
+
+    TypedArray<Node> defenders = get_tree()->get_nodes_in_group("defenders");
+    for (int i = 0; i < defenders.size(); ++i) {
+        auto *def = Object::cast_to<Defender>(defenders[i].operator Object *());
+        if (def && !def->is_dead() && def->get_position().x > trigger_x) {
+            camera_target_x += SCROLL_STEP;
+            if (camera_target_x > max_target) camera_target_x = max_target;
+            break;
+        }
+    }
+
+    // Smooth interpolation toward the target position
+    double current_x = camera->get_position().x;
+    double diff = camera_target_x - current_x;
+    if (diff > 1.0 || diff < -1.0) {
+        constexpr double SMOOTH_FACTOR = 3.0;
+        double factor = SMOOTH_FACTOR * delta;
+        if (factor > 1.0) factor = 1.0;
+        double new_x = current_x + diff * factor;
+        camera->set_position(Vector2(new_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+    } else {
+        camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+    }
 }
 
 void GameManager::deploy_swordsman() {
