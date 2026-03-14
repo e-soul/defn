@@ -27,9 +27,10 @@ void GameManager::_ready() {
     setup_background();
     setup_base_visual();
 
-    // Entity container
+    // Entity container (y-sort so closer-to-bottom entities render in front)
     entity_container = memnew(Node2D);
     entity_container->set_name("EntityContainer");
+    entity_container->set_y_sort_enabled(true);
     add_child(entity_container);
 
     // Wave manager
