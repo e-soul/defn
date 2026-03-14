@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/timer.hpp>
+#include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <vector>
@@ -34,10 +35,13 @@ private:
     void setup_background();
     void setup_base_visual();
     void setup_camera();
+    void setup_scroll_trigger();
+    void update_scroll_trigger_position();
     void deploy_swordsman();
     void update_camera_scroll(double delta);
 
     // Signal callbacks
+    void on_scroll_triggered(Area2D *area);
     void on_enemy_spawned(Node *enemy_node);
     void on_wave_changed(int wave_number);
     void on_all_spawns_complete();
@@ -63,6 +67,7 @@ private:
     Node2D *entity_container = nullptr;
     Timer *aether_timer = nullptr;
     Camera2D *camera = nullptr;
+    Area2D *scroll_trigger = nullptr;
 
     // Scrolling state
     double camera_target_x = 960.0;

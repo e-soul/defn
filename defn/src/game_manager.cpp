@@ -9,6 +9,9 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/parallax2d.hpp>
+#include <godot_cpp/classes/area2d.hpp>
+#include <godot_cpp/classes/collision_shape2d.hpp>
+#include <godot_cpp/classes/rectangle_shape2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -27,6 +30,7 @@ void GameManager::_ready() {
     // Setup camera and visual layers
     setup_background();
     setup_camera();
+    setup_scroll_trigger();
 
     // Entity container (y-sort so closer-to-bottom entities render in front)
     entity_container = memnew(Node2D);
@@ -136,23 +140,6 @@ void GameManager::setup_camera() {
 }
 
 void GameManager::update_camera_scroll(double delta) {
-    constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
-    constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
-
-    // Trigger: any living defender within 25% of the right edge of the visible area
-    double trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
-    double max_target = world_width - VIEWPORT_W / 2.0;
-
-    TypedArray<Node> defenders = get_tree()->get_nodes_in_group("defenders");
-    for (int i = 0; i < defenders.size(); ++i) {
-        auto *def = Object::cast_to<Defender>(defenders[i].operator Object *());
-        if (def && !def->is_dead() && def->get_position().x > trigger_x) {
-            camera_target_x += SCROLL_STEP;
-            if (camera_target_x > max_target) camera_target_x = max_target;
-            break;
-        }
-    }
-
     // Smooth interpolation toward the target position
     double current_x = camera->get_position().x;
     double diff = camera_target_x - current_x;
@@ -167,6 +154,56 @@ void GameManager::update_camera_scroll(double delta) {
     }
 
     GridManager::set_camera_x(camera->get_position().x);
+}
+
+void GameManager::setup_scroll_trigger() {
+    scroll_trigger = memnew(Area2D);
+    scroll_trigger->set_name("ScrollTrigger");
+    scroll_trigger->set_collision_layer(0);   // not detectable by others
+    scroll_trigger->set_collision_mask(1);    // monitors defender hitboxes (layer 1)
+    scroll_trigger->set_monitoring(true);
+    scroll_trigger->set_monitorable(false);
+
+    auto *shape_node = memnew(CollisionShape2D);
+    Ref<RectangleShape2D> rect;
+    rect.instantiate();
+    // Tall vertical strip covering well beyond the belt area
+    constexpr double trigger_height = GridManager::BELT_BOTTOM_Y - GridManager::BELT_TOP_Y + 400.0;
+    rect->set_size(Vector2(20.0, trigger_height));
+    shape_node->set_shape(rect);
+    scroll_trigger->add_child(shape_node);
+
+    update_scroll_trigger_position();
+
+    scroll_trigger->connect("area_entered", callable_mp(this, &GameManager::on_scroll_triggered));
+    add_child(scroll_trigger);
+}
+
+void GameManager::update_scroll_trigger_position() {
+    constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
+    constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
+    double trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
+    double trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / 2.0;
+    scroll_trigger->set_position(Vector2(trigger_x, trigger_y));
+}
+
+void GameManager::on_scroll_triggered(Area2D *area) {
+    if (game_over) return;
+
+    // Verify the overlapping area belongs to a living defender
+    Node *parent = area->get_parent();
+    if (!parent || !parent->is_in_group("defenders")) return;
+    auto *def = Object::cast_to<Defender>(parent);
+    if (!def || def->is_dead()) return;
+
+    constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
+    constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
+    double max_target = world_width - VIEWPORT_W / 2.0;
+
+    camera_target_x += SCROLL_STEP;
+    if (camera_target_x > max_target) camera_target_x = max_target;
+
+    update_scroll_trigger_position();
 }
 
 void GameManager::deploy_swordsman() {
