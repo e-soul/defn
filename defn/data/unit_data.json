@@ -3,18 +3,21 @@
     "swordsman": {
       "cost": 25,
       "hp": 300,
-      "damage": 15,
-      "attack_speed": 1.0,
-      "range": 0,
+      "melee_damage": 15,
+      "melee_attack_speed": 1.0,
+      "ranged_damage": 8,
+      "ranged_attack_speed": 1.5,
       "move_speed": 0.5
     }
   },
   "hostiles": {
     "grunt": {
       "hp": 100,
-      "damage": 15,
+      "melee_damage": 15,
+      "melee_attack_speed": 1.0,
+      "ranged_damage": 8,
+      "ranged_attack_speed": 1.5,
       "speed": 0.5,
-      "attack_speed": 1.0,
       "bounty": 5
     }
   }

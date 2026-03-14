@@ -12,6 +12,8 @@ Entity::Entity() {
     // ±20% random variation on base attack range to prevent perfect alignment
     double variation = UtilityFunctions::randf_range(0.8, 1.2);
     attack_range = GridManager::ATTACK_RANGE * variation;
+    double ranged_variation = UtilityFunctions::randf_range(0.8, 1.2);
+    ranged_range = GridManager::RANGED_RANGE * ranged_variation;
 }
 
 void Entity::_bind_methods() {
@@ -35,6 +37,14 @@ void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, doubl
     }
 }
 
+void Entity::init_ranged_stats(int p_ranged_damage, double p_ranged_attack_speed) {
+    ranged_damage = p_ranged_damage;
+    ranged_attack_speed = p_ranged_attack_speed;
+    if (ranged_timer_node) {
+        ranged_timer_node->set_wait_time(1.0 / ranged_attack_speed);
+    }
+}
+
 void Entity::_ready() {
     sprite = memnew(AnimatedSprite2D);
     add_child(sprite);
@@ -43,6 +53,11 @@ void Entity::_ready() {
     attack_timer_node->set_one_shot(false);
     attack_timer_node->set_autostart(false);
     add_child(attack_timer_node);
+
+    ranged_timer_node = memnew(Timer);
+    ranged_timer_node->set_one_shot(false);
+    ranged_timer_node->set_autostart(false);
+    add_child(ranged_timer_node);
 
     setup_health_bar();
 }
@@ -79,6 +94,9 @@ void Entity::set_anim_state(AnimState state) {
     if (state == AnimState::DEATH && attack_timer_node) {
         attack_timer_node->stop();
     }
+    if (state == AnimState::DEATH && ranged_timer_node) {
+        ranged_timer_node->stop();
+    }
 
     if (!sprite) return;
 
@@ -88,6 +106,9 @@ void Entity::set_anim_state(AnimState state) {
             break;
         case AnimState::ATTACK:
             sprite->play("attack");
+            break;
+        case AnimState::SHOOT:
+            sprite->play("shoot");
             break;
         case AnimState::DEATH:
             sprite->play("death");
@@ -172,7 +193,7 @@ void Entity::setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask) {
     auto *sensor_shape = memnew(CollisionShape2D);
     Ref<CircleShape2D> sensor_circle;
     sensor_circle.instantiate();
-    sensor_circle->set_radius(attack_range / scale_x);
+    sensor_circle->set_radius(ranged_range / scale_x);
     sensor_shape->set_shape(sensor_circle);
     detection_area->add_child(sensor_shape);
     add_child(detection_area);

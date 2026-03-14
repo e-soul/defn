@@ -26,8 +26,8 @@ This is a **Godot 4.6** game built as a **Belt Scroller** (2.5D side-scroller). 
 
 ## Build Instructions
 
-```
-.venv\Scripts\activate
+```powershell
+.\.venv\Scripts\Activate.ps1
 cd defn
 scons platform=windows
 ```

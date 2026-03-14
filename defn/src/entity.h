@@ -16,7 +16,14 @@ using namespace godot;
 enum class AnimState {
     WALK,
     ATTACK,
+    SHOOT,
     DEATH
+};
+
+enum class AttackMode {
+    NONE,
+    MELEE,
+    RANGED
 };
 
 class Entity : public CharacterBody2D {
@@ -37,6 +44,11 @@ public:
     double get_attack_speed() const { return attack_speed; }
     double get_move_speed() const { return move_speed; }
     double get_attack_range() const { return attack_range; }
+    double get_ranged_range() const { return ranged_range; }
+    int get_ranged_damage() const { return ranged_damage; }
+    AttackMode get_attack_mode() const { return attack_mode; }
+
+    void init_ranged_stats(int p_ranged_damage, double p_ranged_attack_speed);
 
     AnimState get_anim_state() const { return anim_state; }
     void set_anim_state(AnimState state);
@@ -61,8 +73,13 @@ protected:
     int damage = 15;
     double attack_speed = 1.0;
     Timer *attack_timer_node = nullptr;
+    Timer *ranged_timer_node = nullptr;
     double move_speed = 0.5;
     double attack_range = 128.0;
+    double ranged_range = 384.0;
+    int ranged_damage = 10;
+    double ranged_attack_speed = 1.5;
+    AttackMode attack_mode = AttackMode::NONE;
 
     AnimState anim_state = AnimState::WALK;
     AnimatedSprite2D *sprite = nullptr;
@@ -75,6 +92,7 @@ protected:
     // Collision detection
     Area2D *hitbox = nullptr;
     Area2D *detection_area = nullptr;
+    AnimatedSprite2D *muzzle_flash = nullptr;
 
     // Flash effect
     double flash_timer = 0.0;

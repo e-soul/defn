@@ -13,6 +13,13 @@
 
 namespace defn {
 
+namespace {
+
+constexpr double DEFENDER_MUZZLE_OFFSET_X = 220.0;
+constexpr double DEFENDER_MUZZLE_OFFSET_Y = -40.0;
+
+} // namespace
+
 Defender::Defender() {
     cost = 25;
 }
@@ -22,6 +29,7 @@ void Defender::_bind_methods() {}
 void Defender::_ready() {
     Entity::_ready();
     init_stats(300, 15, 1.0, 0.5);
+    init_ranged_stats(8, 1.5);
 
     // Health bar green for defenders
     if (health_bar_fill_style.is_valid()) {
@@ -31,10 +39,12 @@ void Defender::_ready() {
     add_to_group("defenders");
 
     setup_sprite_frames();
+    setup_muzzle_flash();
     set_anim_state(AnimState::WALK);
 
     sprite->connect("animation_finished", callable_mp(this, &Defender::on_animation_finished));
     attack_timer_node->connect("timeout", callable_mp(this, &Defender::on_attack_timeout));
+    ranged_timer_node->connect("timeout", callable_mp(this, &Defender::on_ranged_timeout));
 }
 
 void Defender::_process(double delta) {
@@ -50,7 +60,10 @@ void Defender::_process(double delta) {
         engaged = false;
         target = nullptr;
         attack_timer_node->stop();
-        if (anim_state == AnimState::ATTACK) {
+        ranged_timer_node->stop();
+        if (muzzle_flash) muzzle_flash->set_visible(false);
+        attack_mode = AttackMode::NONE;
+        if (anim_state == AnimState::ATTACK || anim_state == AnimState::SHOOT) {
             set_anim_state(AnimState::WALK);
         }
         do_movement(delta);
@@ -98,6 +111,18 @@ void Defender::setup_sprite_frames() {
         }
     }
 
+    // Shoot animation: Shoot__000 through Shoot__009 (10 frames)
+    frames->add_animation("shoot");
+    frames->set_animation_speed("shoot", 10.0);
+    frames->set_animation_loop("shoot", false);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Shoot__%03d.png", i);
+        Ref<Texture2D> tex = loader->load(path);
+        if (tex.is_valid()) {
+            frames->add_frame("shoot", tex);
+        }
+    }
+
     sprite->set_sprite_frames(frames);
     // Scale to fit 128px tile: 128/475 ≈ 0.27
     set_scale(Vector2(0.27, 0.27));
@@ -117,31 +142,77 @@ void Defender::find_target() {
     // Check if current target is still valid
     if (target && !target->is_dead()) {
         double dist = target->get_position().x - get_position().x;
-        if (dist >= 0 && dist <= attack_range) {
-            return; // still engaged with valid target
+        if (dist >= 0) {
+            if (dist <= attack_range) {
+                // Target in melee range - prioritize melee
+                if (attack_mode != AttackMode::MELEE) {
+                    attack_mode = AttackMode::MELEE;
+                    ranged_timer_node->stop();
+                    if (muzzle_flash) muzzle_flash->set_visible(false);
+                    set_anim_state(AnimState::ATTACK);
+                    attack_timer_node->start();
+                }
+                return;
+            }
+            if (dist <= ranged_range) {
+                // Target in ranged range
+                if (attack_mode != AttackMode::RANGED) {
+                    attack_mode = AttackMode::RANGED;
+                    attack_timer_node->stop();
+                    set_anim_state(AnimState::SHOOT);
+                    ranged_timer_node->start();
+                }
+                return;
+            }
         }
     }
 
+    // Target lost or out of range - find new one
     target = nullptr;
     engaged = false;
 
-    double closest_dist = 1e9;
+    Hostile *best_melee = nullptr;
+    Hostile *best_ranged = nullptr;
+    double closest_melee = 1e9;
+    double closest_ranged = 1e9;
+
     TypedArray<Node> hostiles = get_tree()->get_nodes_in_group("hostiles");
     for (int i = 0; i < hostiles.size(); ++i) {
         auto *hostile = Object::cast_to<Hostile>(hostiles[i].operator Object *());
         if (!hostile || hostile->is_dead()) continue;
 
         double dist = hostile->get_position().x - get_position().x;
-        if (dist >= 0 && dist <= attack_range && dist < closest_dist) {
-            closest_dist = dist;
-            target = hostile;
-            engaged = true;
+        if (dist < 0) continue;
+
+        if (dist <= attack_range && dist < closest_melee) {
+            closest_melee = dist;
+            best_melee = hostile;
+        }
+        if (dist <= ranged_range && dist < closest_ranged) {
+            closest_ranged = dist;
+            best_ranged = hostile;
         }
     }
 
-    if (engaged && anim_state != AnimState::ATTACK) {
+    // Stop all attacks
+    attack_timer_node->stop();
+    ranged_timer_node->stop();
+    if (muzzle_flash) muzzle_flash->set_visible(false);
+    attack_mode = AttackMode::NONE;
+
+    // Melee has priority
+    if (best_melee) {
+        target = best_melee;
+        engaged = true;
+        attack_mode = AttackMode::MELEE;
         set_anim_state(AnimState::ATTACK);
         attack_timer_node->start();
+    } else if (best_ranged) {
+        target = best_ranged;
+        engaged = true;
+        attack_mode = AttackMode::RANGED;
+        set_anim_state(AnimState::SHOOT);
+        ranged_timer_node->start();
     }
 }
 
@@ -150,6 +221,51 @@ void Defender::on_attack_timeout() {
         target->take_damage(damage);
         target->flash_damage(Color(1, 0.2, 0.2));
     }
+}
+
+void Defender::on_ranged_timeout() {
+    if (target && !target->is_dead()) {
+        target->take_damage(ranged_damage);
+        target->flash_damage(Color(1, 0.8, 0.2));
+        if (muzzle_flash) {
+            muzzle_flash->set_visible(true);
+            muzzle_flash->play("muzzle");
+        }
+    }
+}
+
+void Defender::on_muzzle_flash_finished() {
+    if (muzzle_flash) {
+        muzzle_flash->set_visible(false);
+    }
+}
+
+void Defender::setup_muzzle_flash() {
+    muzzle_flash = memnew(AnimatedSprite2D);
+    auto *loader = ResourceLoader::get_singleton();
+    Ref<SpriteFrames> frames;
+    frames.instantiate();
+
+    frames->add_animation("muzzle");
+    frames->set_animation_speed("muzzle", 20.0);
+    frames->set_animation_loop("muzzle", false);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat("res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png", i);
+        Ref<Texture2D> tex = loader->load(path);
+        if (tex.is_valid()) {
+            frames->add_frame("muzzle", tex);
+        }
+    }
+
+    if (frames->has_animation("default")) {
+        frames->remove_animation("default");
+    }
+
+    muzzle_flash->set_sprite_frames(frames);
+    muzzle_flash->set_position(Vector2(DEFENDER_MUZZLE_OFFSET_X, DEFENDER_MUZZLE_OFFSET_Y));
+    muzzle_flash->set_visible(false);
+    muzzle_flash->connect("animation_finished", callable_mp(this, &Defender::on_muzzle_flash_finished));
+    add_child(muzzle_flash);
 }
 
 void Defender::do_movement(double delta) {
@@ -175,6 +291,9 @@ void Defender::on_animation_finished() {
     }
     if (anim_state == AnimState::ATTACK && engaged && target && !target->is_dead()) {
         sprite->play("attack");
+    }
+    if (anim_state == AnimState::SHOOT && engaged && target && !target->is_dead()) {
+        sprite->play("shoot");
     }
 }
 
