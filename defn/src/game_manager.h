@@ -48,12 +48,12 @@ private:
     void on_enemy_died(Node *entity);
     void on_defender_died(Node *entity);
     void on_enemy_breached();
-    void on_aether_tick();
+    void on_core_resource_tick();
 
     void check_victory();
 
     // Game state
-    int aether = 100;
+    int core_resource = 100;
     int base_integrity = 3;
     bool game_over = false;
     bool all_spawned = false;
@@ -65,7 +65,7 @@ private:
     WaveManager *wave_manager = nullptr;
     HUD *hud = nullptr;
     Node2D *entity_container = nullptr;
-    Timer *aether_timer = nullptr;
+    Timer *core_resource_timer = nullptr;
     Camera2D *camera = nullptr;
     Area2D *scroll_trigger = nullptr;
 

@@ -44,7 +44,7 @@ void GameManager::_ready() {
     add_child(wave_manager);
 
     wave_manager->load_level("res://data/levels/level_01.json");
-    aether = wave_manager->get_starting_aether();
+    core_resource = wave_manager->get_starting_core_resource();
     base_integrity = wave_manager->get_base_integrity();
 
     wave_manager->connect("enemy_spawned", callable_mp(this, &GameManager::on_enemy_spawned));
@@ -56,18 +56,18 @@ void GameManager::_ready() {
     hud->set_name("HUD");
     add_child(hud);
 
-    hud->update_aether(aether);
+    hud->update_core_resource(core_resource);
     hud->update_wave(1, wave_manager->get_total_waves());
     hud->update_hearts(base_integrity);
-    hud->update_deploy_button(aether >= SWORDSMAN_COST);
+    hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
 
-    // Aether generation timer: +1/sec
-    aether_timer = memnew(Timer);
-    aether_timer->set_wait_time(1.0);
-    aether_timer->set_one_shot(false);
-    aether_timer->connect("timeout", callable_mp(this, &GameManager::on_aether_tick));
-    add_child(aether_timer);
-    aether_timer->start();
+    // Core resource generation timer: +1/sec
+    core_resource_timer = memnew(Timer);
+    core_resource_timer->set_wait_time(1.0);
+    core_resource_timer->set_one_shot(false);
+    core_resource_timer->connect("timeout", callable_mp(this, &GameManager::on_core_resource_tick));
+    add_child(core_resource_timer);
+    core_resource_timer->start();
 
     // Start the game
     wave_manager->start();
@@ -88,7 +88,7 @@ void GameManager::_input(const Ref<InputEvent> &event) {
         return;
     }
 
-    if (aether >= SWORDSMAN_COST) {
+    if (core_resource >= SWORDSMAN_COST) {
         deploy_swordsman();
     }
 }
@@ -207,7 +207,7 @@ void GameManager::on_scroll_triggered(Area2D *area) {
 }
 
 void GameManager::deploy_swordsman() {
-    aether -= SWORDSMAN_COST;
+    core_resource -= SWORDSMAN_COST;
 
     auto *swordsman = memnew(Defender);
     double x = GridManager::deploy_x();
@@ -217,8 +217,8 @@ void GameManager::deploy_swordsman() {
     swordsman->connect("entity_died", callable_mp(this, &GameManager::on_defender_died));
     entity_container->add_child(swordsman);
 
-    hud->update_aether(aether);
-    hud->update_deploy_button(aether >= SWORDSMAN_COST);
+    hud->update_core_resource(core_resource);
+    hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
 }
 
 void GameManager::on_enemy_spawned(Node *enemy_node) {
@@ -245,9 +245,9 @@ void GameManager::on_all_spawns_complete() {
 void GameManager::on_enemy_died(Node *entity) {
     auto *hostile = Object::cast_to<Hostile>(entity);
     if (hostile && !hostile->is_queued_for_deletion()) {
-        aether += hostile->get_bounty();
-        hud->update_aether(aether);
-        hud->update_deploy_button(aether >= SWORDSMAN_COST);
+        core_resource += hostile->get_bounty();
+        hud->update_core_resource(core_resource);
+        hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
     }
     --living_enemies;
     if (living_enemies < 0) living_enemies = 0;
@@ -257,10 +257,10 @@ void GameManager::on_defender_died(Node * /*entity*/) {
     // Defender died — no special handling needed beyond removal
 }
 
-void GameManager::on_aether_tick() {
-    aether += 1;
-    hud->update_aether(aether);
-    hud->update_deploy_button(aether >= SWORDSMAN_COST);
+void GameManager::on_core_resource_tick() {
+    core_resource += 1;
+    hud->update_core_resource(core_resource);
+    hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
 }
 
 void GameManager::on_enemy_breached() {
@@ -272,7 +272,7 @@ void GameManager::on_enemy_breached() {
 
     if (base_integrity <= 0) {
         game_over = true;
-        aether_timer->stop();
+        core_resource_timer->stop();
         hud->show_defeat();
         wave_manager->stop();
     }
@@ -281,7 +281,7 @@ void GameManager::on_enemy_breached() {
 void GameManager::check_victory() {
     if (all_spawned && living_enemies <= 0) {
         game_over = true;
-        aether_timer->stop();
+        core_resource_timer->stop();
         hud->show_victory();
         wave_manager->stop();
     }

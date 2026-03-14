@@ -1,0 +1,14 @@
+{
+    "context": {
+        "fileName": ["AGENTS.md"]
+    },
+    "tools": {
+        "core": [
+            "run_shell_command(git)",
+            "run_shell_command(dir)",
+            "run_shell_command(ls)",
+            "run_shell_command(findstr)",
+            "run_shell_command(type)"
+        ]
+    }
+}

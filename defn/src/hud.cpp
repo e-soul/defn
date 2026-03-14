@@ -28,13 +28,13 @@ void HUD::build_ui() {
     top_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     add_child(top_bar);
 
-    // Aether label (left)
-    aether_label = memnew(Label);
-    aether_label->set_text("Aether: 100");
-    aether_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    aether_label->add_theme_font_size_override("font_size", 28);
-    aether_label->add_theme_color_override("font_color", Color(0.9, 0.85, 0.3));
-    top_bar->add_child(aether_label);
+    // Energy label (left)
+    core_resource_label = memnew(Label);
+    core_resource_label->set_text(String::utf8("\u26A1 Energy: 100"));
+    core_resource_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+    core_resource_label->add_theme_font_size_override("font_size", 28);
+    core_resource_label->add_theme_color_override("font_color", Color(0.05, 0.2, 0.55));
+    top_bar->add_child(core_resource_label);
 
     // Wave label (center)
     wave_label = memnew(Label);
@@ -65,7 +65,7 @@ void HUD::build_ui() {
     // Bottom bar
     // ==========================================================
     deploy_label = memnew(Label);
-    deploy_label->set_text(String::utf8("\U0001F5E1 Click to Deploy Swordsman: 25 Aether"));
+    deploy_label->set_text(String::utf8("\U0001F5E1 Click to Deploy Swordsman: 25 Energy"));
     deploy_label->set_anchors_preset(Control::PRESET_BOTTOM_WIDE);
     deploy_label->set_offset(Side::SIDE_TOP, -48.0);
     deploy_label->set_offset(Side::SIDE_BOTTOM, -8.0);
@@ -88,9 +88,9 @@ void HUD::build_ui() {
     add_child(end_game_label);
 }
 
-void HUD::update_aether(int value) {
-    if (aether_label) {
-        aether_label->set_text(vformat("Aether: %d", value));
+void HUD::update_core_resource(int value) {
+    if (core_resource_label) {
+        core_resource_label->set_text(vformat(String::utf8("\u26A1 Energy: %d"), value));
     }
 }
 

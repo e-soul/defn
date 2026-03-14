@@ -34,7 +34,7 @@ public:
 
     int get_current_wave() const { return current_wave; }
     int get_total_waves() const { return static_cast<int>(waves.size()); }
-    int get_starting_aether() const { return starting_aether; }
+    int get_starting_core_resource() const { return starting_core_resource; }
     int get_base_integrity() const { return base_integrity_max; }
 
     bool all_waves_spawned() const;
@@ -48,7 +48,7 @@ private:
     int current_wave = 0; // 0 = not started
     int spawn_index = 0;  // index into current wave's spawns
     bool running = false;
-    int starting_aether = 100;
+    int starting_core_resource = 100;
     int base_integrity_max = 3;
 
     // Flattened list of all spawns with absolute times, for simpler processing

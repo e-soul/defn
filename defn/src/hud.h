@@ -20,7 +20,7 @@ public:
 
     void _ready() override;
 
-    void update_aether(int value);
+    void update_core_resource(int value);
     void update_wave(int current, int total);
     void update_hearts(int integrity);
     void update_deploy_button(bool can_afford);
@@ -33,7 +33,7 @@ protected:
 private:
     void build_ui();
 
-    Label *aether_label = nullptr;
+    Label *core_resource_label = nullptr;
     Label *wave_label = nullptr;
     HBoxContainer *hearts_container = nullptr;
     std::vector<Label *> heart_icons;
