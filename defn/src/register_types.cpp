@@ -1,15 +1,15 @@
-#include <godot_cpp/godot.hpp>
+#include <gdextension_interface.h>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
-#include <gdextension_interface.h>
+#include <godot_cpp/godot.hpp>
 
-#include "grid_manager.h"
-#include "entity.h"
 #include "defender.h"
-#include "hostile.h"
-#include "wave_manager.h"
+#include "entity.h"
 #include "game_manager.h"
+#include "grid_manager.h"
+#include "hostile.h"
 #include "hud.h"
+#include "wave_manager.h"
 
 using namespace godot;
 
@@ -35,10 +35,8 @@ void uninitialize_module(ModuleInitializationLevel p_level) {
 
 extern "C" {
 
-GDExtensionBool GDE_EXPORT
-defn_core_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address,
-                       const GDExtensionClassLibraryPtr p_library,
-                       GDExtensionInitialization *r_initialization) {
+GDExtensionBool GDE_EXPORT defn_core_library_init(GDExtensionInterfaceGetProcAddress p_get_proc_address, const GDExtensionClassLibraryPtr p_library,
+                                                  GDExtensionInitialization *r_initialization) {
 
     GDExtensionBinding::InitObject init_obj(p_get_proc_address, p_library, r_initialization);
 

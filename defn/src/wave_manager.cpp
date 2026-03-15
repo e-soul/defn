@@ -1,10 +1,10 @@
 #include "wave_manager.h"
-#include "hostile.h"
 #include "grid_manager.h"
+#include "hostile.h"
+#include <algorithm>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <algorithm>
 
 namespace defn {
 
@@ -19,7 +19,9 @@ void WaveManager::_bind_methods() {
 void WaveManager::_ready() {}
 
 void WaveManager::_process(double delta) {
-    if (!running) { return; }
+    if (!running) {
+        return;
+    }
 
     level_timer += delta;
 
@@ -80,7 +82,7 @@ void WaveManager::load_level(const String &path) {
         wave_data.wave_number = static_cast<int>(wave_dict.get("wave_number", wave_idx + 1));
 
         Array spawns_array = wave_dict.get("spawns", Array());
-        for (const auto & spawn_val : spawns_array) {
+        for (const auto &spawn_val : spawns_array) {
             Dictionary spawn_dict = spawn_val;
             SpawnEvent spawn_event;
             spawn_event.time = static_cast<double>(spawn_dict.get("time", 0.0));
@@ -98,8 +100,7 @@ void WaveManager::load_level(const String &path) {
     }
 
     // Sort all_spawns by time (should already be sorted but ensure)
-    std::ranges::sort(all_spawns,
-              [](const FlatSpawn &spawn_a, const FlatSpawn &spawn_b) { return spawn_a.time < spawn_b.time; });
+    std::ranges::sort(all_spawns, [](const FlatSpawn &spawn_a, const FlatSpawn &spawn_b) { return spawn_a.time < spawn_b.time; });
 }
 
 void WaveManager::start() {
@@ -109,12 +110,8 @@ void WaveManager::start() {
     running = true;
 }
 
-void WaveManager::stop() {
-    running = false;
-}
+void WaveManager::stop() { running = false; }
 
-bool WaveManager::all_waves_spawned() const {
-    return next_spawn_idx >= all_spawns.size();
-}
+bool WaveManager::all_waves_spawned() const { return next_spawn_idx >= all_spawns.size(); }
 
 } // namespace defn

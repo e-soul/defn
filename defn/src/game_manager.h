@@ -1,11 +1,11 @@
 #ifndef GAME_MANAGER_H
 #define GAME_MANAGER_H
 
-#include <godot_cpp/classes/node2d.hpp>
-#include <godot_cpp/classes/input_event.hpp>
-#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
+#include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <vector>
 
@@ -21,17 +21,17 @@ class Defender;
 class GameManager : public Node2D {
     GDCLASS(GameManager, Node2D)
 
-public:
+  public:
     GameManager();
 
     void _ready() override;
     void _process(double delta) override;
     void _input(const Ref<InputEvent> &event) override;
 
-protected:
+  protected:
     static void _bind_methods();
 
-private:
+  private:
     void setup_background();
     void setup_base_visual();
     void setup_camera();

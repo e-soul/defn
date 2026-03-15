@@ -1,22 +1,22 @@
 #include "game_manager.h"
-#include "wave_manager.h"
-#include "hud.h"
-#include "grid_manager.h"
 #include "defender.h"
+#include "grid_manager.h"
 #include "hostile.h"
-#include <godot_cpp/classes/input_event_mouse_button.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
-#include <godot_cpp/classes/texture2d.hpp>
-#include <godot_cpp/classes/sprite2d.hpp>
-#include <godot_cpp/classes/parallax2d.hpp>
+#include "hud.h"
+#include "wave_manager.h"
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
-#include <godot_cpp/classes/rectangle_shape2d.hpp>
-#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/parallax2d.hpp>
+#include <godot_cpp/classes/rectangle_shape2d.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
+#include <godot_cpp/classes/sprite2d.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
 
@@ -74,14 +74,18 @@ void GameManager::_ready() {
 }
 
 void GameManager::_process(double delta) {
-    if (game_over) { return; }
+    if (game_over) {
+        return;
+    }
 
     update_camera_scroll(delta);
     check_victory();
 }
 
 void GameManager::_input(const Ref<InputEvent> &event) {
-    if (game_over) { return; }
+    if (game_over) {
+        return;
+    }
 
     auto *mouse_btn = Object::cast_to<InputEventMouseButton>(event.ptr());
     if (!mouse_btn || !mouse_btn->is_pressed() || mouse_btn->get_button_index() != MouseButton::MOUSE_BUTTON_LEFT) {
@@ -159,8 +163,8 @@ void GameManager::update_camera_scroll(double delta) {
 void GameManager::setup_scroll_trigger() {
     scroll_trigger = memnew(Area2D);
     scroll_trigger->set_name("ScrollTrigger");
-    scroll_trigger->set_collision_layer(0);   // not detectable by others
-    scroll_trigger->set_collision_mask(1);    // monitors defender hitboxes (layer 1)
+    scroll_trigger->set_collision_layer(0); // not detectable by others
+    scroll_trigger->set_collision_mask(1);  // monitors defender hitboxes (layer 1)
     scroll_trigger->set_monitoring(true);
     scroll_trigger->set_monitorable(false);
 
@@ -188,13 +192,19 @@ void GameManager::update_scroll_trigger_position() {
 }
 
 void GameManager::on_scroll_triggered(Area2D *area) {
-    if (game_over) { return; }
+    if (game_over) {
+        return;
+    }
 
     // Verify the overlapping area belongs to a living defender
     Node *parent = area->get_parent();
-    if (!parent || !parent->is_in_group("defenders")) { return; }
+    if (!parent || !parent->is_in_group("defenders")) {
+        return;
+    }
     auto *def = Object::cast_to<Defender>(parent);
-    if (!def || def->is_dead()) { return; }
+    if (!def || def->is_dead()) {
+        return;
+    }
 
     constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
     constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
@@ -223,7 +233,9 @@ void GameManager::deploy_swordsman() {
 
 void GameManager::on_enemy_spawned(Node *enemy_node) {
     auto *enemy = Object::cast_to<Hostile>(enemy_node);
-    if (!enemy) { return; }
+    if (!enemy) {
+        return;
+    }
 
     enemy->connect("entity_died", callable_mp(this, &GameManager::on_enemy_died));
     enemy->connect("enemy_breached", callable_mp(this, &GameManager::on_enemy_breached));
@@ -238,9 +250,7 @@ void GameManager::on_wave_changed(int wave_number) {
     UtilityFunctions::print(vformat("Wave %d started!", wave_number));
 }
 
-void GameManager::on_all_spawns_complete() {
-    all_spawned = true;
-}
+void GameManager::on_all_spawns_complete() { all_spawned = true; }
 
 void GameManager::on_enemy_died(Node *entity) {
     auto *hostile = Object::cast_to<Hostile>(entity);

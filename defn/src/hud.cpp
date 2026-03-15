@@ -1,8 +1,8 @@
 #include "hud.h"
-#include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/box_container.hpp>
-#include <godot_cpp/classes/v_box_container.hpp>
+#include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/margin_container.hpp>
+#include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -11,9 +11,7 @@ HUD::HUD() = default;
 
 void HUD::_bind_methods() {}
 
-void HUD::_ready() {
-    build_ui();
-}
+void HUD::_ready() { build_ui(); }
 
 void HUD::build_ui() {
     // ==========================================================

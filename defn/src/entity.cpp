@@ -1,7 +1,14 @@
 #include "entity.h"
 #include "grid_manager.h"
-#include <godot_cpp/classes/collision_shape2d.hpp>
+#include <godot_cpp/classes/callback_tweener.hpp>
 #include <godot_cpp/classes/circle_shape2d.hpp>
+#include <godot_cpp/classes/collision_shape2d.hpp>
+#include <godot_cpp/classes/property_tweener.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/sprite_frames.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/classes/tween.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -16,9 +23,7 @@ Entity::Entity() {
     ranged_range = GridManager::RANGED_RANGE * ranged_variation;
 }
 
-void Entity::_bind_methods() {
-    ADD_SIGNAL(MethodInfo("entity_died", PropertyInfo(Variant::OBJECT, "entity")));
-}
+void Entity::_bind_methods() { ADD_SIGNAL(MethodInfo("entity_died", PropertyInfo(Variant::OBJECT, "entity"))); }
 
 void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, double p_move_speed) {
     max_hp = p_max_hp;
@@ -60,6 +65,10 @@ void Entity::_ready() {
     add_child(ranged_timer_node);
 
     setup_health_bar();
+
+    sprite->connect("animation_finished", callable_mp(this, &Entity::on_animation_finished));
+    attack_timer_node->connect("timeout", callable_mp(this, &Entity::on_attack_timeout));
+    ranged_timer_node->connect("timeout", callable_mp(this, &Entity::on_ranged_timeout));
 }
 
 void Entity::_process(double delta) {
@@ -72,10 +81,35 @@ void Entity::_process(double delta) {
     }
 
     update_health_bar();
+
+    if (anim_state == AnimState::DEATH) {
+        return;
+    }
+
+    find_target();
+
+    if (engaged && target && !target->is_dead()) {
+        set_velocity(Vector2(0, 0));
+    } else {
+        engaged = false;
+        target = nullptr;
+        attack_timer_node->stop();
+        ranged_timer_node->stop();
+        if (muzzle_flash) {
+            muzzle_flash->set_visible(false);
+        }
+        attack_mode = AttackMode::NONE;
+        if (anim_state == AnimState::ATTACK || anim_state == AnimState::SHOOT) {
+            set_anim_state(AnimState::WALK);
+        }
+        do_movement(delta);
+    }
 }
 
 void Entity::take_damage(int amount) {
-    if (is_dead()) { return; }
+    if (is_dead()) {
+        return;
+    }
 
     current_hp -= amount;
     current_hp = std::max(current_hp, 0);
@@ -88,7 +122,9 @@ void Entity::take_damage(int amount) {
 }
 
 void Entity::set_anim_state(AnimState state) {
-    if (anim_state == AnimState::DEATH) { return; } // can't leave death state
+    if (anim_state == AnimState::DEATH) {
+        return;
+    } // can't leave death state
     anim_state = state;
 
     if (state == AnimState::DEATH && attack_timer_node) {
@@ -98,21 +134,23 @@ void Entity::set_anim_state(AnimState state) {
         ranged_timer_node->stop();
     }
 
-    if (!sprite) { return; }
+    if (!sprite) {
+        return;
+    }
 
     switch (state) {
-        case AnimState::WALK:
-            sprite->play("walk");
-            break;
-        case AnimState::ATTACK:
-            sprite->play("attack");
-            break;
-        case AnimState::SHOOT:
-            sprite->play("shoot");
-            break;
-        case AnimState::DEATH:
-            sprite->play("death");
-            break;
+    case AnimState::WALK:
+        sprite->play("walk");
+        break;
+    case AnimState::ATTACK:
+        sprite->play("attack");
+        break;
+    case AnimState::SHOOT:
+        sprite->play("shoot");
+        break;
+    case AnimState::DEATH:
+        sprite->play("death");
+        break;
     }
 }
 
@@ -157,7 +195,9 @@ void Entity::setup_health_bar() {
 }
 
 void Entity::update_health_bar() {
-    if (!health_bar) { return; }
+    if (!health_bar) {
+        return;
+    }
 
     bool should_show = current_hp < max_hp && current_hp > 0;
     health_bar->set_visible(should_show);
@@ -197,6 +237,128 @@ void Entity::setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask) {
     sensor_shape->set_shape(sensor_circle);
     detection_area->add_child(sensor_shape);
     add_child(detection_area);
+}
+
+void Entity::find_target() {
+    if (anim_state == AnimState::DEATH) {
+        return;
+    }
+    if (try_keep_target()) {
+        return;
+    }
+    find_new_target();
+}
+
+bool Entity::try_keep_target() {
+    if (!target || target->is_dead()) {
+        return false;
+    }
+
+    double dist = get_forward_distance(target);
+    if (dist < 0) {
+        return false;
+    }
+
+    if (dist <= attack_range) {
+        if (attack_mode != AttackMode::MELEE) {
+            attack_mode = AttackMode::MELEE;
+            ranged_timer_node->stop();
+            if (muzzle_flash) {
+                muzzle_flash->set_visible(false);
+            }
+            set_anim_state(AnimState::ATTACK);
+            attack_timer_node->start();
+        }
+        return true;
+    }
+
+    if (dist <= ranged_range) {
+        if (attack_mode != AttackMode::RANGED) {
+            attack_mode = AttackMode::RANGED;
+            attack_timer_node->stop();
+            set_anim_state(AnimState::SHOOT);
+            ranged_timer_node->start();
+        }
+        return true;
+    }
+
+    return false;
+}
+
+void Entity::on_attack_timeout() {
+    if (target && !target->is_dead()) {
+        target->take_damage(damage);
+        target->flash_damage(melee_flash_color);
+    }
+}
+
+void Entity::on_ranged_timeout() {
+    if (target && !target->is_dead()) {
+        target->take_damage(ranged_damage);
+        target->flash_damage(ranged_flash_color);
+        if (muzzle_flash) {
+            muzzle_flash->set_visible(true);
+            muzzle_flash->play("muzzle");
+        }
+    }
+}
+
+void Entity::on_muzzle_flash_finished() {
+    if (muzzle_flash) {
+        muzzle_flash->set_visible(false);
+    }
+}
+
+void Entity::on_animation_finished() {
+    if (anim_state == AnimState::DEATH) {
+        start_death_fade();
+        return;
+    }
+    if (anim_state == AnimState::ATTACK && engaged && target && !target->is_dead()) {
+        sprite->play("attack");
+    }
+    if (anim_state == AnimState::SHOOT && engaged && target && !target->is_dead()) {
+        sprite->play("shoot");
+    }
+}
+
+void Entity::start_death_fade() {
+    Ref<Tween> tween = create_tween();
+    tween->tween_property(this, NodePath("modulate"), Color(1, 1, 1, 0), 0.5);
+    tween->tween_callback(Callable(this, "queue_free"));
+}
+
+void Entity::setup_muzzle_flash(const String &path_template, const Vector2 &offset, bool flip_h) {
+    muzzle_flash = memnew(AnimatedSprite2D);
+    auto *loader = ResourceLoader::get_singleton();
+    Ref<SpriteFrames> frames;
+    frames.instantiate();
+
+    frames->add_animation("muzzle");
+    frames->set_animation_speed("muzzle", 20.0);
+    frames->set_animation_loop("muzzle", false);
+    for (int i = 0; i <= 9; ++i) {
+        String path = vformat(path_template, i);
+        Ref<Texture2D> tex = loader->load(path);
+        if (tex.is_valid()) {
+            frames->add_frame("muzzle", tex);
+        }
+    }
+
+    if (frames->has_animation("default")) {
+        frames->remove_animation("default");
+    }
+
+    muzzle_flash->set_sprite_frames(frames);
+    muzzle_flash->set_position(offset);
+    if (flip_h) {
+        muzzle_flash->set_flip_h(true);
+    }
+    muzzle_flash->set_visible(false);
+    if (!muzzle_flash->is_connected("animation_finished", callable_mp(this, &Entity::on_muzzle_flash_finished))) {
+        muzzle_flash->connect("animation_finished", callable_mp(this, &Entity::on_muzzle_flash_finished));
+    }
+    add_child(muzzle_flash);
 }
 
 } // namespace defn

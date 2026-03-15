@@ -22,7 +22,7 @@ struct WaveData {
 class WaveManager : public Node {
     GDCLASS(WaveManager, Node)
 
-public:
+  public:
     WaveManager();
 
     void _ready() override;
@@ -39,10 +39,10 @@ public:
 
     bool all_waves_spawned() const;
 
-protected:
+  protected:
     static void _bind_methods();
 
-private:
+  private:
     std::vector<WaveData> waves;
     double level_timer = 0.0;
     int current_wave = 0; // 0 = not started

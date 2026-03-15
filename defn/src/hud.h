@@ -2,9 +2,9 @@
 #define HUD_H
 
 #include <godot_cpp/classes/canvas_layer.hpp>
-#include <godot_cpp/classes/label.hpp>
-#include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
+#include <godot_cpp/classes/h_box_container.hpp>
+#include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <vector>
 
@@ -15,7 +15,7 @@ using namespace godot;
 class HUD : public CanvasLayer {
     GDCLASS(HUD, CanvasLayer)
 
-public:
+  public:
     HUD();
 
     void _ready() override;
@@ -27,10 +27,10 @@ public:
     void show_victory();
     void show_defeat();
 
-protected:
+  protected:
     static void _bind_methods();
 
-private:
+  private:
     void build_ui();
 
     Label *core_resource_label = nullptr;

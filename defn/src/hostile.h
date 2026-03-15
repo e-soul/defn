@@ -10,7 +10,7 @@ class Defender;
 class Hostile : public Entity {
     GDCLASS(Hostile, Entity)
 
-public:
+  public:
     Hostile();
 
     void _ready() override;
@@ -18,27 +18,17 @@ public:
 
     int get_bounty() const { return bounty; }
     void set_bounty(int b) { bounty = b; }
-    bool is_engaged() const { return engaged; }
 
-private:
+  private:
     void setup_sprite_frames();
-    void setup_muzzle_flash();
-    void find_target();
-    bool try_keep_target();
-    void find_new_target();
-    void on_attack_timeout();
-    void on_ranged_timeout();
-    void on_muzzle_flash_finished();
-    void do_movement(double delta);
+    void find_new_target() override;
+    void do_movement(double delta) override;
     void check_breach();
-    void on_animation_finished();
-    void start_death_fade();
+    double get_forward_distance(Entity *t) const override;
 
     int bounty = 5;
-    bool engaged = false;
-    Defender *target = nullptr;
 
-protected:
+  protected:
     static void _bind_methods();
 };
 

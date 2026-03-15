@@ -1,9 +1,9 @@
 #ifndef ENTITY_H
 #define ENTITY_H
 
-#include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/classes/animated_sprite2d.hpp>
 #include <godot_cpp/classes/area2d.hpp>
+#include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/classes/progress_bar.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/timer.hpp>
@@ -13,23 +13,14 @@ namespace defn {
 
 using namespace godot;
 
-enum class AnimState {
-    WALK,
-    ATTACK,
-    SHOOT,
-    DEATH
-};
+enum class AnimState { WALK, ATTACK, SHOOT, DEATH };
 
-enum class AttackMode {
-    NONE,
-    MELEE,
-    RANGED
-};
+enum class AttackMode { NONE, MELEE, RANGED };
 
 class Entity : public CharacterBody2D {
     GDCLASS(Entity, CharacterBody2D)
 
-public:
+  public:
     Entity();
     ~Entity() override = default;
 
@@ -58,10 +49,12 @@ public:
     AnimatedSprite2D *get_sprite() const { return sprite; }
     Area2D *get_detection_area() const { return detection_area; }
 
+    bool is_engaged() const { return engaged; }
+
     void _ready() override;
     void _process(double delta) override;
 
-protected:
+  protected:
     static void _bind_methods();
 
     void setup_health_bar();
@@ -97,6 +90,25 @@ protected:
     // Flash effect
     double flash_timer = 0.0;
     Color original_modulate = Color(1, 1, 1, 1);
+
+    bool engaged = false;
+    Entity *target = nullptr;
+
+    Color melee_flash_color = Color(1, 1, 1);
+    Color ranged_flash_color = Color(1, 1, 1);
+
+    void find_target();
+    bool try_keep_target();
+    virtual void find_new_target() {}
+    virtual double get_forward_distance(Entity *t) const { return -1.0; }
+    virtual void do_movement(double delta) {}
+
+    void on_attack_timeout();
+    void on_ranged_timeout();
+    void on_muzzle_flash_finished();
+    void on_animation_finished();
+    void start_death_fade();
+    void setup_muzzle_flash(const String &path_template, const Vector2 &offset, bool flip_h);
 };
 
 } // namespace defn
