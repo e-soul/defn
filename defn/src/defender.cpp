@@ -112,7 +112,7 @@ void Defender::setup_sprite_frames() {
     }
 }
 
-double Defender::get_forward_distance(Entity *t) const { return t->get_position().x - get_position().x; }
+double Defender::get_forward_distance(Entity *other) const { return other->get_position().x - get_position().x; }
 
 void Defender::find_new_target() {
     target = nullptr;

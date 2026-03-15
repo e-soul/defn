@@ -56,7 +56,7 @@ if env.get("use_clang_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
     comp_db = env.Alias('compilation_db', 'compile_commands.json')
     tidy_targets = []
     for src in sources:
-        action = Action('clang-tidy -p . --quiet --extra-arg=-Wno-unused-command-line-argument $SOURCE', 'Running clang-tidy on $SOURCE')
+        action = Action('clang-tidy --quiet -p . $SOURCE', 'Running clang-tidy on $SOURCE')
         tidy_node = env.Command(src + ".tidy", [src, comp_db], action)
         tidy_targets.append(tidy_node)
         

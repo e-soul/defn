@@ -100,7 +100,7 @@ class Entity : public CharacterBody2D {
     void find_target();
     bool try_keep_target();
     virtual void find_new_target() {}
-    virtual double get_forward_distance(Entity *t) const { return -1.0; }
+    virtual double get_forward_distance(Entity *other) const { return -1.0; }
     virtual void do_movement(double delta) {}
 
     void on_attack_timeout();

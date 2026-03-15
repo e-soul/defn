@@ -116,7 +116,7 @@ void Hostile::setup_sprite_frames() {
     }
 }
 
-double Hostile::get_forward_distance(Entity *t) const { return get_position().x - t->get_position().x; }
+double Hostile::get_forward_distance(Entity *other) const { return get_position().x - other->get_position().x; }
 
 void Hostile::find_new_target() {
     target = nullptr;

@@ -23,7 +23,7 @@ class Defender : public Entity {
     void setup_sprite_frames();
     void find_new_target() override;
     void do_movement(double delta) override;
-    double get_forward_distance(Entity *t) const override;
+    double get_forward_distance(Entity *other) const override;
 
     int cost = 25;
 

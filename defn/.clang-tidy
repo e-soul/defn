@@ -1,3 +1,5 @@
+ExtraArgs:
+  - -Wno-unused-command-line-argument
 Checks: >
   -*,
   bugprone-*,
