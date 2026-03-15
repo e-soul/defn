@@ -3,3 +3,4 @@ defn/.godot/
 defn/.sconsign.dblite
 defn/bin/
 defn/build/
+defn/export/

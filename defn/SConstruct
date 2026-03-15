@@ -43,7 +43,7 @@ for src in sources:
 
 # 6. Build the Shared Library (The DLL)
 library = env.SharedLibrary(
-    target="bin/defn_core", 
+    target="bin/defn_core" + env["suffix"] + env["SHLIBSUFFIX"],
     source=objects,
 )
 

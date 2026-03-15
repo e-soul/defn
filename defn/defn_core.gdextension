@@ -1,6 +1,7 @@
 [configuration]
 entry_symbol = "defn_core_library_init"
-compatibility_minimum = "4.5"
+compatibility_minimum = "4.6"
 
 [libraries]
-windows.debug.x86_64 = "res://bin/defn_core.dll"
+windows.debug.x86_64 = "res://bin/defn_core.windows.template_debug.x86_64.dll"
+windows.release.x86_64 = "res://bin/defn_core.windows.template_release.x86_64.dll"
