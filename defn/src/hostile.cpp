@@ -51,7 +51,7 @@ void Hostile::_ready() {
 void Hostile::_process(double delta) {
     Entity::_process(delta);
 
-    if (anim_state == AnimState::DEATH) return;
+    if (anim_state == AnimState::DEATH) { return; }
 
     check_breach();
     find_target();
@@ -63,7 +63,7 @@ void Hostile::_process(double delta) {
         target = nullptr;
         attack_timer_node->stop();
         ranged_timer_node->stop();
-        if (muzzle_flash) muzzle_flash->set_visible(false);
+        if (muzzle_flash) { muzzle_flash->set_visible(false); }
         attack_mode = AttackMode::NONE;
         if (anim_state == AnimState::ATTACK || anim_state == AnimState::SHOOT) {
             set_anim_state(AnimState::WALK);
@@ -141,37 +141,42 @@ void Hostile::setup_sprite_frames() {
 }
 
 void Hostile::find_target() {
-    if (anim_state == AnimState::DEATH) return;
+    if (anim_state == AnimState::DEATH) { return; }
+    if (try_keep_target()) { return; }
+    find_new_target();
+}
 
-    // Check if current target is still valid
-    if (target && !target->is_dead()) {
-        double dist = get_position().x - target->get_position().x;
-        if (dist >= 0) {
-            if (dist <= attack_range) {
-                // Target in melee range - prioritize melee
-                if (attack_mode != AttackMode::MELEE) {
-                    attack_mode = AttackMode::MELEE;
-                    ranged_timer_node->stop();
-                    if (muzzle_flash) muzzle_flash->set_visible(false);
-                    set_anim_state(AnimState::ATTACK);
-                    attack_timer_node->start();
-                }
-                return;
-            }
-            if (dist <= ranged_range) {
-                // Target in ranged range
-                if (attack_mode != AttackMode::RANGED) {
-                    attack_mode = AttackMode::RANGED;
-                    attack_timer_node->stop();
-                    set_anim_state(AnimState::SHOOT);
-                    ranged_timer_node->start();
-                }
-                return;
-            }
+bool Hostile::try_keep_target() {
+    if (!target || target->is_dead()) { return false; }
+
+    double dist = get_position().x - target->get_position().x;
+    if (dist < 0) { return false; }
+
+    if (dist <= attack_range) {
+        if (attack_mode != AttackMode::MELEE) {
+            attack_mode = AttackMode::MELEE;
+            ranged_timer_node->stop();
+            if (muzzle_flash) { muzzle_flash->set_visible(false); }
+            set_anim_state(AnimState::ATTACK);
+            attack_timer_node->start();
         }
+        return true;
+    }
+    
+    if (dist <= ranged_range) {
+        if (attack_mode != AttackMode::RANGED) {
+            attack_mode = AttackMode::RANGED;
+            attack_timer_node->stop();
+            set_anim_state(AnimState::SHOOT);
+            ranged_timer_node->start();
+        }
+        return true;
     }
 
-    // Target lost or out of range - find new one
+    return false;
+}
+
+void Hostile::find_new_target() {
     target = nullptr;
     engaged = false;
 
@@ -181,13 +186,13 @@ void Hostile::find_target() {
     double closest_ranged = 1e9;
 
     TypedArray<Node> defenders = get_tree()->get_nodes_in_group("defenders");
-    for (int i = 0; i < defenders.size(); ++i) {
-        auto *defender = Object::cast_to<Defender>(defenders[i].operator Object *());
-        if (!defender || defender->is_dead()) continue;
+    for (const auto & node_variant : defenders) {
+        auto *defender = Object::cast_to<Defender>(node_variant.operator Object *());
+        if (!defender || defender->is_dead()) { continue; }
 
         // Defender must be ahead (to the left, lower X)
         double dist = get_position().x - defender->get_position().x;
-        if (dist < 0) continue;
+        if (dist < 0) { continue; }
 
         if (dist <= attack_range && dist < closest_melee) {
             closest_melee = dist;
@@ -202,7 +207,7 @@ void Hostile::find_target() {
     // Stop all attacks
     attack_timer_node->stop();
     ranged_timer_node->stop();
-    if (muzzle_flash) muzzle_flash->set_visible(false);
+    if (muzzle_flash) { muzzle_flash->set_visible(false); }
     attack_mode = AttackMode::NONE;
 
     // Melee has priority
@@ -276,7 +281,7 @@ void Hostile::setup_muzzle_flash() {
 
 void Hostile::do_movement(double delta) {
     double speed = move_speed * GridManager::ATTACK_RANGE;
-    set_velocity(Vector2(-speed, 0));
+    set_velocity(Vector2(static_cast<real_t>(-speed), 0));
     move_and_slide();
 }
 

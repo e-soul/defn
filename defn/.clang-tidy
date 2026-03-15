@@ -1,0 +1,13 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  clang-analyzer-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  -performance-avoid-endl,
+  readability-*,
+  -readability-implicit-bool-conversion,
+  -readability-magic-numbers
+

@@ -15,23 +15,23 @@ double GridManager::random_belt_y() {
 }
 
 double GridManager::deploy_x() {
-    return camera_x_ - VIEWPORT_WIDTH / 2.0 - SPAWN_OFFSET;
+    return camera_x_ - (VIEWPORT_WIDTH / 2.0) - SPAWN_OFFSET;
 }
 
 double GridManager::spawn_x() {
-    return camera_x_ + VIEWPORT_WIDTH / 2.0 + SPAWN_OFFSET;
+    return camera_x_ + (VIEWPORT_WIDTH / 2.0) + SPAWN_OFFSET;
 }
 
-void GridManager::set_world_width(double w) {
-    world_width_ = w;
+void GridManager::set_world_width(double width) {
+    world_width_ = width;
 }
 
 double GridManager::get_world_width() {
     return world_width_;
 }
 
-void GridManager::set_camera_x(double x) {
-    camera_x_ = x;
+void GridManager::set_camera_x(double camera_x) {
+    camera_x_ = camera_x;
 }
 
 double GridManager::get_camera_x() {

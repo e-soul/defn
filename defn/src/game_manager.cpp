@@ -74,17 +74,17 @@ void GameManager::_ready() {
 }
 
 void GameManager::_process(double delta) {
-    if (game_over) return;
+    if (game_over) { return; }
 
     update_camera_scroll(delta);
     check_victory();
 }
 
 void GameManager::_input(const Ref<InputEvent> &event) {
-    if (game_over) return;
+    if (game_over) { return; }
 
-    auto *mb = Object::cast_to<InputEventMouseButton>(event.ptr());
-    if (!mb || !mb->is_pressed() || mb->get_button_index() != MouseButton::MOUSE_BUTTON_LEFT) {
+    auto *mouse_btn = Object::cast_to<InputEventMouseButton>(event.ptr());
+    if (!mouse_btn || !mouse_btn->is_pressed() || mouse_btn->get_button_index() != MouseButton::MOUSE_BUTTON_LEFT) {
         return;
     }
 
@@ -111,14 +111,14 @@ void GameManager::setup_background() {
 
     auto *parallax = memnew(Parallax2D);
     parallax->set_name("Background");
-    parallax->set_repeat_size(Vector2(display_width, 0));
+    parallax->set_repeat_size(Vector2(static_cast<real_t>(display_width), 0));
     parallax->set_repeat_times(GridManager::WORLD_MULTIPLIER);
     parallax->set_scroll_scale(Vector2(1.0, 1.0));
 
     auto *sprite = memnew(Sprite2D);
     sprite->set_texture(bg_tex);
     sprite->set_centered(false);
-    sprite->set_scale(Vector2(scale_factor, scale_factor));
+    sprite->set_scale(Vector2(static_cast<real_t>(scale_factor), static_cast<real_t>(scale_factor)));
     parallax->add_child(sprite);
 
     add_child(parallax);
@@ -129,7 +129,7 @@ void GameManager::setup_camera() {
     camera->set_name("Camera");
 
     camera_target_x = GridManager::VIEWPORT_WIDTH / 2.0;
-    camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+    camera->set_position(Vector2(static_cast<real_t>(camera_target_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
 
     camera->set_limit(SIDE_LEFT, 0);
     camera->set_limit(SIDE_TOP, 0);
@@ -146,11 +146,11 @@ void GameManager::update_camera_scroll(double delta) {
     if (diff > 1.0 || diff < -1.0) {
         constexpr double SMOOTH_FACTOR = 3.0;
         double factor = SMOOTH_FACTOR * delta;
-        if (factor > 1.0) factor = 1.0;
-        double new_x = current_x + diff * factor;
-        camera->set_position(Vector2(new_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+        factor = std::min(factor, 1.0);
+        double new_x = current_x + (diff * factor);
+        camera->set_position(Vector2(static_cast<real_t>(new_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
     } else {
-        camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+        camera->set_position(Vector2(static_cast<real_t>(camera_target_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
     }
 
     GridManager::set_camera_x(camera->get_position().x);
@@ -184,24 +184,24 @@ void GameManager::update_scroll_trigger_position() {
     constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
     double trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
     double trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / 2.0;
-    scroll_trigger->set_position(Vector2(trigger_x, trigger_y));
+    scroll_trigger->set_position(Vector2(static_cast<real_t>(trigger_x), static_cast<real_t>(trigger_y)));
 }
 
 void GameManager::on_scroll_triggered(Area2D *area) {
-    if (game_over) return;
+    if (game_over) { return; }
 
     // Verify the overlapping area belongs to a living defender
     Node *parent = area->get_parent();
-    if (!parent || !parent->is_in_group("defenders")) return;
+    if (!parent || !parent->is_in_group("defenders")) { return; }
     auto *def = Object::cast_to<Defender>(parent);
-    if (!def || def->is_dead()) return;
+    if (!def || def->is_dead()) { return; }
 
     constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
     constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
-    double max_target = world_width - VIEWPORT_W / 2.0;
+    double max_target = world_width - (VIEWPORT_W / 2.0);
 
     camera_target_x += SCROLL_STEP;
-    if (camera_target_x > max_target) camera_target_x = max_target;
+    camera_target_x = std::min(camera_target_x, max_target);
 
     update_scroll_trigger_position();
 }
@@ -210,9 +210,9 @@ void GameManager::deploy_swordsman() {
     core_resource -= SWORDSMAN_COST;
 
     auto *swordsman = memnew(Defender);
-    double x = GridManager::deploy_x();
-    double y = GridManager::random_belt_y();
-    swordsman->set_position(Vector2(x, y));
+    double spawn_x_pos = GridManager::deploy_x();
+    double spawn_y_pos = GridManager::random_belt_y();
+    swordsman->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
 
     swordsman->connect("entity_died", callable_mp(this, &GameManager::on_defender_died));
     entity_container->add_child(swordsman);
@@ -223,7 +223,7 @@ void GameManager::deploy_swordsman() {
 
 void GameManager::on_enemy_spawned(Node *enemy_node) {
     auto *enemy = Object::cast_to<Hostile>(enemy_node);
-    if (!enemy) return;
+    if (!enemy) { return; }
 
     enemy->connect("entity_died", callable_mp(this, &GameManager::on_enemy_died));
     enemy->connect("enemy_breached", callable_mp(this, &GameManager::on_enemy_breached));
@@ -250,7 +250,7 @@ void GameManager::on_enemy_died(Node *entity) {
         hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
     }
     --living_enemies;
-    if (living_enemies < 0) living_enemies = 0;
+    living_enemies = std::max(living_enemies, 0);
 }
 
 void GameManager::on_defender_died(Node * /*entity*/) {
@@ -266,8 +266,8 @@ void GameManager::on_core_resource_tick() {
 void GameManager::on_enemy_breached() {
     --base_integrity;
     --living_enemies;
-    if (living_enemies < 0) living_enemies = 0;
-    if (base_integrity < 0) base_integrity = 0;
+    living_enemies = std::max(living_enemies, 0);
+    base_integrity = std::max(base_integrity, 0);
     hud->update_hearts(base_integrity);
 
     if (base_integrity <= 0) {

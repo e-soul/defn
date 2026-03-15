@@ -19,7 +19,7 @@ void WaveManager::_bind_methods() {
 void WaveManager::_ready() {}
 
 void WaveManager::_process(double delta) {
-    if (!running) return;
+    if (!running) { return; }
 
     level_timer += delta;
 
@@ -34,9 +34,9 @@ void WaveManager::_process(double delta) {
 
         // Create the hostile
         auto *enemy = memnew(Hostile);
-        double y = GridManager::random_belt_y();
-        double x = GridManager::spawn_x();
-        enemy->set_position(Vector2(x, y));
+        double spawn_y_pos = GridManager::random_belt_y();
+        double spawn_x_pos = GridManager::spawn_x();
+        enemy->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
 
         emit_signal("enemy_spawned", enemy);
 
@@ -74,32 +74,32 @@ void WaveManager::load_level(const String &path) {
     waves.clear();
     all_spawns.clear();
 
-    for (int w = 0; w < wave_array.size(); ++w) {
-        Dictionary wave_dict = wave_array[w];
-        WaveData wd;
-        wd.wave_number = static_cast<int>(wave_dict.get("wave_number", w + 1));
+    for (int wave_idx = 0; wave_idx < wave_array.size(); ++wave_idx) {
+        Dictionary wave_dict = wave_array[wave_idx];
+        WaveData wave_data;
+        wave_data.wave_number = static_cast<int>(wave_dict.get("wave_number", wave_idx + 1));
 
         Array spawns_array = wave_dict.get("spawns", Array());
-        for (int s = 0; s < spawns_array.size(); ++s) {
-            Dictionary spawn_dict = spawns_array[s];
-            SpawnEvent se;
-            se.time = static_cast<double>(spawn_dict.get("time", 0.0));
-            se.type = String(spawn_dict.get("type", "grunt"));
-            wd.spawns.push_back(se);
+        for (const auto & spawn_val : spawns_array) {
+            Dictionary spawn_dict = spawn_val;
+            SpawnEvent spawn_event;
+            spawn_event.time = static_cast<double>(spawn_dict.get("time", 0.0));
+            spawn_event.type = String(spawn_dict.get("type", "grunt"));
+            wave_data.spawns.push_back(spawn_event);
 
-            FlatSpawn fs;
-            fs.time = se.time;
-            fs.type = se.type;
-            fs.wave = wd.wave_number;
-            all_spawns.push_back(fs);
+            FlatSpawn flat_spawn;
+            flat_spawn.time = spawn_event.time;
+            flat_spawn.type = spawn_event.type;
+            flat_spawn.wave = wave_data.wave_number;
+            all_spawns.push_back(flat_spawn);
         }
 
-        waves.push_back(wd);
+        waves.push_back(wave_data);
     }
 
     // Sort all_spawns by time (should already be sorted but ensure)
-    std::sort(all_spawns.begin(), all_spawns.end(),
-              [](const FlatSpawn &a, const FlatSpawn &b) { return a.time < b.time; });
+    std::ranges::sort(all_spawns,
+              [](const FlatSpawn &spawn_a, const FlatSpawn &spawn_b) { return spawn_a.time < spawn_b.time; });
 }
 
 void WaveManager::start() {

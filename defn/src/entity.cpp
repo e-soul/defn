@@ -75,10 +75,10 @@ void Entity::_process(double delta) {
 }
 
 void Entity::take_damage(int amount) {
-    if (is_dead()) return;
+    if (is_dead()) { return; }
 
     current_hp -= amount;
-    if (current_hp < 0) current_hp = 0;
+    current_hp = std::max(current_hp, 0);
 
     if (current_hp <= 0) {
         set_velocity(Vector2(0, 0));
@@ -88,7 +88,7 @@ void Entity::take_damage(int amount) {
 }
 
 void Entity::set_anim_state(AnimState state) {
-    if (anim_state == AnimState::DEATH) return; // can't leave death state
+    if (anim_state == AnimState::DEATH) { return; } // can't leave death state
     anim_state = state;
 
     if (state == AnimState::DEATH && attack_timer_node) {
@@ -98,7 +98,7 @@ void Entity::set_anim_state(AnimState state) {
         ranged_timer_node->stop();
     }
 
-    if (!sprite) return;
+    if (!sprite) { return; }
 
     switch (state) {
         case AnimState::WALK:
@@ -157,7 +157,7 @@ void Entity::setup_health_bar() {
 }
 
 void Entity::update_health_bar() {
-    if (!health_bar) return;
+    if (!health_bar) { return; }
 
     bool should_show = current_hp < max_hp && current_hp > 0;
     health_bar->set_visible(should_show);
@@ -179,7 +179,7 @@ void Entity::setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask) {
     auto *hitbox_shape = memnew(CollisionShape2D);
     Ref<CircleShape2D> hitbox_circle;
     hitbox_circle.instantiate();
-    hitbox_circle->set_radius(5.0 / scale_x);
+    hitbox_circle->set_radius(static_cast<float>(5.0 / scale_x));
     hitbox_shape->set_shape(hitbox_circle);
     hitbox->add_child(hitbox_shape);
     add_child(hitbox);
@@ -193,7 +193,7 @@ void Entity::setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask) {
     auto *sensor_shape = memnew(CollisionShape2D);
     Ref<CircleShape2D> sensor_circle;
     sensor_circle.instantiate();
-    sensor_circle->set_radius(ranged_range / scale_x);
+    sensor_circle->set_radius(static_cast<float>(ranged_range / scale_x));
     sensor_shape->set_shape(sensor_circle);
     detection_area->add_child(sensor_shape);
     add_child(detection_area);

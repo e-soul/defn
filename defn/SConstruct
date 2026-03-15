@@ -5,8 +5,12 @@ opts = Variables()
 opts.Add(EnumVariable("platform", "The platform to build for", "windows", ["windows", "linux", "macos", "android", "ios"]))
 opts.Add(EnumVariable("target", "The target to build for", "template_debug", ["template_debug", "template_release", "editor"]))
 opts.Add(EnumVariable("precision", "Floating-point precision", "single", ["single", "double"]))
+opts.Add(BoolVariable("use_clang_tidy", "Run clang-tidy alongside compilation", False))
 
 env = Environment(variables=opts)
+
+# Add compilation database tool
+env.Tool('compilation_db')
 
 # 2. Import the godot-cpp configuration
 # This allows us to use the same compiler flags godot-cpp uses
@@ -46,5 +50,18 @@ library = env.SharedLibrary(
     target="bin/defn_core" + env["suffix"] + env["SHLIBSUFFIX"],
     source=objects,
 )
+
+# 7. Clang-Tidy alias and dependency
+if env.get("use_clang_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
+    comp_db = env.Alias('compilation_db', 'compile_commands.json')
+    tidy_targets = []
+    for src in sources:
+        action = Action('clang-tidy -p . --quiet --extra-arg=-Wno-unused-command-line-argument $SOURCE', 'Running clang-tidy on $SOURCE')
+        tidy_node = env.Command(src + ".tidy", [src, comp_db], action)
+        tidy_targets.append(tidy_node)
+        
+    env.Alias('tidy', tidy_targets)
+    if env.get("use_clang_tidy", False):
+        env.Depends(library, tidy_targets)
 
 Default(library)

@@ -101,7 +101,7 @@ void HUD::update_wave(int current, int total) {
 }
 
 void HUD::update_hearts(int integrity) {
-    for (int i = 0; i < static_cast<int>(heart_icons.size()); ++i) {
+    for (int i = 0; std::cmp_less(i, heart_icons.size()); ++i) {
         heart_icons[i]->set_visible(i < integrity);
     }
 }
