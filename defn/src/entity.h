@@ -65,8 +65,7 @@ class Entity : public CharacterBody2D {
     int current_hp = 100;
     int damage = 15;
     double attack_speed = 1.0;
-    Timer *attack_timer_node = nullptr;
-    Timer *ranged_timer_node = nullptr;
+    double attack_cooldown = 0.0;
     double move_speed = 0.5;
     double attack_range = 128.0;
     double ranged_range = 384.0;
@@ -103,8 +102,10 @@ class Entity : public CharacterBody2D {
     virtual double get_forward_distance(Entity *other) const { return -1.0; }
     virtual void do_movement(double delta) {}
 
-    void on_attack_timeout();
-    void on_ranged_timeout();
+    void update_cooldowns(double delta);
+    void perform_behavior(double delta);
+    void update_state(double delta);
+
     void on_muzzle_flash_finished();
     void on_animation_finished();
     void start_death_fade();

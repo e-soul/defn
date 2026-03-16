@@ -23,7 +23,9 @@ Entity::Entity() {
     ranged_range = GridManager::RANGED_RANGE * ranged_variation;
 }
 
-void Entity::_bind_methods() { ADD_SIGNAL(MethodInfo("entity_died", PropertyInfo(Variant::OBJECT, "entity"))); }
+void Entity::_bind_methods() {
+    ADD_SIGNAL(MethodInfo("entity_died", PropertyInfo(Variant::OBJECT, "entity")));
+}
 
 void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, double p_move_speed) {
     max_hp = p_max_hp;
@@ -32,9 +34,7 @@ void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, doubl
     attack_speed = p_attack_speed;
     move_speed = p_move_speed;
 
-    if (attack_timer_node) {
-        attack_timer_node->set_wait_time(1.0 / attack_speed);
-    }
+    attack_cooldown = 0.0;
 
     if (health_bar) {
         health_bar->set_max(max_hp);
@@ -45,33 +45,22 @@ void Entity::init_stats(int p_max_hp, int p_damage, double p_attack_speed, doubl
 void Entity::init_ranged_stats(int p_ranged_damage, double p_ranged_attack_speed) {
     ranged_damage = p_ranged_damage;
     ranged_attack_speed = p_ranged_attack_speed;
-    if (ranged_timer_node) {
-        ranged_timer_node->set_wait_time(1.0 / ranged_attack_speed);
-    }
 }
 
 void Entity::_ready() {
     sprite = memnew(AnimatedSprite2D);
     add_child(sprite);
 
-    attack_timer_node = memnew(Timer);
-    attack_timer_node->set_one_shot(false);
-    attack_timer_node->set_autostart(false);
-    add_child(attack_timer_node);
-
-    ranged_timer_node = memnew(Timer);
-    ranged_timer_node->set_one_shot(false);
-    ranged_timer_node->set_autostart(false);
-    add_child(ranged_timer_node);
-
     setup_health_bar();
 
     sprite->connect("animation_finished", callable_mp(this, &Entity::on_animation_finished));
-    attack_timer_node->connect("timeout", callable_mp(this, &Entity::on_attack_timeout));
-    ranged_timer_node->connect("timeout", callable_mp(this, &Entity::on_ranged_timeout));
 }
 
 void Entity::_process(double delta) {
+    if (anim_state == AnimState::DEATH) {
+        return;
+    }
+
     // Handle flash effect
     if (flash_timer > 0.0) {
         flash_timer -= delta;
@@ -82,19 +71,63 @@ void Entity::_process(double delta) {
 
     update_health_bar();
 
-    if (anim_state == AnimState::DEATH) {
-        return;
+    update_cooldowns(delta);
+
+    update_state(delta);
+
+    perform_behavior(delta);
+}
+
+void Entity::update_cooldowns(double delta) {
+    if (attack_cooldown > 0.0) {
+        attack_cooldown -= delta;
     }
+}
 
-    find_target();
+void Entity::update_state(double delta) { find_target(); }
 
+void Entity::perform_behavior(double delta) {
     if (engaged && target && !target->is_dead()) {
         set_velocity(Vector2(0, 0));
+
+        bool needs_pose_update = (anim_state == AnimState::WALK) || (attack_mode == AttackMode::MELEE && anim_state != AnimState::ATTACK) ||
+                                 (attack_mode == AttackMode::RANGED && anim_state != AnimState::SHOOT);
+
+        if (needs_pose_update) {
+            if (attack_mode == AttackMode::MELEE) {
+                set_anim_state(AnimState::ATTACK);
+                sprite->set_frame_and_progress(0, 0.0);
+                sprite->stop();
+            } else if (attack_mode == AttackMode::RANGED) {
+                set_anim_state(AnimState::SHOOT);
+                sprite->set_frame_and_progress(0, 0.0);
+                sprite->stop();
+            }
+        }
+
+        if (attack_mode == AttackMode::MELEE && attack_cooldown <= 0.0) {
+            attack_cooldown = 1.0 / attack_speed;
+            set_anim_state(AnimState::ATTACK);
+            sprite->play("attack");
+            sprite->set_frame_and_progress(0, 0.0);
+            target->take_damage(damage);
+            target->flash_damage(melee_flash_color);
+        } else if (attack_mode == AttackMode::RANGED && attack_cooldown <= 0.0) {
+            attack_cooldown = 1.0 / ranged_attack_speed;
+            set_anim_state(AnimState::SHOOT);
+            sprite->play("shoot");
+            sprite->set_frame_and_progress(0, 0.0);
+            target->take_damage(ranged_damage);
+            target->flash_damage(ranged_flash_color);
+            if (muzzle_flash) {
+                muzzle_flash->set_visible(true);
+                muzzle_flash->play("muzzle");
+                muzzle_flash->set_frame_and_progress(0, 0.0);
+            }
+        }
     } else {
         engaged = false;
         target = nullptr;
-        attack_timer_node->stop();
-        ranged_timer_node->stop();
         if (muzzle_flash) {
             muzzle_flash->set_visible(false);
         }
@@ -126,13 +159,6 @@ void Entity::set_anim_state(AnimState state) {
         return;
     } // can't leave death state
     anim_state = state;
-
-    if (state == AnimState::DEATH && attack_timer_node) {
-        attack_timer_node->stop();
-    }
-    if (state == AnimState::DEATH && ranged_timer_node) {
-        ranged_timer_node->stop();
-    }
 
     if (!sprite) {
         return;
@@ -262,12 +288,10 @@ bool Entity::try_keep_target() {
     if (dist <= attack_range) {
         if (attack_mode != AttackMode::MELEE) {
             attack_mode = AttackMode::MELEE;
-            ranged_timer_node->stop();
             if (muzzle_flash) {
                 muzzle_flash->set_visible(false);
             }
-            set_anim_state(AnimState::ATTACK);
-            attack_timer_node->start();
+            // Cooldown handles when the attack actually fires and animates
         }
         return true;
     }
@@ -275,9 +299,7 @@ bool Entity::try_keep_target() {
     if (dist <= ranged_range) {
         if (attack_mode != AttackMode::RANGED) {
             attack_mode = AttackMode::RANGED;
-            attack_timer_node->stop();
-            set_anim_state(AnimState::SHOOT);
-            ranged_timer_node->start();
+            // Cooldown handles when the attack actually fires and animates
         }
         return true;
     }
@@ -285,23 +307,7 @@ bool Entity::try_keep_target() {
     return false;
 }
 
-void Entity::on_attack_timeout() {
-    if (target && !target->is_dead()) {
-        target->take_damage(damage);
-        target->flash_damage(melee_flash_color);
-    }
-}
-
-void Entity::on_ranged_timeout() {
-    if (target && !target->is_dead()) {
-        target->take_damage(ranged_damage);
-        target->flash_damage(ranged_flash_color);
-        if (muzzle_flash) {
-            muzzle_flash->set_visible(true);
-            muzzle_flash->play("muzzle");
-        }
-    }
-}
+// Removed timeout callbacks
 
 void Entity::on_muzzle_flash_finished() {
     if (muzzle_flash) {
@@ -314,12 +320,9 @@ void Entity::on_animation_finished() {
         start_death_fade();
         return;
     }
-    if (anim_state == AnimState::ATTACK && engaged && target && !target->is_dead()) {
-        sprite->play("attack");
-    }
-    if (anim_state == AnimState::SHOOT && engaged && target && !target->is_dead()) {
-        sprite->play("shoot");
-    }
+    // We no longer automatically loop attack or shoot animations here.
+    // They are triggered by the cooldown in perform_behavior().
+    // We could return to WALK state if we wanted, or just wait in the last frame.
 }
 
 void Entity::start_death_fade() {

@@ -151,8 +151,6 @@ void Hostile::find_new_target() {
     }
 
     // Stop all attacks
-    attack_timer_node->stop();
-    ranged_timer_node->stop();
     if (muzzle_flash) {
         muzzle_flash->set_visible(false);
     }
@@ -163,14 +161,10 @@ void Hostile::find_new_target() {
         target = best_melee;
         engaged = true;
         attack_mode = AttackMode::MELEE;
-        set_anim_state(AnimState::ATTACK);
-        attack_timer_node->start();
     } else if (best_ranged) {
         target = best_ranged;
         engaged = true;
         attack_mode = AttackMode::RANGED;
-        set_anim_state(AnimState::SHOOT);
-        ranged_timer_node->start();
     }
 }
 
