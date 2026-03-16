@@ -5,7 +5,7 @@ opts = Variables()
 opts.Add(EnumVariable("platform", "The platform to build for", "windows", ["windows", "linux", "macos", "android", "ios"]))
 opts.Add(EnumVariable("target", "The target to build for", "template_debug", ["template_debug", "template_release", "editor"]))
 opts.Add(EnumVariable("precision", "Floating-point precision", "single", ["single", "double"]))
-opts.Add(BoolVariable("use_clang_tidy", "Run clang-tidy alongside compilation", False))
+opts.Add(BoolVariable("with_tidy", "Run clang-tidy alongside compilation", False))
 
 env = Environment(variables=opts)
 
@@ -52,7 +52,7 @@ library = env.SharedLibrary(
 )
 
 # 7. Clang-Tidy alias and dependency
-if env.get("use_clang_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
+if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
     comp_db = env.Alias('compilation_db', 'compile_commands.json')
     tidy_targets = []
     for src in sources:
@@ -61,7 +61,7 @@ if env.get("use_clang_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
         tidy_targets.append(tidy_node)
         
     env.Alias('tidy', tidy_targets)
-    if env.get("use_clang_tidy", False):
+    if env.get("with_tidy", False):
         env.Depends(library, tidy_targets)
 
 Default(library)

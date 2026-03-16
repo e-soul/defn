@@ -14,8 +14,6 @@ constexpr double DEFENDER_MUZZLE_OFFSET_X = 220.0;
 constexpr double DEFENDER_MUZZLE_OFFSET_Y = -40.0;
 } // namespace
 
-Defender::Defender() { cost = 25; }
-
 void Defender::_bind_methods() {}
 
 void Defender::_ready() {
@@ -37,13 +35,6 @@ void Defender::_ready() {
     setup_muzzle_flash("res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
                        Vector2(DEFENDER_MUZZLE_OFFSET_X, DEFENDER_MUZZLE_OFFSET_Y), false);
     set_anim_state(AnimState::WALK);
-}
-
-void Defender::_process(double delta) {
-    if (anim_state == AnimState::DEATH) {
-        return;
-    }
-    Entity::_process(delta);
 }
 
 void Defender::setup_sprite_frames() {

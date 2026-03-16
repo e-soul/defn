@@ -11,13 +11,9 @@ class Defender : public Entity {
     GDCLASS(Defender, Entity)
 
   public:
-    Defender();
+    Defender() = default;
 
     void _ready() override;
-    void _process(double delta) override;
-
-    int get_cost() const { return cost; }
-    void set_cost(int c) { cost = c; }
 
   private:
     void setup_sprite_frames();
