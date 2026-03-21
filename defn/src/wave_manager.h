@@ -6,6 +6,10 @@
 #include <vector>
 
 namespace defn {
+class UnitDataLoader;
+}
+
+namespace defn {
 
 using namespace godot;
 
@@ -28,6 +32,7 @@ class WaveManager : public Node {
     void _ready() override;
     void _process(double delta) override;
 
+    void set_unit_data(const UnitDataLoader *loader) { unit_data_ = loader; }
     void load_level(const String &path);
     void start();
     void stop();
@@ -59,6 +64,8 @@ class WaveManager : public Node {
     };
     std::vector<FlatSpawn> all_spawns;
     size_t next_spawn_idx = 0;
+
+    const UnitDataLoader *unit_data_ = nullptr;
 };
 
 } // namespace defn

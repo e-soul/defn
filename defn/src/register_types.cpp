@@ -3,12 +3,10 @@
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include "defender.h"
-#include "entity.h"
 #include "game_manager.h"
 #include "grid_manager.h"
-#include "hostile.h"
 #include "hud.h"
+#include "unit.h"
 #include "wave_manager.h"
 
 using namespace godot;
@@ -19,9 +17,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     }
 
     ClassDB::register_class<defn::GridManager>();
-    ClassDB::register_class<defn::Entity>();
-    ClassDB::register_class<defn::Defender>();
-    ClassDB::register_class<defn::Hostile>();
+    ClassDB::register_class<defn::Unit>();
     ClassDB::register_class<defn::WaveManager>();
     ClassDB::register_class<defn::GameManager>();
     ClassDB::register_class<defn::HUD>();

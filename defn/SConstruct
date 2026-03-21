@@ -29,9 +29,8 @@ else:
 sources = [
     "src/register_types.cpp",
     "src/grid_manager.cpp",
-    "src/entity.cpp",
-    "src/defender.cpp",
-    "src/hostile.cpp",
+    "src/unit.cpp",
+    "src/unit_data.cpp",
     "src/wave_manager.cpp",
     "src/game_manager.cpp",
     "src/hud.cpp",

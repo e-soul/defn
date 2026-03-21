@@ -1,8 +1,7 @@
 #include "game_manager.h"
-#include "defender.h"
 #include "grid_manager.h"
-#include "hostile.h"
 #include "hud.h"
+#include "unit.h"
 #include "wave_manager.h"
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
@@ -27,6 +26,12 @@ void GameManager::_bind_methods() {}
 void GameManager::_ready() {
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
+    // Load unit data from JSON
+    unit_data_.load("res://data/unit_data.json");
+    if (auto cfg = unit_data_.get_unit("swordsman")) {
+        deploy_cost_ = cfg->cost;
+    }
+
     // Setup camera and visual layers
     setup_background();
     setup_camera();
@@ -43,6 +48,7 @@ void GameManager::_ready() {
     wave_manager->set_name("WaveManager");
     add_child(wave_manager);
 
+    wave_manager->set_unit_data(&unit_data_);
     wave_manager->load_level("res://data/levels/level_01.json");
     core_resource = wave_manager->get_starting_core_resource();
     base_integrity = wave_manager->get_base_integrity();
@@ -59,7 +65,7 @@ void GameManager::_ready() {
     hud->update_core_resource(core_resource);
     hud->update_wave(1, wave_manager->get_total_waves());
     hud->update_hearts(base_integrity);
-    hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
+    hud->update_deploy_button(core_resource >= deploy_cost_);
 
     // Core resource generation timer: +1/sec
     core_resource_timer = memnew(Timer);
@@ -92,8 +98,8 @@ void GameManager::_input(const Ref<InputEvent> &event) {
         return;
     }
 
-    if (core_resource >= SWORDSMAN_COST) {
-        deploy_swordsman();
+    if (core_resource >= deploy_cost_) {
+        deploy_friendly("swordsman");
     }
 }
 
@@ -196,13 +202,13 @@ void GameManager::on_scroll_triggered(Area2D *area) {
         return;
     }
 
-    // Verify the overlapping area belongs to a living defender
+    // Verify the overlapping area belongs to a living friendly
     Node *parent = area->get_parent();
-    if (!parent || !parent->is_in_group("defenders")) {
+    if (!parent || !parent->is_in_group("friendlies")) {
         return;
     }
-    auto *def = Object::cast_to<Defender>(parent);
-    if (!def || def->is_dead()) {
+    auto *unit = Object::cast_to<Unit>(parent);
+    if (!unit || unit->is_dead()) {
         return;
     }
 
@@ -216,28 +222,31 @@ void GameManager::on_scroll_triggered(Area2D *area) {
     update_scroll_trigger_position();
 }
 
-void GameManager::deploy_swordsman() {
-    core_resource -= SWORDSMAN_COST;
+void GameManager::deploy_friendly(const String &unit_type) {
+    core_resource -= deploy_cost_;
 
-    auto *swordsman = memnew(Defender);
+    auto *unit = memnew(Unit);
+    if (auto cfg = unit_data_.get_unit(unit_type)) {
+        unit->set_unit_config(*cfg);
+    }
     double spawn_x_pos = GridManager::deploy_x();
     double spawn_y_pos = GridManager::random_belt_y();
-    swordsman->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
+    unit->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
 
-    swordsman->connect("entity_died", callable_mp(this, &GameManager::on_defender_died));
-    entity_container->add_child(swordsman);
+    unit->connect("unit_died", callable_mp(this, &GameManager::on_friendly_died));
+    entity_container->add_child(unit);
 
     hud->update_core_resource(core_resource);
-    hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
+    hud->update_deploy_button(core_resource >= deploy_cost_);
 }
 
 void GameManager::on_enemy_spawned(Node *enemy_node) {
-    auto *enemy = Object::cast_to<Hostile>(enemy_node);
+    auto *enemy = Object::cast_to<Unit>(enemy_node);
     if (!enemy) {
         return;
     }
 
-    enemy->connect("entity_died", callable_mp(this, &GameManager::on_enemy_died));
+    enemy->connect("unit_died", callable_mp(this, &GameManager::on_enemy_died));
     enemy->connect("enemy_breached", callable_mp(this, &GameManager::on_enemy_breached));
     entity_container->add_child(enemy);
     ++living_enemies;
@@ -252,25 +261,25 @@ void GameManager::on_wave_changed(int wave_number) {
 
 void GameManager::on_all_spawns_complete() { all_spawned = true; }
 
-void GameManager::on_enemy_died(Node *entity) {
-    auto *hostile = Object::cast_to<Hostile>(entity);
+void GameManager::on_enemy_died(Node *unit) {
+    auto *hostile = Object::cast_to<Unit>(unit);
     if (hostile && !hostile->is_queued_for_deletion()) {
         core_resource += hostile->get_bounty();
         hud->update_core_resource(core_resource);
-        hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
+        hud->update_deploy_button(core_resource >= deploy_cost_);
     }
     --living_enemies;
     living_enemies = std::max(living_enemies, 0);
 }
 
-void GameManager::on_defender_died(Node * /*entity*/) {
+void GameManager::on_friendly_died(Node * /*unit*/) {
     // Defender died — no special handling needed beyond removal
 }
 
 void GameManager::on_core_resource_tick() {
     core_resource += 1;
     hud->update_core_resource(core_resource);
-    hud->update_deploy_button(core_resource >= SWORDSMAN_COST);
+    hud->update_deploy_button(core_resource >= deploy_cost_);
 }
 
 void GameManager::on_enemy_breached() {

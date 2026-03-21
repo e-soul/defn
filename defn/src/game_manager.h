@@ -1,6 +1,7 @@
 #ifndef GAME_MANAGER_H
 #define GAME_MANAGER_H
 
+#include "unit_data.h"
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/classes/input_event.hpp>
@@ -15,8 +16,7 @@ using namespace godot;
 
 class WaveManager;
 class HUD;
-class Hostile;
-class Defender;
+class Unit;
 
 class GameManager : public Node2D {
     GDCLASS(GameManager, Node2D)
@@ -33,11 +33,10 @@ class GameManager : public Node2D {
 
   private:
     void setup_background();
-    void setup_base_visual();
     void setup_camera();
     void setup_scroll_trigger();
     void update_scroll_trigger_position();
-    void deploy_swordsman();
+    void deploy_friendly(const String &unit_type);
     void update_camera_scroll(double delta);
 
     // Signal callbacks
@@ -45,8 +44,8 @@ class GameManager : public Node2D {
     void on_enemy_spawned(Node *enemy_node);
     void on_wave_changed(int wave_number);
     void on_all_spawns_complete();
-    void on_enemy_died(Node *entity);
-    void on_defender_died(Node *entity);
+    void on_enemy_died(Node *unit);
+    void on_friendly_died(Node *unit);
     void on_enemy_breached();
     void on_core_resource_tick();
 
@@ -73,7 +72,9 @@ class GameManager : public Node2D {
     double camera_target_x = 960.0;
     double world_width = 7680.0;
 
-    static constexpr int SWORDSMAN_COST = 25;
+    // Unit data
+    UnitDataLoader unit_data_;
+    int deploy_cost_ = 25;
 };
 
 } // namespace defn

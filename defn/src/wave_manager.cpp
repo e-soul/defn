@@ -1,6 +1,7 @@
 #include "wave_manager.h"
 #include "grid_manager.h"
-#include "hostile.h"
+#include "unit.h"
+#include "unit_data.h"
 #include <algorithm>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>
@@ -34,8 +35,13 @@ void WaveManager::_process(double delta) {
             emit_signal("wave_changed", current_wave);
         }
 
-        // Create the hostile
-        auto *enemy = memnew(Hostile);
+        // Create the hostile with data-driven config
+        auto *enemy = memnew(Unit);
+        if (unit_data_) {
+            if (auto cfg = unit_data_->get_unit(spawn.type)) {
+                enemy->set_unit_config(*cfg);
+            }
+        }
         double spawn_y_pos = GridManager::random_belt_y();
         double spawn_x_pos = GridManager::spawn_x();
         enemy->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));

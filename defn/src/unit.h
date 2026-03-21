@@ -1,12 +1,12 @@
-#ifndef ENTITY_H
-#define ENTITY_H
+#ifndef UNIT_H
+#define UNIT_H
 
+#include "unit_data.h"
 #include <godot_cpp/classes/animated_sprite2d.hpp>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/classes/progress_bar.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
-#include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 namespace defn {
@@ -17,14 +17,14 @@ enum class AnimState { WALK, ATTACK, SHOOT, DEATH };
 
 enum class AttackMode { NONE, MELEE, RANGED };
 
-class Entity : public CharacterBody2D {
-    GDCLASS(Entity, CharacterBody2D)
+class Unit : public CharacterBody2D {
+    GDCLASS(Unit, CharacterBody2D)
 
   public:
-    Entity();
-    ~Entity() override = default;
+    Unit();
+    ~Unit() override = default;
 
-    void init_stats(int p_max_hp, int p_damage, double p_attack_speed, double p_move_speed);
+    void set_unit_config(const UnitConfig &cfg);
 
     void take_damage(int amount);
     bool is_dead() const { return current_hp <= 0; }
@@ -34,22 +34,14 @@ class Entity : public CharacterBody2D {
     int get_damage() const { return damage; }
     double get_attack_speed() const { return attack_speed; }
     double get_move_speed() const { return move_speed; }
-    double get_attack_range() const { return attack_range; }
-    double get_ranged_range() const { return ranged_range; }
-    int get_ranged_damage() const { return ranged_damage; }
-    AttackMode get_attack_mode() const { return attack_mode; }
-
-    void init_ranged_stats(int p_ranged_damage, double p_ranged_attack_speed);
+    int get_cost() const { return unit_config_.cost; }
+    int get_bounty() const { return unit_config_.bounty; }
+    UnitSide get_side() const { return unit_config_.side; }
 
     AnimState get_anim_state() const { return anim_state; }
     void set_anim_state(AnimState state);
 
     void flash_damage(const Color &color);
-
-    AnimatedSprite2D *get_sprite() const { return sprite; }
-    Area2D *get_detection_area() const { return detection_area; }
-
-    bool is_engaged() const { return engaged; }
 
     void _ready() override;
     void _process(double delta) override;
@@ -57,9 +49,33 @@ class Entity : public CharacterBody2D {
   protected:
     static void _bind_methods();
 
+  private:
+    void init_stats();
     void setup_health_bar();
     void update_health_bar();
     void setup_detection(uint32_t hitbox_layer, uint32_t sensor_mask);
+    void setup_sprite_frames();
+    void setup_muzzle_flash();
+
+    // Targeting
+    void find_target();
+    bool try_keep_target();
+    void find_new_target();
+    double get_forward_distance(Unit *other) const;
+
+    // Behavior
+    void update_cooldowns(double delta);
+    void update_state(double delta);
+    void perform_behavior(double delta);
+    void do_movement(double delta);
+    void check_breach();
+
+    // Animation callbacks
+    void on_muzzle_flash_finished();
+    void on_animation_finished();
+    void start_death_fade();
+
+    UnitConfig unit_config_;
 
     int max_hp = 100;
     int current_hp = 100;
@@ -91,25 +107,10 @@ class Entity : public CharacterBody2D {
     Color original_modulate = Color(1, 1, 1, 1);
 
     bool engaged = false;
-    Entity *target = nullptr;
+    Unit *target = nullptr;
 
     Color melee_flash_color = Color(1, 1, 1);
     Color ranged_flash_color = Color(1, 1, 1);
-
-    void find_target();
-    bool try_keep_target();
-    virtual void find_new_target() {}
-    virtual double get_forward_distance(Entity *other) const { return -1.0; }
-    virtual void do_movement(double delta) {}
-
-    void update_cooldowns(double delta);
-    void perform_behavior(double delta);
-    void update_state(double delta);
-
-    void on_muzzle_flash_finished();
-    void on_animation_finished();
-    void start_death_fade();
-    void setup_muzzle_flash(const String &path_template, const Vector2 &offset, bool flip_h);
 };
 
 } // namespace defn
