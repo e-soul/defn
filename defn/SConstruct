@@ -29,6 +29,11 @@ else:
 sources = [
     "src/register_types.cpp",
     "src/grid_manager.cpp",
+    "src/health_component.cpp",
+    "src/health_bar_widget.cpp",
+    "src/animation_controller.cpp",
+    "src/detection_component.cpp",
+    "src/combat_component.cpp",
     "src/unit.cpp",
     "src/unit_data.cpp",
     "src/wave_manager.cpp",
