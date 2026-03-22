@@ -208,7 +208,7 @@ void AnimationController::start_death_fade() {
     }
     Ref<Tween> tween = parent->create_tween();
     tween->tween_property(parent, NodePath("modulate"), Color(1, 1, 1, 0), 0.5);
-    tween->tween_callback(Callable(parent, "queue_free"));
+    tween->tween_callback(callable_mp(parent, &Node::queue_free));
 }
 
 } // namespace defn

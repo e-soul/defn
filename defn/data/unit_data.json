@@ -22,7 +22,7 @@
       },
       "shoot_sfx": {
         "path": "res://assets/sfx/walther_p38_fire.wav",
-        "volume_linear": 0.5,
+        "volume_linear": 0.2,
         "pitch_scale": 1.0,
         "pitch_variance": 0.06
       },
@@ -75,7 +75,7 @@
       },
       "shoot_sfx": {
         "path": "res://assets/sfx/desert_eagle_fire.wav",
-        "volume_linear": 0.5,
+        "volume_linear": 0.2,
         "pitch_scale": 1.0,
         "pitch_variance": 0.08
       },
