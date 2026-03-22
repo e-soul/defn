@@ -28,7 +28,10 @@ struct MuzzleConfig {
 };
 
 struct ShootSfxConfig {
-  String path;
+    String path;
+    double volume_linear = 1.0;
+    double pitch_scale = 1.0;
+    double pitch_variance = 0.0;
 };
 
 struct UnitConfig {

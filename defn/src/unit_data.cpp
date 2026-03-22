@@ -82,6 +82,9 @@ bool UnitDataLoader::load(const String &path) {
         if (d.has("shoot_sfx")) {
             Dictionary sfx = d["shoot_sfx"];
             cfg.shoot_sfx.path = String(sfx.get("path", ""));
+            cfg.shoot_sfx.volume_linear = static_cast<double>(sfx.get("volume_linear", 1.0));
+            cfg.shoot_sfx.pitch_scale = static_cast<double>(sfx.get("pitch_scale", 1.0));
+            cfg.shoot_sfx.pitch_variance = static_cast<double>(sfx.get("pitch_variance", 0.0));
         }
 
         // Animations

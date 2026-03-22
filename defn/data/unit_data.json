@@ -21,7 +21,10 @@
         "flip_h": false
       },
       "shoot_sfx": {
-        "path": "res://assets/sfx/walther_p38_fire.wav"
+        "path": "res://assets/sfx/walther_p38_fire.wav",
+        "volume_linear": 0.5,
+        "pitch_scale": 1.0,
+        "pitch_variance": 0.06
       },
       "animations": {
         "walk": {
@@ -71,7 +74,10 @@
         "flip_h": true
       },
       "shoot_sfx": {
-        "path": "res://assets/sfx/desert_eagle_fire.wav"
+        "path": "res://assets/sfx/desert_eagle_fire.wav",
+        "volume_linear": 0.5,
+        "pitch_scale": 1.0,
+        "pitch_variance": 0.08
       },
       "animations": {
         "walk": {
