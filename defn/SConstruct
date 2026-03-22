@@ -1,5 +1,11 @@
 import os
 
+
+def remove_standard_flags(flags):
+    cxx17_flags = {"/std:c++17", "-std=c++17"}
+    return [flag for flag in flags if str(flag) not in cxx17_flags]
+
+
 # 1. Setup the basic SCons environment
 opts = Variables()
 opts.Add(EnumVariable("platform", "The platform to build for", "windows", ["windows", "linux", "macos", "android", "ios"]))
@@ -18,6 +24,9 @@ env = SConscript("../godot-cpp/SConstruct", exports="env")
 
 # 3. Add your local include directory and godot-cpp includes
 env.Append(CPPPATH=[".", "src/", "../godot-cpp/gen/include/", "../godot-cpp/include/"])
+
+# Replace godot-cpp's default C++17 flag with the project's required standard.
+env["CXXFLAGS"] = remove_standard_flags(env.get("CXXFLAGS", []))
 
 # Enable C++23
 if env["platform"] == "windows":
@@ -64,7 +73,7 @@ if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
         action = Action('clang-tidy --quiet -p . $SOURCE', 'Running clang-tidy on $SOURCE')
         tidy_node = env.Command(src + ".tidy", [src, comp_db], action)
         tidy_targets.append(tidy_node)
-        
+
     env.Alias('tidy', tidy_targets)
     if env.get("with_tidy", False):
         env.Depends(library, tidy_targets)

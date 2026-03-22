@@ -7,13 +7,17 @@ namespace defn {
 
 namespace {
 
+float as_float(const Variant &value) {
+    return static_cast<float>(static_cast<double>(value));
+}
+
 Color parse_color(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
-        float r = static_cast<float>(static_cast<double>(arr[0]));
-        float g = static_cast<float>(static_cast<double>(arr[1]));
-        float b = static_cast<float>(static_cast<double>(arr[2]));
-        float a = arr.size() >= 4 ? static_cast<float>(static_cast<double>(arr[3])) : 1.0f;
-        return Color(r, g, b, a);
+        const auto red = as_float(arr[0]);
+        const auto green = as_float(arr[1]);
+        const auto blue = as_float(arr[2]);
+        const auto alpha = arr.size() >= 4 ? as_float(arr[3]) : 1.0F;
+        return {red, green, blue, alpha};
     }
     return fallback;
 }
@@ -43,44 +47,44 @@ bool UnitDataLoader::load(const String &path) {
     Array keys = units_dict.keys();
     units_.clear();
 
-    for (int i = 0; i < keys.size(); ++i) {
-        String key = keys[i];
-        Dictionary d = units_dict[key];
+    for (const Variant &key_variant : keys) {
+        String key = key_variant;
+        Dictionary unit_dict = units_dict[key];
 
         UnitConfig cfg;
         cfg.name = key;
 
-        String side_str = String(d.get("side", "friendly"));
+        String side_str = String(unit_dict.get("side", "friendly"));
         cfg.side = (side_str == "hostile") ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
 
-        cfg.hp = static_cast<int>(d.get("hp", 100));
-        cfg.melee_damage = static_cast<int>(d.get("melee_damage", 15));
-        cfg.melee_attack_speed = static_cast<double>(d.get("melee_attack_speed", 1.0));
-        cfg.ranged_damage = static_cast<int>(d.get("ranged_damage", 8));
-        cfg.ranged_attack_speed = static_cast<double>(d.get("ranged_attack_speed", 1.5));
-        cfg.move_speed = static_cast<double>(d.get("move_speed", 0.5));
-        cfg.cost = static_cast<int>(d.get("cost", 0));
-        cfg.bounty = static_cast<int>(d.get("bounty", 0));
-        cfg.scale = static_cast<double>(d.get("scale", 0.27));
-        cfg.sprite_flip_h = static_cast<bool>(d.get("sprite_flip_h", false));
+        cfg.hp = static_cast<int>(unit_dict.get("hp", 100));
+        cfg.melee_damage = static_cast<int>(unit_dict.get("melee_damage", 15));
+        cfg.melee_attack_speed = static_cast<double>(unit_dict.get("melee_attack_speed", 1.0));
+        cfg.ranged_damage = static_cast<int>(unit_dict.get("ranged_damage", 8));
+        cfg.ranged_attack_speed = static_cast<double>(unit_dict.get("ranged_attack_speed", 1.5));
+        cfg.move_speed = static_cast<double>(unit_dict.get("move_speed", 0.5));
+        cfg.cost = static_cast<int>(unit_dict.get("cost", 0));
+        cfg.bounty = static_cast<int>(unit_dict.get("bounty", 0));
+        cfg.scale = static_cast<double>(unit_dict.get("scale", 0.27));
+        cfg.sprite_flip_h = static_cast<bool>(unit_dict.get("sprite_flip_h", false));
 
-        cfg.health_bar_color = parse_color(d.get("health_bar_color", Array()), Color(0, 1, 0, 0.9));
-        cfg.melee_flash_color = parse_color(d.get("melee_flash_color", Array()), Color(1, 1, 1));
-        cfg.ranged_flash_color = parse_color(d.get("ranged_flash_color", Array()), Color(1, 1, 1));
+        cfg.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), Color(0, 1, 0, 0.9));
+        cfg.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), Color(1, 1, 1));
+        cfg.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), Color(1, 1, 1));
 
         // Muzzle flash
-        if (d.has("muzzle_flash")) {
-            Dictionary mf = d["muzzle_flash"];
-            cfg.muzzle.path_template = String(mf.get("path_template", ""));
-            Array offset = mf.get("offset", Array());
+        if (unit_dict.has("muzzle_flash")) {
+            Dictionary muzzle_flash_dict = unit_dict["muzzle_flash"];
+            cfg.muzzle.path_template = String(muzzle_flash_dict.get("path_template", ""));
+            Array offset = muzzle_flash_dict.get("offset", Array());
             if (offset.size() >= 2) {
-                cfg.muzzle.offset = Vector2(static_cast<float>(static_cast<double>(offset[0])), static_cast<float>(static_cast<double>(offset[1])));
+                cfg.muzzle.offset = Vector2(as_float(offset[0]), as_float(offset[1]));
             }
-            cfg.muzzle.flip_h = static_cast<bool>(mf.get("flip_h", false));
+            cfg.muzzle.flip_h = static_cast<bool>(muzzle_flash_dict.get("flip_h", false));
         }
 
-        if (d.has("shoot_sfx")) {
-            Dictionary sfx = d["shoot_sfx"];
+        if (unit_dict.has("shoot_sfx")) {
+            Dictionary sfx = unit_dict["shoot_sfx"];
             cfg.shoot_sfx.path = String(sfx.get("path", ""));
             cfg.shoot_sfx.volume_linear = static_cast<double>(sfx.get("volume_linear", 1.0));
             cfg.shoot_sfx.pitch_scale = static_cast<double>(sfx.get("pitch_scale", 1.0));
@@ -88,11 +92,11 @@ bool UnitDataLoader::load(const String &path) {
         }
 
         // Animations
-        if (d.has("animations")) {
-            Dictionary anims = d["animations"];
+        if (unit_dict.has("animations")) {
+            Dictionary anims = unit_dict["animations"];
             Array anim_keys = anims.keys();
-            for (int j = 0; j < anim_keys.size(); ++j) {
-                String anim_name = anim_keys[j];
+            for (const Variant &anim_key : anim_keys) {
+                String anim_name = anim_key;
                 Dictionary anim_dict = anims[anim_name];
                 AnimConfig anim;
                 anim.path_template = String(anim_dict.get("path_template", ""));

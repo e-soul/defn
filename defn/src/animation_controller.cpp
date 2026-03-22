@@ -15,10 +15,15 @@ void AnimationController::_bind_methods() {
 
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg) {
     sprite = memnew(AnimatedSprite2D);
+    if (sprite == nullptr) {
+        return;
+    }
+
     owner_node->add_child(sprite);
 
     setup_sprite_frames(owner_node, cfg);
     setup_muzzle_flash(owner_node, cfg);
+    original_modulate = sprite->get_modulate();
     set_anim_state(AnimState::WALK);
 
     sprite->connect("animation_finished", callable_mp(this, &AnimationController::on_animation_finished));
