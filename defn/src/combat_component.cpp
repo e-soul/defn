@@ -3,16 +3,16 @@
 #include "grid_manager.h"
 #include "health_component.h"
 #include "unit.h"
-#include <godot_cpp/classes/scene_tree.hpp>
 
 namespace defn {
 
 void CombatComponent::_bind_methods() {}
 
-void CombatComponent::configure(Unit *p_unit, HealthComponent *p_health, AnimationController *p_anim, const Config &cfg) {
+void CombatComponent::configure(Unit *p_unit, HealthComponent *p_health, AnimationController *p_anim, Area2D *p_detection_area, const Config &cfg) {
     unit = p_unit;
     health = p_health;
     anim = p_anim;
+    detection_area = p_detection_area;
     config = cfg;
     attack_cooldown = 0.0;
 }
@@ -79,16 +79,18 @@ void CombatComponent::find_new_target() {
     target = nullptr;
     engaged = false;
 
-    String target_group = (config.side == UnitSide::FRIENDLY) ? "hostiles" : "friendlies";
-
     Unit *best_melee = nullptr;
     Unit *best_ranged = nullptr;
     double closest_melee = 1e9;
     double closest_ranged = 1e9;
 
-    TypedArray<Node> targets = unit->get_tree()->get_nodes_in_group(target_group);
-    for (const auto &node_variant : targets) {
-        auto *other = Object::cast_to<Unit>(node_variant.operator Object *());
+    TypedArray<Area2D> overlapping = detection_area->get_overlapping_areas();
+    for (const auto &area_variant : overlapping) {
+        auto *hitbox = Object::cast_to<Area2D>(area_variant.operator Object *());
+        if (!hitbox) {
+            continue;
+        }
+        auto *other = Object::cast_to<Unit>(hitbox->get_parent());
         if (!other || other->is_dead()) {
             continue;
         }

@@ -84,7 +84,7 @@ void Unit::_ready() {
         .melee_flash_color = unit_config_.melee_flash_color,
         .ranged_flash_color = unit_config_.ranged_flash_color,
     };
-    combat->configure(this, health, animation, combat_cfg);
+    combat->configure(this, health, animation, detection->get_detection_area(), combat_cfg);
 }
 
 void Unit::take_damage(int amount) {

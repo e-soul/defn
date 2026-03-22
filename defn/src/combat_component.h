@@ -2,6 +2,7 @@
 #define COMBAT_COMPONENT_H
 
 #include "unit_data.h"
+#include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
@@ -31,7 +32,7 @@ class CombatComponent : public Node {
         Color ranged_flash_color;
     };
 
-    void configure(Unit *owner, HealthComponent *health, AnimationController *anim, const Config &cfg);
+    void configure(Unit *p_unit, HealthComponent *p_health, AnimationController *p_anim, Area2D *p_detection_area, const Config &cfg);
 
     void _process(double delta) override;
 
@@ -53,6 +54,7 @@ class CombatComponent : public Node {
     Unit *unit = nullptr;
     HealthComponent *health = nullptr;
     AnimationController *anim = nullptr;
+    Area2D *detection_area = nullptr;
 
     Config config{};
     double attack_cooldown = 0.0;
