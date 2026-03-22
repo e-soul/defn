@@ -1,15 +1,15 @@
 #ifndef GRID_MANAGER_H
 #define GRID_MANAGER_H
 
-#include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 namespace defn {
 
 using namespace godot;
 
-class GridManager : public Node {
-    GDCLASS(GridManager, Node)
+class GridManager : public Object {
+    GDCLASS(GridManager, Object)
 
   public:
     // Viewport & world geometry
@@ -25,21 +25,29 @@ class GridManager : public Node {
     static constexpr double RANGED_RANGE = 384.0;  // ranged attack range in pixels
     static constexpr double SPAWN_OFFSET = 100.0;  // pixels off-screen for spawning
 
-    static double random_belt_y(); // random Y within the belt area
-    static double deploy_x();      // defender spawn: just left of camera
-    static double spawn_x();       // hostile spawn: just right of camera
+    GridManager() = default;
 
-    static void set_world_width(double w);
-    static double get_world_width();
-    static void set_camera_x(double x);
-    static double get_camera_x();
+    static GridManager *get_singleton();
+    static void register_singleton();
+    static void unregister_singleton();
+
+    double random_belt_y() const; // random Y within the belt area
+    double deploy_x() const;      // defender spawn: just left of camera
+    double spawn_x() const;       // hostile spawn: just right of camera
+
+    void set_world_width(double w);
+    double get_world_width() const;
+    void set_camera_x(double x);
+    double get_camera_x() const;
 
   protected:
     static void _bind_methods();
 
   private:
-    static double world_width_;
-    static double camera_x_;
+    static GridManager *singleton_;
+
+    double world_width_ = VIEWPORT_WIDTH * WORLD_MULTIPLIER;
+    double camera_x_ = VIEWPORT_WIDTH / 2.0;
 };
 
 } // namespace defn

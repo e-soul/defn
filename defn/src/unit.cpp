@@ -117,10 +117,11 @@ void Unit::on_died() {
 }
 
 void Unit::do_movement(double delta) {
+    auto *grid = GridManager::get_singleton();
     double speed = unit_config_.move_speed * GridManager::ATTACK_RANGE;
 
     if (unit_config_.side == UnitSide::FRIENDLY) {
-        double max_x = GridManager::get_world_width() - 100.0;
+        double max_x = grid->get_world_width() - 100.0;
         if (get_position().x < max_x) {
             set_velocity(Vector2(static_cast<real_t>(speed), 0));
             move_and_slide();

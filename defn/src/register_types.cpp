@@ -1,4 +1,5 @@
 #include <gdextension_interface.h>
+#include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/defs.hpp>
 #include <godot_cpp/godot.hpp>
@@ -23,6 +24,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     }
 
     ClassDB::register_class<defn::GridManager>();
+    defn::GridManager::register_singleton();
     ClassDB::register_class<defn::HealthComponent>();
     ClassDB::register_class<defn::HealthBarWidget>();
     ClassDB::register_class<defn::AnimationController>();
@@ -39,6 +41,8 @@ void uninitialize_module(ModuleInitializationLevel p_level) {
     if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
         return;
     }
+
+    defn::GridManager::unregister_singleton();
 }
 
 extern "C" {

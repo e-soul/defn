@@ -105,6 +105,7 @@ void GameManager::_input(const Ref<InputEvent> &event) {
 
 void GameManager::setup_background() {
     auto *loader = ResourceLoader::get_singleton();
+    auto *grid = GridManager::get_singleton();
 
     Ref<Texture2D> bg_tex = loader->load("res://assets/backgrounds/middle_east_ruin_tiling.png");
     if (!bg_tex.is_valid()) {
@@ -117,7 +118,7 @@ void GameManager::setup_background() {
     double display_width = tex_size.x * scale_factor;
 
     world_width = display_width * GridManager::WORLD_MULTIPLIER;
-    GridManager::set_world_width(world_width);
+    grid->set_world_width(world_width);
 
     auto *parallax = memnew(Parallax2D);
     parallax->set_name("Background");
@@ -150,6 +151,8 @@ void GameManager::setup_camera() {
 }
 
 void GameManager::update_camera_scroll(double delta) {
+    auto *grid = GridManager::get_singleton();
+
     // Smooth interpolation toward the target position
     double current_x = camera->get_position().x;
     double diff = camera_target_x - current_x;
@@ -163,7 +166,7 @@ void GameManager::update_camera_scroll(double delta) {
         camera->set_position(Vector2(static_cast<real_t>(camera_target_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
     }
 
-    GridManager::set_camera_x(camera->get_position().x);
+    grid->set_camera_x(camera->get_position().x);
 }
 
 void GameManager::setup_scroll_trigger() {
@@ -223,14 +226,16 @@ void GameManager::on_scroll_triggered(Area2D *area) {
 }
 
 void GameManager::deploy_friendly(const String &unit_type) {
+    auto *grid = GridManager::get_singleton();
+
     core_resource -= deploy_cost_;
 
     auto *unit = memnew(Unit);
     if (auto cfg = unit_data_.get_unit(unit_type)) {
         unit->set_unit_config(*cfg);
     }
-    double spawn_x_pos = GridManager::deploy_x();
-    double spawn_y_pos = GridManager::random_belt_y();
+    double spawn_x_pos = grid->deploy_x();
+    double spawn_y_pos = grid->random_belt_y();
     unit->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
 
     unit->connect("unit_died", callable_mp(this, &GameManager::on_friendly_died));
