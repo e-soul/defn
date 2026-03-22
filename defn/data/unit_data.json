@@ -17,7 +17,7 @@
       "ranged_flash_color": [1.0, 0.8, 0.2],
       "muzzle_flash": {
         "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
-        "offset": [220.0, -40.0],
+        "offset": [273.0, 0.0],
         "flip_h": false
       },
       "animations": {
@@ -64,7 +64,7 @@
       "ranged_flash_color": [1.0, 0.6, 0.2],
       "muzzle_flash": {
         "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Objects/Muzzle/OrangeMuzzle__%03d.png",
-        "offset": [-240.0, -40.0],
+        "offset": [-350.0, -30.0],
         "flip_h": true
       },
       "animations": {

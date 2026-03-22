@@ -29,11 +29,14 @@ This is a **Godot 4.6** game built as a **Belt Scroller** (2.5D side-scroller). 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 cd defn
-scons
+scons with_tidy=True
 ```
+
+Note: Fix any clang-tidy issues reported by the build.
 
 ## Format Code
 
 ```powershell
-git ls-files 'defn/**.h' 'defn/**.cpp' | ForEach-Object { clang-format -i $_ }
+cd defn
+git ls-files '**.h' '**.cpp' | ForEach-Object { clang-format -i $_ }
 ```
