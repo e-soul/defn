@@ -20,6 +20,7 @@ void AnimationController::configure(Node *owner_node, const UnitConfig &cfg) {
     set_anim_state(AnimState::WALK);
 
     sprite->connect("animation_finished", callable_mp(this, &AnimationController::on_animation_finished));
+    sprite->connect("animation_changed", callable_mp(this, &AnimationController::on_animation_changed));
 }
 
 void AnimationController::_process(double delta) {
@@ -142,6 +143,12 @@ void AnimationController::hide_muzzle_flash() {
 void AnimationController::on_muzzle_flash_finished() {
     if (muzzle_flash) {
         muzzle_flash->set_visible(false);
+    }
+}
+
+void AnimationController::on_animation_changed() {
+    if (sprite && sprite->get_animation() != StringName("shoot")) {
+        hide_muzzle_flash();
     }
 }
 

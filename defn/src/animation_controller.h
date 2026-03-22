@@ -36,6 +36,7 @@ class AnimationController : public Node {
     void setup_sprite_frames(Node *owner_node, const UnitConfig &cfg);
     void setup_muzzle_flash(Node *owner_node, const UnitConfig &cfg);
     void on_muzzle_flash_finished();
+    void on_animation_changed();
     void on_animation_finished();
     void start_death_fade();
 
