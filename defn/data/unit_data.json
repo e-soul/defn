@@ -20,6 +20,9 @@
         "offset": [273.0, 0.0],
         "flip_h": false
       },
+      "shoot_sfx": {
+        "path": "res://assets/sfx/walther_p38_fire.wav"
+      },
       "animations": {
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
@@ -66,6 +69,9 @@
         "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Objects/Muzzle/OrangeMuzzle__%03d.png",
         "offset": [-350.0, -25.0],
         "flip_h": true
+      },
+      "shoot_sfx": {
+        "path": "res://assets/sfx/desert_eagle_fire.wav"
       },
       "animations": {
         "walk": {

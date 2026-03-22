@@ -148,31 +148,22 @@ void CombatComponent::perform_behavior(double delta) {
 
         if (needs_pose_update) {
             if (attack_mode == AttackMode::MELEE) {
-                anim->set_anim_state(AnimState::ATTACK);
-                anim->get_sprite()->set_frame_and_progress(0, 0.0);
-                anim->get_sprite()->stop();
+                anim->hold_anim_state(AnimState::ATTACK);
             } else if (attack_mode == AttackMode::RANGED) {
-                anim->set_anim_state(AnimState::SHOOT);
-                anim->get_sprite()->set_frame_and_progress(0, 0.0);
-                anim->get_sprite()->stop();
+                anim->hold_anim_state(AnimState::SHOOT);
             }
         }
 
         if (attack_mode == AttackMode::MELEE && attack_cooldown <= 0.0) {
             attack_cooldown = 1.0 / config.melee_attack_speed;
-            anim->set_anim_state(AnimState::ATTACK);
-            anim->get_sprite()->play("attack");
-            anim->get_sprite()->set_frame_and_progress(0, 0.0);
+            anim->play_attack_animation();
             target->take_damage(config.melee_damage);
             target->flash_damage(config.melee_flash_color);
         } else if (attack_mode == AttackMode::RANGED && attack_cooldown <= 0.0) {
             attack_cooldown = 1.0 / config.ranged_attack_speed;
-            anim->set_anim_state(AnimState::SHOOT);
-            anim->get_sprite()->play("shoot");
-            anim->get_sprite()->set_frame_and_progress(0, 0.0);
+            anim->play_shoot_animation();
             target->take_damage(config.ranged_damage);
             target->flash_damage(config.ranged_flash_color);
-            anim->play_muzzle_flash();
         }
     } else {
         engaged = false;

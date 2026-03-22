@@ -20,12 +20,13 @@ class AnimationController : public Node {
 
     AnimState get_anim_state() const { return anim_state; }
     void set_anim_state(AnimState state);
+    void hold_anim_state(AnimState state);
+    void play_attack_animation();
+    void play_shoot_animation();
 
     void flash_damage(const Color &color);
     void play_muzzle_flash();
     void hide_muzzle_flash();
-
-    AnimatedSprite2D *get_sprite() const { return sprite; }
 
     void _process(double delta) override;
 
@@ -39,6 +40,7 @@ class AnimationController : public Node {
     void on_animation_changed();
     void on_animation_finished();
     void start_death_fade();
+    void trigger_shoot_effects();
 
     AnimatedSprite2D *sprite = nullptr;
     AnimatedSprite2D *muzzle_flash = nullptr;

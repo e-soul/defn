@@ -79,6 +79,11 @@ bool UnitDataLoader::load(const String &path) {
             cfg.muzzle.flip_h = static_cast<bool>(mf.get("flip_h", false));
         }
 
+        if (d.has("shoot_sfx")) {
+            Dictionary sfx = d["shoot_sfx"];
+            cfg.shoot_sfx.path = String(sfx.get("path", ""));
+        }
+
         // Animations
         if (d.has("animations")) {
             Dictionary anims = d["animations"];

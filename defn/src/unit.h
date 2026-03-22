@@ -14,6 +14,7 @@ class HealthBarWidget;
 class AnimationController;
 class CombatComponent;
 class DetectionComponent;
+class SoundController;
 
 class Unit : public CharacterBody2D {
     GDCLASS(Unit, CharacterBody2D)
@@ -52,6 +53,7 @@ class Unit : public CharacterBody2D {
     AnimationController *animation = nullptr;
     CombatComponent *combat = nullptr;
     DetectionComponent *detection = nullptr;
+    SoundController *sound = nullptr;
 };
 
 } // namespace defn

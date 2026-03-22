@@ -27,6 +27,10 @@ struct MuzzleConfig {
     bool flip_h = false;
 };
 
+struct ShootSfxConfig {
+  String path;
+};
+
 struct UnitConfig {
     String name;
     UnitSide side = UnitSide::FRIENDLY;
@@ -44,6 +48,7 @@ struct UnitConfig {
     Color melee_flash_color = Color(1, 1, 1);
     Color ranged_flash_color = Color(1, 1, 1);
     MuzzleConfig muzzle;
+    ShootSfxConfig shoot_sfx;
     std::vector<std::pair<String, AnimConfig>> animations;
 };
 

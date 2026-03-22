@@ -9,7 +9,9 @@
 
 namespace defn {
 
-void AnimationController::_bind_methods() {}
+void AnimationController::_bind_methods() {
+    ADD_SIGNAL(MethodInfo("shoot_effect_triggered"));
+}
 
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg) {
     sprite = memnew(AnimatedSprite2D);
@@ -119,6 +121,37 @@ void AnimationController::set_anim_state(AnimState state) {
     }
 }
 
+void AnimationController::hold_anim_state(AnimState state) {
+    set_anim_state(state);
+    if (!sprite) {
+        return;
+    }
+
+    sprite->set_frame_and_progress(0, 0.0);
+    sprite->stop();
+}
+
+void AnimationController::play_attack_animation() {
+    set_anim_state(AnimState::ATTACK);
+    if (!sprite) {
+        return;
+    }
+
+    sprite->play("attack");
+    sprite->set_frame_and_progress(0, 0.0);
+}
+
+void AnimationController::play_shoot_animation() {
+    set_anim_state(AnimState::SHOOT);
+    if (!sprite) {
+        return;
+    }
+
+    sprite->play("shoot");
+    sprite->set_frame_and_progress(0, 0.0);
+    trigger_shoot_effects();
+}
+
 void AnimationController::flash_damage(const Color &color) {
     if (sprite) {
         sprite->set_modulate(color);
@@ -156,6 +189,11 @@ void AnimationController::on_animation_finished() {
     if (anim_state == AnimState::DEATH) {
         start_death_fade();
     }
+}
+
+void AnimationController::trigger_shoot_effects() {
+    play_muzzle_flash();
+    emit_signal("shoot_effect_triggered");
 }
 
 void AnimationController::start_death_fade() {

@@ -5,6 +5,7 @@
 #include "grid_manager.h"
 #include "health_bar_widget.h"
 #include "health_component.h"
+#include "sound_controller.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -57,6 +58,12 @@ void Unit::_ready() {
     animation->set_name("AnimationController");
     add_child(animation);
     animation->configure(this, unit_config_);
+
+    sound = memnew(SoundController);
+    sound->set_name("SoundController");
+    add_child(sound);
+    sound->configure(this, unit_config_);
+    animation->connect("shoot_effect_triggered", callable_mp(sound, &SoundController::play_shoot_sfx));
 
     // Detection
     detection = memnew(DetectionComponent);
