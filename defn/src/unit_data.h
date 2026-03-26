@@ -34,6 +34,14 @@ struct ShootSfxConfig {
     double pitch_variance = 0.0;
 };
 
+struct GlobalShootSfxConfig {
+    double pitch_variance = 0.0;
+};
+
+struct GlobalUnitConfig {
+    GlobalShootSfxConfig shoot_sfx;
+};
+
 struct UnitConfig {
     String name;
     UnitSide side = UnitSide::FRIENDLY;
@@ -57,11 +65,14 @@ struct UnitConfig {
 
 class UnitDataLoader {
   public:
-    bool load(const String &path);
+        bool load(const String &unit_path, const String &global_path);
 
     std::optional<UnitConfig> get_unit(const String &name) const;
 
+        const GlobalUnitConfig &get_globals() const { return globals_; }
+
   private:
+        GlobalUnitConfig globals_;
     std::vector<UnitConfig> units_;
 };
 

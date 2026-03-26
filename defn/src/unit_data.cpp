@@ -11,6 +11,28 @@ float as_float(const Variant &value) {
     return static_cast<float>(static_cast<double>(value));
 }
 
+bool parse_json_file(const String &path, Variant &out_data) {
+    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
+    if (!file.is_valid()) {
+        UtilityFunctions::printerr("UnitDataLoader: Failed to open: ", path);
+        return false;
+    }
+
+    String json_text = file->get_as_text();
+    file->close();
+
+    Ref<JSON> json;
+    json.instantiate();
+    const Error err = json->parse(json_text);
+    if (err != OK) {
+        UtilityFunctions::printerr("UnitDataLoader: JSON parse error in ", path, ": ", json->get_error_message());
+        return false;
+    }
+
+    out_data = json->get_data();
+    return true;
+}
+
 Color parse_color(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
         const auto red = as_float(arr[0]);
@@ -24,25 +46,26 @@ Color parse_color(const Array &arr, const Color &fallback) {
 
 } // namespace
 
-bool UnitDataLoader::load(const String &path) {
-    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-    if (!file.is_valid()) {
-        UtilityFunctions::printerr("UnitDataLoader: Failed to open: ", path);
+bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
+    Variant global_data_variant;
+    if (!parse_json_file(global_path, global_data_variant)) {
         return false;
     }
 
-    String json_text = file->get_as_text();
-    file->close();
+    Dictionary global_data = global_data_variant;
+    globals_ = {};
 
-    Ref<JSON> json;
-    json.instantiate();
-    Error err = json->parse(json_text);
-    if (err != OK) {
-        UtilityFunctions::printerr("UnitDataLoader: JSON parse error: ", json->get_error_message());
+    if (global_data.has("shoot_sfx")) {
+        Dictionary global_sfx = global_data["shoot_sfx"];
+        globals_.shoot_sfx.pitch_variance = static_cast<double>(global_sfx.get("pitch_variance", 0.0));
+    }
+
+    Variant unit_data_variant;
+    if (!parse_json_file(unit_path, unit_data_variant)) {
         return false;
     }
 
-    Dictionary data = json->get_data();
+    Dictionary data = unit_data_variant;
     Dictionary units_dict = data.get("units", Dictionary());
     Array keys = units_dict.keys();
     units_.clear();
@@ -88,8 +111,9 @@ bool UnitDataLoader::load(const String &path) {
             cfg.shoot_sfx.path = String(sfx.get("path", ""));
             cfg.shoot_sfx.volume_linear = static_cast<double>(sfx.get("volume_linear", 1.0));
             cfg.shoot_sfx.pitch_scale = static_cast<double>(sfx.get("pitch_scale", 1.0));
-            cfg.shoot_sfx.pitch_variance = static_cast<double>(sfx.get("pitch_variance", 0.0));
         }
+
+        cfg.shoot_sfx.pitch_variance = globals_.shoot_sfx.pitch_variance;
 
         // Animations
         if (unit_dict.has("animations")) {

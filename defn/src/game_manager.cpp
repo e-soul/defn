@@ -27,7 +27,7 @@ void GameManager::_ready() {
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
     // Load unit data from JSON
-    unit_data_.load("res://data/unit_data.json");
+    unit_data_.load("res://data/unit_data.json", "res://data/unit_globals.json");
     if (auto cfg = unit_data_.get_unit("swordsman")) {
         deploy_cost_ = cfg->cost;
     }
