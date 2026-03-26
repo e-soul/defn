@@ -14,7 +14,7 @@ void CombatComponent::configure(Unit *p_unit, HealthComponent *p_health, Animati
     anim = p_anim;
     detection_area = p_detection_area;
     config = cfg;
-    attack_cooldown = 0.0;
+    attack_cooldown_seconds = 0.0;
 }
 
 void CombatComponent::_process(double delta) {
@@ -127,8 +127,11 @@ void CombatComponent::find_new_target() {
 // --- Combat ---
 
 void CombatComponent::update_cooldowns(double delta) {
-    if (attack_cooldown > 0.0) {
-        attack_cooldown -= delta;
+    if (attack_cooldown_seconds > 0.0) {
+        attack_cooldown_seconds -= delta;
+        if (attack_cooldown_seconds < 0.0) {
+            attack_cooldown_seconds = 0.0;
+        }
     }
 }
 
@@ -154,28 +157,55 @@ void CombatComponent::perform_behavior(double delta) {
             }
         }
 
-        if (attack_mode == AttackMode::MELEE && attack_cooldown <= 0.0) {
-            attack_cooldown = 1.0 / config.melee_attack_speed;
-            anim->play_attack_animation();
-            target->take_damage(config.melee_damage);
-            target->flash_damage(config.melee_flash_color);
-        } else if (attack_mode == AttackMode::RANGED && attack_cooldown <= 0.0) {
-            attack_cooldown = 1.0 / config.ranged_attack_speed;
-            anim->play_shoot_animation();
-            target->take_damage(config.ranged_damage);
-            target->flash_damage(config.ranged_flash_color);
+        const double attack_period_seconds = get_attack_period_seconds();
+        if (attack_period_seconds > 0.0 && attack_cooldown_seconds <= 0.0) {
+            trigger_attack();
+            attack_cooldown_seconds = attack_period_seconds;
         }
     } else {
         engaged = false;
         target = nullptr;
         anim->hide_muzzle_flash();
         attack_mode = AttackMode::NONE;
+        attack_cooldown_seconds = 0.0;
 
         auto current_anim = anim->get_anim_state();
         if (current_anim == AnimState::ATTACK || current_anim == AnimState::SHOOT) {
             anim->set_anim_state(AnimState::WALK);
         }
         unit->do_movement(delta);
+    }
+}
+
+double CombatComponent::get_attack_period_seconds() const {
+    switch (attack_mode) {
+    case AttackMode::MELEE:
+        return config.melee_attack_period_seconds;
+    case AttackMode::RANGED:
+        return config.ranged_attack_period_seconds;
+    case AttackMode::NONE:
+        return 0.0;
+    }
+
+    return 0.0;
+}
+
+void CombatComponent::trigger_attack() {
+    if (!target) {
+        return;
+    }
+
+    if (attack_mode == AttackMode::MELEE) {
+        anim->play_attack_animation();
+        target->take_damage(config.melee_damage);
+        target->flash_damage(config.melee_flash_color);
+        return;
+    }
+
+    if (attack_mode == AttackMode::RANGED) {
+        anim->play_shoot_animation();
+        target->take_damage(config.ranged_damage);
+        target->flash_damage(config.ranged_flash_color);
     }
 }
 

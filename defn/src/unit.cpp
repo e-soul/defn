@@ -83,9 +83,9 @@ void Unit::_ready() {
     CombatComponent::Config combat_cfg{
         .side = unit_config_.side,
         .melee_damage = unit_config_.melee_damage,
-        .melee_attack_speed = unit_config_.melee_attack_speed,
+        .melee_attack_period_seconds = unit_config_.melee_attack_period_seconds,
         .ranged_damage = unit_config_.ranged_damage,
-        .ranged_attack_speed = unit_config_.ranged_attack_speed,
+        .ranged_attack_period_seconds = unit_config_.ranged_attack_period_seconds,
         .attack_range = attack_range,
         .ranged_range = ranged_range,
         .melee_flash_color = unit_config_.melee_flash_color,

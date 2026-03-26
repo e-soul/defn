@@ -47,9 +47,9 @@ struct UnitConfig {
     UnitSide side = UnitSide::FRIENDLY;
     int hp = 100;
     int melee_damage = 15;
-    double melee_attack_speed = 1.0;
+    double melee_attack_period_seconds = 1.0;
     int ranged_damage = 8;
-    double ranged_attack_speed = 1.5;
+    double ranged_attack_period_seconds = 2.0 / 3.0;
     double move_speed = 0.5;
     int cost = 0;
     int bounty = 0;

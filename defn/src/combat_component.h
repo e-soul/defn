@@ -23,9 +23,9 @@ class CombatComponent : public Node {
     struct Config {
         UnitSide side;
         int melee_damage;
-        double melee_attack_speed;
+      double melee_attack_period_seconds;
         int ranged_damage;
-        double ranged_attack_speed;
+      double ranged_attack_period_seconds;
         double attack_range;
         double ranged_range;
         Color melee_flash_color;
@@ -50,6 +50,8 @@ class CombatComponent : public Node {
     void update_cooldowns(double delta);
     void perform_behavior(double delta);
     void check_breach();
+    double get_attack_period_seconds() const;
+    void trigger_attack();
 
     Unit *unit = nullptr;
     HealthComponent *health = nullptr;
@@ -57,7 +59,7 @@ class CombatComponent : public Node {
     Area2D *detection_area = nullptr;
 
     Config config{};
-    double attack_cooldown = 0.0;
+    double attack_cooldown_seconds = 0.0;
     AttackMode attack_mode = AttackMode::NONE;
     bool engaged = false;
     Unit *target = nullptr;

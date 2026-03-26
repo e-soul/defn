@@ -82,9 +82,9 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
         cfg.hp = static_cast<int>(unit_dict.get("hp", 100));
         cfg.melee_damage = static_cast<int>(unit_dict.get("melee_damage", 15));
-        cfg.melee_attack_speed = static_cast<double>(unit_dict.get("melee_attack_speed", 1.0));
+        cfg.melee_attack_period_seconds = static_cast<double>(unit_dict.get("melee_attack_period_seconds", 1.0));
         cfg.ranged_damage = static_cast<int>(unit_dict.get("ranged_damage", 8));
-        cfg.ranged_attack_speed = static_cast<double>(unit_dict.get("ranged_attack_speed", 1.5));
+        cfg.ranged_attack_period_seconds = static_cast<double>(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
         cfg.move_speed = static_cast<double>(unit_dict.get("move_speed", 0.5));
         cfg.cost = static_cast<int>(unit_dict.get("cost", 0));
         cfg.bounty = static_cast<int>(unit_dict.get("bounty", 0));
