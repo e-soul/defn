@@ -1,6 +1,6 @@
 {
   "units": {
-    "swordsman": {
+    "breacher": {
       "side": "friendly",
       "hp": 300,
       "melee_damage": 15,
@@ -53,7 +53,166 @@
         }
       }
     },
-    "grunt": {
+    "marksman": {
+      "side": "friendly",
+      "hp": 300,
+      "melee_damage": 15,
+      "melee_attack_period_seconds": 1.0,
+      "ranged_damage": 8,
+      "ranged_attack_period_seconds": 0.6666667,
+      "move_speed": 0.5,
+      "cost": 25,
+      "bounty": 0,
+      "scale": 0.27,
+      "sprite_flip_h": false,
+      "health_bar_color": [0.2, 0.9, 0.2, 0.9],
+      "health_bar_offset": [-140, -260],
+      "melee_flash_color": [1.0, 0.2, 0.2],
+      "ranged_flash_color": [1.0, 0.8, 0.2],
+      "muzzle_flash": {
+        "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
+        "offset": [273.0, 0.0],
+        "flip_h": false
+      },
+      "shoot_sfx": {
+        "path": "res://assets/sfx/walther_p38_fire.wav",
+        "volume_linear": 0.2,
+        "pitch_scale": 1.0
+      },
+      "animations": {
+        "walk": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
+        "attack": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Melee__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": false
+        },
+        "death": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Dead__%03d.png",
+          "frame_count": 10,
+          "speed": 8.0,
+          "loop": false
+        },
+        "shoot": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Shoot__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": false
+        }
+      }
+    },
+    "impact": {
+      "side": "friendly",
+      "hp": 300,
+      "melee_damage": 15,
+      "melee_attack_period_seconds": 1.0,
+      "ranged_damage": 8,
+      "ranged_attack_period_seconds": 0.6666667,
+      "move_speed": 0.5,
+      "cost": 25,
+      "bounty": 0,
+      "scale": 0.27,
+      "sprite_flip_h": false,
+      "health_bar_color": [0.2, 0.9, 0.2, 0.9],
+      "health_bar_offset": [-140, -260],
+      "melee_flash_color": [1.0, 0.2, 0.2],
+      "ranged_flash_color": [1.0, 0.8, 0.2],
+      "muzzle_flash": {
+        "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
+        "offset": [273.0, 0.0],
+        "flip_h": false
+      },
+      "shoot_sfx": {
+        "path": "res://assets/sfx/walther_p38_fire.wav",
+        "volume_linear": 0.2,
+        "pitch_scale": 1.0
+      },
+      "animations": {
+        "walk": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
+        "attack": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Melee__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": false
+        },
+        "death": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Dead__%03d.png",
+          "frame_count": 10,
+          "speed": 8.0,
+          "loop": false
+        },
+        "shoot": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Shoot__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": false
+        }
+      }
+    },
+    "operator": {
+      "side": "friendly",
+      "hp": 300,
+      "melee_damage": 15,
+      "melee_attack_period_seconds": 1.0,
+      "ranged_damage": 8,
+      "ranged_attack_period_seconds": 0.6666667,
+      "move_speed": 0.5,
+      "cost": 25,
+      "bounty": 0,
+      "scale": 0.27,
+      "sprite_flip_h": false,
+      "health_bar_color": [0.2, 0.9, 0.2, 0.9],
+      "health_bar_offset": [-140, -260],
+      "melee_flash_color": [1.0, 0.2, 0.2],
+      "ranged_flash_color": [1.0, 0.8, 0.2],
+      "muzzle_flash": {
+        "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
+        "offset": [273.0, 0.0],
+        "flip_h": false
+      },
+      "shoot_sfx": {
+        "path": "res://assets/sfx/walther_p38_fire.wav",
+        "volume_linear": 0.2,
+        "pitch_scale": 1.0
+      },
+      "animations": {
+        "walk": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
+        "attack": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": false
+        },
+        "death": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
+          "frame_count": 10,
+          "speed": 8.0,
+          "loop": false
+        },
+        "shoot": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Shoot__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": false
+        }
+      }
+    },
+    "jackal": {
       "side": "hostile",
       "hp": 100,
       "melee_damage": 15,

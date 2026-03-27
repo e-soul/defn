@@ -94,7 +94,7 @@ void WaveManager::load_level(const String &path) {
             Dictionary spawn_dict = spawn_val;
             SpawnEvent spawn_event;
             spawn_event.time = static_cast<double>(spawn_dict.get("time", 0.0));
-            spawn_event.type = String(spawn_dict.get("type", "grunt"));
+            spawn_event.type = String(spawn_dict.get("type", "jackal"));
             wave_data.spawns.push_back(spawn_event);
 
             FlatSpawn flat_spawn;

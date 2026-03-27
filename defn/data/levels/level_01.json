@@ -7,32 +7,32 @@
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 5.0,  "type": "grunt"},
-        {"time": 7.0,  "type": "grunt"},
-        {"time": 9.0,  "type": "grunt"}
+        {"time": 5.0,  "type": "jackal"},
+        {"time": 7.0,  "type": "jackal"},
+        {"time": 9.0,  "type": "jackal"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 30.0, "type": "grunt"},
-        {"time": 32.0, "type": "grunt"},
-        {"time": 34.0, "type": "grunt"},
-        {"time": 36.0, "type": "grunt"},
-        {"time": 38.0, "type": "grunt"}
+        {"time": 30.0, "type": "jackal"},
+        {"time": 32.0, "type": "jackal"},
+        {"time": 34.0, "type": "jackal"},
+        {"time": 36.0, "type": "jackal"},
+        {"time": 38.0, "type": "jackal"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
-        {"time": 60.0, "type": "grunt"},
-        {"time": 61.0, "type": "grunt"},
-        {"time": 63.0, "type": "grunt"},
-        {"time": 64.0, "type": "grunt"},
-        {"time": 66.0, "type": "grunt"},
-        {"time": 67.0, "type": "grunt"},
-        {"time": 69.0, "type": "grunt"},
-        {"time": 71.0, "type": "grunt"}
+        {"time": 60.0, "type": "jackal"},
+        {"time": 61.0, "type": "jackal"},
+        {"time": 63.0, "type": "jackal"},
+        {"time": 64.0, "type": "jackal"},
+        {"time": 66.0, "type": "jackal"},
+        {"time": 67.0, "type": "jackal"},
+        {"time": 69.0, "type": "jackal"},
+        {"time": 71.0, "type": "jackal"}
       ]
     }
   ]

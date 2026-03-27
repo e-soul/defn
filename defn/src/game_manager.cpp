@@ -28,7 +28,7 @@ void GameManager::_ready() {
 
     // Load unit data from JSON
     unit_data_.load("res://data/unit_data.json", "res://data/unit_globals.json");
-    if (auto cfg = unit_data_.get_unit("swordsman")) {
+    if (auto cfg = unit_data_.get_unit("breacher")) {
         deploy_cost_ = cfg->cost;
     }
 
@@ -99,7 +99,7 @@ void GameManager::_input(const Ref<InputEvent> &event) {
     }
 
     if (core_resource >= deploy_cost_) {
-        deploy_friendly("swordsman");
+        deploy_friendly("breacher");
     }
 }
 

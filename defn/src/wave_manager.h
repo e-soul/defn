@@ -15,7 +15,7 @@ using namespace godot;
 
 struct SpawnEvent {
     double time = 0.0;
-    String type = "grunt";
+  String type = "jackal";
 };
 
 struct WaveData {
