@@ -235,7 +235,7 @@ void GameManager::deploy_friendly(const String &unit_type) {
         unit->set_unit_config(*cfg);
     }
     double spawn_x_pos = grid->deploy_x();
-    double spawn_y_pos = grid->random_belt_y();
+    double spawn_y_pos = GridManager::random_belt_y();
     unit->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
 
     unit->connect("unit_died", callable_mp(this, &GameManager::on_friendly_died));

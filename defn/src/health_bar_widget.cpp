@@ -6,18 +6,18 @@ namespace defn {
 
 void HealthBarWidget::_bind_methods() {}
 
-void HealthBarWidget::configure(HealthComponent *health, const Color &fill_color) {
-    setup_bar(health->get_max_hp(), fill_color);
+void HealthBarWidget::configure(HealthComponent *health, const Color &fill_color, const Vector2 &offset) {
+    setup_bar(health->get_max_hp(), fill_color, offset);
     health->connect("health_changed", callable_mp(this, &HealthBarWidget::on_health_changed));
 }
 
-void HealthBarWidget::setup_bar(int max_hp, const Color &fill_color) {
-    constexpr double bar_width = 102.0;
-    constexpr double bar_height = 6.0;
+void HealthBarWidget::setup_bar(int max_hp, const Color &fill_color, const Vector2 &offset) {
+    constexpr double bar_width = 170;
+    constexpr double bar_height = 10;
 
     bar = memnew(ProgressBar);
     bar->set_custom_minimum_size(Vector2(bar_width, bar_height));
-    bar->set_position(Vector2(-bar_width * 0.5, 0));
+    bar->set_position(Vector2(offset.x, offset.y));
     bar->set_min(0.0);
     bar->set_max(max_hp);
     bar->set_value(max_hp);

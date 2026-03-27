@@ -56,6 +56,7 @@ struct UnitConfig {
     double scale = 0.27;
     bool sprite_flip_h = false;
     Color health_bar_color = Color(0, 1, 0, 0.9);
+    Vector2 health_bar_offset = Vector2(0.0, -241.0);
     Color melee_flash_color = Color(1, 1, 1);
     Color ranged_flash_color = Color(1, 1, 1);
     MuzzleConfig muzzle;

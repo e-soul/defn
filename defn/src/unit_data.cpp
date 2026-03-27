@@ -44,6 +44,14 @@ Color parse_color(const Array &arr, const Color &fallback) {
     return fallback;
 }
 
+Vector2 parse_vector2(const Variant &value, const Vector2 &fallback) {
+    Array arr = value;
+    if (arr.size() >= 2) {
+        return {as_float(arr[0]), as_float(arr[1])};
+    }
+    return fallback;
+}
+
 } // namespace
 
 bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
@@ -92,6 +100,7 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
         cfg.sprite_flip_h = static_cast<bool>(unit_dict.get("sprite_flip_h", false));
 
         cfg.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), Color(0, 1, 0, 0.9));
+        cfg.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), Vector2(0.0, -241.0));
         cfg.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), Color(1, 1, 1));
         cfg.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), Color(1, 1, 1));
 

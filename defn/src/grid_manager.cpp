@@ -11,7 +11,7 @@ using godot::UtilityFunctions;
 GridManager *GridManager::singleton_ = nullptr;
 
 void GridManager::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("random_belt_y"), &GridManager::random_belt_y);
+	ClassDB::bind_static_method(get_class_static(), D_METHOD("random_belt_y"), &GridManager::random_belt_y);
 	ClassDB::bind_method(D_METHOD("deploy_x"), &GridManager::deploy_x);
 	ClassDB::bind_method(D_METHOD("spawn_x"), &GridManager::spawn_x);
 	ClassDB::bind_method(D_METHOD("set_world_width", "width"), &GridManager::set_world_width);
@@ -41,7 +41,7 @@ void GridManager::unregister_singleton() {
 	singleton_ = nullptr;
 }
 
-double GridManager::random_belt_y() const { return UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y); }
+	double GridManager::random_belt_y() { return UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y); }
 
 double GridManager::deploy_x() const { return camera_x_ - (VIEWPORT_WIDTH / 2.0) - SPAWN_OFFSET; }
 

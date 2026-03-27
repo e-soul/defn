@@ -4,6 +4,8 @@
 #include "health_component.h"
 #include "unit.h"
 
+#include <algorithm>
+
 namespace defn {
 
 void CombatComponent::_bind_methods() {}
@@ -128,10 +130,7 @@ void CombatComponent::find_new_target() {
 
 void CombatComponent::update_cooldowns(double delta) {
     if (attack_cooldown_seconds > 0.0) {
-        attack_cooldown_seconds -= delta;
-        if (attack_cooldown_seconds < 0.0) {
-            attack_cooldown_seconds = 0.0;
-        }
+        attack_cooldown_seconds = std::max(attack_cooldown_seconds - delta, 0.0);
     }
 }
 

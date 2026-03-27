@@ -44,7 +44,7 @@ void WaveManager::_process(double delta) {
                 enemy->set_unit_config(*cfg);
             }
         }
-        double spawn_y_pos = grid->random_belt_y();
+        double spawn_y_pos = GridManager::random_belt_y();
         double spawn_x_pos = grid->spawn_x();
         enemy->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
 

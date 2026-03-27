@@ -16,14 +16,14 @@ class HealthBarWidget : public Node2D {
     GDCLASS(HealthBarWidget, Node2D)
 
   public:
-    void configure(HealthComponent *health, const Color &fill_color);
+    void configure(HealthComponent *health, const Color &fill_color, const Vector2 &offset);
 
   protected:
     static void _bind_methods();
 
   private:
     void on_health_changed(int current, int max);
-    void setup_bar(int max_hp, const Color &fill_color);
+    void setup_bar(int max_hp, const Color &fill_color, const Vector2 &offset);
 
     ProgressBar *bar = nullptr;
     Ref<StyleBoxFlat> fill_style;

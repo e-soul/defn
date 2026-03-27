@@ -13,6 +13,7 @@
       "scale": 0.27,
       "sprite_flip_h": false,
       "health_bar_color": [0.2, 0.9, 0.2, 0.9],
+      "health_bar_offset": [-140, -260],
       "melee_flash_color": [1.0, 0.2, 0.2],
       "ranged_flash_color": [1.0, 0.8, 0.2],
       "muzzle_flash": {
@@ -65,6 +66,7 @@
       "scale": 0.247,
       "sprite_flip_h": true,
       "health_bar_color": [0.9, 0.15, 0.15, 0.9],
+      "health_bar_offset": [30, -270],
       "melee_flash_color": [1.0, 1.0, 1.0],
       "ranged_flash_color": [1.0, 0.6, 0.2],
       "muzzle_flash": {

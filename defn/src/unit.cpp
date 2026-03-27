@@ -49,9 +49,8 @@ void Unit::_ready() {
     // Health bar
     health_bar_widget = memnew(HealthBarWidget);
     health_bar_widget->set_name("HealthBarWidget");
-    health_bar_widget->set_position(Vector2(0, -56.0));
     add_child(health_bar_widget);
-    health_bar_widget->configure(health, unit_config_.health_bar_color);
+    health_bar_widget->configure(health, unit_config_.health_bar_color, unit_config_.health_bar_offset);
 
     // Animation
     animation = memnew(AnimationController);
