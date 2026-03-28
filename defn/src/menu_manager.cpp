@@ -1,14 +1,23 @@
 #include "menu_manager.h"
+#include <cmath>
+#include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/center_container.hpp>
+#include <godot_cpp/classes/check_button.hpp>
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/h_box_container.hpp>
+#include <godot_cpp/classes/h_slider.hpp>
 #include <godot_cpp/classes/json.hpp>
+#include <godot_cpp/classes/label.hpp>
+#include <godot_cpp/classes/option_button.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <utility>
 
 namespace defn {
 
@@ -111,6 +120,10 @@ void MenuManager::setup_background() {
 }
 
 void MenuManager::clear_buttons() {
+    resolution_dropdown_ = nullptr;
+    volume_labels_.clear();
+    display_mode_values_.clear();
+    resolution_values_.clear();
     if (!button_container_) {
         return;
     }
@@ -132,6 +145,13 @@ void MenuManager::show_menu(const String &menu_name) {
     }
 
     Dictionary menu = menus[menu_name];
+
+    String menu_type = menu.get("type", "buttons");
+    if (menu_type == "options") {
+        build_options_ui(menu);
+        return;
+    }
+
     Array entries = menu.get("entries", Array());
     Dictionary style_data = menu_data_.get("style", Dictionary());
 
@@ -188,6 +208,261 @@ void MenuManager::on_button_pressed(const String &action, const String &target) 
         get_tree()->change_scene_to_file("res://scenes/game.tscn");
     } else if (action == "quit") {
         get_tree()->quit();
+    }
+}
+
+void MenuManager::build_options_ui(const Dictionary &menu_def) {
+    Dictionary style = menu_data_.get("style", Dictionary());
+    Dictionary opts_style = style.get("options", Dictionary());
+    Dictionary normal_sd = style.get("normal", Dictionary());
+    Dictionary hover_sd = style.get("hover", Dictionary());
+    Dictionary pressed_sd = style.get("pressed", Dictionary());
+
+    int label_font_size = static_cast<int>(opts_style.get("label_font_size", 24));
+    int label_min_w = static_cast<int>(opts_style.get("label_min_width", 250));
+    int control_min_w = static_cast<int>(opts_style.get("control_min_width", 300));
+    int control_min_h = static_cast<int>(opts_style.get("control_min_height", 40));
+    int row_sep = static_cast<int>(opts_style.get("row_separation", 12));
+    int section_font_size = static_cast<int>(opts_style.get("section_font_size", 28));
+    int value_font_size = static_cast<int>(opts_style.get("value_font_size", 20));
+    Color section_color = parse_color_array(opts_style.get("section_font_color", Array()), Color(1, 0.85, 0.3));
+    Color label_color = parse_color_array(opts_style.get("label_font_color", Array()), Color(0.85, 0.85, 0.9));
+    Color value_color = parse_color_array(opts_style.get("value_font_color", Array()), Color(0.7, 0.8, 1.0));
+    Color normal_font = parse_color_array(normal_sd.get("font_color", Array()), Color(0.9, 0.9, 0.95));
+    Color hover_font = parse_color_array(hover_sd.get("font_color", Array()), Color(1, 1, 1));
+    Color pressed_font = parse_color_array(pressed_sd.get("font_color", Array()), Color(0.8, 0.8, 0.9));
+
+    button_container_->add_theme_constant_override("separation", row_sep);
+
+    // Read current engine state
+    auto *ds = DisplayServer::get_singleton();
+    auto *audio = AudioServer::get_singleton();
+    auto current_mode = ds->window_get_mode();
+    Vector2i current_size = ds->window_get_size();
+    bool vsync_on = ds->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED;
+
+    Array settings = menu_def.get("settings", Array());
+    for (int i = 0; i < settings.size(); ++i) {
+        Dictionary setting = settings[i];
+        String type = setting.get("type", "");
+
+        if (type == "section") {
+            auto *section_label = memnew(Label);
+            section_label->set_text(String(setting.get("label", "")));
+            section_label->add_theme_font_size_override("font_size", section_font_size);
+            section_label->add_theme_color_override("font_color", section_color);
+            section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+            button_container_->add_child(section_label);
+            continue;
+        }
+
+        auto *row = memnew(HBoxContainer);
+        row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+        row->add_theme_constant_override("separation", 16);
+
+        auto *name_label = memnew(Label);
+        name_label->set_text(String(setting.get("label", "???")));
+        name_label->set_custom_minimum_size(Vector2(static_cast<real_t>(label_min_w), 0));
+        name_label->add_theme_font_size_override("font_size", label_font_size);
+        name_label->add_theme_color_override("font_color", label_color);
+        name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+        row->add_child(name_label);
+
+        String setting_id = setting.get("setting", "");
+
+        if (type == "dropdown" && setting_id == "display_mode") {
+            auto *opt = memnew(OptionButton);
+            opt->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            opt->set_focus_mode(Control::FOCUS_NONE);
+            opt->add_theme_font_size_override("font_size", label_font_size);
+            opt->add_theme_stylebox_override("normal", make_style(normal_sd));
+            opt->add_theme_stylebox_override("hover", make_style(hover_sd));
+            opt->add_theme_stylebox_override("pressed", make_style(pressed_sd));
+            opt->add_theme_color_override("font_color", normal_font);
+            opt->add_theme_color_override("font_hover_color", hover_font);
+            opt->add_theme_color_override("font_pressed_color", pressed_font);
+
+            display_mode_values_.clear();
+            Array options = setting.get("options", Array());
+            int selected = 0;
+            for (int j = 0; j < options.size(); ++j) {
+                Dictionary opt_data = options[j];
+                opt->add_item(String(opt_data.get("label", "???")));
+                int mode_val = static_cast<int>(opt_data.get("value", 0));
+                display_mode_values_.push_back(mode_val);
+                if (mode_val == static_cast<int>(current_mode)) {
+                    selected = j;
+                }
+            }
+            opt->select(selected);
+            opt->connect("item_selected", callable_mp(this, &MenuManager::on_display_mode_changed));
+            row->add_child(opt);
+        } else if (type == "dropdown" && setting_id == "resolution") {
+            auto *opt = memnew(OptionButton);
+            opt->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            opt->set_focus_mode(Control::FOCUS_NONE);
+            opt->add_theme_font_size_override("font_size", label_font_size);
+            opt->add_theme_stylebox_override("normal", make_style(normal_sd));
+            opt->add_theme_stylebox_override("hover", make_style(hover_sd));
+            opt->add_theme_stylebox_override("pressed", make_style(pressed_sd));
+            opt->add_theme_color_override("font_color", normal_font);
+            opt->add_theme_color_override("font_hover_color", hover_font);
+            opt->add_theme_color_override("font_pressed_color", pressed_font);
+
+            resolution_values_.clear();
+            Array options = setting.get("options", Array());
+            int selected = 0;
+            for (int j = 0; j < options.size(); ++j) {
+                Dictionary opt_data = options[j];
+                opt->add_item(String(opt_data.get("label", "???")));
+                String value_str = opt_data.get("value", "");
+                PackedStringArray parts = value_str.split("x");
+                Vector2i res(1920, 1080);
+                if (parts.size() == 2) {
+                    res = Vector2i(parts[0].to_int(), parts[1].to_int());
+                }
+                resolution_values_.push_back(res);
+                if (res == current_size) {
+                    selected = j;
+                }
+            }
+            opt->select(selected);
+
+            bool windowed = (current_mode == DisplayServer::WINDOW_MODE_WINDOWED);
+            opt->set_disabled(!windowed);
+            if (!windowed) {
+                opt->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
+            }
+
+            resolution_dropdown_ = opt;
+            opt->connect("item_selected", callable_mp(this, &MenuManager::on_resolution_changed));
+            row->add_child(opt);
+        } else if (type == "checkbox" && setting_id == "vsync") {
+            auto *check = memnew(CheckButton);
+            check->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            check->set_focus_mode(Control::FOCUS_NONE);
+            check->set_pressed(vsync_on);
+            check->connect("toggled", callable_mp(this, &MenuManager::on_vsync_toggled));
+            row->add_child(check);
+        } else if (type == "slider" && setting_id == "bus_volume") {
+            String bus_name = setting.get("bus", "Master");
+            int min_val = static_cast<int>(setting.get("min", 0));
+            int max_val = static_cast<int>(setting.get("max", 100));
+            int step = static_cast<int>(setting.get("step", 1));
+
+            int bus_idx = audio->get_bus_index(bus_name);
+            double current_pct = 100.0;
+            if (bus_idx >= 0) {
+                auto db = static_cast<double>(audio->get_bus_volume_db(bus_idx));
+                current_pct = std::pow(10.0, db / 20.0) * 100.0;
+            }
+
+            auto *slider = memnew(HSlider);
+            slider->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            slider->set_min(min_val);
+            slider->set_max(max_val);
+            slider->set_step(step);
+            slider->set_value(current_pct);
+            slider->set_focus_mode(Control::FOCUS_NONE);
+            slider->connect("value_changed", callable_mp(this, &MenuManager::on_volume_changed).bind(bus_name));
+            row->add_child(slider);
+
+            auto *val_label = memnew(Label);
+            val_label->set_text(vformat("%d%%", static_cast<int>(current_pct)));
+            val_label->set_custom_minimum_size(Vector2(60, 0));
+            val_label->add_theme_font_size_override("font_size", value_font_size);
+            val_label->add_theme_color_override("font_color", value_color);
+            val_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+            row->add_child(val_label);
+
+            volume_labels_.emplace_back(bus_name, val_label);
+        }
+
+        button_container_->add_child(row);
+    }
+
+    // Back button
+    Dictionary back = menu_def.get("back", Dictionary());
+    if (!back.is_empty()) {
+        int btn_font_size = static_cast<int>(style.get("button_font_size", 32));
+        int btn_min_w = static_cast<int>(style.get("button_min_width", 400));
+        int btn_min_h = static_cast<int>(style.get("button_min_height", 60));
+
+        auto *btn = memnew(Button);
+        btn->set_text(String(back.get("label", "Back")));
+        btn->set_custom_minimum_size(Vector2(static_cast<real_t>(btn_min_w), static_cast<real_t>(btn_min_h)));
+        btn->set_focus_mode(Control::FOCUS_NONE);
+        btn->add_theme_font_size_override("font_size", btn_font_size);
+        btn->add_theme_stylebox_override("normal", make_style(normal_sd));
+        btn->add_theme_stylebox_override("hover", make_style(hover_sd));
+        btn->add_theme_stylebox_override("pressed", make_style(pressed_sd));
+        btn->add_theme_color_override("font_color", normal_font);
+        btn->add_theme_color_override("font_hover_color", hover_font);
+        btn->add_theme_color_override("font_pressed_color", pressed_font);
+
+        String action = back.get("action", "none");
+        String target = back.get("target", "");
+        btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(action, target));
+        button_container_->add_child(btn);
+    }
+}
+
+void MenuManager::on_display_mode_changed(int index) {
+    if (index < 0 || std::cmp_greater_equal(index, display_mode_values_.size())) {
+        return;
+    }
+
+    auto *ds = DisplayServer::get_singleton();
+    auto mode = static_cast<DisplayServer::WindowMode>(display_mode_values_[index]);
+    ds->window_set_mode(mode);
+
+    if (mode == DisplayServer::WINDOW_MODE_WINDOWED) {
+        Vector2i screen_size = ds->screen_get_size();
+        Vector2i win_size = ds->window_get_size();
+        ds->window_set_position((screen_size - win_size) / 2);
+    }
+
+    bool windowed = (mode == DisplayServer::WINDOW_MODE_WINDOWED);
+    if (resolution_dropdown_) {
+        resolution_dropdown_->set_disabled(!windowed);
+        resolution_dropdown_->set_modulate(windowed ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+    }
+}
+
+void MenuManager::on_resolution_changed(int index) {
+    if (index < 0 || std::cmp_greater_equal(index, resolution_values_.size())) {
+        return;
+    }
+
+    auto *ds = DisplayServer::get_singleton();
+    Vector2i new_size = resolution_values_[index];
+    ds->window_set_size(new_size);
+
+    Vector2i screen_size = ds->screen_get_size();
+    ds->window_set_position((screen_size - new_size) / 2);
+}
+
+void MenuManager::on_vsync_toggled(bool toggled) {
+    auto *ds = DisplayServer::get_singleton();
+    ds->window_set_vsync_mode(toggled ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
+}
+
+void MenuManager::on_volume_changed(double value, const String &bus_name) {
+    auto *audio = AudioServer::get_singleton();
+    int bus_idx = audio->get_bus_index(bus_name);
+    if (bus_idx < 0) {
+        return;
+    }
+
+    auto linear = static_cast<float>(value / 100.0);
+    float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
+    audio->set_bus_volume_db(bus_idx, db);
+
+    for (auto &[name, label] : volume_labels_) {
+        if (name == bus_name && label) {
+            label->set_text(vformat("%d%%", static_cast<int>(value)));
+            break;
+        }
     }
 }
 

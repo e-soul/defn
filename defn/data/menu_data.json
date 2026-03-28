@@ -4,7 +4,7 @@
         "main_menu": {
             "entries": [
                 { "id": "play", "label": "Play", "action": "goto_menu", "target": "game_menu" },
-                { "id": "options", "label": "Options", "action": "none" },
+                { "id": "options", "label": "Options", "action": "goto_menu", "target": "options_menu" },
                 { "id": "quit", "label": "Quit", "action": "quit" }
             ]
         },
@@ -13,6 +13,54 @@
                 { "id": "new_continue", "label": "New/Continue Campaign", "action": "start_game" },
                 { "id": "main_menu", "label": "Main Menu", "action": "goto_menu", "target": "main_menu" }
             ]
+        },
+        "options_menu": {
+            "type": "options",
+            "settings": [
+                { "type": "section", "label": "Video" },
+                {
+                    "id": "display_mode",
+                    "type": "dropdown",
+                    "label": "Display Mode",
+                    "setting": "display_mode",
+                    "options": [
+                        { "label": "Windowed", "value": 0 },
+                        { "label": "Borderless Fullscreen", "value": 3 },
+                        { "label": "Exclusive Fullscreen", "value": 4 }
+                    ]
+                },
+                {
+                    "id": "resolution",
+                    "type": "dropdown",
+                    "label": "Resolution",
+                    "setting": "resolution",
+                    "options": [
+                        { "label": "1280 x 720", "value": "1280x720" },
+                        { "label": "1600 x 900", "value": "1600x900" },
+                        { "label": "1920 x 1080", "value": "1920x1080" },
+                        { "label": "2560 x 1440", "value": "2560x1440" },
+                        { "label": "3840 x 2160", "value": "3840x2160" }
+                    ]
+                },
+                {
+                    "id": "vsync",
+                    "type": "checkbox",
+                    "label": "VSync",
+                    "setting": "vsync"
+                },
+                { "type": "section", "label": "Audio" },
+                {
+                    "id": "master_volume",
+                    "type": "slider",
+                    "label": "Master Volume",
+                    "setting": "bus_volume",
+                    "bus": "Master",
+                    "min": 0,
+                    "max": 100,
+                    "step": 1
+                }
+            ],
+            "back": { "label": "Back", "action": "goto_menu", "target": "main_menu" }
         }
     },
     "style": {
@@ -40,6 +88,18 @@
             "border_width": 2,
             "corner_radius": 8,
             "font_color": [0.8, 0.8, 0.9, 1.0]
+        },
+        "options": {
+            "label_font_size": 24,
+            "label_min_width": 250,
+            "control_min_width": 300,
+            "control_min_height": 40,
+            "row_separation": 12,
+            "section_font_size": 28,
+            "section_font_color": [1.0, 0.85, 0.3, 1.0],
+            "label_font_color": [0.85, 0.85, 0.9, 1.0],
+            "value_font_size": 20,
+            "value_font_color": [0.7, 0.8, 1.0, 1.0]
         }
     }
 }
