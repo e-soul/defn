@@ -13,6 +13,7 @@
 #include "health_component.h"
 #include "hud.h"
 #include "menu_manager.h"
+#include "pause_menu.h"
 #include "sound_controller.h"
 #include "unit.h"
 #include "wave_manager.h"
@@ -37,6 +38,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::GameManager>();
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();
+    ClassDB::register_class<defn::PauseMenu>();
 }
 
 void uninitialize_module(ModuleInitializationLevel p_level) {

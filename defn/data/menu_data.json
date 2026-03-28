@@ -61,10 +61,16 @@
                 }
             ],
             "back": { "label": "Back", "action": "goto_menu", "target": "main_menu" }
+        },
+        "pause_menu": {
+            "overlay_color": [0, 0, 0, 0.6],
+            "entries": [
+                { "id": "resume", "label": "Resume", "action": "resume" },
+                { "id": "main_menu", "label": "Main Menu", "action": "main_menu" }
+            ]
         }
     },
     "style": {
-        "button_font_size": 32,
         "button_min_width": 400,
         "button_min_height": 60,
         "button_separation": 16,

@@ -50,6 +50,7 @@ sources = [
     "src/game_manager.cpp",
     "src/hud.cpp",
     "src/menu_manager.cpp",
+    "src/pause_menu.cpp",
 ]
 
 # 5. Compile into a dedicated object directory

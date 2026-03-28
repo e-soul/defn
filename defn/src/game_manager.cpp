@@ -1,6 +1,7 @@
 #include "game_manager.h"
 #include "grid_manager.h"
 #include "hud.h"
+#include "pause_menu.h"
 #include "unit.h"
 #include "wave_manager.h"
 #include <godot_cpp/classes/area2d.hpp>
@@ -72,6 +73,11 @@ void GameManager::_ready() {
     core_resource_timer->connect("timeout", callable_mp(this, &GameManager::on_core_resource_tick));
     add_child(core_resource_timer);
     core_resource_timer->start();
+
+    // Pause menu (ESC to toggle)
+    auto *pause_menu = memnew(PauseMenu);
+    pause_menu->set_name("PauseMenu");
+    add_child(pause_menu);
 
     // Start the game
     wave_manager->start();
