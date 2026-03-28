@@ -1,0 +1,45 @@
+{
+    "background": "res://assets/backgrounds/menu_background.jpg",
+    "menus": {
+        "main_menu": {
+            "entries": [
+                { "id": "play", "label": "Play", "action": "goto_menu", "target": "game_menu" },
+                { "id": "options", "label": "Options", "action": "none" },
+                { "id": "quit", "label": "Quit", "action": "quit" }
+            ]
+        },
+        "game_menu": {
+            "entries": [
+                { "id": "new_continue", "label": "New/Continue Campaign", "action": "start_game" },
+                { "id": "main_menu", "label": "Main Menu", "action": "goto_menu", "target": "main_menu" }
+            ]
+        }
+    },
+    "style": {
+        "button_font_size": 32,
+        "button_min_width": 400,
+        "button_min_height": 60,
+        "button_separation": 16,
+        "normal": {
+            "bg_color": [0.12, 0.12, 0.18, 0.85],
+            "border_color": [0.4, 0.4, 0.5, 1.0],
+            "border_width": 2,
+            "corner_radius": 8,
+            "font_color": [0.9, 0.9, 0.95, 1.0]
+        },
+        "hover": {
+            "bg_color": [0.18, 0.18, 0.28, 0.95],
+            "border_color": [0.6, 0.6, 0.8, 1.0],
+            "border_width": 2,
+            "corner_radius": 8,
+            "font_color": [1.0, 1.0, 1.0, 1.0]
+        },
+        "pressed": {
+            "bg_color": [0.08, 0.08, 0.14, 0.95],
+            "border_color": [0.5, 0.5, 0.7, 1.0],
+            "border_width": 2,
+            "corner_radius": 8,
+            "font_color": [0.8, 0.8, 0.9, 1.0]
+        }
+    }
+}

@@ -49,6 +49,7 @@ sources = [
     "src/wave_manager.cpp",
     "src/game_manager.cpp",
     "src/hud.cpp",
+    "src/menu_manager.cpp",
 ]
 
 # 5. Compile into a dedicated object directory

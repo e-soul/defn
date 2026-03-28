@@ -6,3 +6,4 @@ defn/bin/
 defn/build/
 defn/compile_commands.json
 defn/export/
+local-notes.txt
