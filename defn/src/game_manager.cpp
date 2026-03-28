@@ -6,7 +6,6 @@
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
-#include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/rectangle_shape2d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -28,9 +27,6 @@ void GameManager::_ready() {
 
     // Load unit data from JSON
     unit_data_.load("res://data/unit_data.json", "res://data/unit_globals.json");
-    if (auto cfg = unit_data_.get_unit("breacher")) {
-        deploy_cost_ = cfg->cost;
-    }
 
     // Setup camera and visual layers
     setup_background();
@@ -62,10 +58,12 @@ void GameManager::_ready() {
     hud->set_name("HUD");
     add_child(hud);
 
+    hud->set_friendly_units(unit_data_.get_friendly_units());
     hud->update_core_resource(core_resource);
     hud->update_wave(1, wave_manager->get_total_waves());
     hud->update_hearts(base_integrity);
-    hud->update_deploy_button(core_resource >= deploy_cost_);
+    hud->update_card_affordability(core_resource);
+    hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
 
     // Core resource generation timer: +1/sec
     core_resource_timer = memnew(Timer);
@@ -88,19 +86,8 @@ void GameManager::_process(double delta) {
     check_victory();
 }
 
-void GameManager::_input(const Ref<InputEvent> &event) {
-    if (game_over) {
-        return;
-    }
-
-    auto *mouse_btn = Object::cast_to<InputEventMouseButton>(event.ptr());
-    if (!mouse_btn || !mouse_btn->is_pressed() || mouse_btn->get_button_index() != MouseButton::MOUSE_BUTTON_LEFT) {
-        return;
-    }
-
-    if (core_resource >= deploy_cost_) {
-        deploy_friendly("breacher");
-    }
+void GameManager::_input(const Ref<InputEvent> & /*event*/) {
+    // Deployment is handled through HUD card buttons
 }
 
 void GameManager::setup_background() {
@@ -226,14 +213,16 @@ void GameManager::on_scroll_triggered(Area2D *area) {
 }
 
 void GameManager::deploy_friendly(const String &unit_type) {
-    auto *grid = GridManager::get_singleton();
+    auto cfg = unit_data_.get_unit(unit_type);
+    if (!cfg) {
+        return;
+    }
 
-    core_resource -= deploy_cost_;
+    auto *grid = GridManager::get_singleton();
+    core_resource -= cfg->cost;
 
     auto *unit = memnew(Unit);
-    if (auto cfg = unit_data_.get_unit(unit_type)) {
-        unit->set_unit_config(*cfg);
-    }
+    unit->set_unit_config(*cfg);
     double spawn_x_pos = grid->deploy_x();
     double spawn_y_pos = GridManager::random_belt_y();
     unit->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
@@ -242,7 +231,7 @@ void GameManager::deploy_friendly(const String &unit_type) {
     entity_container->add_child(unit);
 
     hud->update_core_resource(core_resource);
-    hud->update_deploy_button(core_resource >= deploy_cost_);
+    hud->update_card_affordability(core_resource);
 }
 
 void GameManager::on_enemy_spawned(Node *enemy_node) {
@@ -271,7 +260,7 @@ void GameManager::on_enemy_died(Node *unit) {
     if (hostile && !hostile->is_queued_for_deletion()) {
         core_resource += hostile->get_bounty();
         hud->update_core_resource(core_resource);
-        hud->update_deploy_button(core_resource >= deploy_cost_);
+        hud->update_card_affordability(core_resource);
     }
     --living_enemies;
     living_enemies = std::max(living_enemies, 0);
@@ -284,7 +273,20 @@ void GameManager::on_friendly_died(Node * /*unit*/) {
 void GameManager::on_core_resource_tick() {
     core_resource += 1;
     hud->update_core_resource(core_resource);
-    hud->update_deploy_button(core_resource >= deploy_cost_);
+    hud->update_card_affordability(core_resource);
+}
+
+void GameManager::on_deploy_requested(const String &unit_type) {
+    if (game_over) {
+        return;
+    }
+
+    auto cfg = unit_data_.get_unit(unit_type);
+    if (!cfg || core_resource < cfg->cost) {
+        return;
+    }
+
+    deploy_friendly(unit_type);
 }
 
 void GameManager::on_enemy_breached() {

@@ -48,6 +48,7 @@ class GameManager : public Node2D {
     void on_friendly_died(Node *unit);
     void on_enemy_breached();
     void on_core_resource_tick();
+    void on_deploy_requested(const String &unit_type);
 
     void check_victory();
 
@@ -74,7 +75,6 @@ class GameManager : public Node2D {
 
     // Unit data
     UnitDataLoader unit_data_;
-    int deploy_cost_ = 25;
 };
 
 } // namespace defn

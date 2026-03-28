@@ -2,14 +2,19 @@
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/margin_container.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/style_box_flat.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
 
 HUD::HUD() = default;
 
-void HUD::_bind_methods() {}
+void HUD::_bind_methods() { ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "unit_type"))); }
 
 void HUD::_ready() { build_ui(); }
 
@@ -60,17 +65,18 @@ void HUD::build_ui() {
     }
 
     // ==========================================================
-    // Bottom bar
+    // Deploy card container (bottom center)
     // ==========================================================
-    deploy_label = memnew(Label);
-    deploy_label->set_text(String::utf8("Click to Deploy Breacher: 25 Energy"));
-    deploy_label->set_anchors_preset(Control::PRESET_BOTTOM_WIDE);
-    deploy_label->set_offset(Side::SIDE_TOP, -48.0);
-    deploy_label->set_offset(Side::SIDE_BOTTOM, -8.0);
-    deploy_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    deploy_label->add_theme_font_size_override("font_size", 24);
-    deploy_label->add_theme_color_override("font_color", Color(0.85, 0.85, 0.85));
-    add_child(deploy_label);
+    card_container = memnew(HBoxContainer);
+    card_container->set_anchor(SIDE_LEFT, 0.5);
+    card_container->set_anchor(SIDE_RIGHT, 0.5);
+    card_container->set_anchor(SIDE_TOP, 1.0);
+    card_container->set_anchor(SIDE_BOTTOM, 1.0);
+    card_container->set_h_grow_direction(Control::GROW_DIRECTION_BOTH);
+    card_container->set_v_grow_direction(Control::GROW_DIRECTION_BEGIN);
+    card_container->set_offset(Side::SIDE_BOTTOM, -10.0);
+    card_container->add_theme_constant_override("separation", 12);
+    add_child(card_container);
 
     // ==========================================================
     // End-game label (hidden by default)
@@ -85,6 +91,107 @@ void HUD::build_ui() {
     end_game_label->set_visible(false);
     add_child(end_game_label);
 }
+
+void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
+    auto *loader = ResourceLoader::get_singleton();
+
+    for (const auto &cfg : units) {
+        // Find first frame of shoot animation
+        String shoot_frame_path;
+        for (const auto &[name, anim] : cfg.animations) {
+            if (name == "shoot") {
+                shoot_frame_path = vformat(anim.path_template, 0);
+                break;
+            }
+        }
+
+        auto *btn = memnew(Button);
+        btn->set_custom_minimum_size(Vector2(130, 170));
+        btn->set_focus_mode(Control::FOCUS_NONE);
+
+        // Normal style
+        Ref<StyleBoxFlat> style_normal;
+        style_normal.instantiate();
+        style_normal->set_bg_color(Color(0.12, 0.12, 0.18, 0.9));
+        style_normal->set_border_width_all(2);
+        style_normal->set_border_color(Color(0.4, 0.4, 0.5));
+        style_normal->set_corner_radius_all(8);
+        btn->add_theme_stylebox_override("normal", style_normal);
+
+        // Hover style
+        Ref<StyleBoxFlat> style_hover;
+        style_hover.instantiate();
+        style_hover->set_bg_color(Color(0.18, 0.18, 0.28, 0.95));
+        style_hover->set_border_width_all(2);
+        style_hover->set_border_color(Color(0.6, 0.6, 0.8));
+        style_hover->set_corner_radius_all(8);
+        btn->add_theme_stylebox_override("hover", style_hover);
+
+        // Pressed style
+        Ref<StyleBoxFlat> style_pressed;
+        style_pressed.instantiate();
+        style_pressed->set_bg_color(Color(0.08, 0.08, 0.14, 0.95));
+        style_pressed->set_border_width_all(2);
+        style_pressed->set_border_color(Color(0.5, 0.5, 0.7));
+        style_pressed->set_corner_radius_all(8);
+        btn->add_theme_stylebox_override("pressed", style_pressed);
+
+        // Disabled style
+        Ref<StyleBoxFlat> style_disabled;
+        style_disabled.instantiate();
+        style_disabled->set_bg_color(Color(0.08, 0.08, 0.1, 0.7));
+        style_disabled->set_border_width_all(2);
+        style_disabled->set_border_color(Color(0.25, 0.25, 0.3));
+        style_disabled->set_corner_radius_all(8);
+        btn->add_theme_stylebox_override("disabled", style_disabled);
+
+        // Card content
+        auto *vbox = memnew(VBoxContainer);
+        vbox->set_anchors_preset(Control::PRESET_FULL_RECT);
+        vbox->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+        vbox->add_theme_constant_override("separation", 4);
+        vbox->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+        btn->add_child(vbox);
+
+        // Portrait (first frame of shoot animation)
+        auto *portrait = memnew(TextureRect);
+        portrait->set_custom_minimum_size(Vector2(110, 90));
+        portrait->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_CENTERED);
+        portrait->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
+        portrait->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+        if (!shoot_frame_path.is_empty()) {
+            Ref<Texture2D> tex = loader->load(shoot_frame_path);
+            if (tex.is_valid()) {
+                portrait->set_texture(tex);
+            }
+        }
+        vbox->add_child(portrait);
+
+        // Unit name
+        auto *name_label = memnew(Label);
+        name_label->set_text(cfg.name.capitalize());
+        name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+        name_label->add_theme_font_size_override("font_size", 14);
+        name_label->add_theme_color_override("font_color", Color(0.9, 0.9, 0.95));
+        name_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+        vbox->add_child(name_label);
+
+        // Cost
+        auto *cost_label = memnew(Label);
+        cost_label->set_text(vformat(String::utf8("\u26A1 %d"), cfg.cost));
+        cost_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+        cost_label->add_theme_font_size_override("font_size", 13);
+        cost_label->add_theme_color_override("font_color", Color(0.3, 0.7, 1.0));
+        cost_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+        vbox->add_child(cost_label);
+
+        btn->connect("pressed", callable_mp(this, &HUD::on_card_pressed).bind(cfg.name));
+        card_container->add_child(btn);
+        deploy_cards.push_back({.unit_type = cfg.name, .cost = cfg.cost, .button = btn});
+    }
+}
+
+void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_requested", unit_type); }
 
 void HUD::update_core_resource(int value) {
     if (core_resource_label) {
@@ -104,10 +211,13 @@ void HUD::update_hearts(int integrity) {
     }
 }
 
-void HUD::update_deploy_button(bool can_afford) {
-    if (deploy_label) {
-        Color col = can_afford ? Color(0.85, 0.85, 0.85) : Color(0.4, 0.4, 0.4);
-        deploy_label->add_theme_color_override("font_color", col);
+void HUD::update_card_affordability(int energy) {
+    for (auto &card : deploy_cards) {
+        bool can_afford = energy >= card.cost;
+        if (card.button) {
+            card.button->set_disabled(!can_afford);
+            card.button->set_modulate(can_afford ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+        }
     }
 }
 

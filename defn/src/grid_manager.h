@@ -32,8 +32,8 @@ class GridManager : public Object {
     static void unregister_singleton();
 
     static double random_belt_y(); // random Y within the belt area
-    double deploy_x() const;      // defender spawn: just left of camera
-    double spawn_x() const;       // hostile spawn: just right of camera
+    double deploy_x() const;       // friendly spawn: just left of camera
+    double spawn_x() const;        // hostile spawn: just right of camera
 
     void set_world_width(double w);
     double get_world_width() const;

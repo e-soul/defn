@@ -66,14 +66,15 @@ struct UnitConfig {
 
 class UnitDataLoader {
   public:
-        bool load(const String &unit_path, const String &global_path);
+    bool load(const String &unit_path, const String &global_path);
 
     std::optional<UnitConfig> get_unit(const String &name) const;
+    std::vector<UnitConfig> get_friendly_units() const;
 
-        const GlobalUnitConfig &get_globals() const { return globals_; }
+    const GlobalUnitConfig &get_globals() const { return globals_; }
 
   private:
-        GlobalUnitConfig globals_;
+    GlobalUnitConfig globals_;
     std::vector<UnitConfig> units_;
 };
 

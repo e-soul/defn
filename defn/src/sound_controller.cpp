@@ -1,9 +1,9 @@
 #include "sound_controller.h"
+#include <algorithm>
+#include <cmath>
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <algorithm>
-#include <cmath>
 
 namespace defn {
 

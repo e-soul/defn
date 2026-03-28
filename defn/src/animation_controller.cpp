@@ -9,9 +9,7 @@
 
 namespace defn {
 
-void AnimationController::_bind_methods() {
-    ADD_SIGNAL(MethodInfo("shoot_effect_triggered"));
-}
+void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg) {
     sprite = memnew(AnimatedSprite2D);

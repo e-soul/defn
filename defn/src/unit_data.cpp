@@ -7,9 +7,7 @@ namespace defn {
 
 namespace {
 
-float as_float(const Variant &value) {
-    return static_cast<float>(static_cast<double>(value));
-}
+float as_float(const Variant &value) { return static_cast<float>(static_cast<double>(value)); }
 
 bool parse_json_file(const String &path, Variant &out_data) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -154,6 +152,16 @@ std::optional<UnitConfig> UnitDataLoader::get_unit(const String &name) const {
         }
     }
     return std::nullopt;
+}
+
+std::vector<UnitConfig> UnitDataLoader::get_friendly_units() const {
+    std::vector<UnitConfig> result;
+    for (const auto &cfg : units_) {
+        if (cfg.side == UnitSide::FRIENDLY) {
+            result.push_back(cfg);
+        }
+    }
+    return result;
 }
 
 } // namespace defn

@@ -23,9 +23,9 @@ class CombatComponent : public Node {
     struct Config {
         UnitSide side;
         int melee_damage;
-      double melee_attack_period_seconds;
+        double melee_attack_period_seconds;
         int ranged_damage;
-      double ranged_attack_period_seconds;
+        double ranged_attack_period_seconds;
         double attack_range;
         double ranged_range;
         Color melee_flash_color;
