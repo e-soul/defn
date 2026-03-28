@@ -71,7 +71,7 @@
       "ranged_flash_color": [1.0, 0.8, 0.2],
       "muzzle_flash": {
         "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
-        "offset": [273.0, 0.0],
+        "offset": [390, 0],
         "flip_h": false
       },
       "shoot_sfx": {
@@ -124,7 +124,7 @@
       "ranged_flash_color": [1.0, 0.8, 0.2],
       "muzzle_flash": {
         "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
-        "offset": [273.0, 0.0],
+        "offset": [290.0, 0.0],
         "flip_h": false
       },
       "shoot_sfx": {
@@ -177,7 +177,7 @@
       "ranged_flash_color": [1.0, 0.8, 0.2],
       "muzzle_flash": {
         "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
-        "offset": [273.0, 0.0],
+        "offset": [233.0, -25],
         "flip_h": false
       },
       "shoot_sfx": {
