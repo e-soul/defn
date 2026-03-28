@@ -3,6 +3,7 @@
 #include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/check_button.hpp>
+#include <godot_cpp/classes/config_file.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -53,6 +54,8 @@ void MenuManager::_ready() {
         UtilityFunctions::printerr("MenuManager: Failed to load menu data");
         return;
     }
+
+    load_settings();
 
     ui_layer_ = memnew(CanvasLayer);
     ui_layer_->set_name("UILayer");
@@ -354,7 +357,7 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
             double current_pct = 100.0;
             if (bus_idx >= 0) {
                 auto db = static_cast<double>(audio->get_bus_volume_db(bus_idx));
-                current_pct = std::pow(10.0, db / 20.0) * 100.0;
+                current_pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
             }
 
             auto *slider = memnew(HSlider);
@@ -427,6 +430,8 @@ void MenuManager::on_display_mode_changed(int index) {
         resolution_dropdown_->set_disabled(!windowed);
         resolution_dropdown_->set_modulate(windowed ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
     }
+
+    save_settings();
 }
 
 void MenuManager::on_resolution_changed(int index) {
@@ -440,11 +445,14 @@ void MenuManager::on_resolution_changed(int index) {
 
     Vector2i screen_size = ds->screen_get_size();
     ds->window_set_position((screen_size - new_size) / 2);
+
+    save_settings();
 }
 
 void MenuManager::on_vsync_toggled(bool toggled) {
     auto *ds = DisplayServer::get_singleton();
     ds->window_set_vsync_mode(toggled ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
+    save_settings();
 }
 
 void MenuManager::on_volume_changed(double value, const String &bus_name) {
@@ -462,6 +470,85 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
         if (name == bus_name && label) {
             label->set_text(vformat("%d%%", static_cast<int>(value)));
             break;
+        }
+    }
+
+    save_settings();
+}
+
+void MenuManager::save_settings() {
+    auto *ds = DisplayServer::get_singleton();
+    auto *audio = AudioServer::get_singleton();
+
+    Ref<ConfigFile> cfg;
+    cfg.instantiate();
+
+    cfg->set_value("video", "display_mode", static_cast<int>(ds->window_get_mode()));
+
+    Vector2i win_size = ds->window_get_size();
+    cfg->set_value("video", "resolution", vformat("%dx%d", win_size.x, win_size.y));
+
+    cfg->set_value("video", "vsync", ds->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED);
+
+    int master_idx = audio->get_bus_index("Master");
+    if (master_idx >= 0) {
+        auto db = static_cast<double>(audio->get_bus_volume_db(master_idx));
+        double pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
+        cfg->set_value("audio", "master_volume", pct);
+    }
+
+    Error err = cfg->save(SETTINGS_PATH);
+    if (err != OK) {
+        UtilityFunctions::printerr("MenuManager: Failed to save settings, error: ", err);
+    }
+}
+
+void MenuManager::load_settings() {
+    Ref<ConfigFile> cfg;
+    cfg.instantiate();
+
+    if (cfg->load(SETTINGS_PATH) != OK) {
+        return; // No saved settings yet — use engine defaults
+    }
+
+    auto *ds = DisplayServer::get_singleton();
+    auto *audio = AudioServer::get_singleton();
+
+    // Display mode
+    if (cfg->has_section_key("video", "display_mode")) {
+        auto mode = static_cast<DisplayServer::WindowMode>(
+            static_cast<int>(cfg->get_value("video", "display_mode")));
+        ds->window_set_mode(mode);
+    }
+
+    // Resolution (only meaningful in windowed mode)
+    if (cfg->has_section_key("video", "resolution")) {
+        String res_str = cfg->get_value("video", "resolution");
+        PackedStringArray parts = res_str.split("x");
+        if (parts.size() == 2) {
+            Vector2i res(parts[0].to_int(), parts[1].to_int());
+            if (ds->window_get_mode() == DisplayServer::WINDOW_MODE_WINDOWED) {
+                ds->window_set_size(res);
+                Vector2i screen_size = ds->screen_get_size();
+                ds->window_set_position((screen_size - res) / 2);
+            }
+        }
+    }
+
+    // VSync
+    if (cfg->has_section_key("video", "vsync")) {
+        bool vsync = cfg->get_value("video", "vsync");
+        ds->window_set_vsync_mode(vsync ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
+    }
+
+    // Master volume
+    if (cfg->has_section_key("audio", "master_volume")) {
+        double pct = cfg->get_value("audio", "master_volume");
+        auto linear = static_cast<float>(pct / 100.0);
+        float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
+        int master_idx = audio->get_bus_index("Master");
+        if (master_idx >= 0) {
+            audio->set_bus_volume_db(master_idx, db);
         }
     }
 }

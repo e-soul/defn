@@ -17,6 +17,8 @@
 
 namespace defn {
 
+inline constexpr const char *SETTINGS_PATH = "user://settings.cfg";
+
 using namespace godot;
 
 class MenuManager : public Node2D {
@@ -39,6 +41,9 @@ class MenuManager : public Node2D {
     void on_resolution_changed(int index);
     void on_vsync_toggled(bool toggled);
     void on_volume_changed(double value, const String &bus_name);
+
+    void save_settings();
+    void load_settings();
 
     Dictionary menu_data_;
     String current_menu_;
