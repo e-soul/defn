@@ -2,8 +2,10 @@
 #include "grid_manager.h"
 #include "hud.h"
 #include "pause_menu.h"
+#include "progression_manager.h"
 #include "unit.h"
 #include "wave_manager.h"
+#include <cmath>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
@@ -26,11 +28,31 @@ void GameManager::_bind_methods() {}
 void GameManager::_ready() {
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
+    auto *progression = ProgressionManager::get_singleton();
+    String level_id = progression->get_current_level_id();
+    String level_path = vformat("res://data/levels/%s.json", level_id);
+
     // Load unit data from JSON
     unit_data_.load("res://data/unit_data.json", "res://data/unit_globals.json");
 
-    // Setup camera and visual layers
-    setup_background();
+    // Query progression for effective values
+    bounty_multiplier = progression->get_effective_bounty_multiplier();
+    energy_regen_rate = progression->get_effective_energy_regen();
+
+    // Wave manager (load level first to get background path)
+    wave_manager = memnew(WaveManager);
+    wave_manager->set_name("WaveManager");
+    add_child(wave_manager);
+
+    wave_manager->set_unit_data(&unit_data_);
+    wave_manager->load_level(level_path);
+
+    // Setup camera and visual layers using background from level data
+    String bg_path = wave_manager->get_background_path();
+    if (bg_path.is_empty()) {
+        bg_path = "res://assets/backgrounds/middle_east_ruin_tiling.png";
+    }
+    setup_background(bg_path);
     setup_camera();
     setup_scroll_trigger();
 
@@ -40,15 +62,10 @@ void GameManager::_ready() {
     entity_container->set_y_sort_enabled(true);
     add_child(entity_container);
 
-    // Wave manager
-    wave_manager = memnew(WaveManager);
-    wave_manager->set_name("WaveManager");
-    add_child(wave_manager);
-
-    wave_manager->set_unit_data(&unit_data_);
-    wave_manager->load_level("res://data/levels/level_01.json");
-    core_resource = wave_manager->get_starting_core_resource();
+    int base_resource = wave_manager->get_starting_core_resource();
+    core_resource = progression->get_effective_starting_energy(base_resource);
     base_integrity = wave_manager->get_base_integrity();
+    initial_integrity = base_integrity;
 
     wave_manager->connect("enemy_spawned", callable_mp(this, &GameManager::on_enemy_spawned));
     wave_manager->connect("wave_changed", callable_mp(this, &GameManager::on_wave_changed));
@@ -59,14 +76,28 @@ void GameManager::_ready() {
     hud->set_name("HUD");
     add_child(hud);
 
-    hud->set_friendly_units(unit_data_.get_friendly_units());
+    // Filter friendly units to only unlocked ones
+    PackedStringArray unlocked_units = progression->get_unlocked_units();
+    auto all_friendlies = unit_data_.get_friendly_units();
+    std::vector<UnitConfig> available_friendlies;
+    for (const auto &cfg : all_friendlies) {
+        if (unlocked_units.has(cfg.name)) {
+            available_friendlies.push_back(cfg);
+        }
+    }
+    hud->set_friendly_units(available_friendlies);
+
     hud->update_core_resource(core_resource);
     hud->update_wave(1, wave_manager->get_total_waves());
     hud->update_hearts(base_integrity);
     hud->update_card_affordability(core_resource);
+    hud->update_score(0);
     hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
+    hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
+    hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
+    hud->connect("score_screen_main_menu", callable_mp(this, &GameManager::on_score_screen_main_menu));
 
-    // Core resource generation timer: +1/sec
+    // Core resource generation timer
     core_resource_timer = memnew(Timer);
     core_resource_timer->set_wait_time(1.0);
     core_resource_timer->set_one_shot(false);
@@ -96,13 +127,13 @@ void GameManager::_input(const Ref<InputEvent> & /*event*/) {
     // Deployment is handled through HUD card buttons
 }
 
-void GameManager::setup_background() {
+void GameManager::setup_background(const String &bg_path) {
     auto *loader = ResourceLoader::get_singleton();
     auto *grid = GridManager::get_singleton();
 
-    Ref<Texture2D> bg_tex = loader->load("res://assets/backgrounds/middle_east_ruin_tiling.png");
+    Ref<Texture2D> bg_tex = loader->load(bg_path);
     if (!bg_tex.is_valid()) {
-        UtilityFunctions::printerr("GameManager: Failed to load tiling background");
+        UtilityFunctions::printerr("GameManager: Failed to load tiling background: ", bg_path);
         return;
     }
 
@@ -264,9 +295,16 @@ void GameManager::on_all_spawns_complete() { all_spawned = true; }
 void GameManager::on_enemy_died(Node *unit) {
     auto *hostile = Object::cast_to<Unit>(unit);
     if (hostile && !hostile->is_queued_for_deletion()) {
-        core_resource += hostile->get_bounty();
+        int base_bounty = hostile->get_bounty();
+        // kill_score uses raw bounty (before multiplier)
+        kill_score += base_bounty;
+        ++enemies_killed;
+        // Energy gained uses bounty_mult
+        int energy_bounty = static_cast<int>(std::ceil(static_cast<double>(base_bounty) * bounty_multiplier));
+        core_resource += energy_bounty;
         hud->update_core_resource(core_resource);
         hud->update_card_affordability(core_resource);
+        hud->update_score(kill_score);
     }
     --living_enemies;
     living_enemies = std::max(living_enemies, 0);
@@ -277,7 +315,7 @@ void GameManager::on_friendly_died(Node * /*unit*/) {
 }
 
 void GameManager::on_core_resource_tick() {
-    core_resource += 1;
+    core_resource += energy_regen_rate;
     hud->update_core_resource(core_resource);
     hud->update_card_affordability(core_resource);
 }
@@ -303,20 +341,91 @@ void GameManager::on_enemy_breached() {
     hud->update_hearts(base_integrity);
 
     if (base_integrity <= 0) {
-        game_over = true;
-        core_resource_timer->stop();
-        hud->show_defeat();
-        wave_manager->stop();
+        end_game(false);
     }
 }
 
 void GameManager::check_victory() {
     if (all_spawned && living_enemies <= 0) {
-        game_over = true;
-        core_resource_timer->stop();
-        hud->show_victory();
-        wave_manager->stop();
+        end_game(true);
     }
 }
+
+void GameManager::end_game(bool victory) {
+    game_over = true;
+    core_resource_timer->stop();
+    wave_manager->stop();
+
+    auto *progression = ProgressionManager::get_singleton();
+    String level_id = progression->get_current_level_id();
+    int old_score = progression->get_total_score();
+
+    // Compute level score
+    int integrity_bonus = base_integrity * 50;
+    int completion_bonus = victory ? 100 : 0;
+    int level_score = kill_score + integrity_bonus + completion_bonus;
+
+    // Update progression
+    progression->add_score(level_score);
+    if (victory) {
+        progression->mark_level_completed(level_id, level_score);
+    }
+    int new_total = progression->get_total_score();
+    progression->save();
+
+    // Compute new unlocks
+    PackedStringArray new_unlocks = progression->compute_new_unlocks(old_score, new_total);
+
+    // Determine next level
+    String next_level_id;
+    if (victory) {
+        const auto &level_data = progression->get_level_unlock_data();
+        for (size_t i = 0; i < level_data.size(); ++i) {
+            if (level_data[i].level_id == level_id && i + 1 < level_data.size()) {
+                String candidate = level_data[i + 1].level_id;
+                if (progression->is_level_unlocked(candidate)) {
+                    next_level_id = candidate;
+                }
+                break;
+            }
+        }
+    }
+
+    // Build stats dictionary
+    Dictionary stats;
+    stats["victory"] = victory;
+    stats["enemies_killed"] = enemies_killed;
+    stats["kill_score"] = kill_score;
+    stats["hearts_remaining"] = base_integrity;
+    stats["hearts_total"] = initial_integrity;
+    stats["integrity_bonus"] = integrity_bonus;
+    stats["completion_bonus"] = completion_bonus;
+    stats["level_score"] = level_score;
+    stats["new_total_score"] = new_total;
+    stats["current_level_id"] = level_id;
+    stats["next_level_id"] = next_level_id;
+
+    Array unlocks_array;
+    for (const auto &new_unlock : new_unlocks) {
+        unlocks_array.push_back(new_unlock);
+    }
+    stats["new_unlocks"] = unlocks_array;
+
+    hud->show_score_screen(stats);
+}
+
+void GameManager::on_score_screen_next_level(const String &level_id) {
+    auto *progression = ProgressionManager::get_singleton();
+    progression->set_current_level_id(level_id);
+    get_tree()->change_scene_to_file("res://scenes/game.tscn");
+}
+
+void GameManager::on_score_screen_retry(const String &level_id) {
+    auto *progression = ProgressionManager::get_singleton();
+    progression->set_current_level_id(level_id);
+    get_tree()->change_scene_to_file("res://scenes/game.tscn");
+}
+
+void GameManager::on_score_screen_main_menu() { get_tree()->change_scene_to_file("res://scenes/menu.tscn"); }
 
 } // namespace defn

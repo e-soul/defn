@@ -32,7 +32,7 @@ class GameManager : public Node2D {
     static void _bind_methods();
 
   private:
-    void setup_background();
+    void setup_background(const String &bg_path);
     void setup_camera();
     void setup_scroll_trigger();
     void update_scroll_trigger_position();
@@ -50,13 +50,26 @@ class GameManager : public Node2D {
     void on_core_resource_tick();
     void on_deploy_requested(const String &unit_type);
 
+    // Score screen callbacks
+    void on_score_screen_next_level(const String &level_id);
+    void on_score_screen_retry(const String &level_id);
+    void on_score_screen_main_menu();
+
     void check_victory();
+    void end_game(bool victory);
 
     // Game state
     int core_resource = 100;
     int base_integrity = 3;
+    int initial_integrity = 3;
     bool game_over = false;
     bool all_spawned = false;
+
+    // Score tracking
+    int enemies_killed = 0;
+    int kill_score = 0;
+    double bounty_multiplier = 1.0;
+    int energy_regen_rate = 1;
 
     // Tracking living entities
     int living_enemies = 0;

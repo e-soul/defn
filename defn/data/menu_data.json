@@ -10,7 +10,7 @@
         },
         "game_menu": {
             "entries": [
-                { "id": "new_continue", "label": "New/Continue Campaign", "action": "start_game" },
+                { "id": "new_continue", "label": "New/Continue Campaign", "action": "level_select" },
                 { "id": "main_menu", "label": "Main Menu", "action": "goto_menu", "target": "main_menu" }
             ]
         },

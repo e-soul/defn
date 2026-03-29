@@ -1,8 +1,10 @@
 #include "hud.h"
 #include <godot_cpp/classes/box_container.hpp>
+#include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/margin_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
@@ -14,7 +16,12 @@ namespace defn {
 
 HUD::HUD() = default;
 
-void HUD::_bind_methods() { ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "unit_type"))); }
+void HUD::_bind_methods() {
+    ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "unit_type")));
+    ADD_SIGNAL(MethodInfo("score_screen_next_level", PropertyInfo(Variant::STRING, "level_id")));
+    ADD_SIGNAL(MethodInfo("score_screen_retry", PropertyInfo(Variant::STRING, "level_id")));
+    ADD_SIGNAL(MethodInfo("score_screen_main_menu"));
+}
 
 void HUD::_ready() { build_ui(); }
 
@@ -38,6 +45,15 @@ void HUD::build_ui() {
     core_resource_label->add_theme_font_size_override("font_size", 28);
     core_resource_label->add_theme_color_override("font_color", Color(0.05, 0.2, 0.55));
     top_bar->add_child(core_resource_label);
+
+    // Score label
+    score_label = memnew(Label);
+    score_label->set_text("Score: 0");
+    score_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+    score_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    score_label->add_theme_font_size_override("font_size", 24);
+    score_label->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    top_bar->add_child(score_label);
 
     // Wave label (center)
     wave_label = memnew(Label);
@@ -77,19 +93,6 @@ void HUD::build_ui() {
     card_container->set_offset(Side::SIDE_BOTTOM, -10.0);
     card_container->add_theme_constant_override("separation", 12);
     add_child(card_container);
-
-    // ==========================================================
-    // End-game label (hidden by default)
-    // ==========================================================
-    end_game_label = memnew(Label);
-    end_game_label->set_text("");
-    end_game_label->set_anchors_preset(Control::PRESET_CENTER);
-    end_game_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    end_game_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
-    end_game_label->add_theme_font_size_override("font_size", 72);
-    end_game_label->add_theme_color_override("font_color", Color(1, 1, 1));
-    end_game_label->set_visible(false);
-    add_child(end_game_label);
 }
 
 void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
@@ -221,20 +224,184 @@ void HUD::update_card_affordability(int energy) {
     }
 }
 
-void HUD::show_victory() {
-    if (end_game_label) {
-        end_game_label->set_text("VICTORY");
-        end_game_label->add_theme_color_override("font_color", Color(0.2, 1.0, 0.3));
-        end_game_label->set_visible(true);
+void HUD::update_score(int score) {
+    if (score_label) {
+        score_label->set_text(vformat("Score: %d", score));
     }
 }
 
-void HUD::show_defeat() {
-    if (end_game_label) {
-        end_game_label->set_text("DEFEAT");
-        end_game_label->add_theme_color_override("font_color", Color(1.0, 0.2, 0.2));
-        end_game_label->set_visible(true);
+void HUD::show_score_screen(const Dictionary &stats) {
+    bool victory = static_cast<bool>(stats.get("victory", false));
+    int enemies_killed_val = static_cast<int>(stats.get("enemies_killed", 0));
+    int kill_score_val = static_cast<int>(stats.get("kill_score", 0));
+    int hearts_remaining = static_cast<int>(stats.get("hearts_remaining", 0));
+    int hearts_total = static_cast<int>(stats.get("hearts_total", 3));
+    int integrity_bonus = static_cast<int>(stats.get("integrity_bonus", 0));
+    int completion_bonus = static_cast<int>(stats.get("completion_bonus", 0));
+    int level_score = static_cast<int>(stats.get("level_score", 0));
+    int new_total_score = static_cast<int>(stats.get("new_total_score", 0));
+    String current_level_id = stats.get("current_level_id", "");
+    String next_level_id = stats.get("next_level_id", "");
+    Array new_unlocks = stats.get("new_unlocks", Array());
+
+    // Dark overlay
+    score_screen_overlay = memnew(ColorRect);
+    score_screen_overlay->set_anchors_preset(Control::PRESET_FULL_RECT);
+    score_screen_overlay->set_color(Color(0, 0, 0, 0.7));
+    score_screen_overlay->set_mouse_filter(Control::MOUSE_FILTER_STOP);
+    add_child(score_screen_overlay);
+
+    // Center container
+    auto *center = memnew(CenterContainer);
+    center->set_anchors_preset(Control::PRESET_FULL_RECT);
+    center->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+    score_screen_overlay->add_child(center);
+
+    // Panel
+    score_screen_panel = memnew(PanelContainer);
+    score_screen_panel->set_custom_minimum_size(Vector2(600, 0));
+    Ref<StyleBoxFlat> panel_style;
+    panel_style.instantiate();
+    panel_style->set_bg_color(Color(0.08, 0.08, 0.14, 0.95));
+    panel_style->set_border_width_all(2);
+    panel_style->set_border_color(Color(0.4, 0.4, 0.6));
+    panel_style->set_corner_radius_all(12);
+    panel_style->set_content_margin_all(32);
+    score_screen_panel->add_theme_stylebox_override("panel", panel_style);
+    center->add_child(score_screen_panel);
+
+    auto *vbox = memnew(VBoxContainer);
+    vbox->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    vbox->add_theme_constant_override("separation", 8);
+    score_screen_panel->add_child(vbox);
+
+    // Title: VICTORY / DEFEAT
+    auto *title = memnew(Label);
+    title->set_text(victory ? "VICTORY" : "DEFEAT");
+    title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    title->add_theme_font_size_override("font_size", 48);
+    title->add_theme_color_override("font_color", victory ? Color(0.2, 1.0, 0.3) : Color(1.0, 0.2, 0.2));
+    vbox->add_child(title);
+
+    // Spacer
+    auto *spacer1 = memnew(Control);
+    spacer1->set_custom_minimum_size(Vector2(0, 12));
+    vbox->add_child(spacer1);
+
+    // Stats rows
+    auto add_stat_row = [&](const String &label_text, const String &value_text) {
+        auto *row = memnew(HBoxContainer);
+        row->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+
+        auto *lbl = memnew(Label);
+        lbl->set_text(label_text);
+        lbl->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+        lbl->add_theme_font_size_override("font_size", 22);
+        lbl->add_theme_color_override("font_color", Color(0.8, 0.8, 0.85));
+        row->add_child(lbl);
+
+        auto *val = memnew(Label);
+        val->set_text(value_text);
+        val->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+        val->add_theme_font_size_override("font_size", 22);
+        val->add_theme_color_override("font_color", Color(1.0, 1.0, 1.0));
+        row->add_child(val);
+
+        vbox->add_child(row);
+    };
+
+    add_stat_row("Enemies Killed:", vformat("%d", enemies_killed_val));
+    add_stat_row("Kill Score:", vformat("%d", kill_score_val));
+    add_stat_row("Hearts Remaining:", vformat("%d / %d", hearts_remaining, hearts_total));
+    add_stat_row("Integrity Bonus:", vformat("%d", integrity_bonus));
+    if (victory) {
+        add_stat_row("Completion Bonus:", vformat("%d", completion_bonus));
     }
+
+    // Separator
+    auto *sep = memnew(ColorRect);
+    sep->set_custom_minimum_size(Vector2(0, 2));
+    sep->set_color(Color(0.4, 0.4, 0.5));
+    vbox->add_child(sep);
+
+    add_stat_row("Level Score:", vformat("%d", level_score));
+    add_stat_row("Career Total:", vformat("%d", new_total_score));
+
+    // New unlocks
+    if (!new_unlocks.is_empty()) {
+        auto *spacer2 = memnew(Control);
+        spacer2->set_custom_minimum_size(Vector2(0, 8));
+        vbox->add_child(spacer2);
+
+        for (const auto &new_unlock : new_unlocks) {
+            auto *unlock_label = memnew(Label);
+            unlock_label->set_text(String(new_unlock));
+            unlock_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+            unlock_label->add_theme_font_size_override("font_size", 20);
+            unlock_label->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+            vbox->add_child(unlock_label);
+        }
+    }
+
+    // Spacer before buttons
+    auto *spacer3 = memnew(Control);
+    spacer3->set_custom_minimum_size(Vector2(0, 16));
+    vbox->add_child(spacer3);
+
+    // Action buttons
+    auto *btn_row = memnew(HBoxContainer);
+    btn_row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    btn_row->add_theme_constant_override("separation", 16);
+    vbox->add_child(btn_row);
+
+    auto make_button = [](const String &text) -> Button * {
+        auto *btn = memnew(Button);
+        btn->set_text(text);
+        btn->set_custom_minimum_size(Vector2(160, 50));
+        btn->set_focus_mode(Control::FOCUS_NONE);
+        btn->add_theme_font_size_override("font_size", 20);
+
+        Ref<StyleBoxFlat> style;
+        style.instantiate();
+        style->set_bg_color(Color(0.15, 0.15, 0.25, 0.9));
+        style->set_border_width_all(2);
+        style->set_border_color(Color(0.4, 0.4, 0.6));
+        style->set_corner_radius_all(8);
+        btn->add_theme_stylebox_override("normal", style);
+
+        Ref<StyleBoxFlat> hover;
+        hover.instantiate();
+        hover->set_bg_color(Color(0.2, 0.2, 0.35, 0.95));
+        hover->set_border_width_all(2);
+        hover->set_border_color(Color(0.6, 0.6, 0.8));
+        hover->set_corner_radius_all(8);
+        btn->add_theme_stylebox_override("hover", hover);
+
+        return btn;
+    };
+
+    // Next Level button (only if victory and next level exists)
+    if (victory && !next_level_id.is_empty()) {
+        auto *next_btn = make_button("Next Level");
+        next_btn->connect("pressed", callable_mp(this, &HUD::on_next_level_pressed).bind(next_level_id));
+        btn_row->add_child(next_btn);
+    }
+
+    // Retry button
+    auto *retry_btn = make_button("Retry");
+    retry_btn->connect("pressed", callable_mp(this, &HUD::on_retry_pressed).bind(current_level_id));
+    btn_row->add_child(retry_btn);
+
+    // Main Menu button
+    auto *menu_btn = make_button("Main Menu");
+    menu_btn->connect("pressed", callable_mp(this, &HUD::on_main_menu_pressed));
+    btn_row->add_child(menu_btn);
 }
+
+void HUD::on_next_level_pressed(const String &level_id) { emit_signal("score_screen_next_level", level_id); }
+
+void HUD::on_retry_pressed(const String &level_id) { emit_signal("score_screen_retry", level_id); }
+
+void HUD::on_main_menu_pressed() { emit_signal("score_screen_main_menu"); }
 
 } // namespace defn

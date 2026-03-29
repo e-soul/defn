@@ -1,6 +1,7 @@
 {
   "level_id": 1,
-  "name": "PoC Level",
+  "name": "Desert Outpost",
+  "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
   "starting_core_resource": 100,
   "base_integrity": 3,
   "waves": [

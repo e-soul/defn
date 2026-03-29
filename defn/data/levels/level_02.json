@@ -1,0 +1,61 @@
+{
+  "level_id": 2,
+  "name": "Ruined Highway",
+  "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
+  "starting_core_resource": 120,
+  "base_integrity": 3,
+  "waves": [
+    {
+      "wave_number": 1,
+      "spawns": [
+        {"time": 4.0,  "type": "jackal"},
+        {"time": 5.5,  "type": "jackal"},
+        {"time": 7.0,  "type": "jackal"},
+        {"time": 8.5,  "type": "jackal"}
+      ]
+    },
+    {
+      "wave_number": 2,
+      "spawns": [
+        {"time": 25.0, "type": "jackal"},
+        {"time": 26.0, "type": "jackal"},
+        {"time": 27.5, "type": "jackal"},
+        {"time": 29.0, "type": "jackal"},
+        {"time": 30.5, "type": "jackal"},
+        {"time": 32.0, "type": "jackal"}
+      ]
+    },
+    {
+      "wave_number": 3,
+      "spawns": [
+        {"time": 50.0, "type": "jackal"},
+        {"time": 51.0, "type": "jackal"},
+        {"time": 52.0, "type": "jackal"},
+        {"time": 53.5, "type": "jackal"},
+        {"time": 55.0, "type": "jackal"},
+        {"time": 56.5, "type": "jackal"},
+        {"time": 58.0, "type": "jackal"},
+        {"time": 59.5, "type": "jackal"},
+        {"time": 61.0, "type": "jackal"},
+        {"time": 62.5, "type": "jackal"}
+      ]
+    },
+    {
+      "wave_number": 4,
+      "spawns": [
+        {"time": 80.0, "type": "jackal"},
+        {"time": 81.0, "type": "jackal"},
+        {"time": 82.0, "type": "jackal"},
+        {"time": 83.0, "type": "jackal"},
+        {"time": 84.0, "type": "jackal"},
+        {"time": 85.5, "type": "jackal"},
+        {"time": 87.0, "type": "jackal"},
+        {"time": 88.5, "type": "jackal"},
+        {"time": 90.0, "type": "jackal"},
+        {"time": 91.5, "type": "jackal"},
+        {"time": 93.0, "type": "jackal"},
+        {"time": 94.5, "type": "jackal"}
+      ]
+    }
+  ]
+}

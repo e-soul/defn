@@ -4,9 +4,13 @@
 #include "unit_data.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
+#include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
+#include <godot_cpp/classes/panel_container.hpp>
+#include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <vector>
 
 namespace defn {
@@ -32,8 +36,8 @@ class HUD : public CanvasLayer {
     void update_wave(int current, int total);
     void update_hearts(int integrity);
     void update_card_affordability(int energy);
-    void show_victory();
-    void show_defeat();
+    void update_score(int score);
+    void show_score_screen(const Dictionary &stats);
 
   protected:
     static void _bind_methods();
@@ -41,14 +45,21 @@ class HUD : public CanvasLayer {
   private:
     void build_ui();
     void on_card_pressed(const String &unit_type);
+    void on_next_level_pressed(const String &level_id);
+    void on_retry_pressed(const String &level_id);
+    void on_main_menu_pressed();
 
     Label *core_resource_label = nullptr;
     Label *wave_label = nullptr;
+    Label *score_label = nullptr;
     HBoxContainer *hearts_container = nullptr;
     std::vector<Label *> heart_icons;
     HBoxContainer *card_container = nullptr;
     std::vector<DeployCardUI> deploy_cards;
-    Label *end_game_label = nullptr;
+
+    // Score screen
+    ColorRect *score_screen_overlay = nullptr;
+    PanelContainer *score_screen_panel = nullptr;
 };
 
 } // namespace defn

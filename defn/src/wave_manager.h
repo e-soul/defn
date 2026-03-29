@@ -41,6 +41,7 @@ class WaveManager : public Node {
     int get_total_waves() const { return static_cast<int>(waves.size()); }
     int get_starting_core_resource() const { return starting_core_resource; }
     int get_base_integrity() const { return base_integrity_max; }
+    String get_background_path() const { return background_path; }
 
     bool all_waves_spawned() const;
 
@@ -55,6 +56,7 @@ class WaveManager : public Node {
     bool running = false;
     int starting_core_resource = 100;
     int base_integrity_max = 3;
+    String background_path;
 
     // Flattened list of all spawns with absolute times, for simpler processing
     struct FlatSpawn {

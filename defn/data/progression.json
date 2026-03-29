@@ -1,0 +1,21 @@
+{
+  "unit_unlocks": [
+    { "unit_id": "breacher",  "score_required": 0 },
+    { "unit_id": "marksman",  "score_required": 100 },
+    { "unit_id": "impact",    "score_required": 500 },
+    { "unit_id": "operator",  "score_required": 1500 }
+  ],
+  "level_unlocks": [
+    { "level_id": "level_01", "score_required": 0,    "requires_completed": null },
+    { "level_id": "level_02", "score_required": 200,  "requires_completed": "level_01" },
+    { "level_id": "level_03", "score_required": 600,  "requires_completed": "level_02" },
+    { "level_id": "level_04", "score_required": 1500, "requires_completed": "level_03" }
+  ],
+  "upgrades": [
+    { "id": "energy_boost_1", "score_required": 50,   "type": "starting_energy", "value": 25 },
+    { "id": "regen_boost_1",  "score_required": 300,  "type": "energy_regen",    "value": 2 },
+    { "id": "bounty_boost_1", "score_required": 800,  "type": "bounty_mult",     "value": 1.5 },
+    { "id": "energy_boost_2", "score_required": 1200, "type": "starting_energy", "value": 50 },
+    { "id": "regen_boost_2",  "score_required": 2000, "type": "energy_regen",    "value": 3 }
+  ]
+}

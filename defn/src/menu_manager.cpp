@@ -1,4 +1,5 @@
 #include "menu_manager.h"
+#include "progression_manager.h"
 #include <cmath>
 #include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/center_container.hpp>
@@ -62,6 +63,19 @@ void MenuManager::_ready() {
     add_child(ui_layer_);
 
     setup_background();
+
+    // Total score label (top right)
+    auto *progression = ProgressionManager::get_singleton();
+    total_score_label_ = memnew(Label);
+    total_score_label_->set_text(vformat("Career Score: %d", progression->get_total_score()));
+    total_score_label_->set_anchors_preset(Control::PRESET_TOP_RIGHT);
+    total_score_label_->set_offset(Side::SIDE_RIGHT, -24.0);
+    total_score_label_->set_offset(Side::SIDE_TOP, 16.0);
+    total_score_label_->set_offset(Side::SIDE_LEFT, -300.0);
+    total_score_label_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+    total_score_label_->add_theme_font_size_override("font_size", 24);
+    total_score_label_->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    ui_layer_->add_child(total_score_label_);
 
     // Center container spanning the full viewport
     auto *center = memnew(CenterContainer);
@@ -207,11 +221,102 @@ void MenuManager::show_menu(const String &menu_name) {
 void MenuManager::on_button_pressed(const String &action, const String &target) {
     if (action == "goto_menu") {
         show_menu(target);
+    } else if (action == "level_select") {
+        show_level_select();
     } else if (action == "start_game") {
         get_tree()->change_scene_to_file("res://scenes/game.tscn");
     } else if (action == "quit") {
         get_tree()->quit();
     }
+}
+
+void MenuManager::show_level_select() {
+    clear_buttons();
+    current_menu_ = "level_select";
+
+    Dictionary style_data = menu_data_.get("style", Dictionary());
+    int font_size = static_cast<int>(style_data.get("button_font_size", 32));
+    int min_w = static_cast<int>(style_data.get("button_min_width", 400));
+    int min_h = static_cast<int>(style_data.get("button_min_height", 60));
+    int separation = static_cast<int>(style_data.get("button_separation", 16));
+
+    Dictionary normal_style_data = style_data.get("normal", Dictionary());
+    Dictionary hover_style_data = style_data.get("hover", Dictionary());
+    Dictionary pressed_style_data = style_data.get("pressed", Dictionary());
+
+    Color normal_font = parse_color_array(normal_style_data.get("font_color", Array()), Color(0.9, 0.9, 0.95));
+    Color hover_font = parse_color_array(hover_style_data.get("font_color", Array()), Color(1, 1, 1));
+    Color pressed_font = parse_color_array(pressed_style_data.get("font_color", Array()), Color(0.8, 0.8, 0.9));
+
+    button_container_->add_theme_constant_override("separation", separation);
+
+    // Title
+    auto *title = memnew(Label);
+    title->set_text("SELECT LEVEL");
+    title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    title->add_theme_font_size_override("font_size", 36);
+    title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    button_container_->add_child(title);
+
+    auto *progression = ProgressionManager::get_singleton();
+    const auto &level_data = progression->get_level_unlock_data();
+
+    for (const auto &level : level_data) {
+        bool unlocked = progression->is_level_unlocked(level.level_id);
+        int best_score = progression->get_highest_level_score(level.level_id);
+        bool completed = progression->is_level_completed(level.level_id);
+
+        String label_text = level.level_id.replace("_", " ").capitalize();
+        if (!unlocked) {
+            label_text += vformat(" (Score: %d needed)", level.score_required);
+        } else if (completed) {
+            label_text += vformat(" - Best: %d", best_score);
+        }
+
+        auto *btn = memnew(Button);
+        btn->set_text(label_text);
+        btn->set_custom_minimum_size(Vector2(static_cast<real_t>(min_w), static_cast<real_t>(min_h)));
+        btn->set_focus_mode(Control::FOCUS_NONE);
+        btn->add_theme_font_size_override("font_size", font_size);
+
+        btn->add_theme_stylebox_override("normal", make_style(normal_style_data));
+        btn->add_theme_stylebox_override("hover", make_style(hover_style_data));
+        btn->add_theme_stylebox_override("pressed", make_style(pressed_style_data));
+
+        btn->add_theme_color_override("font_color", normal_font);
+        btn->add_theme_color_override("font_hover_color", hover_font);
+        btn->add_theme_color_override("font_pressed_color", pressed_font);
+
+        if (!unlocked) {
+            btn->set_disabled(true);
+            btn->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
+        } else {
+            btn->connect("pressed", callable_mp(this, &MenuManager::on_level_selected).bind(level.level_id));
+        }
+
+        button_container_->add_child(btn);
+    }
+
+    // Back button
+    auto *back_btn = memnew(Button);
+    back_btn->set_text("Back");
+    back_btn->set_custom_minimum_size(Vector2(static_cast<real_t>(min_w), static_cast<real_t>(min_h)));
+    back_btn->set_focus_mode(Control::FOCUS_NONE);
+    back_btn->add_theme_font_size_override("font_size", font_size);
+    back_btn->add_theme_stylebox_override("normal", make_style(normal_style_data));
+    back_btn->add_theme_stylebox_override("hover", make_style(hover_style_data));
+    back_btn->add_theme_stylebox_override("pressed", make_style(pressed_style_data));
+    back_btn->add_theme_color_override("font_color", normal_font);
+    back_btn->add_theme_color_override("font_hover_color", hover_font);
+    back_btn->add_theme_color_override("font_pressed_color", pressed_font);
+    back_btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(String("goto_menu"), String("game_menu")));
+    button_container_->add_child(back_btn);
+}
+
+void MenuManager::on_level_selected(const String &level_id) {
+    auto *progression = ProgressionManager::get_singleton();
+    progression->set_current_level_id(level_id);
+    get_tree()->change_scene_to_file("res://scenes/game.tscn");
 }
 
 void MenuManager::build_options_ui(const Dictionary &menu_def) {

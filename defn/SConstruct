@@ -38,6 +38,7 @@ else:
 sources = [
     "src/register_types.cpp",
     "src/grid_manager.cpp",
+    "src/progression_manager.cpp",
     "src/health_component.cpp",
     "src/health_bar_widget.cpp",
     "src/animation_controller.cpp",

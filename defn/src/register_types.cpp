@@ -14,6 +14,7 @@
 #include "hud.h"
 #include "menu_manager.h"
 #include "pause_menu.h"
+#include "progression_manager.h"
 #include "sound_controller.h"
 #include "unit.h"
 #include "wave_manager.h"
@@ -27,6 +28,8 @@ void initialize_module(ModuleInitializationLevel p_level) {
 
     ClassDB::register_class<defn::GridManager>();
     defn::GridManager::register_singleton();
+    ClassDB::register_class<defn::ProgressionManager>();
+    defn::ProgressionManager::register_singleton();
     ClassDB::register_class<defn::HealthComponent>();
     ClassDB::register_class<defn::HealthBarWidget>();
     ClassDB::register_class<defn::AnimationController>();
@@ -46,6 +49,7 @@ void uninitialize_module(ModuleInitializationLevel p_level) {
         return;
     }
 
+    defn::ProgressionManager::unregister_singleton();
     defn::GridManager::unregister_singleton();
 }
 

@@ -79,6 +79,7 @@ void WaveManager::load_level(const String &path) {
     Dictionary data = json->get_data();
     starting_core_resource = static_cast<int>(data.get("starting_core_resource", 100));
     base_integrity_max = static_cast<int>(data.get("base_integrity", 3));
+    background_path = String(data.get("background", ""));
 
     Array wave_array = data.get("waves", Array());
     waves.clear();

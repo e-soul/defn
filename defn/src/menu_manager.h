@@ -34,9 +34,11 @@ class MenuManager : public Node2D {
     bool load_menu_data();
     void setup_background();
     void show_menu(const String &menu_name);
+    void show_level_select();
     void clear_buttons();
     void build_options_ui(const Dictionary &menu_def);
     void on_button_pressed(const String &action, const String &target);
+    void on_level_selected(const String &level_id);
     void on_display_mode_changed(int index);
     void on_resolution_changed(int index);
     void on_vsync_toggled(bool toggled);
@@ -51,6 +53,7 @@ class MenuManager : public Node2D {
     CanvasLayer *ui_layer_ = nullptr;
     TextureRect *background_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
+    Label *total_score_label_ = nullptr;
 
     // Options-menu state (reset by clear_buttons)
     OptionButton *resolution_dropdown_ = nullptr;
