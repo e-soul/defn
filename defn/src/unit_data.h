@@ -40,6 +40,12 @@ struct GlobalShootSfxConfig {
 
 struct GlobalUnitConfig {
     GlobalShootSfxConfig shoot_sfx;
+    Color friendly_health_bar_color = Color(0, 1, 0, 0.9);
+    Color hostile_health_bar_color = Color(1, 0, 0, 0.9);
+    Color friendly_melee_flash_color = Color(1, 1, 1);
+    Color hostile_melee_flash_color = Color(1, 1, 1);
+    Color friendly_ranged_flash_color = Color(1, 1, 1);
+    Color hostile_ranged_flash_color = Color(1, 1, 1);
 };
 
 struct UnitConfig {

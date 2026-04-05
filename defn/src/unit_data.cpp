@@ -7,7 +7,11 @@ namespace defn {
 
 namespace {
 
-float as_float(const Variant &value) { return static_cast<float>(static_cast<double>(value)); }
+constexpr real_t DEFAULT_ALPHA = static_cast<real_t>(1.0);
+constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_X = static_cast<real_t>(0.0);
+constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_Y = static_cast<real_t>(-241.0);
+
+real_t as_real(const Variant &value) { return static_cast<real_t>(value); }
 
 bool parse_json_file(const String &path, Variant &out_data) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -33,10 +37,10 @@ bool parse_json_file(const String &path, Variant &out_data) {
 
 Color parse_color(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
-        const auto red = as_float(arr[0]);
-        const auto green = as_float(arr[1]);
-        const auto blue = as_float(arr[2]);
-        const auto alpha = arr.size() >= 4 ? as_float(arr[3]) : 1.0F;
+        const auto red = as_real(arr[0]);
+        const auto green = as_real(arr[1]);
+        const auto blue = as_real(arr[2]);
+        const auto alpha = arr.size() >= 4 ? as_real(arr[3]) : DEFAULT_ALPHA;
         return {red, green, blue, alpha};
     }
     return fallback;
@@ -45,7 +49,7 @@ Color parse_color(const Array &arr, const Color &fallback) {
 Vector2 parse_vector2(const Variant &value, const Vector2 &fallback) {
     Array arr = value;
     if (arr.size() >= 2) {
-        return {as_float(arr[0]), as_float(arr[1])};
+        return {as_real(arr[0]), as_real(arr[1])};
     }
     return fallback;
 }
@@ -64,6 +68,42 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
     if (global_data.has("shoot_sfx")) {
         Dictionary global_sfx = global_data["shoot_sfx"];
         globals_.shoot_sfx.pitch_variance = static_cast<double>(global_sfx.get("pitch_variance", 0.0));
+    }
+
+    if (global_data.has("health_bar_color")) {
+        Dictionary global_health_bar_colors = global_data["health_bar_color"];
+        globals_.friendly_health_bar_color = parse_color(
+            global_health_bar_colors.get("friendly", Array()),
+            globals_.friendly_health_bar_color
+        );
+        globals_.hostile_health_bar_color = parse_color(
+            global_health_bar_colors.get("hostile", Array()),
+            globals_.hostile_health_bar_color
+        );
+    }
+
+    if (global_data.has("melee_flash_color")) {
+        Dictionary global_melee_flash_colors = global_data["melee_flash_color"];
+        globals_.friendly_melee_flash_color = parse_color(
+            global_melee_flash_colors.get("friendly", Array()),
+            globals_.friendly_melee_flash_color
+        );
+        globals_.hostile_melee_flash_color = parse_color(
+            global_melee_flash_colors.get("hostile", Array()),
+            globals_.hostile_melee_flash_color
+        );
+    }
+
+    if (global_data.has("ranged_flash_color")) {
+        Dictionary global_ranged_flash_colors = global_data["ranged_flash_color"];
+        globals_.friendly_ranged_flash_color = parse_color(
+            global_ranged_flash_colors.get("friendly", Array()),
+            globals_.friendly_ranged_flash_color
+        );
+        globals_.hostile_ranged_flash_color = parse_color(
+            global_ranged_flash_colors.get("hostile", Array()),
+            globals_.hostile_ranged_flash_color
+        );
     }
 
     Variant unit_data_variant;
@@ -97,10 +137,19 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
         cfg.scale = static_cast<double>(unit_dict.get("scale", 0.27));
         cfg.sprite_flip_h = static_cast<bool>(unit_dict.get("sprite_flip_h", false));
 
-        cfg.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), Color(0, 1, 0, 0.9));
-        cfg.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), Vector2(0.0, -241.0));
-        cfg.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), Color(1, 1, 1));
-        cfg.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), Color(1, 1, 1));
+        const Color default_health_bar_color =
+            cfg.side == UnitSide::HOSTILE ? globals_.hostile_health_bar_color : globals_.friendly_health_bar_color;
+        const Color default_melee_flash_color =
+            cfg.side == UnitSide::HOSTILE ? globals_.hostile_melee_flash_color : globals_.friendly_melee_flash_color;
+        const Color default_ranged_flash_color =
+            cfg.side == UnitSide::HOSTILE ? globals_.hostile_ranged_flash_color : globals_.friendly_ranged_flash_color;
+        cfg.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
+        cfg.health_bar_offset = parse_vector2(
+            unit_dict.get("health_bar_offset", Array()),
+            Vector2(DEFAULT_HEALTH_BAR_OFFSET_X, DEFAULT_HEALTH_BAR_OFFSET_Y)
+        );
+        cfg.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
+        cfg.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
 
         // Muzzle flash
         if (unit_dict.has("muzzle_flash")) {
@@ -108,7 +157,7 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
             cfg.muzzle.path_template = String(muzzle_flash_dict.get("path_template", ""));
             Array offset = muzzle_flash_dict.get("offset", Array());
             if (offset.size() >= 2) {
-                cfg.muzzle.offset = Vector2(as_float(offset[0]), as_float(offset[1]));
+                cfg.muzzle.offset = Vector2(as_real(offset[0]), as_real(offset[1]));
             }
             cfg.muzzle.flip_h = static_cast<bool>(muzzle_flash_dict.get("flip_h", false));
         }
