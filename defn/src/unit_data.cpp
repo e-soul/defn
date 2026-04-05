@@ -54,6 +54,17 @@ Vector2 parse_vector2(const Variant &value, const Vector2 &fallback) {
     return fallback;
 }
 
+RangeVariationConfig parse_range_variation(const Variant &value, const RangeVariationConfig &fallback) {
+    Array arr = value;
+    if (arr.size() >= 2) {
+        return {
+            .min = static_cast<double>(arr[0]),
+            .max = static_cast<double>(arr[1]),
+        };
+    }
+    return fallback;
+}
+
 } // namespace
 
 bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
@@ -68,6 +79,18 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
     if (global_data.has("shoot_sfx")) {
         Dictionary global_sfx = global_data["shoot_sfx"];
         globals_.shoot_sfx.pitch_variance = static_cast<double>(global_sfx.get("pitch_variance", 0.0));
+    }
+
+    if (global_data.has("attack_range_variation")) {
+        Dictionary global_range_variation = global_data["attack_range_variation"];
+        globals_.melee_attack_range_variation = parse_range_variation(
+            global_range_variation.get("melee", Array()),
+            globals_.melee_attack_range_variation
+        );
+        globals_.ranged_attack_range_variation = parse_range_variation(
+            global_range_variation.get("ranged", Array()),
+            globals_.ranged_attack_range_variation
+        );
     }
 
     if (global_data.has("health_bar_color")) {
@@ -129,8 +152,12 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
         cfg.hp = static_cast<int>(unit_dict.get("hp", 100));
         cfg.melee_damage = static_cast<int>(unit_dict.get("melee_damage", 15));
         cfg.melee_attack_period_seconds = static_cast<double>(unit_dict.get("melee_attack_period_seconds", 1.0));
+        cfg.melee_attack_range = static_cast<double>(unit_dict.get("melee_attack_range", cfg.melee_attack_range));
+        cfg.melee_attack_range_variation = globals_.melee_attack_range_variation;
         cfg.ranged_damage = static_cast<int>(unit_dict.get("ranged_damage", 8));
         cfg.ranged_attack_period_seconds = static_cast<double>(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
+        cfg.ranged_attack_range = static_cast<double>(unit_dict.get("ranged_attack_range", cfg.ranged_attack_range));
+        cfg.ranged_attack_range_variation = globals_.ranged_attack_range_variation;
         cfg.move_speed = static_cast<double>(unit_dict.get("move_speed", 0.5));
         cfg.cost = static_cast<int>(unit_dict.get("cost", 0));
         cfg.bounty = static_cast<int>(unit_dict.get("bounty", 0));

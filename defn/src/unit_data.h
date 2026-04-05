@@ -38,8 +38,15 @@ struct GlobalShootSfxConfig {
     double pitch_variance = 0.0;
 };
 
+struct RangeVariationConfig {
+    double min = 0.8;
+    double max = 1.2;
+};
+
 struct GlobalUnitConfig {
     GlobalShootSfxConfig shoot_sfx;
+    RangeVariationConfig melee_attack_range_variation;
+    RangeVariationConfig ranged_attack_range_variation;
     Color friendly_health_bar_color = Color(0, 1, 0, 0.9);
     Color hostile_health_bar_color = Color(1, 0, 0, 0.9);
     Color friendly_melee_flash_color = Color(1, 1, 1);
@@ -54,8 +61,12 @@ struct UnitConfig {
     int hp = 100;
     int melee_damage = 15;
     double melee_attack_period_seconds = 1.0;
+    double melee_attack_range = 128.0;
+    RangeVariationConfig melee_attack_range_variation;
     int ranged_damage = 8;
     double ranged_attack_period_seconds = 2.0 / 3.0;
+    double ranged_attack_range = 384.0;
+    RangeVariationConfig ranged_attack_range_variation;
     double move_speed = 0.5;
     int cost = 0;
     int bounty = 0;

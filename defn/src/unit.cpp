@@ -13,20 +13,30 @@ namespace defn {
 
 using godot::UtilityFunctions;
 
-Unit::Unit() {
-    // ±20% random variation on base attack range to prevent perfect alignment
-    double variation = UtilityFunctions::randf_range(0.8, 1.2);
-    attack_range = GridManager::ATTACK_RANGE * variation;
-    double ranged_variation = UtilityFunctions::randf_range(0.8, 1.2);
-    ranged_range = GridManager::RANGED_RANGE * ranged_variation;
-}
+Unit::Unit() = default;
 
 void Unit::_bind_methods() {
     ADD_SIGNAL(MethodInfo("unit_died", PropertyInfo(Variant::OBJECT, "unit")));
     ADD_SIGNAL(MethodInfo("enemy_breached"));
 }
 
-void Unit::set_unit_config(const UnitConfig &cfg) { unit_config_ = cfg; }
+void Unit::set_unit_config(const UnitConfig &cfg) {
+    unit_config_ = cfg;
+
+    const double melee_variation = UtilityFunctions::randf_range(
+        unit_config_.melee_attack_range_variation.min,
+        unit_config_.melee_attack_range_variation.max
+    );
+    attack_range = unit_config_.melee_attack_range * melee_variation;
+
+    const double ranged_variation = UtilityFunctions::randf_range(
+        unit_config_.ranged_attack_range_variation.min,
+        unit_config_.ranged_attack_range_variation.max
+    );
+    ranged_range = unit_config_.ranged_attack_range * ranged_variation;
+
+    UtilityFunctions::print("Unit: Configured attack ranges - Melee: ", attack_range, ", Ranged: ", ranged_range);
+}
 
 void Unit::_ready() {
     // Group assignment based on side
