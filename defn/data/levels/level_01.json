@@ -1,4 +1,4 @@
-{
+﻿{
   "level_id": 1,
   "name": "Desert Outpost",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
@@ -8,32 +8,32 @@
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 5.0,  "type": "jackal"},
-        {"time": 7.0,  "type": "jackal"},
-        {"time": 9.0,  "type": "jackal"}
+        {"time": 5.0,  "type": "grime"},
+        {"time": 7.0,  "type": "grime"},
+        {"time": 9.0,  "type": "grime"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 30.0, "type": "jackal"},
-        {"time": 32.0, "type": "jackal"},
-        {"time": 34.0, "type": "jackal"},
-        {"time": 36.0, "type": "jackal"},
-        {"time": 38.0, "type": "jackal"}
+        {"time": 30.0, "type": "grime"},
+        {"time": 32.0, "type": "grime"},
+        {"time": 34.0, "type": "grime"},
+        {"time": 36.0, "type": "grime"},
+        {"time": 38.0, "type": "grime"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
-        {"time": 60.0, "type": "jackal"},
-        {"time": 61.0, "type": "jackal"},
-        {"time": 63.0, "type": "jackal"},
-        {"time": 64.0, "type": "jackal"},
-        {"time": 66.0, "type": "jackal"},
-        {"time": 67.0, "type": "jackal"},
-        {"time": 69.0, "type": "jackal"},
-        {"time": 71.0, "type": "jackal"}
+        {"time": 60.0, "type": "grime"},
+        {"time": 61.0, "type": "grime"},
+        {"time": 63.0, "type": "grime"},
+        {"time": 64.0, "type": "grime"},
+        {"time": 66.0, "type": "grime"},
+        {"time": 67.0, "type": "grime"},
+        {"time": 69.0, "type": "grime"},
+        {"time": 71.0, "type": "grime"}
       ]
     }
   ]

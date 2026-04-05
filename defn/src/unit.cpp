@@ -34,8 +34,6 @@ void Unit::set_unit_config(const UnitConfig &cfg) {
         unit_config_.ranged_attack_range_variation.max
     );
     ranged_range = unit_config_.ranged_attack_range * ranged_variation;
-
-    UtilityFunctions::print("Unit: Configured attack ranges - Melee: ", attack_range, ", Ranged: ", ranged_range);
 }
 
 void Unit::_ready() {

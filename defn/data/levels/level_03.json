@@ -1,4 +1,4 @@
-{
+﻿{
   "level_id": 3,
   "name": "Crumbling District",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
@@ -8,84 +8,84 @@
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 3.0,  "type": "jackal"},
-        {"time": 4.0,  "type": "jackal"},
-        {"time": 5.0,  "type": "jackal"},
-        {"time": 6.0,  "type": "jackal"},
-        {"time": 7.0,  "type": "jackal"}
+        {"time": 3.0,  "type": "grime"},
+        {"time": 4.0,  "type": "wrecker"},
+        {"time": 5.0,  "type": "grime"},
+        {"time": 6.0,  "type": "mason"},
+        {"time": 7.0,  "type": "grime"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 22.0, "type": "jackal"},
-        {"time": 23.0, "type": "jackal"},
-        {"time": 24.0, "type": "jackal"},
-        {"time": 25.0, "type": "jackal"},
-        {"time": 26.0, "type": "jackal"},
-        {"time": 27.5, "type": "jackal"},
-        {"time": 29.0, "type": "jackal"},
-        {"time": 30.5, "type": "jackal"}
+        {"time": 22.0, "type": "grime"},
+        {"time": 23.0, "type": "wrecker"},
+        {"time": 24.0, "type": "mason"},
+        {"time": 25.0, "type": "grime"},
+        {"time": 26.0, "type": "grime"},
+        {"time": 27.5, "type": "wrecker"},
+        {"time": 29.0, "type": "mason"},
+        {"time": 30.5, "type": "grime"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
-        {"time": 45.0, "type": "jackal"},
-        {"time": 45.5, "type": "jackal"},
-        {"time": 46.5, "type": "jackal"},
-        {"time": 47.5, "type": "jackal"},
-        {"time": 48.5, "type": "jackal"},
-        {"time": 49.5, "type": "jackal"},
-        {"time": 51.0, "type": "jackal"},
-        {"time": 52.5, "type": "jackal"},
-        {"time": 54.0, "type": "jackal"},
-        {"time": 55.5, "type": "jackal"},
-        {"time": 57.0, "type": "jackal"},
-        {"time": 58.5, "type": "jackal"}
+        {"time": 45.0, "type": "grime"},
+        {"time": 45.5, "type": "wrecker"},
+        {"time": 46.5, "type": "grime"},
+        {"time": 47.5, "type": "mason"},
+        {"time": 48.5, "type": "grime"},
+        {"time": 49.5, "type": "wrecker"},
+        {"time": 51.0, "type": "grime"},
+        {"time": 52.5, "type": "mason"},
+        {"time": 54.0, "type": "wrecker"},
+        {"time": 55.5, "type": "grime"},
+        {"time": 57.0, "type": "grime"},
+        {"time": 58.5, "type": "mason"}
       ]
     },
     {
       "wave_number": 4,
       "spawns": [
-        {"time": 72.0, "type": "jackal"},
-        {"time": 72.5, "type": "jackal"},
-        {"time": 73.0, "type": "jackal"},
-        {"time": 74.0, "type": "jackal"},
-        {"time": 75.0, "type": "jackal"},
-        {"time": 76.0, "type": "jackal"},
-        {"time": 77.0, "type": "jackal"},
-        {"time": 78.0, "type": "jackal"},
-        {"time": 79.5, "type": "jackal"},
-        {"time": 81.0, "type": "jackal"},
-        {"time": 82.5, "type": "jackal"},
-        {"time": 84.0, "type": "jackal"},
-        {"time": 85.5, "type": "jackal"},
-        {"time": 87.0, "type": "jackal"},
-        {"time": 88.5, "type": "jackal"}
+        {"time": 72.0, "type": "grime"},
+        {"time": 72.5, "type": "wrecker"},
+        {"time": 73.0, "type": "mason"},
+        {"time": 74.0, "type": "grime"},
+        {"time": 75.0, "type": "wrecker"},
+        {"time": 76.0, "type": "grime"},
+        {"time": 77.0, "type": "mason"},
+        {"time": 78.0, "type": "grime"},
+        {"time": 79.5, "type": "wrecker"},
+        {"time": 81.0, "type": "grime"},
+        {"time": 82.5, "type": "mason"},
+        {"time": 84.0, "type": "wrecker"},
+        {"time": 85.5, "type": "grime"},
+        {"time": 87.0, "type": "mason"},
+        {"time": 88.5, "type": "grime"}
       ]
     },
     {
       "wave_number": 5,
       "spawns": [
-        {"time": 100.0, "type": "jackal"},
-        {"time": 100.5, "type": "jackal"},
-        {"time": 101.0, "type": "jackal"},
-        {"time": 101.5, "type": "jackal"},
-        {"time": 102.5, "type": "jackal"},
-        {"time": 103.5, "type": "jackal"},
-        {"time": 104.5, "type": "jackal"},
-        {"time": 105.5, "type": "jackal"},
-        {"time": 107.0, "type": "jackal"},
-        {"time": 108.5, "type": "jackal"},
-        {"time": 110.0, "type": "jackal"},
-        {"time": 111.5, "type": "jackal"},
-        {"time": 113.0, "type": "jackal"},
-        {"time": 114.5, "type": "jackal"},
-        {"time": 116.0, "type": "jackal"},
-        {"time": 117.5, "type": "jackal"},
-        {"time": 119.0, "type": "jackal"},
-        {"time": 120.5, "type": "jackal"}
+        {"time": 100.0, "type": "grime"},
+        {"time": 100.5, "type": "wrecker"},
+        {"time": 101.0, "type": "mason"},
+        {"time": 101.5, "type": "grime"},
+        {"time": 102.5, "type": "wrecker"},
+        {"time": 103.5, "type": "grime"},
+        {"time": 104.5, "type": "mason"},
+        {"time": 105.5, "type": "grime"},
+        {"time": 107.0, "type": "wrecker"},
+        {"time": 108.5, "type": "grime"},
+        {"time": 110.0, "type": "mason"},
+        {"time": 111.5, "type": "wrecker"},
+        {"time": 113.0, "type": "grime"},
+        {"time": 114.5, "type": "mason"},
+        {"time": 116.0, "type": "grime"},
+        {"time": 117.5, "type": "wrecker"},
+        {"time": 119.0, "type": "grime"},
+        {"time": 120.5, "type": "mason"}
       ]
     }
   ]
