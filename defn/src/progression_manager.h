@@ -3,6 +3,7 @@
 
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -28,7 +29,7 @@ struct UpgradeEntry {
     String id;
     int score_required = 0;
     String type;   // "starting_energy", "energy_regen", "bounty_mult"
-    double value = 0.0;
+    real_t value = 0.0;
 };
 
 class ProgressionManager : public Object {
@@ -52,7 +53,7 @@ class ProgressionManager : public Object {
     int get_highest_level_score(const String &level_id) const;
     int get_effective_starting_energy(int base) const;
     int get_effective_energy_regen() const;
-    double get_effective_bounty_multiplier() const;
+    real_t get_effective_bounty_multiplier() const;
 
     String get_current_level_id() const { return current_level_id_; }
     void set_current_level_id(const String &level_id) { current_level_id_ = level_id; }

@@ -2,6 +2,7 @@
 #include "grid_manager.h"
 #include "unit.h"
 #include "unit_data.h"
+#include "variant_tools.h"
 #include <algorithm>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>
@@ -44,9 +45,9 @@ void WaveManager::_process(double delta) {
                 enemy->set_unit_config(*cfg);
             }
         }
-        double spawn_y_pos = GridManager::random_belt_y();
-        double spawn_x_pos = grid->spawn_x();
-        enemy->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
+        const real_t spawn_y_pos = GridManager::random_belt_y();
+        const real_t spawn_x_pos = grid->spawn_x();
+        enemy->set_position(Vector2(spawn_x_pos, spawn_y_pos));
 
         emit_signal("enemy_spawned", enemy);
 
@@ -77,8 +78,8 @@ void WaveManager::load_level(const String &path) {
     }
 
     Dictionary data = json->get_data();
-    starting_core_resource = static_cast<int>(data.get("starting_core_resource", 100));
-    base_integrity_max = static_cast<int>(data.get("base_integrity", 3));
+    starting_core_resource = VariantTools::as_int(data.get("starting_core_resource", 100));
+    base_integrity_max = VariantTools::as_int(data.get("base_integrity", 3));
     background_path = String(data.get("background", ""));
 
     Array wave_array = data.get("waves", Array());
@@ -88,13 +89,13 @@ void WaveManager::load_level(const String &path) {
     for (int wave_idx = 0; wave_idx < wave_array.size(); ++wave_idx) {
         Dictionary wave_dict = wave_array[wave_idx];
         WaveData wave_data;
-        wave_data.wave_number = static_cast<int>(wave_dict.get("wave_number", wave_idx + 1));
+        wave_data.wave_number = VariantTools::as_int(wave_dict.get("wave_number", wave_idx + 1));
 
         Array spawns_array = wave_dict.get("spawns", Array());
         for (const auto &spawn_val : spawns_array) {
             Dictionary spawn_dict = spawn_val;
             SpawnEvent spawn_event;
-            spawn_event.time = static_cast<double>(spawn_dict.get("time", 0.0));
+            spawn_event.time = VariantTools::as_double(spawn_dict.get("time", 0.0));
             spawn_event.type = String(spawn_dict.get("type", "jackal"));
             wave_data.spawns.push_back(spawn_event);
 

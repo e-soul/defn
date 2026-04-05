@@ -138,22 +138,22 @@ void GameManager::setup_background(const String &bg_path) {
     }
 
     Vector2 tex_size = bg_tex->get_size();
-    double scale_factor = GridManager::VIEWPORT_HEIGHT / tex_size.y;
-    double display_width = tex_size.x * scale_factor;
+    const real_t scale_factor = GridManager::VIEWPORT_HEIGHT / tex_size.y;
+    const real_t display_width = tex_size.x * scale_factor;
 
     world_width = display_width * GridManager::WORLD_MULTIPLIER;
     grid->set_world_width(world_width);
 
     auto *parallax = memnew(Parallax2D);
     parallax->set_name("Background");
-    parallax->set_repeat_size(Vector2(static_cast<real_t>(display_width), 0));
+    parallax->set_repeat_size(Vector2(display_width, 0));
     parallax->set_repeat_times(GridManager::WORLD_MULTIPLIER);
     parallax->set_scroll_scale(Vector2(1.0, 1.0));
 
     auto *sprite = memnew(Sprite2D);
     sprite->set_texture(bg_tex);
     sprite->set_centered(false);
-    sprite->set_scale(Vector2(static_cast<real_t>(scale_factor), static_cast<real_t>(scale_factor)));
+    sprite->set_scale(Vector2(scale_factor, scale_factor));
     parallax->add_child(sprite);
 
     add_child(parallax);
@@ -164,7 +164,7 @@ void GameManager::setup_camera() {
     camera->set_name("Camera");
 
     camera_target_x = GridManager::VIEWPORT_WIDTH / 2.0;
-    camera->set_position(Vector2(static_cast<real_t>(camera_target_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
+    camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
 
     camera->set_limit(SIDE_LEFT, 0);
     camera->set_limit(SIDE_TOP, 0);
@@ -178,16 +178,16 @@ void GameManager::update_camera_scroll(double delta) {
     auto *grid = GridManager::get_singleton();
 
     // Smooth interpolation toward the target position
-    double current_x = camera->get_position().x;
-    double diff = camera_target_x - current_x;
+    const real_t current_x = camera->get_position().x;
+    const real_t diff = camera_target_x - current_x;
     if (diff > 1.0 || diff < -1.0) {
         constexpr double SMOOTH_FACTOR = 3.0;
         double factor = SMOOTH_FACTOR * delta;
         factor = std::min(factor, 1.0);
-        double new_x = current_x + (diff * factor);
-        camera->set_position(Vector2(static_cast<real_t>(new_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
+        const real_t new_x = current_x + (diff * factor);
+        camera->set_position(Vector2(new_x, GridManager::VIEWPORT_HEIGHT / 2.0));
     } else {
-        camera->set_position(Vector2(static_cast<real_t>(camera_target_x), static_cast<real_t>(GridManager::VIEWPORT_HEIGHT / 2.0)));
+        camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
     }
 
     grid->set_camera_x(camera->get_position().x);
@@ -205,7 +205,7 @@ void GameManager::setup_scroll_trigger() {
     Ref<RectangleShape2D> rect;
     rect.instantiate();
     // Tall vertical strip covering well beyond the belt area
-    constexpr double trigger_height = GridManager::BELT_BOTTOM_Y - GridManager::BELT_TOP_Y + 400.0;
+    constexpr real_t trigger_height = GridManager::BELT_BOTTOM_Y - GridManager::BELT_TOP_Y + 400.0;
     rect->set_size(Vector2(20.0, trigger_height));
     shape_node->set_shape(rect);
     scroll_trigger->add_child(shape_node);
@@ -217,11 +217,11 @@ void GameManager::setup_scroll_trigger() {
 }
 
 void GameManager::update_scroll_trigger_position() {
-    constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
-    constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
-    double trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
-    double trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / 2.0;
-    scroll_trigger->set_position(Vector2(static_cast<real_t>(trigger_x), static_cast<real_t>(trigger_y)));
+    constexpr real_t VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
+    constexpr real_t SCROLL_STEP = VIEWPORT_W * 0.25;
+    const real_t trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
+    const real_t trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / 2.0;
+    scroll_trigger->set_position(Vector2(trigger_x, trigger_y));
 }
 
 void GameManager::on_scroll_triggered(Area2D *area) {
@@ -239,9 +239,9 @@ void GameManager::on_scroll_triggered(Area2D *area) {
         return;
     }
 
-    constexpr double VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
-    constexpr double SCROLL_STEP = VIEWPORT_W * 0.25;
-    double max_target = world_width - (VIEWPORT_W / 2.0);
+    constexpr real_t VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
+    constexpr real_t SCROLL_STEP = VIEWPORT_W * 0.25;
+    const real_t max_target = world_width - (VIEWPORT_W / 2.0);
 
     camera_target_x += SCROLL_STEP;
     camera_target_x = std::min(camera_target_x, max_target);
@@ -260,9 +260,9 @@ void GameManager::deploy_friendly(const String &unit_type) {
 
     auto *unit = memnew(Unit);
     unit->set_unit_config(*cfg);
-    double spawn_x_pos = grid->deploy_x();
-    double spawn_y_pos = GridManager::random_belt_y();
-    unit->set_position(Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)));
+    const real_t spawn_x_pos = grid->deploy_x();
+    const real_t spawn_y_pos = GridManager::random_belt_y();
+    unit->set_position(Vector2(spawn_x_pos, spawn_y_pos));
 
     unit->connect("unit_died", callable_mp(this, &GameManager::on_friendly_died));
     entity_container->add_child(unit);
@@ -300,7 +300,7 @@ void GameManager::on_enemy_died(Node *unit) {
         kill_score += base_bounty;
         ++enemies_killed;
         // Energy gained uses bounty_mult
-        int energy_bounty = static_cast<int>(std::ceil(static_cast<double>(base_bounty) * bounty_multiplier));
+        const int energy_bounty = static_cast<int>(std::ceil(base_bounty * bounty_multiplier));
         core_resource += energy_bounty;
         hud->update_core_resource(core_resource);
         hud->update_card_affordability(core_resource);

@@ -41,18 +41,18 @@ void GridManager::unregister_singleton() {
     singleton_ = nullptr;
 }
 
-double GridManager::random_belt_y() { return UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y); }
+real_t GridManager::random_belt_y() { return UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y); }
 
-double GridManager::deploy_x() const { return camera_x_ - (VIEWPORT_WIDTH / 2.0) - SPAWN_OFFSET; }
+real_t GridManager::deploy_x() const { return camera_x_ - (VIEWPORT_WIDTH / 2.0) - SPAWN_OFFSET; }
 
-double GridManager::spawn_x() const { return camera_x_ + (VIEWPORT_WIDTH / 2.0) + SPAWN_OFFSET; }
+real_t GridManager::spawn_x() const { return camera_x_ + (VIEWPORT_WIDTH / 2.0) + SPAWN_OFFSET; }
 
-void GridManager::set_world_width(double width) { world_width_ = width; }
+void GridManager::set_world_width(real_t width) { world_width_ = width; }
 
-double GridManager::get_world_width() const { return world_width_; }
+real_t GridManager::get_world_width() const { return world_width_; }
 
-void GridManager::set_camera_x(double camera_x) { camera_x_ = camera_x; }
+void GridManager::set_camera_x(real_t camera_x) { camera_x_ = camera_x; }
 
-double GridManager::get_camera_x() const { return camera_x_; }
+real_t GridManager::get_camera_x() const { return camera_x_; }
 
 } // namespace defn

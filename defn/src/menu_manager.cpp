@@ -1,5 +1,6 @@
 #include "menu_manager.h"
 #include "progression_manager.h"
+#include "variant_tools.h"
 #include <cmath>
 #include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/center_container.hpp>
@@ -27,11 +28,11 @@ namespace {
 
 Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1)) {
     if (arr.size() >= 3) {
-        const auto r = static_cast<float>(static_cast<double>(arr[0]));
-        const auto g = static_cast<float>(static_cast<double>(arr[1]));
-        const auto b = static_cast<float>(static_cast<double>(arr[2]));
-        const auto a = arr.size() >= 4 ? static_cast<float>(static_cast<double>(arr[3])) : 1.0F;
-        return {r, g, b, a};
+        const auto r = VariantTools::as_real(arr[0]);
+        const auto g = VariantTools::as_real(arr[1]);
+        const auto b = VariantTools::as_real(arr[2]);
+        const auto a = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : 1.0;
+        return Color(static_cast<float>(r), static_cast<float>(g), static_cast<float>(b), static_cast<float>(a));
     }
     return fallback;
 }
@@ -41,8 +42,8 @@ Ref<StyleBoxFlat> make_style(const Dictionary &style_dict) {
     style.instantiate();
     style->set_bg_color(parse_color_array(style_dict.get("bg_color", Array())));
     style->set_border_color(parse_color_array(style_dict.get("border_color", Array()), Color(0.4, 0.4, 0.5)));
-    style->set_border_width_all(static_cast<int>(style_dict.get("border_width", 2)));
-    style->set_corner_radius_all(static_cast<int>(style_dict.get("corner_radius", 8)));
+    style->set_border_width_all(VariantTools::as_int(style_dict.get("border_width", 2)));
+    style->set_corner_radius_all(VariantTools::as_int(style_dict.get("corner_radius", 8)));
     return style;
 }
 
@@ -172,10 +173,10 @@ void MenuManager::show_menu(const String &menu_name) {
     Array entries = menu.get("entries", Array());
     Dictionary style_data = menu_data_.get("style", Dictionary());
 
-    int font_size = static_cast<int>(style_data.get("button_font_size", 32));
-    int min_w = static_cast<int>(style_data.get("button_min_width", 400));
-    int min_h = static_cast<int>(style_data.get("button_min_height", 60));
-    int separation = static_cast<int>(style_data.get("button_separation", 16));
+    int font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
+    int min_w = VariantTools::as_int(style_data.get("button_min_width", 400));
+    int min_h = VariantTools::as_int(style_data.get("button_min_height", 60));
+    int separation = VariantTools::as_int(style_data.get("button_separation", 16));
 
     button_container_->add_theme_constant_override("separation", separation);
 
@@ -195,7 +196,7 @@ void MenuManager::show_menu(const String &menu_name) {
 
         auto *btn = memnew(Button);
         btn->set_text(label);
-        btn->set_custom_minimum_size(Vector2(static_cast<real_t>(min_w), static_cast<real_t>(min_h)));
+        btn->set_custom_minimum_size(Vector2(min_w, min_h));
         btn->set_focus_mode(Control::FOCUS_NONE);
         btn->add_theme_font_size_override("font_size", font_size);
 
@@ -235,10 +236,10 @@ void MenuManager::show_level_select() {
     current_menu_ = "level_select";
 
     Dictionary style_data = menu_data_.get("style", Dictionary());
-    int font_size = static_cast<int>(style_data.get("button_font_size", 32));
-    int min_w = static_cast<int>(style_data.get("button_min_width", 400));
-    int min_h = static_cast<int>(style_data.get("button_min_height", 60));
-    int separation = static_cast<int>(style_data.get("button_separation", 16));
+    int font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
+    int min_w = VariantTools::as_int(style_data.get("button_min_width", 400));
+    int min_h = VariantTools::as_int(style_data.get("button_min_height", 60));
+    int separation = VariantTools::as_int(style_data.get("button_separation", 16));
 
     Dictionary normal_style_data = style_data.get("normal", Dictionary());
     Dictionary hover_style_data = style_data.get("hover", Dictionary());
@@ -275,7 +276,7 @@ void MenuManager::show_level_select() {
 
         auto *btn = memnew(Button);
         btn->set_text(label_text);
-        btn->set_custom_minimum_size(Vector2(static_cast<real_t>(min_w), static_cast<real_t>(min_h)));
+        btn->set_custom_minimum_size(Vector2(min_w, min_h));
         btn->set_focus_mode(Control::FOCUS_NONE);
         btn->add_theme_font_size_override("font_size", font_size);
 
@@ -300,7 +301,7 @@ void MenuManager::show_level_select() {
     // Back button
     auto *back_btn = memnew(Button);
     back_btn->set_text("Back");
-    back_btn->set_custom_minimum_size(Vector2(static_cast<real_t>(min_w), static_cast<real_t>(min_h)));
+    back_btn->set_custom_minimum_size(Vector2(min_w, min_h));
     back_btn->set_focus_mode(Control::FOCUS_NONE);
     back_btn->add_theme_font_size_override("font_size", font_size);
     back_btn->add_theme_stylebox_override("normal", make_style(normal_style_data));
@@ -326,13 +327,13 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
     Dictionary hover_sd = style.get("hover", Dictionary());
     Dictionary pressed_sd = style.get("pressed", Dictionary());
 
-    int label_font_size = static_cast<int>(opts_style.get("label_font_size", 24));
-    int label_min_w = static_cast<int>(opts_style.get("label_min_width", 250));
-    int control_min_w = static_cast<int>(opts_style.get("control_min_width", 300));
-    int control_min_h = static_cast<int>(opts_style.get("control_min_height", 40));
-    int row_sep = static_cast<int>(opts_style.get("row_separation", 12));
-    int section_font_size = static_cast<int>(opts_style.get("section_font_size", 28));
-    int value_font_size = static_cast<int>(opts_style.get("value_font_size", 20));
+    int label_font_size = VariantTools::as_int(opts_style.get("label_font_size", 24));
+    int label_min_w = VariantTools::as_int(opts_style.get("label_min_width", 250));
+    int control_min_w = VariantTools::as_int(opts_style.get("control_min_width", 300));
+    int control_min_h = VariantTools::as_int(opts_style.get("control_min_height", 40));
+    int row_sep = VariantTools::as_int(opts_style.get("row_separation", 12));
+    int section_font_size = VariantTools::as_int(opts_style.get("section_font_size", 28));
+    int value_font_size = VariantTools::as_int(opts_style.get("value_font_size", 20));
     Color section_color = parse_color_array(opts_style.get("section_font_color", Array()), Color(1, 0.85, 0.3));
     Color label_color = parse_color_array(opts_style.get("label_font_color", Array()), Color(0.85, 0.85, 0.9));
     Color value_color = parse_color_array(opts_style.get("value_font_color", Array()), Color(0.7, 0.8, 1.0));
@@ -370,7 +371,7 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
 
         auto *name_label = memnew(Label);
         name_label->set_text(String(setting.get("label", "???")));
-        name_label->set_custom_minimum_size(Vector2(static_cast<real_t>(label_min_w), 0));
+        name_label->set_custom_minimum_size(Vector2(label_min_w, 0));
         name_label->add_theme_font_size_override("font_size", label_font_size);
         name_label->add_theme_color_override("font_color", label_color);
         name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
@@ -380,7 +381,7 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
 
         if (type == "dropdown" && setting_id == "display_mode") {
             auto *opt = memnew(OptionButton);
-            opt->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            opt->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
             opt->set_focus_mode(Control::FOCUS_NONE);
             opt->add_theme_font_size_override("font_size", label_font_size);
             opt->add_theme_stylebox_override("normal", make_style(normal_sd));
@@ -396,9 +397,9 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
             for (int j = 0; j < options.size(); ++j) {
                 Dictionary opt_data = options[j];
                 opt->add_item(String(opt_data.get("label", "???")));
-                int mode_val = static_cast<int>(opt_data.get("value", 0));
+                auto mode_val = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(opt_data.get("value", 0)));
                 display_mode_values_.push_back(mode_val);
-                if (mode_val == static_cast<int>(current_mode)) {
+                if (mode_val == current_mode) {
                     selected = j;
                 }
             }
@@ -407,7 +408,7 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
             row->add_child(opt);
         } else if (type == "dropdown" && setting_id == "resolution") {
             auto *opt = memnew(OptionButton);
-            opt->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            opt->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
             opt->set_focus_mode(Control::FOCUS_NONE);
             opt->add_theme_font_size_override("font_size", label_font_size);
             opt->add_theme_stylebox_override("normal", make_style(normal_sd));
@@ -447,26 +448,26 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
             row->add_child(opt);
         } else if (type == "checkbox" && setting_id == "vsync") {
             auto *check = memnew(CheckButton);
-            check->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            check->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
             check->set_focus_mode(Control::FOCUS_NONE);
             check->set_pressed(vsync_on);
             check->connect("toggled", callable_mp(this, &MenuManager::on_vsync_toggled));
             row->add_child(check);
         } else if (type == "slider" && setting_id == "bus_volume") {
             String bus_name = setting.get("bus", "Master");
-            int min_val = static_cast<int>(setting.get("min", 0));
-            int max_val = static_cast<int>(setting.get("max", 100));
-            int step = static_cast<int>(setting.get("step", 1));
+            int min_val = VariantTools::as_int(setting.get("min", 0));
+            int max_val = VariantTools::as_int(setting.get("max", 100));
+            int step = VariantTools::as_int(setting.get("step", 1));
 
             int bus_idx = audio->get_bus_index(bus_name);
             double current_pct = 100.0;
             if (bus_idx >= 0) {
-                auto db = static_cast<double>(audio->get_bus_volume_db(bus_idx));
+                const float db = audio->get_bus_volume_db(bus_idx);
                 current_pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
             }
 
             auto *slider = memnew(HSlider);
-            slider->set_custom_minimum_size(Vector2(static_cast<real_t>(control_min_w), static_cast<real_t>(control_min_h)));
+            slider->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
             slider->set_min(min_val);
             slider->set_max(max_val);
             slider->set_step(step);
@@ -492,13 +493,13 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
     // Back button
     Dictionary back = menu_def.get("back", Dictionary());
     if (!back.is_empty()) {
-        int btn_font_size = static_cast<int>(style.get("button_font_size", 32));
-        int btn_min_w = static_cast<int>(style.get("button_min_width", 400));
-        int btn_min_h = static_cast<int>(style.get("button_min_height", 60));
+        int btn_font_size = VariantTools::as_int(style.get("button_font_size", 32));
+        int btn_min_w = VariantTools::as_int(style.get("button_min_width", 400));
+        int btn_min_h = VariantTools::as_int(style.get("button_min_height", 60));
 
         auto *btn = memnew(Button);
         btn->set_text(String(back.get("label", "Back")));
-        btn->set_custom_minimum_size(Vector2(static_cast<real_t>(btn_min_w), static_cast<real_t>(btn_min_h)));
+        btn->set_custom_minimum_size(Vector2(btn_min_w, btn_min_h));
         btn->set_focus_mode(Control::FOCUS_NONE);
         btn->add_theme_font_size_override("font_size", btn_font_size);
         btn->add_theme_stylebox_override("normal", make_style(normal_sd));
@@ -521,7 +522,7 @@ void MenuManager::on_display_mode_changed(int index) {
     }
 
     auto *ds = DisplayServer::get_singleton();
-    auto mode = static_cast<DisplayServer::WindowMode>(display_mode_values_[index]);
+    auto mode = display_mode_values_[index];
     ds->window_set_mode(mode);
 
     if (mode == DisplayServer::WINDOW_MODE_WINDOWED) {
@@ -567,8 +568,8 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
         return;
     }
 
-    auto linear = static_cast<float>(value / 100.0);
-    float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
+    const float linear = static_cast<float>(value / 100.0);
+    const float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
     audio->set_bus_volume_db(bus_idx, db);
 
     for (auto &[name, label] : volume_labels_) {
@@ -597,8 +598,8 @@ void MenuManager::save_settings() {
 
     int master_idx = audio->get_bus_index("Master");
     if (master_idx >= 0) {
-        auto db = static_cast<double>(audio->get_bus_volume_db(master_idx));
-        double pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
+        const float db = audio->get_bus_volume_db(master_idx);
+        const double pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
         cfg->set_value("audio", "master_volume", pct);
     }
 
@@ -621,8 +622,7 @@ void MenuManager::load_settings() {
 
     // Display mode
     if (cfg->has_section_key("video", "display_mode")) {
-        auto mode = static_cast<DisplayServer::WindowMode>(
-            static_cast<int>(cfg->get_value("video", "display_mode")));
+        auto mode = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(cfg->get_value("video", "display_mode")));
         ds->window_set_mode(mode);
     }
 
@@ -648,9 +648,9 @@ void MenuManager::load_settings() {
 
     // Master volume
     if (cfg->has_section_key("audio", "master_volume")) {
-        double pct = cfg->get_value("audio", "master_volume");
-        auto linear = static_cast<float>(pct / 100.0);
-        float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
+        const double pct = cfg->get_value("audio", "master_volume");
+        const float linear = static_cast<float>(pct / 100.0);
+        const float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
         int master_idx = audio->get_bus_index("Master");
         if (master_idx >= 0) {
             audio->set_bus_volume_db(master_idx, db);

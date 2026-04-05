@@ -1,4 +1,5 @@
 #include "progression_manager.h"
+#include "variant_tools.h"
 #include <algorithm>
 #include <cmath>
 #include <godot_cpp/classes/engine.hpp>
@@ -75,7 +76,7 @@ void ProgressionManager::load_progression_data() {
         Dictionary entry = entry_var;
         UnitUnlock unlock;
         unlock.unit_id = String(entry.get("unit_id", ""));
-        unlock.score_required = static_cast<int>(entry.get("score_required", 0));
+        unlock.score_required = VariantTools::as_int(entry.get("score_required", 0));
         unit_unlocks_.push_back(unlock);
     }
 
@@ -86,7 +87,7 @@ void ProgressionManager::load_progression_data() {
         Dictionary entry = entry_var;
         LevelUnlock unlock;
         unlock.level_id = String(entry.get("level_id", ""));
-        unlock.score_required = static_cast<int>(entry.get("score_required", 0));
+        unlock.score_required = VariantTools::as_int(entry.get("score_required", 0));
         Variant req = entry.get("requires_completed", Variant());
         if (req.get_type() == Variant::STRING) {
             unlock.requires_completed = String(req);
@@ -101,9 +102,9 @@ void ProgressionManager::load_progression_data() {
         Dictionary entry = entry_var;
         UpgradeEntry upgrade;
         upgrade.id = String(entry.get("id", ""));
-        upgrade.score_required = static_cast<int>(entry.get("score_required", 0));
+        upgrade.score_required = VariantTools::as_int(entry.get("score_required", 0));
         upgrade.type = String(entry.get("type", ""));
-        upgrade.value = static_cast<double>(entry.get("value", 0.0));
+        upgrade.value = VariantTools::as_real(entry.get("value", 0.0));
         upgrades_.push_back(upgrade);
     }
 
@@ -132,7 +133,7 @@ void ProgressionManager::load_save() {
     }
 
     Dictionary data = json->get_data();
-    total_score_ = static_cast<int>(data.get("total_score", 0));
+    total_score_ = VariantTools::as_int(data.get("total_score", 0));
 
     Array completed = data.get("levels_completed", Array());
     levels_completed_.clear();
@@ -145,7 +146,7 @@ void ProgressionManager::load_save() {
     Array keys = highest.keys();
     for (const auto &key_var : keys) {
         String key = key_var;
-        int score = static_cast<int>(highest[key]);
+        int score = VariantTools::as_int(highest[key]);
         highest_level_scores_.emplace_back(key, score);
     }
 
@@ -258,8 +259,8 @@ int ProgressionManager::get_effective_energy_regen() const {
     return regen;
 }
 
-double ProgressionManager::get_effective_bounty_multiplier() const {
-    double mult = 1.0;
+real_t ProgressionManager::get_effective_bounty_multiplier() const {
+    real_t mult = 1.0;
     for (const auto &upgrade : upgrades_) {
         if (upgrade.type == "bounty_mult" && total_score_ >= upgrade.score_required) {
             mult = std::max(upgrade.value, mult);

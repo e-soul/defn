@@ -1,4 +1,5 @@
 #include "hud.h"
+#include "variant_tools.h"
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
@@ -231,15 +232,15 @@ void HUD::update_score(int score) {
 }
 
 void HUD::show_score_screen(const Dictionary &stats) {
-    bool victory = static_cast<bool>(stats.get("victory", false));
-    int enemies_killed_val = static_cast<int>(stats.get("enemies_killed", 0));
-    int kill_score_val = static_cast<int>(stats.get("kill_score", 0));
-    int hearts_remaining = static_cast<int>(stats.get("hearts_remaining", 0));
-    int hearts_total = static_cast<int>(stats.get("hearts_total", 3));
-    int integrity_bonus = static_cast<int>(stats.get("integrity_bonus", 0));
-    int completion_bonus = static_cast<int>(stats.get("completion_bonus", 0));
-    int level_score = static_cast<int>(stats.get("level_score", 0));
-    int new_total_score = static_cast<int>(stats.get("new_total_score", 0));
+    bool victory = VariantTools::as_bool(stats.get("victory", false));
+    int enemies_killed_val = VariantTools::as_int(stats.get("enemies_killed", 0));
+    int kill_score_val = VariantTools::as_int(stats.get("kill_score", 0));
+    int hearts_remaining = VariantTools::as_int(stats.get("hearts_remaining", 0));
+    int hearts_total = VariantTools::as_int(stats.get("hearts_total", 3));
+    int integrity_bonus = VariantTools::as_int(stats.get("integrity_bonus", 0));
+    int completion_bonus = VariantTools::as_int(stats.get("completion_bonus", 0));
+    int level_score = VariantTools::as_int(stats.get("level_score", 0));
+    int new_total_score = VariantTools::as_int(stats.get("new_total_score", 0));
     String current_level_id = stats.get("current_level_id", "");
     String next_level_id = stats.get("next_level_id", "");
     Array new_unlocks = stats.get("new_unlocks", Array());

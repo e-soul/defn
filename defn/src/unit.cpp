@@ -23,13 +23,13 @@ void Unit::_bind_methods() {
 void Unit::set_unit_config(const UnitConfig &cfg) {
     unit_config_ = cfg;
 
-    const double melee_variation = UtilityFunctions::randf_range(
+    const real_t melee_variation = UtilityFunctions::randf_range(
         unit_config_.melee_attack_range_variation.min,
         unit_config_.melee_attack_range_variation.max
     );
     attack_range = unit_config_.melee_attack_range * melee_variation;
 
-    const double ranged_variation = UtilityFunctions::randf_range(
+    const real_t ranged_variation = UtilityFunctions::randf_range(
         unit_config_.ranged_attack_range_variation.min,
         unit_config_.ranged_attack_range_variation.max
     );
@@ -45,7 +45,7 @@ void Unit::_ready() {
     }
 
     // Scale from config
-    set_scale(Vector2(static_cast<real_t>(unit_config_.scale), static_cast<real_t>(unit_config_.scale)));
+    set_scale(Vector2(unit_config_.scale, unit_config_.scale));
 
     // Health
     health = memnew(HealthComponent);
@@ -76,7 +76,7 @@ void Unit::_ready() {
     detection = memnew(DetectionComponent);
     detection->set_name("DetectionComponent");
     add_child(detection);
-    double scale_x = get_scale().x;
+    const real_t scale_x = get_scale().x;
     if (unit_config_.side == UnitSide::FRIENDLY) {
         detection->configure(this, 1, 2, ranged_range, scale_x);
     } else {
@@ -125,22 +125,22 @@ void Unit::on_died() {
 
 void Unit::do_movement(double delta) {
     auto *grid = GridManager::get_singleton();
-    double speed = unit_config_.move_speed * GridManager::ATTACK_RANGE;
+    const real_t speed = unit_config_.move_speed * GridManager::ATTACK_RANGE;
 
     if (unit_config_.side == UnitSide::FRIENDLY) {
-        double max_x = grid->get_world_width() - 100.0;
+        const real_t max_x = grid->get_world_width() - 100.0;
         if (get_position().x < max_x) {
-            set_velocity(Vector2(static_cast<real_t>(speed), 0));
+            set_velocity(Vector2(speed, 0));
             move_and_slide();
             if (get_position().x > max_x) {
-                set_position(Vector2(static_cast<real_t>(max_x), get_position().y));
+                set_position(Vector2(max_x, get_position().y));
                 set_velocity(Vector2(0, 0));
             }
         } else {
             set_velocity(Vector2(0, 0));
         }
     } else {
-        set_velocity(Vector2(static_cast<real_t>(-speed), 0));
+        set_velocity(Vector2(-speed, 0));
         move_and_slide();
     }
 }

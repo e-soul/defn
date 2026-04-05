@@ -6,7 +6,7 @@ namespace defn {
 
 void DetectionComponent::_bind_methods() {}
 
-void DetectionComponent::configure(Node *owner_node, uint32_t hitbox_layer, uint32_t sensor_mask, double ranged_range, double scale_x) {
+void DetectionComponent::configure(Node *owner_node, uint32_t hitbox_layer, uint32_t sensor_mask, real_t ranged_range, real_t scale_x) {
     hitbox = memnew(Area2D);
     hitbox->set_collision_layer(hitbox_layer);
     hitbox->set_collision_mask(0);

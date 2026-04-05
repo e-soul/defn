@@ -1,4 +1,5 @@
 #include "pause_menu.h"
+#include "variant_tools.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
@@ -17,11 +18,11 @@ namespace {
 
 Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1)) {
     if (arr.size() >= 3) {
-        const auto red = static_cast<float>(static_cast<double>(arr[0]));
-        const auto green = static_cast<float>(static_cast<double>(arr[1]));
-        const auto blue = static_cast<float>(static_cast<double>(arr[2]));
-        const auto alpha = arr.size() >= 4 ? static_cast<float>(static_cast<double>(arr[3])) : 1.0F;
-        return {red, green, blue, alpha};
+        const auto red = VariantTools::as_real(arr[0]);
+        const auto green = VariantTools::as_real(arr[1]);
+        const auto blue = VariantTools::as_real(arr[2]);
+        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : 1.0;
+        return Color(static_cast<float>(red), static_cast<float>(green), static_cast<float>(blue), static_cast<float>(alpha));
     }
     return fallback;
 }
@@ -31,8 +32,8 @@ Ref<StyleBoxFlat> make_style(const Dictionary &style_dict) {
     style.instantiate();
     style->set_bg_color(parse_color_array(style_dict.get("bg_color", Array())));
     style->set_border_color(parse_color_array(style_dict.get("border_color", Array()), Color(0.4, 0.4, 0.5)));
-    style->set_border_width_all(static_cast<int>(style_dict.get("border_width", 2)));
-    style->set_corner_radius_all(static_cast<int>(style_dict.get("corner_radius", 8)));
+    style->set_border_width_all(VariantTools::as_int(style_dict.get("border_width", 2)));
+    style->set_corner_radius_all(VariantTools::as_int(style_dict.get("corner_radius", 8)));
     return style;
 }
 
@@ -106,10 +107,10 @@ void PauseMenu::build_ui() {
     button_container_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     center->add_child(button_container_);
 
-    int font_size = static_cast<int>(style.get("button_font_size", 32));
-    int min_w = static_cast<int>(style.get("button_min_width", 400));
-    int min_h = static_cast<int>(style.get("button_min_height", 60));
-    int separation = static_cast<int>(style.get("button_separation", 16));
+    int font_size = VariantTools::as_int(style.get("button_font_size", 32));
+    int min_w = VariantTools::as_int(style.get("button_min_width", 400));
+    int min_h = VariantTools::as_int(style.get("button_min_height", 60));
+    int separation = VariantTools::as_int(style.get("button_separation", 16));
 
     button_container_->add_theme_constant_override("separation", separation);
 
@@ -129,7 +130,7 @@ void PauseMenu::build_ui() {
 
         auto *btn = memnew(Button);
         btn->set_text(label);
-        btn->set_custom_minimum_size(Vector2(static_cast<real_t>(min_w), static_cast<real_t>(min_h)));
+        btn->set_custom_minimum_size(Vector2(min_w, min_h));
         btn->set_focus_mode(Control::FOCUS_NONE);
         btn->add_theme_font_size_override("font_size", font_size);
 

@@ -4,6 +4,7 @@
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 
 namespace defn {
 
@@ -13,7 +14,7 @@ class DetectionComponent : public Node {
     GDCLASS(DetectionComponent, Node)
 
   public:
-    void configure(Node *owner_node, uint32_t hitbox_layer, uint32_t sensor_mask, double ranged_range, double scale_x);
+    void configure(Node *owner_node, uint32_t hitbox_layer, uint32_t sensor_mask, real_t ranged_range, real_t scale_x);
 
     Area2D *get_hitbox() const { return hitbox; }
     Area2D *get_detection_area() const { return detection_area; }

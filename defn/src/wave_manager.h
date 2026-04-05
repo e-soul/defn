@@ -3,6 +3,7 @@
 
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <vector>
 
 namespace defn {

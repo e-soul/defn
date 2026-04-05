@@ -3,6 +3,7 @@
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
+#include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/option_button.hpp>
@@ -58,7 +59,7 @@ class MenuManager : public Node2D {
     // Options-menu state (reset by clear_buttons)
     OptionButton *resolution_dropdown_ = nullptr;
     std::vector<std::pair<String, Label *>> volume_labels_;
-    std::vector<int> display_mode_values_;
+    std::vector<DisplayServer::WindowMode> display_mode_values_;
     std::vector<Vector2i> resolution_values_;
 };
 

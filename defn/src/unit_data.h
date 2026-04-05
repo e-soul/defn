@@ -2,6 +2,7 @@
 #define UNIT_DATA_H
 
 #include <godot_cpp/variant/color.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 #include <optional>
@@ -29,18 +30,18 @@ struct MuzzleConfig {
 
 struct ShootSfxConfig {
     String path;
-    double volume_linear = 1.0;
-    double pitch_scale = 1.0;
-    double pitch_variance = 0.0;
+    float volume_linear = 1.0F;
+    float pitch_scale = 1.0F;
+    float pitch_variance = 0.0F;
 };
 
 struct GlobalShootSfxConfig {
-    double pitch_variance = 0.0;
+    float pitch_variance = 0.0F;
 };
 
 struct RangeVariationConfig {
-    double min = 0.8;
-    double max = 1.2;
+    real_t min = 0.8;
+    real_t max = 1.2;
 };
 
 struct GlobalUnitConfig {
@@ -61,16 +62,16 @@ struct UnitConfig {
     int hp = 100;
     int melee_damage = 15;
     double melee_attack_period_seconds = 1.0;
-    double melee_attack_range = 128.0;
+    real_t melee_attack_range = 128.0;
     RangeVariationConfig melee_attack_range_variation;
     int ranged_damage = 8;
     double ranged_attack_period_seconds = 2.0 / 3.0;
-    double ranged_attack_range = 384.0;
+    real_t ranged_attack_range = 384.0;
     RangeVariationConfig ranged_attack_range_variation;
-    double move_speed = 0.5;
+    real_t move_speed = 0.5;
     int cost = 0;
     int bounty = 0;
-    double scale = 0.27;
+    real_t scale = 0.27;
     bool sprite_flip_h = false;
     Color health_bar_color = Color(0, 1, 0, 0.9);
     Vector2 health_bar_offset = Vector2(0.0, -241.0);

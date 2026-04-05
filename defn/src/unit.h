@@ -4,6 +4,7 @@
 #include "unit_data.h"
 #include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 
 namespace defn {
 
@@ -45,8 +46,8 @@ class Unit : public CharacterBody2D {
     void on_died();
 
     UnitConfig unit_config_;
-    double attack_range = 128.0;
-    double ranged_range = 384.0;
+    real_t attack_range = 128.0;
+    real_t ranged_range = 384.0;
 
     HealthComponent *health = nullptr;
     HealthBarWidget *health_bar_widget = nullptr;

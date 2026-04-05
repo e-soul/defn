@@ -5,6 +5,7 @@
 #include "unit.h"
 
 #include <algorithm>
+#include <limits>
 
 namespace defn {
 
@@ -35,7 +36,7 @@ void CombatComponent::_process(double delta) {
 
 // --- Targeting ---
 
-double CombatComponent::get_forward_distance(Unit *other) const {
+real_t CombatComponent::get_forward_distance(Unit *other) const {
     if (config.side == UnitSide::FRIENDLY) {
         return other->get_position().x - unit->get_position().x;
     }
@@ -54,7 +55,7 @@ bool CombatComponent::try_keep_target() {
         return false;
     }
 
-    double dist = get_forward_distance(target);
+    const real_t dist = get_forward_distance(target);
     if (dist < 0) {
         return false;
     }
@@ -83,8 +84,8 @@ void CombatComponent::find_new_target() {
 
     Unit *best_melee = nullptr;
     Unit *best_ranged = nullptr;
-    double closest_melee = 1e9;
-    double closest_ranged = 1e9;
+    real_t closest_melee = std::numeric_limits<real_t>::max();
+    real_t closest_ranged = std::numeric_limits<real_t>::max();
 
     TypedArray<Area2D> overlapping = detection_area->get_overlapping_areas();
     for (const auto &area_variant : overlapping) {
@@ -97,7 +98,7 @@ void CombatComponent::find_new_target() {
             continue;
         }
 
-        double dist = get_forward_distance(other);
+        const real_t dist = get_forward_distance(other);
         if (dist < 0) {
             continue;
         }

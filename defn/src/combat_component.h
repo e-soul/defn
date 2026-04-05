@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 
 namespace defn {
 
@@ -26,8 +27,8 @@ class CombatComponent : public Node {
         double melee_attack_period_seconds;
         int ranged_damage;
         double ranged_attack_period_seconds;
-        double attack_range;
-        double ranged_range;
+        real_t attack_range;
+        real_t ranged_range;
         Color melee_flash_color;
         Color ranged_flash_color;
     };
@@ -46,7 +47,7 @@ class CombatComponent : public Node {
     void find_target();
     bool try_keep_target();
     void find_new_target();
-    double get_forward_distance(Unit *other) const;
+    real_t get_forward_distance(Unit *other) const;
     void update_cooldowns(double delta);
     void perform_behavior(double delta);
     void check_breach();

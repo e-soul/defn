@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/core/math.hpp>
 #include <vector>
 
 namespace defn {
@@ -68,7 +69,7 @@ class GameManager : public Node2D {
     // Score tracking
     int enemies_killed = 0;
     int kill_score = 0;
-    double bounty_multiplier = 1.0;
+    real_t bounty_multiplier = 1.0;
     int energy_regen_rate = 1;
 
     // Tracking living entities
@@ -83,8 +84,8 @@ class GameManager : public Node2D {
     Area2D *scroll_trigger = nullptr;
 
     // Scrolling state
-    double camera_target_x = 960.0;
-    double world_width = 7680.0;
+    real_t camera_target_x = 960.0;
+    real_t world_width = 7680.0;
 
     // Unit data
     UnitDataLoader unit_data_;

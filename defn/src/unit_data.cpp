@@ -1,4 +1,5 @@
 #include "unit_data.h"
+#include "variant_tools.h"
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -7,11 +8,9 @@ namespace defn {
 
 namespace {
 
-constexpr real_t DEFAULT_ALPHA = static_cast<real_t>(1.0);
-constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_X = static_cast<real_t>(0.0);
-constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_Y = static_cast<real_t>(-241.0);
-
-real_t as_real(const Variant &value) { return static_cast<real_t>(value); }
+constexpr real_t DEFAULT_ALPHA = 1.0;
+constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_X = 0.0;
+constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_Y = -241.0;
 
 bool parse_json_file(const String &path, Variant &out_data) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -37,10 +36,10 @@ bool parse_json_file(const String &path, Variant &out_data) {
 
 Color parse_color(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
-        const auto red = as_real(arr[0]);
-        const auto green = as_real(arr[1]);
-        const auto blue = as_real(arr[2]);
-        const auto alpha = arr.size() >= 4 ? as_real(arr[3]) : DEFAULT_ALPHA;
+        const auto red = VariantTools::as_real(arr[0]);
+        const auto green = VariantTools::as_real(arr[1]);
+        const auto blue = VariantTools::as_real(arr[2]);
+        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : DEFAULT_ALPHA;
         return {red, green, blue, alpha};
     }
     return fallback;
@@ -49,7 +48,7 @@ Color parse_color(const Array &arr, const Color &fallback) {
 Vector2 parse_vector2(const Variant &value, const Vector2 &fallback) {
     Array arr = value;
     if (arr.size() >= 2) {
-        return {as_real(arr[0]), as_real(arr[1])};
+        return {VariantTools::as_real(arr[0]), VariantTools::as_real(arr[1])};
     }
     return fallback;
 }
@@ -58,8 +57,8 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
     Array arr = value;
     if (arr.size() >= 2) {
         return {
-            .min = static_cast<double>(arr[0]),
-            .max = static_cast<double>(arr[1]),
+            .min = VariantTools::as_real(arr[0]),
+            .max = VariantTools::as_real(arr[1]),
         };
     }
     return fallback;
@@ -78,7 +77,7 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
     if (global_data.has("shoot_sfx")) {
         Dictionary global_sfx = global_data["shoot_sfx"];
-        globals_.shoot_sfx.pitch_variance = static_cast<double>(global_sfx.get("pitch_variance", 0.0));
+        globals_.shoot_sfx.pitch_variance = VariantTools::as_float(global_sfx.get("pitch_variance", 0.0));
     }
 
     if (global_data.has("attack_range_variation")) {
@@ -149,20 +148,20 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
         String side_str = String(unit_dict.get("side", "friendly"));
         cfg.side = (side_str == "hostile") ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
 
-        cfg.hp = static_cast<int>(unit_dict.get("hp", 100));
-        cfg.melee_damage = static_cast<int>(unit_dict.get("melee_damage", 15));
-        cfg.melee_attack_period_seconds = static_cast<double>(unit_dict.get("melee_attack_period_seconds", 1.0));
-        cfg.melee_attack_range = static_cast<double>(unit_dict.get("melee_attack_range", cfg.melee_attack_range));
+        cfg.hp = VariantTools::as_int(unit_dict.get("hp", 100));
+        cfg.melee_damage = VariantTools::as_int(unit_dict.get("melee_damage", 15));
+        cfg.melee_attack_period_seconds = VariantTools::as_double(unit_dict.get("melee_attack_period_seconds", 1.0));
+        cfg.melee_attack_range = VariantTools::as_real(unit_dict.get("melee_attack_range", cfg.melee_attack_range));
         cfg.melee_attack_range_variation = globals_.melee_attack_range_variation;
-        cfg.ranged_damage = static_cast<int>(unit_dict.get("ranged_damage", 8));
-        cfg.ranged_attack_period_seconds = static_cast<double>(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
-        cfg.ranged_attack_range = static_cast<double>(unit_dict.get("ranged_attack_range", cfg.ranged_attack_range));
+        cfg.ranged_damage = VariantTools::as_int(unit_dict.get("ranged_damage", 8));
+        cfg.ranged_attack_period_seconds = VariantTools::as_double(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
+        cfg.ranged_attack_range = VariantTools::as_real(unit_dict.get("ranged_attack_range", cfg.ranged_attack_range));
         cfg.ranged_attack_range_variation = globals_.ranged_attack_range_variation;
-        cfg.move_speed = static_cast<double>(unit_dict.get("move_speed", 0.5));
-        cfg.cost = static_cast<int>(unit_dict.get("cost", 0));
-        cfg.bounty = static_cast<int>(unit_dict.get("bounty", 0));
-        cfg.scale = static_cast<double>(unit_dict.get("scale", 0.27));
-        cfg.sprite_flip_h = static_cast<bool>(unit_dict.get("sprite_flip_h", false));
+        cfg.move_speed = VariantTools::as_real(unit_dict.get("move_speed", 0.5));
+        cfg.cost = VariantTools::as_int(unit_dict.get("cost", 0));
+        cfg.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
+        cfg.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));
+        cfg.sprite_flip_h = VariantTools::as_bool(unit_dict.get("sprite_flip_h", false));
 
         const Color default_health_bar_color =
             cfg.side == UnitSide::HOSTILE ? globals_.hostile_health_bar_color : globals_.friendly_health_bar_color;
@@ -184,16 +183,16 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
             cfg.muzzle.path_template = String(muzzle_flash_dict.get("path_template", ""));
             Array offset = muzzle_flash_dict.get("offset", Array());
             if (offset.size() >= 2) {
-                cfg.muzzle.offset = Vector2(as_real(offset[0]), as_real(offset[1]));
+                cfg.muzzle.offset = Vector2(VariantTools::as_real(offset[0]), VariantTools::as_real(offset[1]));
             }
-            cfg.muzzle.flip_h = static_cast<bool>(muzzle_flash_dict.get("flip_h", false));
+            cfg.muzzle.flip_h = VariantTools::as_bool(muzzle_flash_dict.get("flip_h", false));
         }
 
         if (unit_dict.has("shoot_sfx")) {
             Dictionary sfx = unit_dict["shoot_sfx"];
             cfg.shoot_sfx.path = String(sfx.get("path", ""));
-            cfg.shoot_sfx.volume_linear = static_cast<double>(sfx.get("volume_linear", 1.0));
-            cfg.shoot_sfx.pitch_scale = static_cast<double>(sfx.get("pitch_scale", 1.0));
+            cfg.shoot_sfx.volume_linear = VariantTools::as_float(sfx.get("volume_linear", 1.0));
+            cfg.shoot_sfx.pitch_scale = VariantTools::as_float(sfx.get("pitch_scale", 1.0));
         }
 
         cfg.shoot_sfx.pitch_variance = globals_.shoot_sfx.pitch_variance;
@@ -207,9 +206,9 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
                 Dictionary anim_dict = anims[anim_name];
                 AnimConfig anim;
                 anim.path_template = String(anim_dict.get("path_template", ""));
-                anim.frame_count = static_cast<int>(anim_dict.get("frame_count", 10));
-                anim.speed = static_cast<double>(anim_dict.get("speed", 10.0));
-                anim.loop = static_cast<bool>(anim_dict.get("loop", false));
+                anim.frame_count = VariantTools::as_int(anim_dict.get("frame_count", 10));
+                anim.speed = VariantTools::as_double(anim_dict.get("speed", 10.0));
+                anim.loop = VariantTools::as_bool(anim_dict.get("loop", false));
                 cfg.animations.emplace_back(anim_name, anim);
             }
         }

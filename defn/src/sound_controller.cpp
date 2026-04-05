@@ -9,9 +9,9 @@ namespace defn {
 
 namespace {
 
-double linear_to_db(double linear) {
-    const double clamped_linear = std::clamp(linear, 0.0001, 1.0);
-    return 20.0 * std::log10(clamped_linear);
+float linear_to_db(float linear) {
+    const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
+    return 20.0F * std::log10(clamped_linear);
 }
 
 } // namespace
@@ -32,11 +32,11 @@ void SoundController::configure(Node *owner_node, const UnitConfig &cfg) {
         shoot_player->set_stream(stream);
     }
 
-    shoot_player->set_volume_db(static_cast<float>(linear_to_db(cfg.shoot_sfx.volume_linear)));
+    shoot_player->set_volume_db(linear_to_db(cfg.shoot_sfx.volume_linear));
 
-    const double variance = cfg.shoot_sfx.pitch_variance;
-    const double randomized_pitch = cfg.shoot_sfx.pitch_scale + UtilityFunctions::randf_range(-variance, variance);
-    shoot_player->set_pitch_scale(static_cast<float>(randomized_pitch > 0.01 ? randomized_pitch : 0.01));
+    const float variance = cfg.shoot_sfx.pitch_variance;
+    const float randomized_pitch = cfg.shoot_sfx.pitch_scale + static_cast<float>(UtilityFunctions::randf_range(-variance, variance));
+    shoot_player->set_pitch_scale(randomized_pitch > 0.01F ? randomized_pitch : 0.01F);
 
     owner_node->add_child(shoot_player);
 }

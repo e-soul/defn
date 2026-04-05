@@ -12,8 +12,8 @@ void HealthBarWidget::configure(HealthComponent *health, const Color &fill_color
 }
 
 void HealthBarWidget::setup_bar(int max_hp, const Color &fill_color, const Vector2 &offset) {
-    constexpr double bar_width = 170;
-    constexpr double bar_height = 10;
+    constexpr real_t bar_width = 170;
+    constexpr real_t bar_height = 10;
 
     bar = memnew(ProgressBar);
     bar->set_custom_minimum_size(Vector2(bar_width, bar_height));
