@@ -23,16 +23,16 @@ void Unit::_bind_methods() {
 void Unit::set_unit_config(const UnitConfig &cfg) {
     unit_config_ = cfg;
 
-    const real_t melee_variation = UtilityFunctions::randf_range(
+    const auto melee_variation = static_cast<real_t>(UtilityFunctions::randf_range(
         unit_config_.melee_attack_range_variation.min,
         unit_config_.melee_attack_range_variation.max
-    );
+    ));
     attack_range = unit_config_.melee_attack_range * melee_variation;
 
-    const real_t ranged_variation = UtilityFunctions::randf_range(
+    const auto ranged_variation = static_cast<real_t>(UtilityFunctions::randf_range(
         unit_config_.ranged_attack_range_variation.min,
         unit_config_.ranged_attack_range_variation.max
-    );
+    ));
     ranged_range = unit_config_.ranged_attack_range * ranged_variation;
 }
 
@@ -128,7 +128,7 @@ void Unit::do_movement(double delta) {
     const real_t speed = unit_config_.move_speed * GridManager::ATTACK_RANGE;
 
     if (unit_config_.side == UnitSide::FRIENDLY) {
-        const real_t max_x = grid->get_world_width() - 100.0;
+        const real_t max_x = grid->get_world_width() - 100.0F;
         if (get_position().x < max_x) {
             set_velocity(Vector2(speed, 0));
             move_and_slide();

@@ -27,6 +27,12 @@ class MenuManager : public Node2D {
 
   public:
     void _ready() override;
+    void on_button_pressed(const String &action, const String &target);
+    void on_level_selected(const String &level_id);
+    void on_display_mode_changed(int index);
+    void on_resolution_changed(int index);
+    static void on_vsync_toggled(bool toggled);
+    void on_volume_changed(double value, const String &bus_name);
 
   protected:
     static void _bind_methods();
@@ -38,15 +44,9 @@ class MenuManager : public Node2D {
     void show_level_select();
     void clear_buttons();
     void build_options_ui(const Dictionary &menu_def);
-    void on_button_pressed(const String &action, const String &target);
-    void on_level_selected(const String &level_id);
-    void on_display_mode_changed(int index);
-    void on_resolution_changed(int index);
-    void on_vsync_toggled(bool toggled);
-    void on_volume_changed(double value, const String &bus_name);
 
-    void save_settings();
-    void load_settings();
+    static void save_settings();
+    static void load_settings();
 
     Dictionary menu_data_;
     String current_menu_;

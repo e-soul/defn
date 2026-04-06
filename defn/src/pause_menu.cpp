@@ -16,13 +16,19 @@ namespace defn {
 
 namespace {
 
+constexpr real_t DEFAULT_ALPHA = 1.0F;
+
+Vector2 make_size(int width, int height) {
+    return {static_cast<real_t>(width), static_cast<real_t>(height)};
+}
+
 Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1)) {
     if (arr.size() >= 3) {
         const auto red = VariantTools::as_real(arr[0]);
         const auto green = VariantTools::as_real(arr[1]);
         const auto blue = VariantTools::as_real(arr[2]);
-        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : 1.0;
-        return Color(static_cast<float>(red), static_cast<float>(green), static_cast<float>(blue), static_cast<float>(alpha));
+        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : DEFAULT_ALPHA;
+        return {red, green, blue, alpha};
     }
     return fallback;
 }
@@ -130,7 +136,7 @@ void PauseMenu::build_ui() {
 
         auto *btn = memnew(Button);
         btn->set_text(label);
-        btn->set_custom_minimum_size(Vector2(min_w, min_h));
+        btn->set_custom_minimum_size(make_size(min_w, min_h));
         btn->set_focus_mode(Control::FOCUS_NONE);
         btn->add_theme_font_size_override("font_size", font_size);
 

@@ -20,19 +20,306 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <cstdint>
 #include <utility>
 
 namespace defn {
 
 namespace {
 
-Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1)) {
+constexpr real_t DEFAULT_ALPHA = 1.0F;
+
+Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1));
+Ref<StyleBoxFlat> make_style(const Dictionary &style_dict);
+
+struct ButtonStyle {
+    int font_size = 32;
+    Vector2 minimum_size;
+    int separation = 16;
+    Dictionary normal_style_data;
+    Dictionary hover_style_data;
+    Dictionary pressed_style_data;
+    Color normal_font;
+    Color hover_font;
+    Color pressed_font;
+};
+
+struct OptionsLayout {
+    int label_font_size = 24;
+    Vector2 label_minimum_size;
+    Vector2 control_minimum_size;
+    int row_separation = 12;
+    int section_font_size = 28;
+    int value_font_size = 20;
+    Color section_color;
+    Color label_color;
+    Color value_color;
+};
+
+Vector2 make_size(int width, int height) {
+    return {static_cast<real_t>(width), static_cast<real_t>(height)};
+}
+
+int32_t to_int32(int64_t value) {
+    return static_cast<int32_t>(value);
+}
+
+Vector2i parse_resolution_value(const String &value_str, const Vector2i &fallback = Vector2i(1920, 1080)) {
+    const PackedStringArray parts = value_str.split("x");
+    if (parts.size() != 2) {
+        return fallback;
+    }
+
+    return {to_int32(parts[0].to_int()), to_int32(parts[1].to_int())};
+}
+
+void apply_button_theme(Control *control, const ButtonStyle &button_style, int font_size) {
+    control->add_theme_font_size_override("font_size", font_size);
+    control->add_theme_stylebox_override("normal", make_style(button_style.normal_style_data));
+    control->add_theme_stylebox_override("hover", make_style(button_style.hover_style_data));
+    control->add_theme_stylebox_override("pressed", make_style(button_style.pressed_style_data));
+    control->add_theme_color_override("font_color", button_style.normal_font);
+    control->add_theme_color_override("font_hover_color", button_style.hover_font);
+    control->add_theme_color_override("font_pressed_color", button_style.pressed_font);
+}
+
+void apply_disabled_style(BaseButton *button, bool enabled) {
+    button->set_disabled(!enabled);
+    button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+}
+
+ButtonStyle build_button_style(const Dictionary &style_data) {
+    ButtonStyle button_style;
+    button_style.font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
+    button_style.minimum_size = make_size(
+        VariantTools::as_int(style_data.get("button_min_width", 400)),
+        VariantTools::as_int(style_data.get("button_min_height", 60))
+    );
+    button_style.separation = VariantTools::as_int(style_data.get("button_separation", 16));
+    button_style.normal_style_data = style_data.get("normal", Dictionary());
+    button_style.hover_style_data = style_data.get("hover", Dictionary());
+    button_style.pressed_style_data = style_data.get("pressed", Dictionary());
+    button_style.normal_font = parse_color_array(button_style.normal_style_data.get("font_color", Array()), Color(0.9, 0.9, 0.95));
+    button_style.hover_font = parse_color_array(button_style.hover_style_data.get("font_color", Array()), Color(1, 1, 1));
+    button_style.pressed_font = parse_color_array(button_style.pressed_style_data.get("font_color", Array()), Color(0.8, 0.8, 0.9));
+    return button_style;
+}
+
+OptionsLayout build_options_layout(const Dictionary &options_style) {
+    OptionsLayout options_layout;
+    options_layout.label_font_size = VariantTools::as_int(options_style.get("label_font_size", 24));
+    options_layout.label_minimum_size = make_size(VariantTools::as_int(options_style.get("label_min_width", 250)), 0);
+    options_layout.control_minimum_size = make_size(
+        VariantTools::as_int(options_style.get("control_min_width", 300)),
+        VariantTools::as_int(options_style.get("control_min_height", 40))
+    );
+    options_layout.row_separation = VariantTools::as_int(options_style.get("row_separation", 12));
+    options_layout.section_font_size = VariantTools::as_int(options_style.get("section_font_size", 28));
+    options_layout.value_font_size = VariantTools::as_int(options_style.get("value_font_size", 20));
+    options_layout.section_color = parse_color_array(options_style.get("section_font_color", Array()), Color(1, 0.85, 0.3));
+    options_layout.label_color = parse_color_array(options_style.get("label_font_color", Array()), Color(0.85, 0.85, 0.9));
+    options_layout.value_color = parse_color_array(options_style.get("value_font_color", Array()), Color(0.7, 0.8, 1.0));
+    return options_layout;
+}
+
+void add_section_label(VBoxContainer *button_container, const Dictionary &setting, const OptionsLayout &options_layout) {
+    auto *section_label = memnew(Label);
+    section_label->set_text(String(setting.get("label", "")));
+    section_label->add_theme_font_size_override("font_size", options_layout.section_font_size);
+    section_label->add_theme_color_override("font_color", options_layout.section_color);
+    section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    button_container->add_child(section_label);
+}
+
+HBoxContainer *create_option_row(const Dictionary &setting, const OptionsLayout &options_layout) {
+    auto *row = memnew(HBoxContainer);
+    row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    row->add_theme_constant_override("separation", 16);
+
+    auto *name_label = memnew(Label);
+    name_label->set_text(String(setting.get("label", "???")));
+    name_label->set_custom_minimum_size(options_layout.label_minimum_size);
+    name_label->add_theme_font_size_override("font_size", options_layout.label_font_size);
+    name_label->add_theme_color_override("font_color", options_layout.label_color);
+    name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+    row->add_child(name_label);
+
+    return row;
+}
+
+bool is_setting(const Dictionary &setting, const String &expected_type, const String &expected_setting_id) {
+    return String(setting.get("type", "")) == expected_type && String(setting.get("setting", "")) == expected_setting_id;
+}
+
+bool try_add_display_mode_control(
+    MenuManager *manager,
+    HBoxContainer *row,
+    const Dictionary &setting,
+    const ButtonStyle &button_style,
+    const OptionsLayout &options_layout,
+    DisplayServer::WindowMode current_mode,
+    std::vector<DisplayServer::WindowMode> &display_mode_values
+) {
+    if (!is_setting(setting, "dropdown", "display_mode")) {
+        return false;
+    }
+
+    auto *option_button = memnew(OptionButton);
+    option_button->set_custom_minimum_size(options_layout.control_minimum_size);
+    option_button->set_focus_mode(Control::FOCUS_NONE);
+    apply_button_theme(option_button, button_style, options_layout.label_font_size);
+
+    display_mode_values.clear();
+    const Array options = setting.get("options", Array());
+    int selected_index = 0;
+    int option_index = 0;
+    for (const Variant &option_variant : options) {
+        Dictionary option_data = option_variant;
+        option_button->add_item(String(option_data.get("label", "???")));
+        const auto mode_value = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(option_data.get("value", 0)));
+        display_mode_values.push_back(mode_value);
+        if (mode_value == current_mode) {
+            selected_index = option_index;
+        }
+        ++option_index;
+    }
+
+    option_button->select(selected_index);
+    option_button->connect("item_selected", callable_mp(manager, &MenuManager::on_display_mode_changed));
+    row->add_child(option_button);
+    return true;
+}
+
+bool try_add_resolution_control(
+    MenuManager *manager,
+    HBoxContainer *row,
+    const Dictionary &setting,
+    const ButtonStyle &button_style,
+    const OptionsLayout &options_layout,
+    DisplayServer::WindowMode current_mode,
+    const Vector2i &current_size,
+    OptionButton *&resolution_dropdown,
+    std::vector<Vector2i> &resolution_values
+) {
+    if (!is_setting(setting, "dropdown", "resolution")) {
+        return false;
+    }
+
+    auto *option_button = memnew(OptionButton);
+    option_button->set_custom_minimum_size(options_layout.control_minimum_size);
+    option_button->set_focus_mode(Control::FOCUS_NONE);
+    apply_button_theme(option_button, button_style, options_layout.label_font_size);
+
+    resolution_values.clear();
+    const Array options = setting.get("options", Array());
+    int selected_index = 0;
+    int option_index = 0;
+    for (const Variant &option_variant : options) {
+        Dictionary option_data = option_variant;
+        option_button->add_item(String(option_data.get("label", "???")));
+        const Vector2i resolution = parse_resolution_value(String(option_data.get("value", "")));
+        resolution_values.push_back(resolution);
+        if (resolution == current_size) {
+            selected_index = option_index;
+        }
+        ++option_index;
+    }
+
+    option_button->select(selected_index);
+
+    const bool windowed = current_mode == DisplayServer::WINDOW_MODE_WINDOWED;
+    apply_disabled_style(option_button, windowed);
+
+    resolution_dropdown = option_button;
+    option_button->connect("item_selected", callable_mp(manager, &MenuManager::on_resolution_changed));
+    row->add_child(option_button);
+    return true;
+}
+
+bool try_add_vsync_control(HBoxContainer *row, const Dictionary &setting, const OptionsLayout &options_layout, bool vsync_on, MenuManager *manager) {
+    if (!is_setting(setting, "checkbox", "vsync")) {
+        return false;
+    }
+
+    auto *check_button = memnew(CheckButton);
+    check_button->set_custom_minimum_size(options_layout.control_minimum_size);
+    check_button->set_focus_mode(Control::FOCUS_NONE);
+    check_button->set_pressed(vsync_on);
+    check_button->connect("toggled", callable_mp_static(&MenuManager::on_vsync_toggled));
+    row->add_child(check_button);
+    return true;
+}
+
+bool try_add_volume_control(
+    MenuManager *manager,
+    HBoxContainer *row,
+    const Dictionary &setting,
+    const OptionsLayout &options_layout,
+    AudioServer *audio_server,
+    std::vector<std::pair<String, Label *>> &volume_labels
+) {
+    if (!is_setting(setting, "slider", "bus_volume")) {
+        return false;
+    }
+
+    const String bus_name = setting.get("bus", "Master");
+    const int min_value = VariantTools::as_int(setting.get("min", 0));
+    const int max_value = VariantTools::as_int(setting.get("max", 100));
+    const int step_value = VariantTools::as_int(setting.get("step", 1));
+
+    const int bus_index = audio_server->get_bus_index(bus_name);
+    double current_percent = 100.0;
+    if (bus_index >= 0) {
+        const auto decibels = audio_server->get_bus_volume_db(bus_index);
+        current_percent = std::round(std::pow(10.0, decibels / 20.0) * 100.0);
+    }
+
+    auto *slider = memnew(HSlider);
+    slider->set_custom_minimum_size(options_layout.control_minimum_size);
+    slider->set_min(min_value);
+    slider->set_max(max_value);
+    slider->set_step(step_value);
+    slider->set_value(current_percent);
+    slider->set_focus_mode(Control::FOCUS_NONE);
+    slider->connect("value_changed", callable_mp(manager, &MenuManager::on_volume_changed).bind(bus_name));
+    row->add_child(slider);
+
+    auto *value_label = memnew(Label);
+    value_label->set_text(vformat("%d%%", static_cast<int>(current_percent)));
+    value_label->set_custom_minimum_size(make_size(60, 0));
+    value_label->add_theme_font_size_override("font_size", options_layout.value_font_size);
+    value_label->add_theme_color_override("font_color", options_layout.value_color);
+    value_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
+    row->add_child(value_label);
+
+    volume_labels.emplace_back(bus_name, value_label);
+    return true;
+}
+
+void add_back_button(MenuManager *manager, VBoxContainer *button_container, const Dictionary &back, const ButtonStyle &button_style) {
+    if (back.is_empty()) {
+        return;
+    }
+
+    auto *button = memnew(Button);
+    button->set_text(String(back.get("label", "Back")));
+    button->set_custom_minimum_size(button_style.minimum_size);
+    button->set_focus_mode(Control::FOCUS_NONE);
+    apply_button_theme(button, button_style, button_style.font_size);
+
+    const String action = back.get("action", "none");
+    const String target = back.get("target", "");
+    button->connect("pressed", callable_mp(manager, &MenuManager::on_button_pressed).bind(action, target));
+    button_container->add_child(button);
+}
+
+Color parse_color_array(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
-        const auto r = VariantTools::as_real(arr[0]);
-        const auto g = VariantTools::as_real(arr[1]);
-        const auto b = VariantTools::as_real(arr[2]);
-        const auto a = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : 1.0;
-        return Color(static_cast<float>(r), static_cast<float>(g), static_cast<float>(b), static_cast<float>(a));
+        const auto red = VariantTools::as_real(arr[0]);
+        const auto green = VariantTools::as_real(arr[1]);
+        const auto blue = VariantTools::as_real(arr[2]);
+        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : DEFAULT_ALPHA;
+        return {red, green, blue, alpha};
     }
     return fallback;
 }
@@ -172,42 +459,21 @@ void MenuManager::show_menu(const String &menu_name) {
 
     Array entries = menu.get("entries", Array());
     Dictionary style_data = menu_data_.get("style", Dictionary());
+    const ButtonStyle button_style = build_button_style(style_data);
 
-    int font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
-    int min_w = VariantTools::as_int(style_data.get("button_min_width", 400));
-    int min_h = VariantTools::as_int(style_data.get("button_min_height", 60));
-    int separation = VariantTools::as_int(style_data.get("button_separation", 16));
+    button_container_->add_theme_constant_override("separation", button_style.separation);
 
-    button_container_->add_theme_constant_override("separation", separation);
-
-    Dictionary normal_style_data = style_data.get("normal", Dictionary());
-    Dictionary hover_style_data = style_data.get("hover", Dictionary());
-    Dictionary pressed_style_data = style_data.get("pressed", Dictionary());
-
-    Color normal_font = parse_color_array(normal_style_data.get("font_color", Array()), Color(0.9, 0.9, 0.95));
-    Color hover_font = parse_color_array(hover_style_data.get("font_color", Array()), Color(1, 1, 1));
-    Color pressed_font = parse_color_array(pressed_style_data.get("font_color", Array()), Color(0.8, 0.8, 0.9));
-
-    for (int i = 0; i < entries.size(); ++i) {
-        Dictionary entry = entries[i];
+    for (const Variant &entry_variant : entries) {
+        Dictionary entry = entry_variant;
         String label = entry.get("label", "???");
         String action = entry.get("action", "none");
         String target = entry.get("target", "");
 
         auto *btn = memnew(Button);
         btn->set_text(label);
-        btn->set_custom_minimum_size(Vector2(min_w, min_h));
+        btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
-        btn->add_theme_font_size_override("font_size", font_size);
-
-        // Apply styles
-        btn->add_theme_stylebox_override("normal", make_style(normal_style_data));
-        btn->add_theme_stylebox_override("hover", make_style(hover_style_data));
-        btn->add_theme_stylebox_override("pressed", make_style(pressed_style_data));
-
-        btn->add_theme_color_override("font_color", normal_font);
-        btn->add_theme_color_override("font_hover_color", hover_font);
-        btn->add_theme_color_override("font_pressed_color", pressed_font);
+        apply_button_theme(btn, button_style, button_style.font_size);
 
         if (action == "none") {
             btn->set_disabled(true);
@@ -236,20 +502,9 @@ void MenuManager::show_level_select() {
     current_menu_ = "level_select";
 
     Dictionary style_data = menu_data_.get("style", Dictionary());
-    int font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
-    int min_w = VariantTools::as_int(style_data.get("button_min_width", 400));
-    int min_h = VariantTools::as_int(style_data.get("button_min_height", 60));
-    int separation = VariantTools::as_int(style_data.get("button_separation", 16));
+    const ButtonStyle button_style = build_button_style(style_data);
 
-    Dictionary normal_style_data = style_data.get("normal", Dictionary());
-    Dictionary hover_style_data = style_data.get("hover", Dictionary());
-    Dictionary pressed_style_data = style_data.get("pressed", Dictionary());
-
-    Color normal_font = parse_color_array(normal_style_data.get("font_color", Array()), Color(0.9, 0.9, 0.95));
-    Color hover_font = parse_color_array(hover_style_data.get("font_color", Array()), Color(1, 1, 1));
-    Color pressed_font = parse_color_array(pressed_style_data.get("font_color", Array()), Color(0.8, 0.8, 0.9));
-
-    button_container_->add_theme_constant_override("separation", separation);
+    button_container_->add_theme_constant_override("separation", button_style.separation);
 
     // Title
     auto *title = memnew(Label);
@@ -276,17 +531,9 @@ void MenuManager::show_level_select() {
 
         auto *btn = memnew(Button);
         btn->set_text(label_text);
-        btn->set_custom_minimum_size(Vector2(min_w, min_h));
+        btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
-        btn->add_theme_font_size_override("font_size", font_size);
-
-        btn->add_theme_stylebox_override("normal", make_style(normal_style_data));
-        btn->add_theme_stylebox_override("hover", make_style(hover_style_data));
-        btn->add_theme_stylebox_override("pressed", make_style(pressed_style_data));
-
-        btn->add_theme_color_override("font_color", normal_font);
-        btn->add_theme_color_override("font_hover_color", hover_font);
-        btn->add_theme_color_override("font_pressed_color", pressed_font);
+        apply_button_theme(btn, button_style, button_style.font_size);
 
         if (!unlocked) {
             btn->set_disabled(true);
@@ -301,15 +548,9 @@ void MenuManager::show_level_select() {
     // Back button
     auto *back_btn = memnew(Button);
     back_btn->set_text("Back");
-    back_btn->set_custom_minimum_size(Vector2(min_w, min_h));
+    back_btn->set_custom_minimum_size(button_style.minimum_size);
     back_btn->set_focus_mode(Control::FOCUS_NONE);
-    back_btn->add_theme_font_size_override("font_size", font_size);
-    back_btn->add_theme_stylebox_override("normal", make_style(normal_style_data));
-    back_btn->add_theme_stylebox_override("hover", make_style(hover_style_data));
-    back_btn->add_theme_stylebox_override("pressed", make_style(pressed_style_data));
-    back_btn->add_theme_color_override("font_color", normal_font);
-    back_btn->add_theme_color_override("font_hover_color", hover_font);
-    back_btn->add_theme_color_override("font_pressed_color", pressed_font);
+    apply_button_theme(back_btn, button_style, button_style.font_size);
     back_btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(String("goto_menu"), String("game_menu")));
     button_container_->add_child(back_btn);
 }
@@ -321,199 +562,52 @@ void MenuManager::on_level_selected(const String &level_id) {
 }
 
 void MenuManager::build_options_ui(const Dictionary &menu_def) {
-    Dictionary style = menu_data_.get("style", Dictionary());
-    Dictionary opts_style = style.get("options", Dictionary());
-    Dictionary normal_sd = style.get("normal", Dictionary());
-    Dictionary hover_sd = style.get("hover", Dictionary());
-    Dictionary pressed_sd = style.get("pressed", Dictionary());
+    const Dictionary style = menu_data_.get("style", Dictionary());
+    const ButtonStyle button_style = build_button_style(style);
+    const OptionsLayout options_layout = build_options_layout(style.get("options", Dictionary()));
 
-    int label_font_size = VariantTools::as_int(opts_style.get("label_font_size", 24));
-    int label_min_w = VariantTools::as_int(opts_style.get("label_min_width", 250));
-    int control_min_w = VariantTools::as_int(opts_style.get("control_min_width", 300));
-    int control_min_h = VariantTools::as_int(opts_style.get("control_min_height", 40));
-    int row_sep = VariantTools::as_int(opts_style.get("row_separation", 12));
-    int section_font_size = VariantTools::as_int(opts_style.get("section_font_size", 28));
-    int value_font_size = VariantTools::as_int(opts_style.get("value_font_size", 20));
-    Color section_color = parse_color_array(opts_style.get("section_font_color", Array()), Color(1, 0.85, 0.3));
-    Color label_color = parse_color_array(opts_style.get("label_font_color", Array()), Color(0.85, 0.85, 0.9));
-    Color value_color = parse_color_array(opts_style.get("value_font_color", Array()), Color(0.7, 0.8, 1.0));
-    Color normal_font = parse_color_array(normal_sd.get("font_color", Array()), Color(0.9, 0.9, 0.95));
-    Color hover_font = parse_color_array(hover_sd.get("font_color", Array()), Color(1, 1, 1));
-    Color pressed_font = parse_color_array(pressed_sd.get("font_color", Array()), Color(0.8, 0.8, 0.9));
+    button_container_->add_theme_constant_override("separation", options_layout.row_separation);
 
-    button_container_->add_theme_constant_override("separation", row_sep);
+    auto *display_server = DisplayServer::get_singleton();
+    auto *audio_server = AudioServer::get_singleton();
+    const auto current_mode = display_server->window_get_mode();
+    const Vector2i current_size = display_server->window_get_size();
+    const bool vsync_on = display_server->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED;
 
-    // Read current engine state
-    auto *ds = DisplayServer::get_singleton();
-    auto *audio = AudioServer::get_singleton();
-    auto current_mode = ds->window_get_mode();
-    Vector2i current_size = ds->window_get_size();
-    bool vsync_on = ds->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED;
-
-    Array settings = menu_def.get("settings", Array());
-    for (int i = 0; i < settings.size(); ++i) {
-        Dictionary setting = settings[i];
-        String type = setting.get("type", "");
-
-        if (type == "section") {
-            auto *section_label = memnew(Label);
-            section_label->set_text(String(setting.get("label", "")));
-            section_label->add_theme_font_size_override("font_size", section_font_size);
-            section_label->add_theme_color_override("font_color", section_color);
-            section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-            button_container_->add_child(section_label);
+    const Array settings = menu_def.get("settings", Array());
+    for (const Variant &setting_variant : settings) {
+        Dictionary setting = setting_variant;
+        if (String(setting.get("type", "")) == "section") {
+            add_section_label(button_container_, setting, options_layout);
             continue;
         }
 
-        auto *row = memnew(HBoxContainer);
-        row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-        row->add_theme_constant_override("separation", 16);
+        auto *row = create_option_row(setting, options_layout);
+        const bool handled =
+            try_add_display_mode_control(this, row, setting, button_style, options_layout, current_mode, display_mode_values_) ||
+            try_add_resolution_control(
+                this,
+                row,
+                setting,
+                button_style,
+                options_layout,
+                current_mode,
+                current_size,
+                resolution_dropdown_,
+                resolution_values_
+            ) ||
+            try_add_vsync_control(row, setting, options_layout, vsync_on, this) ||
+            try_add_volume_control(this, row, setting, options_layout, audio_server, volume_labels_);
 
-        auto *name_label = memnew(Label);
-        name_label->set_text(String(setting.get("label", "???")));
-        name_label->set_custom_minimum_size(Vector2(label_min_w, 0));
-        name_label->add_theme_font_size_override("font_size", label_font_size);
-        name_label->add_theme_color_override("font_color", label_color);
-        name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
-        row->add_child(name_label);
-
-        String setting_id = setting.get("setting", "");
-
-        if (type == "dropdown" && setting_id == "display_mode") {
-            auto *opt = memnew(OptionButton);
-            opt->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
-            opt->set_focus_mode(Control::FOCUS_NONE);
-            opt->add_theme_font_size_override("font_size", label_font_size);
-            opt->add_theme_stylebox_override("normal", make_style(normal_sd));
-            opt->add_theme_stylebox_override("hover", make_style(hover_sd));
-            opt->add_theme_stylebox_override("pressed", make_style(pressed_sd));
-            opt->add_theme_color_override("font_color", normal_font);
-            opt->add_theme_color_override("font_hover_color", hover_font);
-            opt->add_theme_color_override("font_pressed_color", pressed_font);
-
-            display_mode_values_.clear();
-            Array options = setting.get("options", Array());
-            int selected = 0;
-            for (int j = 0; j < options.size(); ++j) {
-                Dictionary opt_data = options[j];
-                opt->add_item(String(opt_data.get("label", "???")));
-                auto mode_val = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(opt_data.get("value", 0)));
-                display_mode_values_.push_back(mode_val);
-                if (mode_val == current_mode) {
-                    selected = j;
-                }
-            }
-            opt->select(selected);
-            opt->connect("item_selected", callable_mp(this, &MenuManager::on_display_mode_changed));
-            row->add_child(opt);
-        } else if (type == "dropdown" && setting_id == "resolution") {
-            auto *opt = memnew(OptionButton);
-            opt->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
-            opt->set_focus_mode(Control::FOCUS_NONE);
-            opt->add_theme_font_size_override("font_size", label_font_size);
-            opt->add_theme_stylebox_override("normal", make_style(normal_sd));
-            opt->add_theme_stylebox_override("hover", make_style(hover_sd));
-            opt->add_theme_stylebox_override("pressed", make_style(pressed_sd));
-            opt->add_theme_color_override("font_color", normal_font);
-            opt->add_theme_color_override("font_hover_color", hover_font);
-            opt->add_theme_color_override("font_pressed_color", pressed_font);
-
-            resolution_values_.clear();
-            Array options = setting.get("options", Array());
-            int selected = 0;
-            for (int j = 0; j < options.size(); ++j) {
-                Dictionary opt_data = options[j];
-                opt->add_item(String(opt_data.get("label", "???")));
-                String value_str = opt_data.get("value", "");
-                PackedStringArray parts = value_str.split("x");
-                Vector2i res(1920, 1080);
-                if (parts.size() == 2) {
-                    res = Vector2i(parts[0].to_int(), parts[1].to_int());
-                }
-                resolution_values_.push_back(res);
-                if (res == current_size) {
-                    selected = j;
-                }
-            }
-            opt->select(selected);
-
-            bool windowed = (current_mode == DisplayServer::WINDOW_MODE_WINDOWED);
-            opt->set_disabled(!windowed);
-            if (!windowed) {
-                opt->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
-            }
-
-            resolution_dropdown_ = opt;
-            opt->connect("item_selected", callable_mp(this, &MenuManager::on_resolution_changed));
-            row->add_child(opt);
-        } else if (type == "checkbox" && setting_id == "vsync") {
-            auto *check = memnew(CheckButton);
-            check->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
-            check->set_focus_mode(Control::FOCUS_NONE);
-            check->set_pressed(vsync_on);
-            check->connect("toggled", callable_mp(this, &MenuManager::on_vsync_toggled));
-            row->add_child(check);
-        } else if (type == "slider" && setting_id == "bus_volume") {
-            String bus_name = setting.get("bus", "Master");
-            int min_val = VariantTools::as_int(setting.get("min", 0));
-            int max_val = VariantTools::as_int(setting.get("max", 100));
-            int step = VariantTools::as_int(setting.get("step", 1));
-
-            int bus_idx = audio->get_bus_index(bus_name);
-            double current_pct = 100.0;
-            if (bus_idx >= 0) {
-                const float db = audio->get_bus_volume_db(bus_idx);
-                current_pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
-            }
-
-            auto *slider = memnew(HSlider);
-            slider->set_custom_minimum_size(Vector2(control_min_w, control_min_h));
-            slider->set_min(min_val);
-            slider->set_max(max_val);
-            slider->set_step(step);
-            slider->set_value(current_pct);
-            slider->set_focus_mode(Control::FOCUS_NONE);
-            slider->connect("value_changed", callable_mp(this, &MenuManager::on_volume_changed).bind(bus_name));
-            row->add_child(slider);
-
-            auto *val_label = memnew(Label);
-            val_label->set_text(vformat("%d%%", static_cast<int>(current_pct)));
-            val_label->set_custom_minimum_size(Vector2(60, 0));
-            val_label->add_theme_font_size_override("font_size", value_font_size);
-            val_label->add_theme_color_override("font_color", value_color);
-            val_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
-            row->add_child(val_label);
-
-            volume_labels_.emplace_back(bus_name, val_label);
+        if (handled) {
+            button_container_->add_child(row);
+        } else {
+            row->queue_free();
+            UtilityFunctions::printerr("MenuManager: Unknown option setting: ", setting.get("setting", "<missing>"));
         }
-
-        button_container_->add_child(row);
     }
 
-    // Back button
-    Dictionary back = menu_def.get("back", Dictionary());
-    if (!back.is_empty()) {
-        int btn_font_size = VariantTools::as_int(style.get("button_font_size", 32));
-        int btn_min_w = VariantTools::as_int(style.get("button_min_width", 400));
-        int btn_min_h = VariantTools::as_int(style.get("button_min_height", 60));
-
-        auto *btn = memnew(Button);
-        btn->set_text(String(back.get("label", "Back")));
-        btn->set_custom_minimum_size(Vector2(btn_min_w, btn_min_h));
-        btn->set_focus_mode(Control::FOCUS_NONE);
-        btn->add_theme_font_size_override("font_size", btn_font_size);
-        btn->add_theme_stylebox_override("normal", make_style(normal_sd));
-        btn->add_theme_stylebox_override("hover", make_style(hover_sd));
-        btn->add_theme_stylebox_override("pressed", make_style(pressed_sd));
-        btn->add_theme_color_override("font_color", normal_font);
-        btn->add_theme_color_override("font_hover_color", hover_font);
-        btn->add_theme_color_override("font_pressed_color", pressed_font);
-
-        String action = back.get("action", "none");
-        String target = back.get("target", "");
-        btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(action, target));
-        button_container_->add_child(btn);
-    }
+    add_back_button(this, button_container_, menu_def.get("back", Dictionary()), button_style);
 }
 
 void MenuManager::on_display_mode_changed(int index) {
@@ -521,20 +615,19 @@ void MenuManager::on_display_mode_changed(int index) {
         return;
     }
 
-    auto *ds = DisplayServer::get_singleton();
+    auto *display_server = DisplayServer::get_singleton();
     auto mode = display_mode_values_[index];
-    ds->window_set_mode(mode);
+    display_server->window_set_mode(mode);
 
     if (mode == DisplayServer::WINDOW_MODE_WINDOWED) {
-        Vector2i screen_size = ds->screen_get_size();
-        Vector2i win_size = ds->window_get_size();
-        ds->window_set_position((screen_size - win_size) / 2);
+        const Vector2i screen_size = display_server->screen_get_size();
+        const Vector2i window_size = display_server->window_get_size();
+        display_server->window_set_position((screen_size - window_size) / 2);
     }
 
-    bool windowed = (mode == DisplayServer::WINDOW_MODE_WINDOWED);
+    const bool windowed = mode == DisplayServer::WINDOW_MODE_WINDOWED;
     if (resolution_dropdown_) {
-        resolution_dropdown_->set_disabled(!windowed);
-        resolution_dropdown_->set_modulate(windowed ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+        apply_disabled_style(resolution_dropdown_, windowed);
     }
 
     save_settings();
@@ -545,19 +638,19 @@ void MenuManager::on_resolution_changed(int index) {
         return;
     }
 
-    auto *ds = DisplayServer::get_singleton();
-    Vector2i new_size = resolution_values_[index];
-    ds->window_set_size(new_size);
+    auto *display_server = DisplayServer::get_singleton();
+    const Vector2i new_size = resolution_values_[index];
+    display_server->window_set_size(new_size);
 
-    Vector2i screen_size = ds->screen_get_size();
-    ds->window_set_position((screen_size - new_size) / 2);
+    const Vector2i screen_size = display_server->screen_get_size();
+    display_server->window_set_position((screen_size - new_size) / 2);
 
     save_settings();
 }
 
 void MenuManager::on_vsync_toggled(bool toggled) {
-    auto *ds = DisplayServer::get_singleton();
-    ds->window_set_vsync_mode(toggled ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
+    auto *display_server = DisplayServer::get_singleton();
+    display_server->window_set_vsync_mode(toggled ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
     save_settings();
 }
 
@@ -568,9 +661,9 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
         return;
     }
 
-    const float linear = static_cast<float>(value / 100.0);
-    const float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
-    audio->set_bus_volume_db(bus_idx, db);
+    const auto linear = static_cast<float>(value / 100.0);
+    const auto decibels = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
+    audio->set_bus_volume_db(bus_idx, decibels);
 
     for (auto &[name, label] : volume_labels_) {
         if (name == bus_name && label) {
@@ -583,23 +676,23 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
 }
 
 void MenuManager::save_settings() {
-    auto *ds = DisplayServer::get_singleton();
-    auto *audio = AudioServer::get_singleton();
+    auto *display_server = DisplayServer::get_singleton();
+    auto *audio_server = AudioServer::get_singleton();
 
     Ref<ConfigFile> cfg;
     cfg.instantiate();
 
-    cfg->set_value("video", "display_mode", static_cast<int>(ds->window_get_mode()));
+    cfg->set_value("video", "display_mode", static_cast<int>(display_server->window_get_mode()));
 
-    Vector2i win_size = ds->window_get_size();
-    cfg->set_value("video", "resolution", vformat("%dx%d", win_size.x, win_size.y));
+    const Vector2i window_size = display_server->window_get_size();
+    cfg->set_value("video", "resolution", vformat("%dx%d", window_size.x, window_size.y));
 
-    cfg->set_value("video", "vsync", ds->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED);
+    cfg->set_value("video", "vsync", display_server->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED);
 
-    int master_idx = audio->get_bus_index("Master");
+    const int master_idx = audio_server->get_bus_index("Master");
     if (master_idx >= 0) {
-        const float db = audio->get_bus_volume_db(master_idx);
-        const double pct = std::round(std::pow(10.0, db / 20.0) * 100.0);
+        const auto decibels = audio_server->get_bus_volume_db(master_idx);
+        const double pct = std::round(std::pow(10.0, decibels / 20.0) * 100.0);
         cfg->set_value("audio", "master_volume", pct);
     }
 
@@ -617,43 +710,39 @@ void MenuManager::load_settings() {
         return; // No saved settings yet — use engine defaults
     }
 
-    auto *ds = DisplayServer::get_singleton();
-    auto *audio = AudioServer::get_singleton();
+    auto *display_server = DisplayServer::get_singleton();
+    auto *audio_server = AudioServer::get_singleton();
 
     // Display mode
     if (cfg->has_section_key("video", "display_mode")) {
         auto mode = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(cfg->get_value("video", "display_mode")));
-        ds->window_set_mode(mode);
+        display_server->window_set_mode(mode);
     }
 
     // Resolution (only meaningful in windowed mode)
     if (cfg->has_section_key("video", "resolution")) {
-        String res_str = cfg->get_value("video", "resolution");
-        PackedStringArray parts = res_str.split("x");
-        if (parts.size() == 2) {
-            Vector2i res(parts[0].to_int(), parts[1].to_int());
-            if (ds->window_get_mode() == DisplayServer::WINDOW_MODE_WINDOWED) {
-                ds->window_set_size(res);
-                Vector2i screen_size = ds->screen_get_size();
-                ds->window_set_position((screen_size - res) / 2);
-            }
+        const Vector2i resolution = parse_resolution_value(String(cfg->get_value("video", "resolution")));
+        if (display_server->window_get_mode() == DisplayServer::WINDOW_MODE_WINDOWED) {
+            display_server->window_set_size(resolution);
+            const Vector2i screen_size = display_server->screen_get_size();
+            display_server->window_set_position((screen_size - resolution) / 2);
         }
     }
 
     // VSync
     if (cfg->has_section_key("video", "vsync")) {
         bool vsync = cfg->get_value("video", "vsync");
-        ds->window_set_vsync_mode(vsync ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
+        display_server->window_set_vsync_mode(vsync ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
     }
 
     // Master volume
     if (cfg->has_section_key("audio", "master_volume")) {
         const double pct = cfg->get_value("audio", "master_volume");
-        const float linear = static_cast<float>(pct / 100.0);
-        const float db = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
-        int master_idx = audio->get_bus_index("Master");
+        const auto linear = static_cast<float>(pct / 100.0);
+        const auto decibels = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
+        const int master_idx = audio_server->get_bus_index("Master");
         if (master_idx >= 0) {
-            audio->set_bus_volume_db(master_idx, db);
+            audio_server->set_bus_volume_db(master_idx, decibels);
         }
     }
 }

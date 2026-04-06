@@ -21,6 +21,12 @@
 
 namespace defn {
 
+namespace {
+
+constexpr real_t HALF = 2.0F;
+
+} // namespace
+
 GameManager::GameManager() = default;
 
 void GameManager::_bind_methods() {}
@@ -163,8 +169,8 @@ void GameManager::setup_camera() {
     camera = memnew(Camera2D);
     camera->set_name("Camera");
 
-    camera_target_x = GridManager::VIEWPORT_WIDTH / 2.0;
-    camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+    camera_target_x = GridManager::VIEWPORT_WIDTH / HALF;
+    camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / HALF));
 
     camera->set_limit(SIDE_LEFT, 0);
     camera->set_limit(SIDE_TOP, 0);
@@ -182,12 +188,12 @@ void GameManager::update_camera_scroll(double delta) {
     const real_t diff = camera_target_x - current_x;
     if (diff > 1.0 || diff < -1.0) {
         constexpr double SMOOTH_FACTOR = 3.0;
-        double factor = SMOOTH_FACTOR * delta;
-        factor = std::min(factor, 1.0);
+        auto factor = static_cast<real_t>(SMOOTH_FACTOR * delta);
+        factor = std::min(factor, 1.0F);
         const real_t new_x = current_x + (diff * factor);
-        camera->set_position(Vector2(new_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+        camera->set_position(Vector2(new_x, GridManager::VIEWPORT_HEIGHT / HALF));
     } else {
-        camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / 2.0));
+        camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / HALF));
     }
 
     grid->set_camera_x(camera->get_position().x);
@@ -219,8 +225,8 @@ void GameManager::setup_scroll_trigger() {
 void GameManager::update_scroll_trigger_position() {
     constexpr real_t VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
     constexpr real_t SCROLL_STEP = VIEWPORT_W * 0.25;
-    const real_t trigger_x = camera_target_x + (VIEWPORT_W / 2.0) - SCROLL_STEP;
-    const real_t trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / 2.0;
+    const real_t trigger_x = camera_target_x + (VIEWPORT_W / HALF) - SCROLL_STEP;
+    const real_t trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / HALF;
     scroll_trigger->set_position(Vector2(trigger_x, trigger_y));
 }
 
@@ -241,7 +247,7 @@ void GameManager::on_scroll_triggered(Area2D *area) {
 
     constexpr real_t VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
     constexpr real_t SCROLL_STEP = VIEWPORT_W * 0.25;
-    const real_t max_target = world_width - (VIEWPORT_W / 2.0);
+    const real_t max_target = world_width - (VIEWPORT_W / HALF);
 
     camera_target_x += SCROLL_STEP;
     camera_target_x = std::min(camera_target_x, max_target);
@@ -300,7 +306,8 @@ void GameManager::on_enemy_died(Node *unit) {
         kill_score += base_bounty;
         ++enemies_killed;
         // Energy gained uses bounty_mult
-        const int energy_bounty = static_cast<int>(std::ceil(base_bounty * bounty_multiplier));
+        const auto scaled_bounty = static_cast<double>(base_bounty) * static_cast<double>(bounty_multiplier);
+        const int energy_bounty = static_cast<int>(std::ceil(scaled_bounty));
         core_resource += energy_bounty;
         hud->update_core_resource(core_resource);
         hud->update_card_affordability(core_resource);

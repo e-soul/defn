@@ -64,6 +64,138 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
     return fallback;
 }
 
+void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
+    if (global_data.has("shoot_sfx")) {
+        Dictionary global_sfx = global_data["shoot_sfx"];
+        globals.shoot_sfx.pitch_variance = VariantTools::as_float(global_sfx.get("pitch_variance", 0.0));
+    }
+
+    if (global_data.has("attack_range_variation")) {
+        Dictionary global_range_variation = global_data["attack_range_variation"];
+        globals.melee_attack_range_variation =
+            parse_range_variation(global_range_variation.get("melee", Array()), globals.melee_attack_range_variation);
+        globals.ranged_attack_range_variation =
+            parse_range_variation(global_range_variation.get("ranged", Array()), globals.ranged_attack_range_variation);
+    }
+
+    if (global_data.has("health_bar_color")) {
+        Dictionary global_health_bar_colors = global_data["health_bar_color"];
+        globals.friendly_health_bar_color =
+            parse_color(global_health_bar_colors.get("friendly", Array()), globals.friendly_health_bar_color);
+        globals.hostile_health_bar_color =
+            parse_color(global_health_bar_colors.get("hostile", Array()), globals.hostile_health_bar_color);
+    }
+
+    if (global_data.has("melee_flash_color")) {
+        Dictionary global_melee_flash_colors = global_data["melee_flash_color"];
+        globals.friendly_melee_flash_color =
+            parse_color(global_melee_flash_colors.get("friendly", Array()), globals.friendly_melee_flash_color);
+        globals.hostile_melee_flash_color =
+            parse_color(global_melee_flash_colors.get("hostile", Array()), globals.hostile_melee_flash_color);
+    }
+
+    if (global_data.has("ranged_flash_color")) {
+        Dictionary global_ranged_flash_colors = global_data["ranged_flash_color"];
+        globals.friendly_ranged_flash_color =
+            parse_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
+        globals.hostile_ranged_flash_color =
+            parse_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
+    }
+}
+
+UnitSide parse_unit_side(const Dictionary &unit_dict) {
+    const String side_str = String(unit_dict.get("side", "friendly"));
+    return side_str == "hostile" ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
+}
+
+void apply_unit_colors(const Dictionary &unit_dict, const GlobalUnitConfig &globals, UnitConfig &config) {
+    const Color default_health_bar_color =
+        config.side == UnitSide::HOSTILE ? globals.hostile_health_bar_color : globals.friendly_health_bar_color;
+    const Color default_melee_flash_color =
+        config.side == UnitSide::HOSTILE ? globals.hostile_melee_flash_color : globals.friendly_melee_flash_color;
+    const Color default_ranged_flash_color =
+        config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
+
+    config.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
+    config.health_bar_offset = parse_vector2(
+        unit_dict.get("health_bar_offset", Array()),
+        Vector2(DEFAULT_HEALTH_BAR_OFFSET_X, DEFAULT_HEALTH_BAR_OFFSET_Y)
+    );
+    config.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
+    config.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
+}
+
+void apply_muzzle_flash(const Dictionary &unit_dict, UnitConfig &config) {
+    if (!unit_dict.has("muzzle_flash")) {
+        return;
+    }
+
+    Dictionary muzzle_flash_dict = unit_dict["muzzle_flash"];
+    config.muzzle.path_template = String(muzzle_flash_dict.get("path_template", ""));
+    Array offset = muzzle_flash_dict.get("offset", Array());
+    if (offset.size() >= 2) {
+        config.muzzle.offset = Vector2(VariantTools::as_real(offset[0]), VariantTools::as_real(offset[1]));
+    }
+    config.muzzle.flip_h = VariantTools::as_bool(muzzle_flash_dict.get("flip_h", false));
+}
+
+void apply_shoot_sfx(const Dictionary &unit_dict, const GlobalUnitConfig &globals, UnitConfig &config) {
+    if (unit_dict.has("shoot_sfx")) {
+        Dictionary shoot_sfx = unit_dict["shoot_sfx"];
+        config.shoot_sfx.path = String(shoot_sfx.get("path", ""));
+        config.shoot_sfx.volume_linear = VariantTools::as_float(shoot_sfx.get("volume_linear", 1.0));
+        config.shoot_sfx.pitch_scale = VariantTools::as_float(shoot_sfx.get("pitch_scale", 1.0));
+    }
+
+    config.shoot_sfx.pitch_variance = globals.shoot_sfx.pitch_variance;
+}
+
+void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
+    if (!unit_dict.has("animations")) {
+        return;
+    }
+
+    Dictionary animations = unit_dict["animations"];
+    Array animation_keys = animations.keys();
+    for (const Variant &animation_key : animation_keys) {
+        String animation_name = animation_key;
+        Dictionary animation_dict = animations[animation_name];
+        AnimConfig animation;
+        animation.path_template = String(animation_dict.get("path_template", ""));
+        animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", 10));
+        animation.speed = VariantTools::as_double(animation_dict.get("speed", 10.0));
+        animation.loop = VariantTools::as_bool(animation_dict.get("loop", false));
+        config.animations.emplace_back(animation_name, animation);
+    }
+}
+
+UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, const GlobalUnitConfig &globals) {
+    UnitConfig config;
+    config.name = key;
+    config.side = parse_unit_side(unit_dict);
+    config.hp = VariantTools::as_int(unit_dict.get("hp", 100));
+    config.melee_damage = VariantTools::as_int(unit_dict.get("melee_damage", 15));
+    config.melee_attack_period_seconds = VariantTools::as_double(unit_dict.get("melee_attack_period_seconds", 1.0));
+    config.melee_attack_range = VariantTools::as_real(unit_dict.get("melee_attack_range", config.melee_attack_range));
+    config.melee_attack_range_variation = globals.melee_attack_range_variation;
+    config.ranged_damage = VariantTools::as_int(unit_dict.get("ranged_damage", 8));
+    config.ranged_attack_period_seconds = VariantTools::as_double(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
+    config.ranged_attack_range = VariantTools::as_real(unit_dict.get("ranged_attack_range", config.ranged_attack_range));
+    config.ranged_attack_range_variation = globals.ranged_attack_range_variation;
+    config.move_speed = VariantTools::as_real(unit_dict.get("move_speed", 0.5));
+    config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
+    config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
+    config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));
+    config.sprite_flip_h = VariantTools::as_bool(unit_dict.get("sprite_flip_h", false));
+
+    apply_unit_colors(unit_dict, globals, config);
+    apply_muzzle_flash(unit_dict, config);
+    apply_shoot_sfx(unit_dict, globals, config);
+    apply_animations(unit_dict, config);
+
+    return config;
+}
+
 } // namespace
 
 bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
@@ -74,59 +206,7 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
     Dictionary global_data = global_data_variant;
     globals_ = {};
-
-    if (global_data.has("shoot_sfx")) {
-        Dictionary global_sfx = global_data["shoot_sfx"];
-        globals_.shoot_sfx.pitch_variance = VariantTools::as_float(global_sfx.get("pitch_variance", 0.0));
-    }
-
-    if (global_data.has("attack_range_variation")) {
-        Dictionary global_range_variation = global_data["attack_range_variation"];
-        globals_.melee_attack_range_variation = parse_range_variation(
-            global_range_variation.get("melee", Array()),
-            globals_.melee_attack_range_variation
-        );
-        globals_.ranged_attack_range_variation = parse_range_variation(
-            global_range_variation.get("ranged", Array()),
-            globals_.ranged_attack_range_variation
-        );
-    }
-
-    if (global_data.has("health_bar_color")) {
-        Dictionary global_health_bar_colors = global_data["health_bar_color"];
-        globals_.friendly_health_bar_color = parse_color(
-            global_health_bar_colors.get("friendly", Array()),
-            globals_.friendly_health_bar_color
-        );
-        globals_.hostile_health_bar_color = parse_color(
-            global_health_bar_colors.get("hostile", Array()),
-            globals_.hostile_health_bar_color
-        );
-    }
-
-    if (global_data.has("melee_flash_color")) {
-        Dictionary global_melee_flash_colors = global_data["melee_flash_color"];
-        globals_.friendly_melee_flash_color = parse_color(
-            global_melee_flash_colors.get("friendly", Array()),
-            globals_.friendly_melee_flash_color
-        );
-        globals_.hostile_melee_flash_color = parse_color(
-            global_melee_flash_colors.get("hostile", Array()),
-            globals_.hostile_melee_flash_color
-        );
-    }
-
-    if (global_data.has("ranged_flash_color")) {
-        Dictionary global_ranged_flash_colors = global_data["ranged_flash_color"];
-        globals_.friendly_ranged_flash_color = parse_color(
-            global_ranged_flash_colors.get("friendly", Array()),
-            globals_.friendly_ranged_flash_color
-        );
-        globals_.hostile_ranged_flash_color = parse_color(
-            global_ranged_flash_colors.get("hostile", Array()),
-            globals_.hostile_ranged_flash_color
-        );
-    }
+    load_global_config(global_data, globals_);
 
     Variant unit_data_variant;
     if (!parse_json_file(unit_path, unit_data_variant)) {
@@ -139,81 +219,9 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
     units_.clear();
 
     for (const Variant &key_variant : keys) {
-        String key = key_variant;
-        Dictionary unit_dict = units_dict[key];
-
-        UnitConfig cfg;
-        cfg.name = key;
-
-        String side_str = String(unit_dict.get("side", "friendly"));
-        cfg.side = (side_str == "hostile") ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
-
-        cfg.hp = VariantTools::as_int(unit_dict.get("hp", 100));
-        cfg.melee_damage = VariantTools::as_int(unit_dict.get("melee_damage", 15));
-        cfg.melee_attack_period_seconds = VariantTools::as_double(unit_dict.get("melee_attack_period_seconds", 1.0));
-        cfg.melee_attack_range = VariantTools::as_real(unit_dict.get("melee_attack_range", cfg.melee_attack_range));
-        cfg.melee_attack_range_variation = globals_.melee_attack_range_variation;
-        cfg.ranged_damage = VariantTools::as_int(unit_dict.get("ranged_damage", 8));
-        cfg.ranged_attack_period_seconds = VariantTools::as_double(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
-        cfg.ranged_attack_range = VariantTools::as_real(unit_dict.get("ranged_attack_range", cfg.ranged_attack_range));
-        cfg.ranged_attack_range_variation = globals_.ranged_attack_range_variation;
-        cfg.move_speed = VariantTools::as_real(unit_dict.get("move_speed", 0.5));
-        cfg.cost = VariantTools::as_int(unit_dict.get("cost", 0));
-        cfg.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
-        cfg.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));
-        cfg.sprite_flip_h = VariantTools::as_bool(unit_dict.get("sprite_flip_h", false));
-
-        const Color default_health_bar_color =
-            cfg.side == UnitSide::HOSTILE ? globals_.hostile_health_bar_color : globals_.friendly_health_bar_color;
-        const Color default_melee_flash_color =
-            cfg.side == UnitSide::HOSTILE ? globals_.hostile_melee_flash_color : globals_.friendly_melee_flash_color;
-        const Color default_ranged_flash_color =
-            cfg.side == UnitSide::HOSTILE ? globals_.hostile_ranged_flash_color : globals_.friendly_ranged_flash_color;
-        cfg.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
-        cfg.health_bar_offset = parse_vector2(
-            unit_dict.get("health_bar_offset", Array()),
-            Vector2(DEFAULT_HEALTH_BAR_OFFSET_X, DEFAULT_HEALTH_BAR_OFFSET_Y)
-        );
-        cfg.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
-        cfg.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
-
-        // Muzzle flash
-        if (unit_dict.has("muzzle_flash")) {
-            Dictionary muzzle_flash_dict = unit_dict["muzzle_flash"];
-            cfg.muzzle.path_template = String(muzzle_flash_dict.get("path_template", ""));
-            Array offset = muzzle_flash_dict.get("offset", Array());
-            if (offset.size() >= 2) {
-                cfg.muzzle.offset = Vector2(VariantTools::as_real(offset[0]), VariantTools::as_real(offset[1]));
-            }
-            cfg.muzzle.flip_h = VariantTools::as_bool(muzzle_flash_dict.get("flip_h", false));
-        }
-
-        if (unit_dict.has("shoot_sfx")) {
-            Dictionary sfx = unit_dict["shoot_sfx"];
-            cfg.shoot_sfx.path = String(sfx.get("path", ""));
-            cfg.shoot_sfx.volume_linear = VariantTools::as_float(sfx.get("volume_linear", 1.0));
-            cfg.shoot_sfx.pitch_scale = VariantTools::as_float(sfx.get("pitch_scale", 1.0));
-        }
-
-        cfg.shoot_sfx.pitch_variance = globals_.shoot_sfx.pitch_variance;
-
-        // Animations
-        if (unit_dict.has("animations")) {
-            Dictionary anims = unit_dict["animations"];
-            Array anim_keys = anims.keys();
-            for (const Variant &anim_key : anim_keys) {
-                String anim_name = anim_key;
-                Dictionary anim_dict = anims[anim_name];
-                AnimConfig anim;
-                anim.path_template = String(anim_dict.get("path_template", ""));
-                anim.frame_count = VariantTools::as_int(anim_dict.get("frame_count", 10));
-                anim.speed = VariantTools::as_double(anim_dict.get("speed", 10.0));
-                anim.loop = VariantTools::as_bool(anim_dict.get("loop", false));
-                cfg.animations.emplace_back(anim_name, anim);
-            }
-        }
-
-        units_.push_back(cfg);
+        const String key = key_variant;
+        const Dictionary unit_dict = units_dict[key];
+        units_.push_back(parse_unit_config(key, unit_dict, globals_));
     }
 
     UtilityFunctions::print("UnitDataLoader: Loaded ", units_.size(), " unit types");
