@@ -210,9 +210,7 @@ PackedStringArray ProgressionManager::get_unlocked_levels() const {
     return result;
 }
 
-bool ProgressionManager::is_level_completed(const String &level_id) const {
-    return std::ranges::find(levels_completed_, level_id) != levels_completed_.end();
-}
+bool ProgressionManager::is_level_completed(const String &level_id) const { return std::ranges::find(levels_completed_, level_id) != levels_completed_.end(); }
 
 bool ProgressionManager::is_level_unlocked(const String &level_id) const {
     for (const auto &unlock : level_unlocks_) {

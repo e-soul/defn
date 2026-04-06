@@ -23,16 +23,12 @@ void Unit::_bind_methods() {
 void Unit::set_unit_config(const UnitConfig &cfg) {
     unit_config_ = cfg;
 
-    const auto melee_variation = static_cast<real_t>(UtilityFunctions::randf_range(
-        unit_config_.melee_attack_range_variation.min,
-        unit_config_.melee_attack_range_variation.max
-    ));
+    const auto melee_variation =
+        static_cast<real_t>(UtilityFunctions::randf_range(unit_config_.melee_attack_range_variation.min, unit_config_.melee_attack_range_variation.max));
     attack_range = unit_config_.melee_attack_range * melee_variation;
 
-    const auto ranged_variation = static_cast<real_t>(UtilityFunctions::randf_range(
-        unit_config_.ranged_attack_range_variation.min,
-        unit_config_.ranged_attack_range_variation.max
-    ));
+    const auto ranged_variation =
+        static_cast<real_t>(UtilityFunctions::randf_range(unit_config_.ranged_attack_range_variation.min, unit_config_.ranged_attack_range_variation.max));
     ranged_range = unit_config_.ranged_attack_range * ranged_variation;
 }
 

@@ -72,34 +72,26 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
 
     if (global_data.has("attack_range_variation")) {
         Dictionary global_range_variation = global_data["attack_range_variation"];
-        globals.melee_attack_range_variation =
-            parse_range_variation(global_range_variation.get("melee", Array()), globals.melee_attack_range_variation);
-        globals.ranged_attack_range_variation =
-            parse_range_variation(global_range_variation.get("ranged", Array()), globals.ranged_attack_range_variation);
+        globals.melee_attack_range_variation = parse_range_variation(global_range_variation.get("melee", Array()), globals.melee_attack_range_variation);
+        globals.ranged_attack_range_variation = parse_range_variation(global_range_variation.get("ranged", Array()), globals.ranged_attack_range_variation);
     }
 
     if (global_data.has("health_bar_color")) {
         Dictionary global_health_bar_colors = global_data["health_bar_color"];
-        globals.friendly_health_bar_color =
-            parse_color(global_health_bar_colors.get("friendly", Array()), globals.friendly_health_bar_color);
-        globals.hostile_health_bar_color =
-            parse_color(global_health_bar_colors.get("hostile", Array()), globals.hostile_health_bar_color);
+        globals.friendly_health_bar_color = parse_color(global_health_bar_colors.get("friendly", Array()), globals.friendly_health_bar_color);
+        globals.hostile_health_bar_color = parse_color(global_health_bar_colors.get("hostile", Array()), globals.hostile_health_bar_color);
     }
 
     if (global_data.has("melee_flash_color")) {
         Dictionary global_melee_flash_colors = global_data["melee_flash_color"];
-        globals.friendly_melee_flash_color =
-            parse_color(global_melee_flash_colors.get("friendly", Array()), globals.friendly_melee_flash_color);
-        globals.hostile_melee_flash_color =
-            parse_color(global_melee_flash_colors.get("hostile", Array()), globals.hostile_melee_flash_color);
+        globals.friendly_melee_flash_color = parse_color(global_melee_flash_colors.get("friendly", Array()), globals.friendly_melee_flash_color);
+        globals.hostile_melee_flash_color = parse_color(global_melee_flash_colors.get("hostile", Array()), globals.hostile_melee_flash_color);
     }
 
     if (global_data.has("ranged_flash_color")) {
         Dictionary global_ranged_flash_colors = global_data["ranged_flash_color"];
-        globals.friendly_ranged_flash_color =
-            parse_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
-        globals.hostile_ranged_flash_color =
-            parse_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
+        globals.friendly_ranged_flash_color = parse_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
+        globals.hostile_ranged_flash_color = parse_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
     }
 }
 
@@ -109,18 +101,12 @@ UnitSide parse_unit_side(const Dictionary &unit_dict) {
 }
 
 void apply_unit_colors(const Dictionary &unit_dict, const GlobalUnitConfig &globals, UnitConfig &config) {
-    const Color default_health_bar_color =
-        config.side == UnitSide::HOSTILE ? globals.hostile_health_bar_color : globals.friendly_health_bar_color;
-    const Color default_melee_flash_color =
-        config.side == UnitSide::HOSTILE ? globals.hostile_melee_flash_color : globals.friendly_melee_flash_color;
-    const Color default_ranged_flash_color =
-        config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
+    const Color default_health_bar_color = config.side == UnitSide::HOSTILE ? globals.hostile_health_bar_color : globals.friendly_health_bar_color;
+    const Color default_melee_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_melee_flash_color : globals.friendly_melee_flash_color;
+    const Color default_ranged_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
 
     config.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
-    config.health_bar_offset = parse_vector2(
-        unit_dict.get("health_bar_offset", Array()),
-        Vector2(DEFAULT_HEALTH_BAR_OFFSET_X, DEFAULT_HEALTH_BAR_OFFSET_Y)
-    );
+    config.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), Vector2(DEFAULT_HEALTH_BAR_OFFSET_X, DEFAULT_HEALTH_BAR_OFFSET_Y));
     config.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
     config.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
 }

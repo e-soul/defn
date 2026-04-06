@@ -28,7 +28,7 @@ struct LevelUnlock {
 struct UpgradeEntry {
     String id;
     int score_required = 0;
-    String type;   // "starting_energy", "energy_regen", "bounty_mult"
+    String type; // "starting_energy", "energy_regen", "bounty_mult"
     real_t value = 0.0;
 };
 

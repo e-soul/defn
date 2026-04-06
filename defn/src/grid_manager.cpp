@@ -41,9 +41,7 @@ void GridManager::unregister_singleton() {
     singleton_ = nullptr;
 }
 
-real_t GridManager::random_belt_y() {
-    return static_cast<real_t>(UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y));
-}
+real_t GridManager::random_belt_y() { return static_cast<real_t>(UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y)); }
 
 real_t GridManager::deploy_x() const { return camera_x_ - (VIEWPORT_WIDTH / 2.0F) - SPAWN_OFFSET; }
 

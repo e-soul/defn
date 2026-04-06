@@ -2,6 +2,7 @@
 #include "progression_manager.h"
 #include "variant_tools.h"
 #include <cmath>
+#include <cstdint>
 #include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/check_button.hpp>
@@ -20,7 +21,6 @@
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <cstdint>
 #include <utility>
 
 namespace defn {
@@ -56,13 +56,9 @@ struct OptionsLayout {
     Color value_color;
 };
 
-Vector2 make_size(int width, int height) {
-    return {static_cast<real_t>(width), static_cast<real_t>(height)};
-}
+Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
 
-int32_t to_int32(int64_t value) {
-    return static_cast<int32_t>(value);
-}
+int32_t to_int32(int64_t value) { return static_cast<int32_t>(value); }
 
 Vector2i parse_resolution_value(const String &value_str, const Vector2i &fallback = Vector2i(1920, 1080)) {
     const PackedStringArray parts = value_str.split("x");
@@ -91,10 +87,8 @@ void apply_disabled_style(BaseButton *button, bool enabled) {
 ButtonStyle build_button_style(const Dictionary &style_data) {
     ButtonStyle button_style;
     button_style.font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
-    button_style.minimum_size = make_size(
-        VariantTools::as_int(style_data.get("button_min_width", 400)),
-        VariantTools::as_int(style_data.get("button_min_height", 60))
-    );
+    button_style.minimum_size =
+        make_size(VariantTools::as_int(style_data.get("button_min_width", 400)), VariantTools::as_int(style_data.get("button_min_height", 60)));
     button_style.separation = VariantTools::as_int(style_data.get("button_separation", 16));
     button_style.normal_style_data = style_data.get("normal", Dictionary());
     button_style.hover_style_data = style_data.get("hover", Dictionary());
@@ -109,10 +103,8 @@ OptionsLayout build_options_layout(const Dictionary &options_style) {
     OptionsLayout options_layout;
     options_layout.label_font_size = VariantTools::as_int(options_style.get("label_font_size", 24));
     options_layout.label_minimum_size = make_size(VariantTools::as_int(options_style.get("label_min_width", 250)), 0);
-    options_layout.control_minimum_size = make_size(
-        VariantTools::as_int(options_style.get("control_min_width", 300)),
-        VariantTools::as_int(options_style.get("control_min_height", 40))
-    );
+    options_layout.control_minimum_size =
+        make_size(VariantTools::as_int(options_style.get("control_min_width", 300)), VariantTools::as_int(options_style.get("control_min_height", 40)));
     options_layout.row_separation = VariantTools::as_int(options_style.get("row_separation", 12));
     options_layout.section_font_size = VariantTools::as_int(options_style.get("section_font_size", 28));
     options_layout.value_font_size = VariantTools::as_int(options_style.get("value_font_size", 20));
@@ -151,15 +143,9 @@ bool is_setting(const Dictionary &setting, const String &expected_type, const St
     return String(setting.get("type", "")) == expected_type && String(setting.get("setting", "")) == expected_setting_id;
 }
 
-bool try_add_display_mode_control(
-    MenuManager *manager,
-    HBoxContainer *row,
-    const Dictionary &setting,
-    const ButtonStyle &button_style,
-    const OptionsLayout &options_layout,
-    DisplayServer::WindowMode current_mode,
-    std::vector<DisplayServer::WindowMode> &display_mode_values
-) {
+bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const ButtonStyle &button_style,
+                                  const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode,
+                                  std::vector<DisplayServer::WindowMode> &display_mode_values) {
     if (!is_setting(setting, "dropdown", "display_mode")) {
         return false;
     }
@@ -190,17 +176,9 @@ bool try_add_display_mode_control(
     return true;
 }
 
-bool try_add_resolution_control(
-    MenuManager *manager,
-    HBoxContainer *row,
-    const Dictionary &setting,
-    const ButtonStyle &button_style,
-    const OptionsLayout &options_layout,
-    DisplayServer::WindowMode current_mode,
-    const Vector2i &current_size,
-    OptionButton *&resolution_dropdown,
-    std::vector<Vector2i> &resolution_values
-) {
+bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const ButtonStyle &button_style,
+                                const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode, const Vector2i &current_size,
+                                OptionButton *&resolution_dropdown, std::vector<Vector2i> &resolution_values) {
     if (!is_setting(setting, "dropdown", "resolution")) {
         return false;
     }
@@ -250,14 +228,8 @@ bool try_add_vsync_control(HBoxContainer *row, const Dictionary &setting, const 
     return true;
 }
 
-bool try_add_volume_control(
-    MenuManager *manager,
-    HBoxContainer *row,
-    const Dictionary &setting,
-    const OptionsLayout &options_layout,
-    AudioServer *audio_server,
-    std::vector<std::pair<String, Label *>> &volume_labels
-) {
+bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const OptionsLayout &options_layout, AudioServer *audio_server,
+                            std::vector<std::pair<String, Label *>> &volume_labels) {
     if (!is_setting(setting, "slider", "bus_volume")) {
         return false;
     }
@@ -583,21 +555,11 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
         }
 
         auto *row = create_option_row(setting, options_layout);
-        const bool handled =
-            try_add_display_mode_control(this, row, setting, button_style, options_layout, current_mode, display_mode_values_) ||
-            try_add_resolution_control(
-                this,
-                row,
-                setting,
-                button_style,
-                options_layout,
-                current_mode,
-                current_size,
-                resolution_dropdown_,
-                resolution_values_
-            ) ||
-            try_add_vsync_control(row, setting, options_layout, vsync_on, this) ||
-            try_add_volume_control(this, row, setting, options_layout, audio_server, volume_labels_);
+        const bool handled = try_add_display_mode_control(this, row, setting, button_style, options_layout, current_mode, display_mode_values_) ||
+                             try_add_resolution_control(this, row, setting, button_style, options_layout, current_mode, current_size, resolution_dropdown_,
+                                                        resolution_values_) ||
+                             try_add_vsync_control(row, setting, options_layout, vsync_on, this) ||
+                             try_add_volume_control(this, row, setting, options_layout, audio_server, volume_labels_);
 
         if (handled) {
             button_container_->add_child(row);

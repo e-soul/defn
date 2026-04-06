@@ -18,9 +18,7 @@ namespace {
 
 constexpr real_t DEFAULT_ALPHA = 1.0F;
 
-Vector2 make_size(int width, int height) {
-    return {static_cast<real_t>(width), static_cast<real_t>(height)};
-}
+Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
 
 Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1)) {
     if (arr.size() >= 3) {
