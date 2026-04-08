@@ -73,8 +73,8 @@
         "flip_h": false
       },
       "shoot_sfx": {
-        "path": "res://assets/sfx/walther_p38_fire.wav",
-        "volume_linear": 0.2,
+        "path": "res://assets/sfx/lynx_50_fire.wav",
+        "volume_linear": 0.6,
         "pitch_scale": 1.0
       },
       "animations": {
@@ -415,8 +415,8 @@
         "flip_h": true
       },
       "shoot_sfx": {
-        "path": "res://assets/sfx/desert_eagle_fire.wav",
-        "volume_linear": 0.2,
+        "path": "res://assets/sfx/lynx_50_fire.wav",
+        "volume_linear": 0.6,
         "pitch_scale": 1.0
       },
       "animations": {
