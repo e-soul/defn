@@ -148,8 +148,7 @@ void CombatRuntime::perform_behavior(double delta) {
         unit_->set_velocity(Vector2(0, 0));
 
         const auto current_anim = animation_->get_anim_state();
-        const bool needs_pose_update = (current_anim == AnimState::WALK) ||
-                                       (state_.attack_mode == AttackMode::MELEE && current_anim != AnimState::ATTACK) ||
+        const bool needs_pose_update = (current_anim == AnimState::WALK) || (state_.attack_mode == AttackMode::MELEE && current_anim != AnimState::ATTACK) ||
                                        (state_.attack_mode == AttackMode::RANGED && current_anim != AnimState::SHOOT);
 
         if (needs_pose_update) {

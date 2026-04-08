@@ -27,7 +27,7 @@ class ScoreScreenPresenter {
   public:
     ScoreScreenPresenter() = delete;
 
-        static ScoreScreenView show(Node *parent, const Dictionary &stats, const ScoreScreenActions &actions);
+    static ScoreScreenView show(Node *parent, const Dictionary &stats, const ScoreScreenActions &actions);
 };
 
 } // namespace defn

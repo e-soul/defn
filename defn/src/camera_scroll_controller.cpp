@@ -23,9 +23,7 @@ real_t CameraScrollController::calculate_world_width(real_t background_display_w
     return background_display_width * static_cast<real_t>(rules_.world_multiplier);
 }
 
-real_t CameraScrollController::get_trigger_height() const {
-    return (rules_.belt_bottom_y - rules_.belt_top_y) + rules_.scroll_trigger_extra_height;
-}
+real_t CameraScrollController::get_trigger_height() const { return (rules_.belt_bottom_y - rules_.belt_top_y) + rules_.scroll_trigger_extra_height; }
 
 Vector2 CameraScrollController::get_camera_anchor_position() const { return {camera_target_x_, rules_.viewport_height / HALF}; }
 
