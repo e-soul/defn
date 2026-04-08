@@ -1,11 +1,8 @@
 #include "unit.h"
 #include "animation_controller.h"
-#include "combat_component.h"
-#include "detection_component.h"
 #include "grid_manager.h"
-#include "health_bar_widget.h"
 #include "health_component.h"
-#include "sound_controller.h"
+#include "unit_factory.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -43,58 +40,7 @@ void Unit::_ready() {
     // Scale from config
     set_scale(Vector2(unit_config_.scale, unit_config_.scale));
 
-    // Health
-    health = memnew(HealthComponent);
-    health->set_name("HealthComponent");
-    add_child(health);
-    health->configure(unit_config_.hp);
-    health->connect("died", callable_mp(this, &Unit::on_died));
-
-    // Health bar
-    health_bar_widget = memnew(HealthBarWidget);
-    health_bar_widget->set_name("HealthBarWidget");
-    add_child(health_bar_widget);
-    health_bar_widget->configure(health, unit_config_.health_bar_color, unit_config_.health_bar_offset);
-
-    // Animation
-    animation = memnew(AnimationController);
-    animation->set_name("AnimationController");
-    add_child(animation);
-    animation->configure(this, unit_config_);
-
-    sound = memnew(SoundController);
-    sound->set_name("SoundController");
-    add_child(sound);
-    sound->configure(this, unit_config_);
-    animation->connect("shoot_effect_triggered", callable_mp(sound, &SoundController::play_shoot_sfx));
-
-    // Detection
-    detection = memnew(DetectionComponent);
-    detection->set_name("DetectionComponent");
-    add_child(detection);
-    const real_t scale_x = get_scale().x;
-    if (unit_config_.side == UnitSide::FRIENDLY) {
-        detection->configure(this, 1, 2, ranged_range, scale_x);
-    } else {
-        detection->configure(this, 2, 1, ranged_range, scale_x);
-    }
-
-    // Combat
-    combat = memnew(CombatComponent);
-    combat->set_name("CombatComponent");
-    add_child(combat);
-    CombatComponent::Config combat_cfg{
-        .side = unit_config_.side,
-        .melee_damage = unit_config_.melee_damage,
-        .melee_attack_period_seconds = unit_config_.melee_attack_period_seconds,
-        .ranged_damage = unit_config_.ranged_damage,
-        .ranged_attack_period_seconds = unit_config_.ranged_attack_period_seconds,
-        .attack_range = attack_range,
-        .ranged_range = ranged_range,
-        .melee_flash_color = unit_config_.melee_flash_color,
-        .ranged_flash_color = unit_config_.ranged_flash_color,
-    };
-    combat->configure(this, health, animation, detection->get_detection_area(), combat_cfg);
+    UnitFactory::initialize(this);
 }
 
 void Unit::take_damage(int amount) {
@@ -121,10 +67,15 @@ void Unit::on_died() {
 
 void Unit::do_movement(double delta) {
     auto *grid = GridManager::get_singleton();
-    const real_t speed = unit_config_.move_speed * GridManager::ATTACK_RANGE;
+    if (grid == nullptr) {
+        return;
+    }
+
+    const real_t speed = unit_config_.move_speed_pixels_per_second;
+    const auto &rules = grid->get_rules();
 
     if (unit_config_.side == UnitSide::FRIENDLY) {
-        const real_t max_x = grid->get_world_width() - 100.0F;
+        const real_t max_x = grid->get_world_width() - rules.friendly_world_margin;
         if (get_position().x < max_x) {
             set_velocity(Vector2(speed, 0));
             move_and_slide();

@@ -1,14 +1,18 @@
 #include "progression_manager.h"
-#include "variant_tools.h"
 #include <algorithm>
 #include <cmath>
 #include <godot_cpp/classes/engine.hpp>
-#include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
+
+namespace {
+
+constexpr auto PROGRESSION_PATH = "res://data/progression.json";
+constexpr auto SAVE_PATH = "user://save_data.json";
+
+} // namespace
 
 ProgressionManager *ProgressionManager::singleton_ = nullptr;
 
@@ -45,155 +49,40 @@ void ProgressionManager::unregister_singleton() {
 }
 
 void ProgressionManager::initialize() {
-    load_progression_data();
+    catalog_.load(PROGRESSION_PATH);
     load_save();
 }
 
-void ProgressionManager::load_progression_data() {
-    const String path = "res://data/progression.json";
-    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-    if (!file.is_valid()) {
-        UtilityFunctions::printerr("ProgressionManager: Failed to open: ", path);
-        return;
-    }
-
-    String json_text = file->get_as_text();
-    file->close();
-
-    Ref<JSON> json;
-    json.instantiate();
-    if (json->parse(json_text) != OK) {
-        UtilityFunctions::printerr("ProgressionManager: JSON parse error: ", json->get_error_message());
-        return;
-    }
-
-    Dictionary data = json->get_data();
-
-    // Unit unlocks
-    Array unit_arr = data.get("unit_unlocks", Array());
-    unit_unlocks_.clear();
-    for (const auto &entry_var : unit_arr) {
-        Dictionary entry = entry_var;
-        UnitUnlock unlock;
-        unlock.unit_id = String(entry.get("unit_id", ""));
-        unlock.score_required = VariantTools::as_int(entry.get("score_required", 0));
-        unit_unlocks_.push_back(unlock);
-    }
-
-    // Level unlocks
-    Array level_arr = data.get("level_unlocks", Array());
-    level_unlocks_.clear();
-    for (const auto &entry_var : level_arr) {
-        Dictionary entry = entry_var;
-        LevelUnlock unlock;
-        unlock.level_id = String(entry.get("level_id", ""));
-        unlock.score_required = VariantTools::as_int(entry.get("score_required", 0));
-        Variant req = entry.get("requires_completed", Variant());
-        if (req.get_type() == Variant::STRING) {
-            unlock.requires_completed = String(req);
-        }
-        level_unlocks_.push_back(unlock);
-    }
-
-    // Upgrades
-    Array upgrade_arr = data.get("upgrades", Array());
-    upgrades_.clear();
-    for (const auto &entry_var : upgrade_arr) {
-        Dictionary entry = entry_var;
-        UpgradeEntry upgrade;
-        upgrade.id = String(entry.get("id", ""));
-        upgrade.score_required = VariantTools::as_int(entry.get("score_required", 0));
-        upgrade.type = String(entry.get("type", ""));
-        upgrade.value = VariantTools::as_real(entry.get("value", 0.0));
-        upgrades_.push_back(upgrade);
-    }
-
-    UtilityFunctions::print("ProgressionManager: Loaded ", unit_unlocks_.size(), " unit unlocks, ", level_unlocks_.size(), " level unlocks, ", upgrades_.size(),
-                            " upgrades");
-}
-
 void ProgressionManager::load_save() {
-    const String path = "user://save_data.json";
-    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-    if (!file.is_valid()) {
+    const auto loaded_save = ProgressionSaveRepository::load(SAVE_PATH);
+    if (!loaded_save) {
         UtilityFunctions::print("ProgressionManager: No save file found, creating default");
         create_default_save();
         return;
     }
 
-    String json_text = file->get_as_text();
-    file->close();
-
-    Ref<JSON> json;
-    json.instantiate();
-    if (json->parse(json_text) != OK) {
-        UtilityFunctions::printerr("ProgressionManager: Save file corrupted, creating default");
-        create_default_save();
-        return;
-    }
-
-    Dictionary data = json->get_data();
-    total_score_ = VariantTools::as_int(data.get("total_score", 0));
-
-    Array completed = data.get("levels_completed", Array());
-    levels_completed_.clear();
-    for (const auto &level_var : completed) {
-        levels_completed_.push_back(String(level_var));
-    }
-
-    Dictionary highest = data.get("highest_level_score", Dictionary());
-    highest_level_scores_.clear();
-    Array keys = highest.keys();
-    for (const auto &key_var : keys) {
-        String key = key_var;
-        int score = VariantTools::as_int(highest[key]);
-        highest_level_scores_.emplace_back(key, score);
-    }
-
-    UtilityFunctions::print("ProgressionManager: Loaded save — total_score=", total_score_, ", levels_completed=", completed.size());
+    save_data_ = *loaded_save;
+    UtilityFunctions::print("ProgressionManager: Loaded save — total_score=", save_data_.total_score,
+                            ", levels_completed=", save_data_.levels_completed.size());
 }
 
 void ProgressionManager::create_default_save() {
-    total_score_ = 0;
-    levels_completed_.clear();
-    highest_level_scores_.clear();
+    save_data_ = {};
     save();
 }
 
 void ProgressionManager::save() {
-    Dictionary data;
-    data["version"] = 1;
-    data["total_score"] = total_score_;
-
-    Array completed;
-    for (const auto &level_id : levels_completed_) {
-        completed.push_back(level_id);
-    }
-    data["levels_completed"] = completed;
-
-    Dictionary highest;
-    for (const auto &[level_id, score] : highest_level_scores_) {
-        highest[level_id] = score;
-    }
-    data["highest_level_score"] = highest;
-
-    String json_text = JSON::stringify(data, "  ");
-
-    Ref<FileAccess> file = FileAccess::open("user://save_data.json", FileAccess::WRITE);
-    if (!file.is_valid()) {
-        UtilityFunctions::printerr("ProgressionManager: Failed to write save file");
+    if (!ProgressionSaveRepository::save(SAVE_PATH, save_data_)) {
         return;
     }
-    file->store_string(json_text);
-    file->close();
 
-    UtilityFunctions::print("ProgressionManager: Save written — total_score=", total_score_);
+    UtilityFunctions::print("ProgressionManager: Save written — total_score=", save_data_.total_score);
 }
 
 PackedStringArray ProgressionManager::get_unlocked_units() const {
     PackedStringArray result;
-    for (const auto &unlock : unit_unlocks_) {
-        if (total_score_ >= unlock.score_required) {
+    for (const auto &unlock : catalog_.get_unit_unlocks()) {
+        if (save_data_.total_score >= unlock.score_required) {
             result.push_back(unlock.unit_id);
         }
     }
@@ -202,7 +91,7 @@ PackedStringArray ProgressionManager::get_unlocked_units() const {
 
 PackedStringArray ProgressionManager::get_unlocked_levels() const {
     PackedStringArray result;
-    for (const auto &unlock : level_unlocks_) {
+    for (const auto &unlock : catalog_.get_level_unlocks()) {
         if (is_level_unlocked(unlock.level_id)) {
             result.push_back(unlock.level_id);
         }
@@ -210,12 +99,14 @@ PackedStringArray ProgressionManager::get_unlocked_levels() const {
     return result;
 }
 
-bool ProgressionManager::is_level_completed(const String &level_id) const { return std::ranges::find(levels_completed_, level_id) != levels_completed_.end(); }
+bool ProgressionManager::is_level_completed(const String &level_id) const {
+    return std::ranges::find(save_data_.levels_completed, level_id) != save_data_.levels_completed.end();
+}
 
 bool ProgressionManager::is_level_unlocked(const String &level_id) const {
-    for (const auto &unlock : level_unlocks_) {
+    for (const auto &unlock : catalog_.get_level_unlocks()) {
         if (unlock.level_id == level_id) {
-            if (total_score_ < unlock.score_required) {
+            if (save_data_.total_score < unlock.score_required) {
                 return false;
             }
             if (!unlock.requires_completed.is_empty() && !is_level_completed(unlock.requires_completed)) {
@@ -228,7 +119,7 @@ bool ProgressionManager::is_level_unlocked(const String &level_id) const {
 }
 
 int ProgressionManager::get_highest_level_score(const String &level_id) const {
-    for (const auto &[level, score] : highest_level_scores_) {
+    for (const auto &[level, score] : save_data_.highest_level_scores) {
         if (level == level_id) {
             return score;
         }
@@ -238,8 +129,8 @@ int ProgressionManager::get_highest_level_score(const String &level_id) const {
 
 int ProgressionManager::get_effective_starting_energy(int base) const {
     int bonus = 0;
-    for (const auto &upgrade : upgrades_) {
-        if (upgrade.type == "starting_energy" && total_score_ >= upgrade.score_required) {
+    for (const auto &upgrade : catalog_.get_upgrades()) {
+        if (upgrade.type == "starting_energy" && save_data_.total_score >= upgrade.score_required) {
             bonus += static_cast<int>(upgrade.value);
         }
     }
@@ -248,8 +139,8 @@ int ProgressionManager::get_effective_starting_energy(int base) const {
 
 int ProgressionManager::get_effective_energy_regen() const {
     int regen = 1; // base regen
-    for (const auto &upgrade : upgrades_) {
-        if (upgrade.type == "energy_regen" && total_score_ >= upgrade.score_required) {
+    for (const auto &upgrade : catalog_.get_upgrades()) {
+        if (upgrade.type == "energy_regen" && save_data_.total_score >= upgrade.score_required) {
             int val = static_cast<int>(upgrade.value);
             regen = std::max(val, regen);
         }
@@ -259,8 +150,8 @@ int ProgressionManager::get_effective_energy_regen() const {
 
 real_t ProgressionManager::get_effective_bounty_multiplier() const {
     real_t mult = 1.0;
-    for (const auto &upgrade : upgrades_) {
-        if (upgrade.type == "bounty_mult" && total_score_ >= upgrade.score_required) {
+    for (const auto &upgrade : catalog_.get_upgrades()) {
+        if (upgrade.type == "bounty_mult" && save_data_.total_score >= upgrade.score_required) {
             mult = std::max(upgrade.value, mult);
         }
     }
@@ -268,7 +159,7 @@ real_t ProgressionManager::get_effective_bounty_multiplier() const {
 }
 
 int ProgressionManager::get_score_required_for_level(const String &level_id) const {
-    for (const auto &unlock : level_unlocks_) {
+    for (const auto &unlock : catalog_.get_level_unlocks()) {
         if (unlock.level_id == level_id) {
             return unlock.score_required;
         }
@@ -276,46 +167,16 @@ int ProgressionManager::get_score_required_for_level(const String &level_id) con
     return 0;
 }
 
-PackedStringArray ProgressionManager::compute_new_unlocks(int old_score, int new_score) const {
-    PackedStringArray result;
-
-    for (const auto &unlock : unit_unlocks_) {
-        if (old_score < unlock.score_required && new_score >= unlock.score_required) {
-            result.push_back(vformat("NEW UNLOCK: %s unit!", unlock.unit_id.capitalize()));
-        }
-    }
-
-    for (const auto &unlock : level_unlocks_) {
-        if (old_score < unlock.score_required && new_score >= unlock.score_required) {
-            result.push_back(vformat("NEW UNLOCK: %s!", unlock.level_id.replace("_", " ").capitalize()));
-        }
-    }
-
-    for (const auto &upgrade : upgrades_) {
-        if (old_score < upgrade.score_required && new_score >= upgrade.score_required) {
-            if (upgrade.type == "starting_energy") {
-                result.push_back(vformat("NEW UPGRADE: +%d starting energy!", static_cast<int>(upgrade.value)));
-            } else if (upgrade.type == "energy_regen") {
-                result.push_back(vformat("NEW UPGRADE: Energy regen %d/sec!", static_cast<int>(upgrade.value)));
-            } else if (upgrade.type == "bounty_mult") {
-                result.push_back(vformat(String::utf8("NEW UPGRADE: \u00D7%.1f bounty from kills!"), upgrade.value));
-            }
-        }
-    }
-
-    return result;
-}
-
-void ProgressionManager::add_score(int amount) { total_score_ += amount; }
+void ProgressionManager::add_score(int amount) { save_data_.total_score += amount; }
 
 void ProgressionManager::mark_level_completed(const String &level_id, int level_score) {
     if (!is_level_completed(level_id)) {
-        levels_completed_.push_back(level_id);
+        save_data_.levels_completed.push_back(level_id);
     }
 
     // Update highest score
     bool found = false;
-    for (auto &[level, score] : highest_level_scores_) {
+    for (auto &[level, score] : save_data_.highest_level_scores) {
         if (level == level_id) {
             score = std::max(level_score, score);
             found = true;
@@ -323,7 +184,7 @@ void ProgressionManager::mark_level_completed(const String &level_id, int level_
         }
     }
     if (!found) {
-        highest_level_scores_.emplace_back(level_id, level_score);
+        save_data_.highest_level_scores.emplace_back(level_id, level_score);
     }
 }
 

@@ -41,11 +41,21 @@ void GridManager::unregister_singleton() {
     singleton_ = nullptr;
 }
 
-real_t GridManager::random_belt_y() { return static_cast<real_t>(UtilityFunctions::randf_range(BELT_TOP_Y, BELT_BOTTOM_Y)); }
+void GridManager::configure(const GameplayRules &rules) {
+    rules_ = rules;
+    world_width_ = rules_.viewport_width * static_cast<real_t>(rules_.world_multiplier);
+    camera_x_ = rules_.viewport_width / 2.0F;
+}
 
-real_t GridManager::deploy_x() const { return camera_x_ - (VIEWPORT_WIDTH / 2.0F) - SPAWN_OFFSET; }
+real_t GridManager::random_belt_y() {
+    static const GameplayRules default_rules{};
+    const GameplayRules &rules = singleton_ != nullptr ? singleton_->rules_ : default_rules;
+    return static_cast<real_t>(UtilityFunctions::randf_range(rules.belt_top_y, rules.belt_bottom_y));
+}
 
-real_t GridManager::spawn_x() const { return camera_x_ + (VIEWPORT_WIDTH / 2.0F) + SPAWN_OFFSET; }
+real_t GridManager::deploy_x() const { return camera_x_ - (rules_.viewport_width / 2.0F) - rules_.spawn_offset; }
+
+real_t GridManager::spawn_x() const { return camera_x_ + (rules_.viewport_width / 2.0F) + rules_.spawn_offset; }
 
 void GridManager::set_world_width(real_t width) { world_width_ = width; }
 

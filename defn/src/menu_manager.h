@@ -1,6 +1,8 @@
 #ifndef MENU_MANAGER_H
 #define MENU_MANAGER_H
 
+#include "settings_service.h"
+
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/display_server.hpp>
@@ -18,8 +20,6 @@
 
 namespace defn {
 
-inline constexpr const char *SETTINGS_PATH = "user://settings.cfg";
-
 using namespace godot;
 
 class MenuManager : public Node2D {
@@ -31,7 +31,7 @@ class MenuManager : public Node2D {
     void on_level_selected(const String &level_id);
     void on_display_mode_changed(int index);
     void on_resolution_changed(int index);
-    static void on_vsync_toggled(bool toggled);
+    void on_vsync_toggled(bool toggled);
     void on_volume_changed(double value, const String &bus_name);
 
   protected:
@@ -45,11 +45,9 @@ class MenuManager : public Node2D {
     void clear_buttons();
     void build_options_ui(const Dictionary &menu_def);
 
-    static void save_settings();
-    static void load_settings();
-
     Dictionary menu_data_;
     String current_menu_;
+    SettingsState settings_state_;
 
     CanvasLayer *ui_layer_ = nullptr;
     TextureRect *background_ = nullptr;

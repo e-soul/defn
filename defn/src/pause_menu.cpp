@@ -1,47 +1,17 @@
 #include "pause_menu.h"
-#include "variant_tools.h"
+#include "menu_data_loader.h"
+#include "menu_style.h"
+#include "scene_navigator.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
-#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
-#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
-#include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
-
-namespace {
-
-constexpr real_t DEFAULT_ALPHA = 1.0F;
-
-Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
-
-Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1)) {
-    if (arr.size() >= 3) {
-        const auto red = VariantTools::as_real(arr[0]);
-        const auto green = VariantTools::as_real(arr[1]);
-        const auto blue = VariantTools::as_real(arr[2]);
-        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : DEFAULT_ALPHA;
-        return {red, green, blue, alpha};
-    }
-    return fallback;
-}
-
-Ref<StyleBoxFlat> make_style(const Dictionary &style_dict) {
-    Ref<StyleBoxFlat> style;
-    style.instantiate();
-    style->set_bg_color(parse_color_array(style_dict.get("bg_color", Array())));
-    style->set_border_color(parse_color_array(style_dict.get("border_color", Array()), Color(0.4, 0.4, 0.5)));
-    style->set_border_width_all(VariantTools::as_int(style_dict.get("border_width", 2)));
-    style->set_corner_radius_all(VariantTools::as_int(style_dict.get("corner_radius", 8)));
-    return style;
-}
-
-} // namespace
 
 void PauseMenu::_bind_methods() {}
 
@@ -69,22 +39,12 @@ void PauseMenu::_input(const Ref<InputEvent> &event) {
 }
 
 bool PauseMenu::load_config() {
-    const String path = "res://data/menu_data.json";
-    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-    if (!file.is_valid()) {
+    const auto loaded_menu_data = MenuDataLoader::load("res://data/menu_data.json");
+    if (!loaded_menu_data) {
         return false;
     }
 
-    String json_text = file->get_as_text();
-    file->close();
-
-    Ref<JSON> json;
-    json.instantiate();
-    if (json->parse(json_text) != OK) {
-        return false;
-    }
-
-    menu_data_ = json->get_data();
+    menu_data_ = *loaded_menu_data;
     return true;
 }
 
@@ -111,20 +71,9 @@ void PauseMenu::build_ui() {
     button_container_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     center->add_child(button_container_);
 
-    int font_size = VariantTools::as_int(style.get("button_font_size", 32));
-    int min_w = VariantTools::as_int(style.get("button_min_width", 400));
-    int min_h = VariantTools::as_int(style.get("button_min_height", 60));
-    int separation = VariantTools::as_int(style.get("button_separation", 16));
+    const ButtonStyle button_style = build_button_style(style);
 
-    button_container_->add_theme_constant_override("separation", separation);
-
-    Dictionary normal_sd = style.get("normal", Dictionary());
-    Dictionary hover_sd = style.get("hover", Dictionary());
-    Dictionary pressed_sd = style.get("pressed", Dictionary());
-
-    Color normal_font = parse_color_array(normal_sd.get("font_color", Array()), Color(0.9, 0.9, 0.95));
-    Color hover_font = parse_color_array(hover_sd.get("font_color", Array()), Color(1, 1, 1));
-    Color pressed_font = parse_color_array(pressed_sd.get("font_color", Array()), Color(0.8, 0.8, 0.9));
+    button_container_->add_theme_constant_override("separation", button_style.separation);
 
     Array entries = pause_def.get("entries", Array());
     for (const auto &entry_variant : entries) {
@@ -134,16 +83,9 @@ void PauseMenu::build_ui() {
 
         auto *btn = memnew(Button);
         btn->set_text(label);
-        btn->set_custom_minimum_size(make_size(min_w, min_h));
+        btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
-        btn->add_theme_font_size_override("font_size", font_size);
-
-        btn->add_theme_stylebox_override("normal", make_style(normal_sd));
-        btn->add_theme_stylebox_override("hover", make_style(hover_sd));
-        btn->add_theme_stylebox_override("pressed", make_style(pressed_sd));
-        btn->add_theme_color_override("font_color", normal_font);
-        btn->add_theme_color_override("font_hover_color", hover_font);
-        btn->add_theme_color_override("font_pressed_color", pressed_font);
+        apply_button_theme(btn, button_style, button_style.font_size);
 
         if (action == "resume") {
             btn->connect("pressed", callable_mp(this, &PauseMenu::on_resume));
@@ -175,7 +117,7 @@ void PauseMenu::on_resume() { set_paused(false); }
 
 void PauseMenu::on_main_menu() {
     set_paused(false);
-    get_tree()->change_scene_to_file("res://scenes/menu.tscn");
+    SceneNavigator::go_to_main_menu(get_tree());
 }
 
 } // namespace defn

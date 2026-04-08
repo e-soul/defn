@@ -1,4 +1,16 @@
 {
+  "gameplay_rules": {
+    "viewport_width": 1920.0,
+    "viewport_height": 1080.0,
+    "world_multiplier": 4,
+    "belt_top_y": 750.0,
+    "belt_bottom_y": 850.0,
+    "breach_x": 50.0,
+    "spawn_offset": 100.0,
+    "friendly_world_margin": 100.0,
+    "scroll_trigger_extra_height": 400.0,
+    "camera_scroll_step_factor": 0.25
+  },
   "attack_range_variation": {
     "melee": [0.8, 1.2],
     "ranged": [0.8, 1.2]

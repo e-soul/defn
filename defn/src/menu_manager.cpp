@@ -1,23 +1,22 @@
 #include "menu_manager.h"
+#include "menu_data_loader.h"
+#include "menu_style.h"
 #include "progression_manager.h"
+#include "progression_presentation.h"
+#include "scene_navigator.h"
+#include "settings_service.h"
 #include "variant_tools.h"
 #include <cmath>
-#include <cstdint>
-#include <godot_cpp/classes/audio_server.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/check_button.hpp>
-#include <godot_cpp/classes/config_file.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/display_server.hpp>
-#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/h_slider.hpp>
-#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/option_button.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
-#include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -26,93 +25,6 @@
 namespace defn {
 
 namespace {
-
-constexpr real_t DEFAULT_ALPHA = 1.0F;
-
-Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1));
-Ref<StyleBoxFlat> make_style(const Dictionary &style_dict);
-
-struct ButtonStyle {
-    int font_size = 32;
-    Vector2 minimum_size;
-    int separation = 16;
-    Dictionary normal_style_data;
-    Dictionary hover_style_data;
-    Dictionary pressed_style_data;
-    Color normal_font;
-    Color hover_font;
-    Color pressed_font;
-};
-
-struct OptionsLayout {
-    int label_font_size = 24;
-    Vector2 label_minimum_size;
-    Vector2 control_minimum_size;
-    int row_separation = 12;
-    int section_font_size = 28;
-    int value_font_size = 20;
-    Color section_color;
-    Color label_color;
-    Color value_color;
-};
-
-Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
-
-int32_t to_int32(int64_t value) { return static_cast<int32_t>(value); }
-
-Vector2i parse_resolution_value(const String &value_str, const Vector2i &fallback = Vector2i(1920, 1080)) {
-    const PackedStringArray parts = value_str.split("x");
-    if (parts.size() != 2) {
-        return fallback;
-    }
-
-    return {to_int32(parts[0].to_int()), to_int32(parts[1].to_int())};
-}
-
-void apply_button_theme(Control *control, const ButtonStyle &button_style, int font_size) {
-    control->add_theme_font_size_override("font_size", font_size);
-    control->add_theme_stylebox_override("normal", make_style(button_style.normal_style_data));
-    control->add_theme_stylebox_override("hover", make_style(button_style.hover_style_data));
-    control->add_theme_stylebox_override("pressed", make_style(button_style.pressed_style_data));
-    control->add_theme_color_override("font_color", button_style.normal_font);
-    control->add_theme_color_override("font_hover_color", button_style.hover_font);
-    control->add_theme_color_override("font_pressed_color", button_style.pressed_font);
-}
-
-void apply_disabled_style(BaseButton *button, bool enabled) {
-    button->set_disabled(!enabled);
-    button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
-}
-
-ButtonStyle build_button_style(const Dictionary &style_data) {
-    ButtonStyle button_style;
-    button_style.font_size = VariantTools::as_int(style_data.get("button_font_size", 32));
-    button_style.minimum_size =
-        make_size(VariantTools::as_int(style_data.get("button_min_width", 400)), VariantTools::as_int(style_data.get("button_min_height", 60)));
-    button_style.separation = VariantTools::as_int(style_data.get("button_separation", 16));
-    button_style.normal_style_data = style_data.get("normal", Dictionary());
-    button_style.hover_style_data = style_data.get("hover", Dictionary());
-    button_style.pressed_style_data = style_data.get("pressed", Dictionary());
-    button_style.normal_font = parse_color_array(button_style.normal_style_data.get("font_color", Array()), Color(0.9, 0.9, 0.95));
-    button_style.hover_font = parse_color_array(button_style.hover_style_data.get("font_color", Array()), Color(1, 1, 1));
-    button_style.pressed_font = parse_color_array(button_style.pressed_style_data.get("font_color", Array()), Color(0.8, 0.8, 0.9));
-    return button_style;
-}
-
-OptionsLayout build_options_layout(const Dictionary &options_style) {
-    OptionsLayout options_layout;
-    options_layout.label_font_size = VariantTools::as_int(options_style.get("label_font_size", 24));
-    options_layout.label_minimum_size = make_size(VariantTools::as_int(options_style.get("label_min_width", 250)), 0);
-    options_layout.control_minimum_size =
-        make_size(VariantTools::as_int(options_style.get("control_min_width", 300)), VariantTools::as_int(options_style.get("control_min_height", 40)));
-    options_layout.row_separation = VariantTools::as_int(options_style.get("row_separation", 12));
-    options_layout.section_font_size = VariantTools::as_int(options_style.get("section_font_size", 28));
-    options_layout.value_font_size = VariantTools::as_int(options_style.get("value_font_size", 20));
-    options_layout.section_color = parse_color_array(options_style.get("section_font_color", Array()), Color(1, 0.85, 0.3));
-    options_layout.label_color = parse_color_array(options_style.get("label_font_color", Array()), Color(0.85, 0.85, 0.9));
-    options_layout.value_color = parse_color_array(options_style.get("value_font_color", Array()), Color(0.7, 0.8, 1.0));
-    return options_layout;
-}
 
 void add_section_label(VBoxContainer *button_container, const Dictionary &setting, const OptionsLayout &options_layout) {
     auto *section_label = memnew(Label);
@@ -164,7 +76,7 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
         option_button->add_item(String(option_data.get("label", "???")));
         const auto mode_value = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(option_data.get("value", 0)));
         display_mode_values.push_back(mode_value);
-        if (mode_value == current_mode) {
+        if (static_cast<int>(mode_value) == static_cast<int>(current_mode)) {
             selected_index = option_index;
         }
         ++option_index;
@@ -195,7 +107,7 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     for (const Variant &option_variant : options) {
         Dictionary option_data = option_variant;
         option_button->add_item(String(option_data.get("label", "???")));
-        const Vector2i resolution = parse_resolution_value(String(option_data.get("value", "")));
+        const Vector2i resolution = SettingsService::parse_resolution_value(String(option_data.get("value", "")));
         resolution_values.push_back(resolution);
         if (resolution == current_size) {
             selected_index = option_index;
@@ -205,7 +117,7 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
 
     option_button->select(selected_index);
 
-    const bool windowed = current_mode == DisplayServer::WINDOW_MODE_WINDOWED;
+    const bool windowed = static_cast<int>(current_mode) == static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED);
     apply_disabled_style(option_button, windowed);
 
     resolution_dropdown = option_button;
@@ -223,13 +135,13 @@ bool try_add_vsync_control(HBoxContainer *row, const Dictionary &setting, const 
     check_button->set_custom_minimum_size(options_layout.control_minimum_size);
     check_button->set_focus_mode(Control::FOCUS_NONE);
     check_button->set_pressed(vsync_on);
-    check_button->connect("toggled", callable_mp_static(&MenuManager::on_vsync_toggled));
+    check_button->connect("toggled", callable_mp(manager, &MenuManager::on_vsync_toggled));
     row->add_child(check_button);
     return true;
 }
 
-bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const OptionsLayout &options_layout, AudioServer *audio_server,
-                            std::vector<std::pair<String, Label *>> &volume_labels) {
+bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const OptionsLayout &options_layout,
+                            const SettingsState &settings_state, std::vector<std::pair<String, Label *>> &volume_labels) {
     if (!is_setting(setting, "slider", "bus_volume")) {
         return false;
     }
@@ -238,13 +150,7 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Dict
     const int min_value = VariantTools::as_int(setting.get("min", 0));
     const int max_value = VariantTools::as_int(setting.get("max", 100));
     const int step_value = VariantTools::as_int(setting.get("step", 1));
-
-    const int bus_index = audio_server->get_bus_index(bus_name);
-    double current_percent = 100.0;
-    if (bus_index >= 0) {
-        const auto decibels = audio_server->get_bus_volume_db(bus_index);
-        current_percent = std::round(std::pow(10.0, decibels / 20.0) * 100.0);
-    }
+    const double current_percent = SettingsService::get_bus_volume_percent(settings_state, bus_name);
 
     auto *slider = memnew(HSlider);
     slider->set_custom_minimum_size(options_layout.control_minimum_size);
@@ -285,27 +191,6 @@ void add_back_button(MenuManager *manager, VBoxContainer *button_container, cons
     button_container->add_child(button);
 }
 
-Color parse_color_array(const Array &arr, const Color &fallback) {
-    if (arr.size() >= 3) {
-        const auto red = VariantTools::as_real(arr[0]);
-        const auto green = VariantTools::as_real(arr[1]);
-        const auto blue = VariantTools::as_real(arr[2]);
-        const auto alpha = arr.size() >= 4 ? VariantTools::as_real(arr[3]) : DEFAULT_ALPHA;
-        return {red, green, blue, alpha};
-    }
-    return fallback;
-}
-
-Ref<StyleBoxFlat> make_style(const Dictionary &style_dict) {
-    Ref<StyleBoxFlat> style;
-    style.instantiate();
-    style->set_bg_color(parse_color_array(style_dict.get("bg_color", Array())));
-    style->set_border_color(parse_color_array(style_dict.get("border_color", Array()), Color(0.4, 0.4, 0.5)));
-    style->set_border_width_all(VariantTools::as_int(style_dict.get("border_width", 2)));
-    style->set_corner_radius_all(VariantTools::as_int(style_dict.get("corner_radius", 8)));
-    return style;
-}
-
 } // namespace
 
 void MenuManager::_bind_methods() {}
@@ -316,7 +201,8 @@ void MenuManager::_ready() {
         return;
     }
 
-    load_settings();
+    settings_state_ = SettingsService::load_or_default();
+    SettingsService::apply(settings_state_);
 
     ui_layer_ = memnew(CanvasLayer);
     ui_layer_->set_name("UILayer");
@@ -351,24 +237,12 @@ void MenuManager::_ready() {
 }
 
 bool MenuManager::load_menu_data() {
-    const String path = "res://data/menu_data.json";
-    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-    if (!file.is_valid()) {
-        UtilityFunctions::printerr("MenuManager: Failed to open: ", path);
+    const auto loaded_menu_data = MenuDataLoader::load("res://data/menu_data.json");
+    if (!loaded_menu_data) {
         return false;
     }
 
-    String json_text = file->get_as_text();
-    file->close();
-
-    Ref<JSON> json;
-    json.instantiate();
-    if (json->parse(json_text) != OK) {
-        UtilityFunctions::printerr("MenuManager: JSON parse error: ", json->get_error_message());
-        return false;
-    }
-
-    menu_data_ = json->get_data();
+    menu_data_ = *loaded_menu_data;
     return true;
 }
 
@@ -463,9 +337,9 @@ void MenuManager::on_button_pressed(const String &action, const String &target) 
     } else if (action == "level_select") {
         show_level_select();
     } else if (action == "start_game") {
-        get_tree()->change_scene_to_file("res://scenes/game.tscn");
+        SceneNavigator::go_to_current_level(get_tree());
     } else if (action == "quit") {
-        get_tree()->quit();
+        SceneNavigator::quit(get_tree());
     }
 }
 
@@ -491,18 +365,9 @@ void MenuManager::show_level_select() {
 
     for (const auto &level : level_data) {
         bool unlocked = progression->is_level_unlocked(level.level_id);
-        int best_score = progression->get_highest_level_score(level.level_id);
-        bool completed = progression->is_level_completed(level.level_id);
-
-        String label_text = level.level_id.replace("_", " ").capitalize();
-        if (!unlocked) {
-            label_text += vformat(" (Score: %d needed)", level.score_required);
-        } else if (completed) {
-            label_text += vformat(" - Best: %d", best_score);
-        }
 
         auto *btn = memnew(Button);
-        btn->set_text(label_text);
+        btn->set_text(ProgressionPresentation::format_level_button_label(*progression, level));
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
@@ -527,11 +392,7 @@ void MenuManager::show_level_select() {
     button_container_->add_child(back_btn);
 }
 
-void MenuManager::on_level_selected(const String &level_id) {
-    auto *progression = ProgressionManager::get_singleton();
-    progression->set_current_level_id(level_id);
-    get_tree()->change_scene_to_file("res://scenes/game.tscn");
-}
+void MenuManager::on_level_selected(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
 
 void MenuManager::build_options_ui(const Dictionary &menu_def) {
     const Dictionary style = menu_data_.get("style", Dictionary());
@@ -540,11 +401,9 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
 
     button_container_->add_theme_constant_override("separation", options_layout.row_separation);
 
-    auto *display_server = DisplayServer::get_singleton();
-    auto *audio_server = AudioServer::get_singleton();
-    const auto current_mode = display_server->window_get_mode();
-    const Vector2i current_size = display_server->window_get_size();
-    const bool vsync_on = display_server->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED;
+    const auto current_mode = settings_state_.display_mode;
+    const Vector2i current_size = settings_state_.resolution;
+    const bool vsync_on = settings_state_.vsync_enabled;
 
     const Array settings = menu_def.get("settings", Array());
     for (const Variant &setting_variant : settings) {
@@ -559,7 +418,7 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
                              try_add_resolution_control(this, row, setting, button_style, options_layout, current_mode, current_size, resolution_dropdown_,
                                                         resolution_values_) ||
                              try_add_vsync_control(row, setting, options_layout, vsync_on, this) ||
-                             try_add_volume_control(this, row, setting, options_layout, audio_server, volume_labels_);
+                             try_add_volume_control(this, row, setting, options_layout, settings_state_, volume_labels_);
 
         if (handled) {
             button_container_->add_child(row);
@@ -577,22 +436,14 @@ void MenuManager::on_display_mode_changed(int index) {
         return;
     }
 
-    auto *display_server = DisplayServer::get_singleton();
-    auto mode = display_mode_values_[index];
-    display_server->window_set_mode(mode);
+    SettingsService::set_display_mode(settings_state_, display_mode_values_[index]);
 
-    if (mode == DisplayServer::WINDOW_MODE_WINDOWED) {
-        const Vector2i screen_size = display_server->screen_get_size();
-        const Vector2i window_size = display_server->window_get_size();
-        display_server->window_set_position((screen_size - window_size) / 2);
-    }
-
-    const bool windowed = mode == DisplayServer::WINDOW_MODE_WINDOWED;
+    const bool windowed = settings_state_.display_mode == DisplayServer::WINDOW_MODE_WINDOWED;
     if (resolution_dropdown_) {
         apply_disabled_style(resolution_dropdown_, windowed);
     }
 
-    save_settings();
+    SettingsService::save(settings_state_);
 }
 
 void MenuManager::on_resolution_changed(int index) {
@@ -600,32 +451,17 @@ void MenuManager::on_resolution_changed(int index) {
         return;
     }
 
-    auto *display_server = DisplayServer::get_singleton();
-    const Vector2i new_size = resolution_values_[index];
-    display_server->window_set_size(new_size);
-
-    const Vector2i screen_size = display_server->screen_get_size();
-    display_server->window_set_position((screen_size - new_size) / 2);
-
-    save_settings();
+    SettingsService::set_resolution(settings_state_, resolution_values_[index]);
+    SettingsService::save(settings_state_);
 }
 
 void MenuManager::on_vsync_toggled(bool toggled) {
-    auto *display_server = DisplayServer::get_singleton();
-    display_server->window_set_vsync_mode(toggled ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
-    save_settings();
+    SettingsService::set_vsync(settings_state_, toggled);
+    SettingsService::save(settings_state_);
 }
 
 void MenuManager::on_volume_changed(double value, const String &bus_name) {
-    auto *audio = AudioServer::get_singleton();
-    int bus_idx = audio->get_bus_index(bus_name);
-    if (bus_idx < 0) {
-        return;
-    }
-
-    const auto linear = static_cast<float>(value / 100.0);
-    const auto decibels = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
-    audio->set_bus_volume_db(bus_idx, decibels);
+    SettingsService::set_bus_volume_percent(settings_state_, bus_name, value);
 
     for (auto &[name, label] : volume_labels_) {
         if (name == bus_name && label) {
@@ -634,79 +470,7 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
         }
     }
 
-    save_settings();
-}
-
-void MenuManager::save_settings() {
-    auto *display_server = DisplayServer::get_singleton();
-    auto *audio_server = AudioServer::get_singleton();
-
-    Ref<ConfigFile> cfg;
-    cfg.instantiate();
-
-    cfg->set_value("video", "display_mode", static_cast<int>(display_server->window_get_mode()));
-
-    const Vector2i window_size = display_server->window_get_size();
-    cfg->set_value("video", "resolution", vformat("%dx%d", window_size.x, window_size.y));
-
-    cfg->set_value("video", "vsync", display_server->window_get_vsync_mode() != DisplayServer::VSYNC_DISABLED);
-
-    const int master_idx = audio_server->get_bus_index("Master");
-    if (master_idx >= 0) {
-        const auto decibels = audio_server->get_bus_volume_db(master_idx);
-        const double pct = std::round(std::pow(10.0, decibels / 20.0) * 100.0);
-        cfg->set_value("audio", "master_volume", pct);
-    }
-
-    Error err = cfg->save(SETTINGS_PATH);
-    if (err != OK) {
-        UtilityFunctions::printerr("MenuManager: Failed to save settings, error: ", err);
-    }
-}
-
-void MenuManager::load_settings() {
-    Ref<ConfigFile> cfg;
-    cfg.instantiate();
-
-    if (cfg->load(SETTINGS_PATH) != OK) {
-        return; // No saved settings yet — use engine defaults
-    }
-
-    auto *display_server = DisplayServer::get_singleton();
-    auto *audio_server = AudioServer::get_singleton();
-
-    // Display mode
-    if (cfg->has_section_key("video", "display_mode")) {
-        auto mode = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(cfg->get_value("video", "display_mode")));
-        display_server->window_set_mode(mode);
-    }
-
-    // Resolution (only meaningful in windowed mode)
-    if (cfg->has_section_key("video", "resolution")) {
-        const Vector2i resolution = parse_resolution_value(String(cfg->get_value("video", "resolution")));
-        if (display_server->window_get_mode() == DisplayServer::WINDOW_MODE_WINDOWED) {
-            display_server->window_set_size(resolution);
-            const Vector2i screen_size = display_server->screen_get_size();
-            display_server->window_set_position((screen_size - resolution) / 2);
-        }
-    }
-
-    // VSync
-    if (cfg->has_section_key("video", "vsync")) {
-        bool vsync = cfg->get_value("video", "vsync");
-        display_server->window_set_vsync_mode(vsync ? DisplayServer::VSYNC_ENABLED : DisplayServer::VSYNC_DISABLED);
-    }
-
-    // Master volume
-    if (cfg->has_section_key("audio", "master_volume")) {
-        const double pct = cfg->get_value("audio", "master_volume");
-        const auto linear = static_cast<float>(pct / 100.0);
-        const auto decibels = (linear > 0.001F) ? 20.0F * std::log10(linear) : -80.0F;
-        const int master_idx = audio_server->get_bus_index("Master");
-        if (master_idx >= 0) {
-            audio_server->set_bus_volume_db(master_idx, decibels);
-        }
-    }
+    SettingsService::save(settings_state_);
 }
 
 } // namespace defn

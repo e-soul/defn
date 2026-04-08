@@ -1,6 +1,8 @@
 #ifndef GAME_MANAGER_H
 #define GAME_MANAGER_H
 
+#include "camera_scroll_controller.h"
+#include "match_session.h"
 #include "unit_data.h"
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
@@ -59,21 +61,7 @@ class GameManager : public Node2D {
     void check_victory();
     void end_game(bool victory);
 
-    // Game state
-    int core_resource = 100;
-    int base_integrity = 3;
-    int initial_integrity = 3;
-    bool game_over = false;
-    bool all_spawned = false;
-
-    // Score tracking
-    int enemies_killed = 0;
-    int kill_score = 0;
-    real_t bounty_multiplier = 1.0;
-    int energy_regen_rate = 1;
-
-    // Tracking living entities
-    int living_enemies = 0;
+    MatchSession match_session_;
 
     // Child nodes
     WaveManager *wave_manager = nullptr;
@@ -84,8 +72,7 @@ class GameManager : public Node2D {
     Area2D *scroll_trigger = nullptr;
 
     // Scrolling state
-    real_t camera_target_x = 960.0;
-    real_t world_width = 7680.0;
+    CameraScrollController camera_scroll_controller_;
 
     // Unit data
     UnitDataLoader unit_data_;

@@ -1,9 +1,11 @@
 #ifndef WAVE_MANAGER_H
 #define WAVE_MANAGER_H
 
+#include "level_definition.h"
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
+#include <optional>
 #include <vector>
 
 namespace defn {
@@ -13,16 +15,6 @@ class UnitDataLoader;
 namespace defn {
 
 using namespace godot;
-
-struct SpawnEvent {
-    double time = 0.0;
-    String type = "jackal";
-};
-
-struct WaveData {
-    int wave_number = 1;
-    std::vector<SpawnEvent> spawns;
-};
 
 class WaveManager : public Node {
     GDCLASS(WaveManager, Node)
@@ -39,10 +31,10 @@ class WaveManager : public Node {
     void stop();
 
     int get_current_wave() const { return current_wave; }
-    int get_total_waves() const { return static_cast<int>(waves.size()); }
-    int get_starting_core_resource() const { return starting_core_resource; }
-    int get_base_integrity() const { return base_integrity_max; }
-    String get_background_path() const { return background_path; }
+    int get_total_waves() const { return level_definition_ ? static_cast<int>(level_definition_->waves.size()) : 0; }
+    int get_starting_core_resource() const { return level_definition_ ? level_definition_->starting_core_resource : 100; }
+    int get_base_integrity() const { return level_definition_ ? level_definition_->base_integrity : 3; }
+    String get_background_path() const { return level_definition_ ? level_definition_->background_path : String(); }
 
     bool all_waves_spawned() const;
 
@@ -50,14 +42,11 @@ class WaveManager : public Node {
     static void _bind_methods();
 
   private:
-    std::vector<WaveData> waves;
+    std::optional<LevelDefinition> level_definition_;
     double level_timer = 0.0;
     int current_wave = 0; // 0 = not started
-    int spawn_index = 0;  // index into current wave's spawns
     bool running = false;
-    int starting_core_resource = 100;
-    int base_integrity_max = 3;
-    String background_path;
+    bool completion_emitted_ = false;
 
     // Flattened list of all spawns with absolute times, for simpler processing
     struct FlatSpawn {

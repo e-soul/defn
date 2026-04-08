@@ -16,6 +16,7 @@ class AnimationController;
 class CombatComponent;
 class DetectionComponent;
 class SoundController;
+class UnitFactory;
 
 class Unit : public CharacterBody2D {
     GDCLASS(Unit, CharacterBody2D)
@@ -33,6 +34,9 @@ class Unit : public CharacterBody2D {
     int get_cost() const { return unit_config_.cost; }
     int get_bounty() const { return unit_config_.bounty; }
     UnitSide get_side() const { return unit_config_.side; }
+    const UnitConfig &get_unit_config() const { return unit_config_; }
+    real_t get_attack_range() const { return attack_range; }
+    real_t get_ranged_range() const { return ranged_range; }
 
     void do_movement(double delta);
     void notify_breach();
@@ -43,11 +47,14 @@ class Unit : public CharacterBody2D {
     static void _bind_methods();
 
   private:
+    friend class UnitFactory;
+
     void on_died();
 
     UnitConfig unit_config_;
     real_t attack_range = 128.0;
     real_t ranged_range = 384.0;
+    bool runtime_initialized_ = false;
 
     HealthComponent *health = nullptr;
     HealthBarWidget *health_bar_widget = nullptr;

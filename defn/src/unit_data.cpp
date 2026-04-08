@@ -11,6 +11,7 @@ namespace {
 constexpr real_t DEFAULT_ALPHA = 1.0;
 constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_X = 0.0;
 constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_Y = -241.0;
+constexpr real_t LEGACY_MOVE_SPEED_SCALE = 128.0F;
 
 bool parse_json_file(const String &path, Variant &out_data) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -65,6 +66,23 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
 }
 
 void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
+    if (global_data.has("gameplay_rules")) {
+        const Dictionary gameplay_rules = global_data["gameplay_rules"];
+        globals.gameplay_rules.viewport_width = VariantTools::as_real(gameplay_rules.get("viewport_width", globals.gameplay_rules.viewport_width));
+        globals.gameplay_rules.viewport_height = VariantTools::as_real(gameplay_rules.get("viewport_height", globals.gameplay_rules.viewport_height));
+        globals.gameplay_rules.world_multiplier = VariantTools::as_int(gameplay_rules.get("world_multiplier", globals.gameplay_rules.world_multiplier));
+        globals.gameplay_rules.belt_top_y = VariantTools::as_real(gameplay_rules.get("belt_top_y", globals.gameplay_rules.belt_top_y));
+        globals.gameplay_rules.belt_bottom_y = VariantTools::as_real(gameplay_rules.get("belt_bottom_y", globals.gameplay_rules.belt_bottom_y));
+        globals.gameplay_rules.breach_x = VariantTools::as_real(gameplay_rules.get("breach_x", globals.gameplay_rules.breach_x));
+        globals.gameplay_rules.spawn_offset = VariantTools::as_real(gameplay_rules.get("spawn_offset", globals.gameplay_rules.spawn_offset));
+        globals.gameplay_rules.friendly_world_margin =
+            VariantTools::as_real(gameplay_rules.get("friendly_world_margin", globals.gameplay_rules.friendly_world_margin));
+        globals.gameplay_rules.scroll_trigger_extra_height =
+            VariantTools::as_real(gameplay_rules.get("scroll_trigger_extra_height", globals.gameplay_rules.scroll_trigger_extra_height));
+        globals.gameplay_rules.camera_scroll_step_factor =
+            VariantTools::as_real(gameplay_rules.get("camera_scroll_step_factor", globals.gameplay_rules.camera_scroll_step_factor));
+    }
+
     if (global_data.has("shoot_sfx")) {
         Dictionary global_sfx = global_data["shoot_sfx"];
         globals.shoot_sfx.pitch_variance = VariantTools::as_float(global_sfx.get("pitch_variance", 0.0));
@@ -168,7 +186,11 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     config.ranged_attack_period_seconds = VariantTools::as_double(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
     config.ranged_attack_range = VariantTools::as_real(unit_dict.get("ranged_attack_range", config.ranged_attack_range));
     config.ranged_attack_range_variation = globals.ranged_attack_range_variation;
-    config.move_speed = VariantTools::as_real(unit_dict.get("move_speed", 0.5));
+    if (unit_dict.has("move_speed_pixels_per_second")) {
+        config.move_speed_pixels_per_second = VariantTools::as_real(unit_dict.get("move_speed_pixels_per_second", config.move_speed_pixels_per_second));
+    } else {
+        config.move_speed_pixels_per_second = VariantTools::as_real(unit_dict.get("move_speed", 0.5)) * LEGACY_MOVE_SPEED_SCALE;
+    }
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
     config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));

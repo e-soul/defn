@@ -1,20 +1,22 @@
 #include "game_manager.h"
+#include "collision_layers.h"
+#include "game_background_builder.h"
 #include "grid_manager.h"
 #include "hud.h"
+#include "match_session.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
+#include "progression_presentation.h"
+#include "scene_navigator.h"
 #include "unit.h"
+#include "unit_factory.h"
 #include "wave_manager.h"
 #include <cmath>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
-#include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/rectangle_shape2d.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
-#include <godot_cpp/classes/sprite2d.hpp>
-#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -41,9 +43,14 @@ void GameManager::_ready() {
     // Load unit data from JSON
     unit_data_.load("res://data/unit_data.json", "res://data/unit_globals.json");
 
+    if (auto *grid = GridManager::get_singleton()) {
+        grid->configure(unit_data_.get_globals().gameplay_rules);
+        camera_scroll_controller_.configure(grid->get_rules(), grid->get_world_width());
+    }
+
     // Query progression for effective values
-    bounty_multiplier = progression->get_effective_bounty_multiplier();
-    energy_regen_rate = progression->get_effective_energy_regen();
+    const real_t bounty_multiplier = progression->get_effective_bounty_multiplier();
+    const int energy_regen_rate = progression->get_effective_energy_regen();
 
     // Wave manager (load level first to get background path)
     wave_manager = memnew(WaveManager);
@@ -68,10 +75,17 @@ void GameManager::_ready() {
     entity_container->set_y_sort_enabled(true);
     add_child(entity_container);
 
-    int base_resource = wave_manager->get_starting_core_resource();
-    core_resource = progression->get_effective_starting_energy(base_resource);
-    base_integrity = wave_manager->get_base_integrity();
-    initial_integrity = base_integrity;
+    const int base_resource = wave_manager->get_starting_core_resource();
+    const int starting_core_resource = progression->get_effective_starting_energy(base_resource);
+    const int initial_integrity = wave_manager->get_base_integrity();
+
+    MatchConfig match_config{
+        .starting_core_resource = starting_core_resource,
+        .initial_integrity = initial_integrity,
+        .bounty_multiplier = bounty_multiplier,
+        .energy_regen_rate = energy_regen_rate,
+    };
+    match_session_.start(match_config);
 
     wave_manager->connect("enemy_spawned", callable_mp(this, &GameManager::on_enemy_spawned));
     wave_manager->connect("wave_changed", callable_mp(this, &GameManager::on_wave_changed));
@@ -93,10 +107,10 @@ void GameManager::_ready() {
     }
     hud->set_friendly_units(available_friendlies);
 
-    hud->update_core_resource(core_resource);
+    hud->update_core_resource(match_session_.get_core_resource());
     hud->update_wave(1, wave_manager->get_total_waves());
-    hud->update_hearts(base_integrity);
-    hud->update_card_affordability(core_resource);
+    hud->update_hearts(match_session_.get_base_integrity());
+    hud->update_card_affordability(match_session_.get_core_resource());
     hud->update_score(0);
     hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
     hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
@@ -121,7 +135,7 @@ void GameManager::_ready() {
 }
 
 void GameManager::_process(double delta) {
-    if (game_over) {
+    if (match_session_.is_game_over()) {
         return;
     }
 
@@ -134,76 +148,41 @@ void GameManager::_input(const Ref<InputEvent> & /*event*/) {
 }
 
 void GameManager::setup_background(const String &bg_path) {
-    auto *loader = ResourceLoader::get_singleton();
     auto *grid = GridManager::get_singleton();
+    const auto &rules = grid->get_rules();
 
-    Ref<Texture2D> bg_tex = loader->load(bg_path);
-    if (!bg_tex.is_valid()) {
-        UtilityFunctions::printerr("GameManager: Failed to load tiling background: ", bg_path);
+    const GameBackgroundBuildResult background = GameBackgroundBuilder::build(bg_path, rules);
+    if (background.background == nullptr) {
         return;
     }
 
-    Vector2 tex_size = bg_tex->get_size();
-    const real_t scale_factor = GridManager::VIEWPORT_HEIGHT / tex_size.y;
-    const real_t display_width = tex_size.x * scale_factor;
-
-    world_width = display_width * GridManager::WORLD_MULTIPLIER;
-    grid->set_world_width(world_width);
-
-    auto *parallax = memnew(Parallax2D);
-    parallax->set_name("Background");
-    parallax->set_repeat_size(Vector2(display_width, 0));
-    parallax->set_repeat_times(GridManager::WORLD_MULTIPLIER);
-    parallax->set_scroll_scale(Vector2(1.0, 1.0));
-
-    auto *sprite = memnew(Sprite2D);
-    sprite->set_texture(bg_tex);
-    sprite->set_centered(false);
-    sprite->set_scale(Vector2(scale_factor, scale_factor));
-    parallax->add_child(sprite);
-
-    add_child(parallax);
+    grid->set_world_width(background.world_width);
+    camera_scroll_controller_.configure(rules, background.world_width);
+    add_child(background.background);
 }
 
 void GameManager::setup_camera() {
+    const auto &rules = GridManager::get_singleton()->get_rules();
     camera = memnew(Camera2D);
     camera->set_name("Camera");
 
-    camera_target_x = GridManager::VIEWPORT_WIDTH / HALF;
-    camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / HALF));
+    camera->set_position(camera_scroll_controller_.get_camera_anchor_position());
 
     camera->set_limit(SIDE_LEFT, 0);
     camera->set_limit(SIDE_TOP, 0);
-    camera->set_limit(SIDE_RIGHT, static_cast<int32_t>(world_width));
-    camera->set_limit(SIDE_BOTTOM, static_cast<int32_t>(GridManager::VIEWPORT_HEIGHT));
+    camera->set_limit(SIDE_RIGHT, static_cast<int32_t>(camera_scroll_controller_.get_world_width()));
+    camera->set_limit(SIDE_BOTTOM, static_cast<int32_t>(rules.viewport_height));
 
     add_child(camera);
 }
 
-void GameManager::update_camera_scroll(double delta) {
-    auto *grid = GridManager::get_singleton();
-
-    // Smooth interpolation toward the target position
-    const real_t current_x = camera->get_position().x;
-    const real_t diff = camera_target_x - current_x;
-    if (diff > 1.0 || diff < -1.0) {
-        constexpr double SMOOTH_FACTOR = 3.0;
-        auto factor = static_cast<real_t>(SMOOTH_FACTOR * delta);
-        factor = std::min(factor, 1.0F);
-        const real_t new_x = current_x + (diff * factor);
-        camera->set_position(Vector2(new_x, GridManager::VIEWPORT_HEIGHT / HALF));
-    } else {
-        camera->set_position(Vector2(camera_target_x, GridManager::VIEWPORT_HEIGHT / HALF));
-    }
-
-    grid->set_camera_x(camera->get_position().x);
-}
+void GameManager::update_camera_scroll(double delta) { camera_scroll_controller_.update_camera(camera, GridManager::get_singleton(), delta); }
 
 void GameManager::setup_scroll_trigger() {
     scroll_trigger = memnew(Area2D);
     scroll_trigger->set_name("ScrollTrigger");
-    scroll_trigger->set_collision_layer(0); // not detectable by others
-    scroll_trigger->set_collision_mask(1);  // monitors defender hitboxes (layer 1)
+    scroll_trigger->set_collision_layer(CollisionLayers::NONE);
+    scroll_trigger->set_collision_mask(CollisionLayers::SCROLL_TRIGGER_MASK);
     scroll_trigger->set_monitoring(true);
     scroll_trigger->set_monitorable(false);
 
@@ -211,8 +190,7 @@ void GameManager::setup_scroll_trigger() {
     Ref<RectangleShape2D> rect;
     rect.instantiate();
     // Tall vertical strip covering well beyond the belt area
-    constexpr real_t trigger_height = GridManager::BELT_BOTTOM_Y - GridManager::BELT_TOP_Y + 400.0;
-    rect->set_size(Vector2(20.0, trigger_height));
+    rect->set_size(Vector2(20.0, camera_scroll_controller_.get_trigger_height()));
     shape_node->set_shape(rect);
     scroll_trigger->add_child(shape_node);
 
@@ -223,15 +201,13 @@ void GameManager::setup_scroll_trigger() {
 }
 
 void GameManager::update_scroll_trigger_position() {
-    constexpr real_t VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
-    constexpr real_t SCROLL_STEP = VIEWPORT_W * 0.25;
-    const real_t trigger_x = camera_target_x + (VIEWPORT_W / HALF) - SCROLL_STEP;
-    const real_t trigger_y = (GridManager::BELT_TOP_Y + GridManager::BELT_BOTTOM_Y) / HALF;
-    scroll_trigger->set_position(Vector2(trigger_x, trigger_y));
+    if (scroll_trigger != nullptr) {
+        scroll_trigger->set_position(camera_scroll_controller_.get_trigger_position());
+    }
 }
 
 void GameManager::on_scroll_triggered(Area2D *area) {
-    if (game_over) {
+    if (match_session_.is_game_over()) {
         return;
     }
 
@@ -245,14 +221,9 @@ void GameManager::on_scroll_triggered(Area2D *area) {
         return;
     }
 
-    constexpr real_t VIEWPORT_W = GridManager::VIEWPORT_WIDTH;
-    constexpr real_t SCROLL_STEP = VIEWPORT_W * 0.25;
-    const real_t max_target = world_width - (VIEWPORT_W / HALF);
-
-    camera_target_x += SCROLL_STEP;
-    camera_target_x = std::min(camera_target_x, max_target);
-
-    update_scroll_trigger_position();
+    if (camera_scroll_controller_.advance_target()) {
+        update_scroll_trigger_position();
+    }
 }
 
 void GameManager::deploy_friendly(const String &unit_type) {
@@ -261,20 +232,22 @@ void GameManager::deploy_friendly(const String &unit_type) {
         return;
     }
 
-    auto *grid = GridManager::get_singleton();
-    core_resource -= cfg->cost;
+    if (!match_session_.can_spend_energy(cfg->cost)) {
+        return;
+    }
 
-    auto *unit = memnew(Unit);
-    unit->set_unit_config(*cfg);
+    auto *grid = GridManager::get_singleton();
+    match_session_.spend_energy(cfg->cost);
+
     const real_t spawn_x_pos = grid->deploy_x();
     const real_t spawn_y_pos = GridManager::random_belt_y();
-    unit->set_position(Vector2(spawn_x_pos, spawn_y_pos));
+    auto *unit = UnitFactory::create(*cfg, Vector2(spawn_x_pos, spawn_y_pos));
 
     unit->connect("unit_died", callable_mp(this, &GameManager::on_friendly_died));
     entity_container->add_child(unit);
 
-    hud->update_core_resource(core_resource);
-    hud->update_card_affordability(core_resource);
+    hud->update_core_resource(match_session_.get_core_resource());
+    hud->update_card_affordability(match_session_.get_core_resource());
 }
 
 void GameManager::on_enemy_spawned(Node *enemy_node) {
@@ -286,7 +259,7 @@ void GameManager::on_enemy_spawned(Node *enemy_node) {
     enemy->connect("unit_died", callable_mp(this, &GameManager::on_enemy_died));
     enemy->connect("enemy_breached", callable_mp(this, &GameManager::on_enemy_breached));
     entity_container->add_child(enemy);
-    ++living_enemies;
+    match_session_.record_enemy_spawned();
 }
 
 void GameManager::on_wave_changed(int wave_number) {
@@ -296,25 +269,16 @@ void GameManager::on_wave_changed(int wave_number) {
     UtilityFunctions::print(vformat("Wave %d started!", wave_number));
 }
 
-void GameManager::on_all_spawns_complete() { all_spawned = true; }
+void GameManager::on_all_spawns_complete() { match_session_.mark_all_spawns_complete(); }
 
 void GameManager::on_enemy_died(Node *unit) {
     auto *hostile = Object::cast_to<Unit>(unit);
     if (hostile && !hostile->is_queued_for_deletion()) {
-        int base_bounty = hostile->get_bounty();
-        // kill_score uses raw bounty (before multiplier)
-        kill_score += base_bounty;
-        ++enemies_killed;
-        // Energy gained uses bounty_mult
-        const auto scaled_bounty = static_cast<double>(base_bounty) * static_cast<double>(bounty_multiplier);
-        const int energy_bounty = static_cast<int>(std::ceil(scaled_bounty));
-        core_resource += energy_bounty;
-        hud->update_core_resource(core_resource);
-        hud->update_card_affordability(core_resource);
-        hud->update_score(kill_score);
+        match_session_.record_enemy_died(hostile->get_bounty());
+        hud->update_core_resource(match_session_.get_core_resource());
+        hud->update_card_affordability(match_session_.get_core_resource());
+        hud->update_score(match_session_.get_kill_score());
     }
-    --living_enemies;
-    living_enemies = std::max(living_enemies, 0);
 }
 
 void GameManager::on_friendly_died(Node * /*unit*/) {
@@ -322,18 +286,18 @@ void GameManager::on_friendly_died(Node * /*unit*/) {
 }
 
 void GameManager::on_core_resource_tick() {
-    core_resource += energy_regen_rate;
-    hud->update_core_resource(core_resource);
-    hud->update_card_affordability(core_resource);
+    match_session_.tick_energy();
+    hud->update_core_resource(match_session_.get_core_resource());
+    hud->update_card_affordability(match_session_.get_core_resource());
 }
 
 void GameManager::on_deploy_requested(const String &unit_type) {
-    if (game_over) {
+    if (match_session_.is_game_over()) {
         return;
     }
 
     auto cfg = unit_data_.get_unit(unit_type);
-    if (!cfg || core_resource < cfg->cost) {
+    if (!cfg || !match_session_.can_spend_energy(cfg->cost)) {
         return;
     }
 
@@ -341,25 +305,25 @@ void GameManager::on_deploy_requested(const String &unit_type) {
 }
 
 void GameManager::on_enemy_breached() {
-    --base_integrity;
-    --living_enemies;
-    living_enemies = std::max(living_enemies, 0);
-    base_integrity = std::max(base_integrity, 0);
-    hud->update_hearts(base_integrity);
+    const bool defeated = match_session_.record_enemy_breached();
+    hud->update_hearts(match_session_.get_base_integrity());
 
-    if (base_integrity <= 0) {
+    if (defeated) {
         end_game(false);
     }
 }
 
 void GameManager::check_victory() {
-    if (all_spawned && living_enemies <= 0) {
+    if (match_session_.should_end_with_victory()) {
         end_game(true);
     }
 }
 
 void GameManager::end_game(bool victory) {
-    game_over = true;
+    if (!match_session_.finish_game()) {
+        return;
+    }
+
     core_resource_timer->stop();
     wave_manager->stop();
 
@@ -367,10 +331,7 @@ void GameManager::end_game(bool victory) {
     String level_id = progression->get_current_level_id();
     int old_score = progression->get_total_score();
 
-    // Compute level score
-    int integrity_bonus = base_integrity * 50;
-    int completion_bonus = victory ? 100 : 0;
-    int level_score = kill_score + integrity_bonus + completion_bonus;
+    const int level_score = match_session_.calculate_level_score(victory);
 
     // Update progression
     progression->add_score(level_score);
@@ -381,7 +342,7 @@ void GameManager::end_game(bool victory) {
     progression->save();
 
     // Compute new unlocks
-    PackedStringArray new_unlocks = progression->compute_new_unlocks(old_score, new_total);
+    PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*progression, old_score, new_total);
 
     // Determine next level
     String next_level_id;
@@ -398,41 +359,14 @@ void GameManager::end_game(bool victory) {
         }
     }
 
-    // Build stats dictionary
-    Dictionary stats;
-    stats["victory"] = victory;
-    stats["enemies_killed"] = enemies_killed;
-    stats["kill_score"] = kill_score;
-    stats["hearts_remaining"] = base_integrity;
-    stats["hearts_total"] = initial_integrity;
-    stats["integrity_bonus"] = integrity_bonus;
-    stats["completion_bonus"] = completion_bonus;
-    stats["level_score"] = level_score;
-    stats["new_total_score"] = new_total;
-    stats["current_level_id"] = level_id;
-    stats["next_level_id"] = next_level_id;
-
-    Array unlocks_array;
-    for (const auto &new_unlock : new_unlocks) {
-        unlocks_array.push_back(new_unlock);
-    }
-    stats["new_unlocks"] = unlocks_array;
-
+    Dictionary stats = match_session_.build_end_game_stats(victory, new_total, level_id, next_level_id, new_unlocks);
     hud->show_score_screen(stats);
 }
 
-void GameManager::on_score_screen_next_level(const String &level_id) {
-    auto *progression = ProgressionManager::get_singleton();
-    progression->set_current_level_id(level_id);
-    get_tree()->change_scene_to_file("res://scenes/game.tscn");
-}
+void GameManager::on_score_screen_next_level(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
 
-void GameManager::on_score_screen_retry(const String &level_id) {
-    auto *progression = ProgressionManager::get_singleton();
-    progression->set_current_level_id(level_id);
-    get_tree()->change_scene_to_file("res://scenes/game.tscn");
-}
+void GameManager::on_score_screen_retry(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
 
-void GameManager::on_score_screen_main_menu() { get_tree()->change_scene_to_file("res://scenes/menu.tscn"); }
+void GameManager::on_score_screen_main_menu() { SceneNavigator::go_to_main_menu(get_tree()); }
 
 } // namespace defn

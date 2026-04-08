@@ -1,0 +1,220 @@
+#include "combat_runtime.h"
+
+#include "animation_controller.h"
+#include "grid_manager.h"
+#include "health_component.h"
+#include "unit.h"
+
+#include <algorithm>
+#include <limits>
+
+namespace defn {
+
+void CombatRuntime::configure(Unit *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config) {
+    unit_ = unit;
+    health_ = health;
+    animation_ = animation;
+    detection_area_ = detection_area;
+    config_ = config;
+    state_ = {};
+}
+
+void CombatRuntime::update(double delta) {
+    if (health_ == nullptr || health_->is_dead()) {
+        return;
+    }
+
+    if (config_.side == UnitSide::HOSTILE) {
+        check_breach();
+    }
+
+    update_cooldowns(delta);
+    update_target();
+    perform_behavior(delta);
+}
+
+void CombatRuntime::check_breach() const {
+    auto *grid = GridManager::get_singleton();
+    if (unit_ != nullptr && grid != nullptr && unit_->get_position().x < grid->get_rules().breach_x) {
+        unit_->notify_breach();
+    }
+}
+
+void CombatRuntime::update_cooldowns(double delta) {
+    if (state_.attack_cooldown_seconds > 0.0) {
+        state_.attack_cooldown_seconds = std::max(state_.attack_cooldown_seconds - delta, 0.0);
+    }
+}
+
+void CombatRuntime::update_target() {
+    if (try_keep_target()) {
+        return;
+    }
+
+    find_new_target();
+}
+
+bool CombatRuntime::try_keep_target() {
+    if (state_.target == nullptr || state_.target->is_dead()) {
+        return false;
+    }
+
+    const real_t distance = get_forward_distance(state_.target);
+    if (distance < 0) {
+        return false;
+    }
+
+    if (distance <= config_.attack_range) {
+        if (state_.attack_mode != AttackMode::MELEE) {
+            state_.attack_mode = AttackMode::MELEE;
+            animation_->hide_muzzle_flash();
+        }
+        return true;
+    }
+
+    if (distance <= config_.ranged_range) {
+        if (state_.attack_mode != AttackMode::RANGED) {
+            state_.attack_mode = AttackMode::RANGED;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+void CombatRuntime::find_new_target() {
+    state_.target = nullptr;
+    state_.engaged = false;
+
+    Unit *best_melee_target = nullptr;
+    Unit *best_ranged_target = nullptr;
+    real_t closest_melee_distance = std::numeric_limits<real_t>::max();
+    real_t closest_ranged_distance = std::numeric_limits<real_t>::max();
+
+    TypedArray<Area2D> overlapping = detection_area_->get_overlapping_areas();
+    for (const auto &area_variant : overlapping) {
+        auto *hitbox = Object::cast_to<Area2D>(area_variant.operator Object *());
+        if (hitbox == nullptr) {
+            continue;
+        }
+
+        auto *other = Object::cast_to<Unit>(hitbox->get_parent());
+        if (other == nullptr || other->is_dead()) {
+            continue;
+        }
+
+        const real_t distance = get_forward_distance(other);
+        if (distance < 0) {
+            continue;
+        }
+
+        if (distance <= config_.attack_range && distance < closest_melee_distance) {
+            closest_melee_distance = distance;
+            best_melee_target = other;
+        }
+        if (distance <= config_.ranged_range && distance < closest_ranged_distance) {
+            closest_ranged_distance = distance;
+            best_ranged_target = other;
+        }
+    }
+
+    animation_->hide_muzzle_flash();
+    state_.attack_mode = AttackMode::NONE;
+
+    if (best_melee_target != nullptr) {
+        state_.target = best_melee_target;
+        state_.engaged = true;
+        state_.attack_mode = AttackMode::MELEE;
+        return;
+    }
+
+    if (best_ranged_target != nullptr) {
+        state_.target = best_ranged_target;
+        state_.engaged = true;
+        state_.attack_mode = AttackMode::RANGED;
+    }
+}
+
+real_t CombatRuntime::get_forward_distance(Unit *other) const {
+    if (config_.side == UnitSide::FRIENDLY) {
+        return other->get_position().x - unit_->get_position().x;
+    }
+
+    return unit_->get_position().x - other->get_position().x;
+}
+
+void CombatRuntime::perform_behavior(double delta) {
+    if (state_.engaged && state_.target != nullptr && !state_.target->is_dead()) {
+        unit_->set_velocity(Vector2(0, 0));
+
+        const auto current_anim = animation_->get_anim_state();
+        const bool needs_pose_update = (current_anim == AnimState::WALK) ||
+                                       (state_.attack_mode == AttackMode::MELEE && current_anim != AnimState::ATTACK) ||
+                                       (state_.attack_mode == AttackMode::RANGED && current_anim != AnimState::SHOOT);
+
+        if (needs_pose_update) {
+            if (state_.attack_mode == AttackMode::MELEE) {
+                animation_->hold_anim_state(AnimState::ATTACK);
+            } else if (state_.attack_mode == AttackMode::RANGED) {
+                animation_->hold_anim_state(AnimState::SHOOT);
+            }
+        }
+
+        const double attack_period_seconds = get_attack_period_seconds();
+        if (attack_period_seconds > 0.0 && state_.attack_cooldown_seconds <= 0.0) {
+            trigger_attack();
+            state_.attack_cooldown_seconds = attack_period_seconds;
+        }
+        return;
+    }
+
+    reset_engagement();
+
+    const auto current_anim = animation_->get_anim_state();
+    if (current_anim == AnimState::ATTACK || current_anim == AnimState::SHOOT) {
+        animation_->set_anim_state(AnimState::WALK);
+    }
+    unit_->do_movement(delta);
+}
+
+void CombatRuntime::reset_engagement() {
+    state_.engaged = false;
+    state_.target = nullptr;
+    animation_->hide_muzzle_flash();
+    state_.attack_mode = AttackMode::NONE;
+    state_.attack_cooldown_seconds = 0.0;
+}
+
+double CombatRuntime::get_attack_period_seconds() const {
+    switch (state_.attack_mode) {
+    case AttackMode::MELEE:
+        return config_.melee_attack_period_seconds;
+    case AttackMode::RANGED:
+        return config_.ranged_attack_period_seconds;
+    case AttackMode::NONE:
+        return 0.0;
+    }
+
+    return 0.0;
+}
+
+void CombatRuntime::trigger_attack() {
+    if (state_.target == nullptr) {
+        return;
+    }
+
+    if (state_.attack_mode == AttackMode::MELEE) {
+        animation_->play_attack_animation();
+        state_.target->take_damage(config_.melee_damage);
+        state_.target->flash_damage(config_.melee_flash_color);
+        return;
+    }
+
+    if (state_.attack_mode == AttackMode::RANGED) {
+        animation_->play_shoot_animation();
+        state_.target->take_damage(config_.ranged_damage);
+        state_.target->flash_damage(config_.ranged_flash_color);
+    }
+}
+
+} // namespace defn

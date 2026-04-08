@@ -1,6 +1,8 @@
 #ifndef UNIT_DATA_H
 #define UNIT_DATA_H
 
+#include "gameplay_rules.h"
+
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -45,6 +47,7 @@ struct RangeVariationConfig {
 };
 
 struct GlobalUnitConfig {
+    GameplayRules gameplay_rules;
     GlobalShootSfxConfig shoot_sfx;
     RangeVariationConfig melee_attack_range_variation;
     RangeVariationConfig ranged_attack_range_variation;
@@ -68,7 +71,7 @@ struct UnitConfig {
     double ranged_attack_period_seconds = 2.0 / 3.0;
     real_t ranged_attack_range = 384.0;
     RangeVariationConfig ranged_attack_range_variation;
-    real_t move_speed = 0.5;
+    real_t move_speed_pixels_per_second = 64.0F;
     int cost = 0;
     int bounty = 0;
     real_t scale = 0.27;

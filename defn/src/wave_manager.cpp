@@ -1,11 +1,10 @@
 #include "wave_manager.h"
 #include "grid_manager.h"
+#include "level_loader.h"
 #include "unit.h"
 #include "unit_data.h"
-#include "variant_tools.h"
+#include "unit_factory.h"
 #include <algorithm>
-#include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -39,74 +38,54 @@ void WaveManager::_process(double delta) {
         }
 
         // Create the hostile with data-driven config
-        auto *enemy = memnew(Unit);
-        if (unit_data_) {
-            if (auto cfg = unit_data_->get_unit(spawn.type)) {
-                enemy->set_unit_config(*cfg);
-            }
-        }
         const real_t spawn_y_pos = GridManager::random_belt_y();
         const real_t spawn_x_pos = grid->spawn_x();
-        enemy->set_position(Vector2(spawn_x_pos, spawn_y_pos));
+
+        Unit *enemy = nullptr;
+        if (unit_data_) {
+            if (auto cfg = unit_data_->get_unit(spawn.type)) {
+                enemy = UnitFactory::create(*cfg, Vector2(spawn_x_pos, spawn_y_pos));
+            }
+        }
+        if (enemy == nullptr) {
+            UtilityFunctions::printerr("WaveManager: Missing unit config for enemy type: ", spawn.type);
+            ++next_spawn_idx;
+            continue;
+        }
 
         emit_signal("enemy_spawned", enemy);
 
         ++next_spawn_idx;
     }
 
-    if (all_waves_spawned()) {
+    if (!completion_emitted_ && all_waves_spawned()) {
+        completion_emitted_ = true;
         emit_signal("all_spawns_complete");
     }
 }
 
 void WaveManager::load_level(const String &path) {
-    Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
-    if (!file.is_valid()) {
-        UtilityFunctions::printerr("WaveManager: Failed to open level file: ", path);
+    const auto loaded_level = LevelLoader::load(path);
+    if (!loaded_level) {
         return;
     }
 
-    String json_text = file->get_as_text();
-    file->close();
-
-    Ref<JSON> json;
-    json.instantiate();
-    Error err = json->parse(json_text);
-    if (err != OK) {
-        UtilityFunctions::printerr("WaveManager: JSON parse error: ", json->get_error_message());
-        return;
-    }
-
-    Dictionary data = json->get_data();
-    starting_core_resource = VariantTools::as_int(data.get("starting_core_resource", 100));
-    base_integrity_max = VariantTools::as_int(data.get("base_integrity", 3));
-    background_path = String(data.get("background", ""));
-
-    Array wave_array = data.get("waves", Array());
-    waves.clear();
+    level_definition_ = *loaded_level;
     all_spawns.clear();
+    level_timer = 0.0;
+    current_wave = 0;
+    next_spawn_idx = 0;
+    running = false;
+    completion_emitted_ = false;
 
-    for (int wave_idx = 0; wave_idx < wave_array.size(); ++wave_idx) {
-        Dictionary wave_dict = wave_array[wave_idx];
-        WaveData wave_data;
-        wave_data.wave_number = VariantTools::as_int(wave_dict.get("wave_number", wave_idx + 1));
-
-        Array spawns_array = wave_dict.get("spawns", Array());
-        for (const auto &spawn_val : spawns_array) {
-            Dictionary spawn_dict = spawn_val;
-            SpawnEvent spawn_event;
-            spawn_event.time = VariantTools::as_double(spawn_dict.get("time", 0.0));
-            spawn_event.type = String(spawn_dict.get("type", "jackal"));
-            wave_data.spawns.push_back(spawn_event);
-
+    for (const auto &wave_definition : level_definition_->waves) {
+        for (const auto &spawn_definition : wave_definition.spawns) {
             FlatSpawn flat_spawn;
-            flat_spawn.time = spawn_event.time;
-            flat_spawn.type = spawn_event.type;
-            flat_spawn.wave = wave_data.wave_number;
+            flat_spawn.time = spawn_definition.time;
+            flat_spawn.type = spawn_definition.type;
+            flat_spawn.wave = wave_definition.wave_number;
             all_spawns.push_back(flat_spawn);
         }
-
-        waves.push_back(wave_data);
     }
 
     // Sort all_spawns by time (should already be sorted but ensure)
@@ -117,6 +96,7 @@ void WaveManager::start() {
     level_timer = 0.0;
     next_spawn_idx = 0;
     current_wave = 0;
+    completion_emitted_ = false;
     running = true;
 }
 
