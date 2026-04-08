@@ -14,6 +14,7 @@
 #include "hud.h"
 #include "menu_manager.h"
 #include "pause_menu.h"
+#include "projectile_attack.h"
 #include "progression_manager.h"
 #include "sound_controller.h"
 #include "unit.h"
@@ -36,6 +37,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::SoundController>();
     ClassDB::register_class<defn::DetectionComponent>();
     ClassDB::register_class<defn::CombatComponent>();
+    ClassDB::register_class<defn::ProjectileAttack>();
     ClassDB::register_class<defn::Unit>();
     ClassDB::register_class<defn::WaveManager>();
     ClassDB::register_class<defn::GameManager>();

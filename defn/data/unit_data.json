@@ -285,6 +285,36 @@
         "volume_linear": 0.2,
         "pitch_scale": 1.0
       },
+      "projectile_attack": {
+        "speed_pixels_per_second": 1800.0,
+        "splash_radius": 150.0,
+        "affected_fraction": 0.5,
+        "min_affected_targets": 1,
+        "spawn_animation_frame": 1,
+        "affected_target_rounding": "nearest",
+        "include_direct_target": true,
+        "impact_damage": 8,
+        "splash_damage": 8,
+        "projectile_scale_multiplier": 0.5,
+        "explosion_scale_multiplier": 0.5,
+        "explosion_sfx": {
+          "path": "res://assets/sfx/desert_eagle_fire.wav",
+          "volume_linear": 0.2,
+          "pitch_scale": 1.0
+        },
+        "animation": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Objects/Bullet/OrangeScale__%03d.png",
+          "frame_count": 10,
+          "speed": 20.0,
+          "loop": true
+        },
+        "explosion_animation": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Objects/Explosion/MidAirExplo__%03d.png",
+          "frame_count": 11,
+          "speed": 20.0,
+          "loop": false
+        }
+      },
       "animations": {
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Walk__%03d.png",

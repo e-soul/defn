@@ -1,4 +1,7 @@
 #include "animation_controller.h"
+
+#include <algorithm>
+
 #include <godot_cpp/classes/callback_tweener.hpp>
 #include <godot_cpp/classes/property_tweener.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -12,6 +15,9 @@ namespace defn {
 void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg) {
+    this->owner_node = Object::cast_to<Node2D>(owner_node);
+    muzzle_offset = cfg.muzzle.offset;
+
     sprite = memnew(AnimatedSprite2D);
     if (sprite == nullptr) {
         return;
@@ -35,6 +41,8 @@ void AnimationController::_process(double delta) {
             sprite->set_modulate(original_modulate);
         }
     }
+
+    update_shoot_effect_state();
 }
 
 void AnimationController::setup_sprite_frames(Node * /*owner_node*/, const UnitConfig &cfg) {
@@ -144,7 +152,7 @@ void AnimationController::play_attack_animation() {
     sprite->set_frame_and_progress(0, 0.0);
 }
 
-void AnimationController::play_shoot_animation() {
+void AnimationController::play_shoot_animation(bool show_muzzle_flash, int effect_frame) {
     set_anim_state(AnimState::SHOOT);
     if (!sprite) {
         return;
@@ -152,7 +160,31 @@ void AnimationController::play_shoot_animation() {
 
     sprite->play("shoot");
     sprite->set_frame_and_progress(0, 0.0);
-    trigger_shoot_effects();
+    show_muzzle_flash_on_shoot_effect = show_muzzle_flash;
+    shoot_effect_ready = false;
+    shoot_effect_pending = true;
+
+    int max_effect_frame = 0;
+    Ref<SpriteFrames> frames = sprite->get_sprite_frames();
+    if (frames.is_valid() && frames->has_animation("shoot")) {
+        max_effect_frame = std::max(frames->get_frame_count("shoot") - 1, 0);
+    }
+    shoot_effect_frame = std::clamp(effect_frame, 0, max_effect_frame);
+
+    if (shoot_effect_frame == 0) {
+        shoot_effect_pending = false;
+        shoot_effect_ready = true;
+        trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
+    }
+}
+
+bool AnimationController::consume_shoot_effect_triggered() {
+    if (!shoot_effect_ready) {
+        return false;
+    }
+
+    shoot_effect_ready = false;
+    return true;
 }
 
 void AnimationController::flash_damage(const Color &color) {
@@ -160,6 +192,18 @@ void AnimationController::flash_damage(const Color &color) {
         sprite->set_modulate(color);
         flash_timer = 0.1;
     }
+}
+
+Vector2 AnimationController::get_muzzle_global_position() const {
+    if (muzzle_flash != nullptr) {
+        return muzzle_flash->get_global_position();
+    }
+
+    if (owner_node != nullptr) {
+        return owner_node->to_global(muzzle_offset);
+    }
+
+    return Vector2();
 }
 
 void AnimationController::play_muzzle_flash() {
@@ -176,6 +220,25 @@ void AnimationController::hide_muzzle_flash() {
     }
 }
 
+void AnimationController::update_shoot_effect_state() {
+    if (!shoot_effect_pending || sprite == nullptr) {
+        return;
+    }
+
+    if (sprite->get_animation() != StringName("shoot")) {
+        shoot_effect_pending = false;
+        return;
+    }
+
+    if (sprite->get_frame() < shoot_effect_frame) {
+        return;
+    }
+
+    shoot_effect_pending = false;
+    shoot_effect_ready = true;
+    trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
+}
+
 void AnimationController::on_muzzle_flash_finished() {
     if (muzzle_flash) {
         muzzle_flash->set_visible(false);
@@ -184,6 +247,7 @@ void AnimationController::on_muzzle_flash_finished() {
 
 void AnimationController::on_animation_changed() {
     if (sprite && sprite->get_animation() != StringName("shoot")) {
+        shoot_effect_pending = false;
         hide_muzzle_flash();
     }
 }
@@ -194,8 +258,12 @@ void AnimationController::on_animation_finished() {
     }
 }
 
-void AnimationController::trigger_shoot_effects() {
-    play_muzzle_flash();
+void AnimationController::trigger_shoot_effects(bool show_muzzle_flash) {
+    if (show_muzzle_flash) {
+        play_muzzle_flash();
+    } else {
+        hide_muzzle_flash();
+    }
     emit_signal("shoot_effect_triggered");
 }
 

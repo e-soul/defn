@@ -41,9 +41,28 @@ struct GlobalShootSfxConfig {
     float pitch_variance = 0.0F;
 };
 
+enum class SplashTargetRoundingMode { FLOOR, NEAREST, CEIL };
+
 struct RangeVariationConfig {
     real_t min = 0.8;
     real_t max = 1.2;
+};
+
+struct ProjectileAttackConfig {
+    real_t speed_pixels_per_second = 0.0F;
+    real_t splash_radius = 0.0F;
+    real_t affected_fraction = 1.0F;
+    int min_affected_targets = 1;
+    int spawn_animation_frame = 0;
+    SplashTargetRoundingMode affected_target_rounding = SplashTargetRoundingMode::NEAREST;
+    bool include_direct_target = true;
+    std::optional<int> impact_damage;
+    std::optional<int> splash_damage;
+    real_t projectile_scale_multiplier = 1.0F;
+    real_t explosion_scale_multiplier = 1.0F;
+    std::optional<ShootSfxConfig> explosion_sfx;
+    AnimConfig projectile_animation;
+    AnimConfig explosion_animation;
 };
 
 struct GlobalUnitConfig {
@@ -82,6 +101,7 @@ struct UnitConfig {
     Color ranged_flash_color = Color(1, 1, 1);
     MuzzleConfig muzzle;
     ShootSfxConfig shoot_sfx;
+    std::optional<ProjectileAttackConfig> projectile_attack;
     std::vector<std::pair<String, AnimConfig>> animations;
 };
 

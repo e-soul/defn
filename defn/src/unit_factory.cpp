@@ -70,6 +70,7 @@ CombatComponent::Config make_combat_config(const Unit *unit) {
         .ranged_range = unit->get_ranged_range(),
         .melee_flash_color = config.melee_flash_color,
         .ranged_flash_color = config.ranged_flash_color,
+        .projectile_attack = config.projectile_attack,
     };
 }
 

@@ -12,6 +12,7 @@ constexpr real_t DEFAULT_ALPHA = 1.0;
 constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_X = 0.0;
 constexpr real_t DEFAULT_HEALTH_BAR_OFFSET_Y = -241.0;
 constexpr real_t LEGACY_MOVE_SPEED_SCALE = 128.0F;
+constexpr real_t FRACTION_PERCENT_SCALE = 100.0F;
 
 bool parse_json_file(const String &path, Variant &out_data) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -63,6 +64,36 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
         };
     }
     return fallback;
+}
+
+AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig &fallback) {
+    AnimConfig animation = fallback;
+    animation.path_template = String(animation_dict.get("path_template", animation.path_template));
+    animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
+    animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
+    animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
+    return animation;
+}
+
+SplashTargetRoundingMode parse_splash_rounding_mode(const Variant &value, SplashTargetRoundingMode fallback) {
+    const String mode = String(value).to_lower();
+    if (mode == "floor") {
+        return SplashTargetRoundingMode::FLOOR;
+    }
+    if (mode == "ceil") {
+        return SplashTargetRoundingMode::CEIL;
+    }
+    if (mode == "nearest") {
+        return SplashTargetRoundingMode::NEAREST;
+    }
+    return fallback;
+}
+
+real_t normalize_fraction(real_t value) {
+    if (value > 1.0F) {
+        value /= FRACTION_PERCENT_SCALE;
+    }
+    return CLAMP(value, 0.0F, 1.0F);
 }
 
 void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
@@ -154,6 +185,55 @@ void apply_shoot_sfx(const Dictionary &unit_dict, const GlobalUnitConfig &global
     config.shoot_sfx.pitch_variance = globals.shoot_sfx.pitch_variance;
 }
 
+ShootSfxConfig parse_shoot_sfx_config(const Dictionary &shoot_sfx_dict, const ShootSfxConfig &fallback) {
+    ShootSfxConfig config = fallback;
+    config.path = String(shoot_sfx_dict.get("path", config.path));
+    config.volume_linear = VariantTools::as_float(shoot_sfx_dict.get("volume_linear", config.volume_linear));
+    config.pitch_scale = VariantTools::as_float(shoot_sfx_dict.get("pitch_scale", config.pitch_scale));
+    config.pitch_variance = VariantTools::as_float(shoot_sfx_dict.get("pitch_variance", config.pitch_variance));
+    return config;
+}
+
+void apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
+    if (!unit_dict.has("projectile_attack")) {
+        return;
+    }
+
+    const Dictionary projectile_dict = unit_dict["projectile_attack"];
+    ProjectileAttackConfig projectile;
+    projectile.speed_pixels_per_second = VariantTools::as_real(projectile_dict.get("speed_pixels_per_second", projectile.speed_pixels_per_second));
+    projectile.splash_radius = VariantTools::as_real(projectile_dict.get("splash_radius", projectile.splash_radius));
+    projectile.affected_fraction = normalize_fraction(VariantTools::as_real(projectile_dict.get("affected_fraction", projectile.affected_fraction)));
+    projectile.min_affected_targets = std::max(1, VariantTools::as_int(projectile_dict.get("min_affected_targets", projectile.min_affected_targets)));
+    projectile.spawn_animation_frame = std::max(0, VariantTools::as_int(projectile_dict.get("spawn_animation_frame", projectile.spawn_animation_frame)));
+    projectile.affected_target_rounding =
+        parse_splash_rounding_mode(projectile_dict.get("affected_target_rounding", Variant("nearest")), projectile.affected_target_rounding);
+    projectile.include_direct_target = VariantTools::as_bool(projectile_dict.get("include_direct_target", projectile.include_direct_target));
+    projectile.projectile_scale_multiplier =
+        VariantTools::as_real(projectile_dict.get("projectile_scale_multiplier", projectile.projectile_scale_multiplier));
+    projectile.explosion_scale_multiplier =
+        VariantTools::as_real(projectile_dict.get("explosion_scale_multiplier", projectile.explosion_scale_multiplier));
+
+    if (projectile_dict.has("impact_damage")) {
+        projectile.impact_damage = VariantTools::as_int(projectile_dict.get("impact_damage", 0));
+    }
+    if (projectile_dict.has("splash_damage")) {
+        projectile.splash_damage = VariantTools::as_int(projectile_dict.get("splash_damage", 0));
+    }
+    if (projectile_dict.has("explosion_sfx")) {
+        projectile.explosion_sfx = parse_shoot_sfx_config(projectile_dict["explosion_sfx"], ShootSfxConfig{});
+    }
+
+    if (projectile_dict.has("animation")) {
+        projectile.projectile_animation = parse_anim_config(projectile_dict["animation"], projectile.projectile_animation);
+    }
+    if (projectile_dict.has("explosion_animation")) {
+        projectile.explosion_animation = parse_anim_config(projectile_dict["explosion_animation"], projectile.explosion_animation);
+    }
+
+    config.projectile_attack = projectile;
+}
+
 void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
     if (!unit_dict.has("animations")) {
         return;
@@ -164,12 +244,7 @@ void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
     for (const Variant &animation_key : animation_keys) {
         String animation_name = animation_key;
         Dictionary animation_dict = animations[animation_name];
-        AnimConfig animation;
-        animation.path_template = String(animation_dict.get("path_template", ""));
-        animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", 10));
-        animation.speed = VariantTools::as_double(animation_dict.get("speed", 10.0));
-        animation.loop = VariantTools::as_bool(animation_dict.get("loop", false));
-        config.animations.emplace_back(animation_name, animation);
+        config.animations.emplace_back(animation_name, parse_anim_config(animation_dict, AnimConfig{}));
     }
 }
 
@@ -199,6 +274,7 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     apply_unit_colors(unit_dict, globals, config);
     apply_muzzle_flash(unit_dict, config);
     apply_shoot_sfx(unit_dict, globals, config);
+    apply_projectile_attack(unit_dict, config);
     apply_animations(unit_dict, config);
 
     return config;

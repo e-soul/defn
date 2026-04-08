@@ -3,6 +3,7 @@
 
 #include "unit_data.h"
 #include <godot_cpp/classes/area2d.hpp>
+#include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/core/math.hpp>
 
 namespace defn {
@@ -21,6 +22,7 @@ struct CombatConfig {
     real_t ranged_range = 0.0F;
     Color melee_flash_color;
     Color ranged_flash_color;
+    std::optional<ProjectileAttackConfig> projectile_attack;
 };
 
 class Unit;
@@ -36,11 +38,18 @@ class CombatRuntime {
     AttackMode get_attack_mode() const { return state_.attack_mode; }
 
   private:
+    struct PendingProjectileSpawn {
+      bool active = false;
+      ObjectID target_id{};
+      Vector2 target_global_position;
+    };
+
     struct State {
         double attack_cooldown_seconds = 0.0;
         AttackMode attack_mode = AttackMode::NONE;
         bool engaged = false;
         Unit *target = nullptr;
+      PendingProjectileSpawn pending_projectile{};
     };
 
     void check_breach() const;
@@ -49,6 +58,7 @@ class CombatRuntime {
     bool try_keep_target();
     void find_new_target();
     real_t get_forward_distance(Unit *other) const;
+    void try_spawn_pending_projectile();
     void perform_behavior(double delta);
     void reset_engagement();
     double get_attack_period_seconds() const;

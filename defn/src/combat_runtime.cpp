@@ -3,10 +3,13 @@
 #include "animation_controller.h"
 #include "grid_manager.h"
 #include "health_component.h"
+#include "projectile_attack.h"
 #include "unit.h"
 
 #include <algorithm>
 #include <limits>
+
+#include <godot_cpp/core/object.hpp>
 
 namespace defn {
 
@@ -28,6 +31,7 @@ void CombatRuntime::update(double delta) {
         check_breach();
     }
 
+    try_spawn_pending_projectile();
     update_cooldowns(delta);
     update_target();
     perform_behavior(delta);
@@ -143,7 +147,37 @@ real_t CombatRuntime::get_forward_distance(Unit *other) const {
     return unit_->get_position().x - other->get_position().x;
 }
 
+void CombatRuntime::try_spawn_pending_projectile() {
+    if (!state_.pending_projectile.active || animation_ == nullptr || !animation_->consume_shoot_effect_triggered()) {
+        return;
+    }
+
+    auto *projectile = memnew(ProjectileAttack);
+    Node *projectile_parent = unit_ != nullptr ? unit_->get_parent() : nullptr;
+    if (projectile_parent == nullptr) {
+        projectile_parent = unit_;
+    }
+
+    if (projectile_parent != nullptr && config_.projectile_attack.has_value()) {
+        Unit *direct_target = nullptr;
+        if (!state_.pending_projectile.target_id.is_null()) {
+            direct_target = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(state_.pending_projectile.target_id)));
+        }
+
+        projectile_parent->add_child(projectile);
+        projectile->configure(*config_.projectile_attack, config_.side, config_.ranged_flash_color, animation_->get_muzzle_global_position(),
+                              state_.pending_projectile.target_global_position, direct_target, config_.ranged_damage);
+    }
+
+    state_.pending_projectile = {};
+}
+
 void CombatRuntime::perform_behavior(double delta) {
+    if (state_.pending_projectile.active) {
+        unit_->set_velocity(Vector2(0, 0));
+        return;
+    }
+
     if (state_.engaged && state_.target != nullptr && !state_.target->is_dead()) {
         unit_->set_velocity(Vector2(0, 0));
 
@@ -210,7 +244,20 @@ void CombatRuntime::trigger_attack() {
     }
 
     if (state_.attack_mode == AttackMode::RANGED) {
+        if (config_.projectile_attack.has_value()) {
+            state_.pending_projectile = {
+                .active = true,
+                .target_id = ObjectID(state_.target->get_instance_id()),
+                .target_global_position = state_.target->get_global_position(),
+            };
+            animation_->play_shoot_animation(false, config_.projectile_attack->spawn_animation_frame);
+            try_spawn_pending_projectile();
+            return;
+        }
+
         animation_->play_shoot_animation();
+        animation_->consume_shoot_effect_triggered();
+
         state_.target->take_damage(config_.ranged_damage);
         state_.target->flash_damage(config_.ranged_flash_color);
     }
