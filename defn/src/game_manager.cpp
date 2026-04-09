@@ -40,6 +40,36 @@ bool has_upgrade_option(const Array &available_upgrades, const String &upgrade_i
     return false;
 }
 
+bool finalize_selected_upgrade(Dictionary &pending_score_screen_stats) {
+    if (pending_score_screen_stats.is_empty()) {
+        return true;
+    }
+
+    const Array available_upgrades = pending_score_screen_stats.get("available_upgrades", Array());
+    if (available_upgrades.is_empty()) {
+        return true;
+    }
+
+    const Dictionary selected_upgrade = pending_score_screen_stats.get("selected_upgrade", Dictionary());
+    const String upgrade_id = selected_upgrade.get("id", "");
+    const String level_id = pending_score_screen_stats.get("current_level_id", "");
+    if (upgrade_id.is_empty() || level_id.is_empty()) {
+        return false;
+    }
+
+    auto *progression = ProgressionManager::get_singleton();
+    if (progression == nullptr) {
+        return false;
+    }
+
+    if (!progression->claim_level_upgrade(level_id, upgrade_id)) {
+        return false;
+    }
+
+    progression->save();
+    return true;
+}
+
 } // namespace
 
 GameManager::GameManager() = default;
@@ -383,16 +413,28 @@ void GameManager::end_game(bool victory) {
 }
 
 void GameManager::on_score_screen_next_level(const String &level_id) {
+    if (!finalize_selected_upgrade(pending_score_screen_stats_)) {
+        return;
+    }
+
     pending_score_screen_stats_.clear();
     SceneNavigator::go_to_level(get_tree(), level_id);
 }
 
 void GameManager::on_score_screen_retry(const String &level_id) {
+    if (!finalize_selected_upgrade(pending_score_screen_stats_)) {
+        return;
+    }
+
     pending_score_screen_stats_.clear();
     SceneNavigator::go_to_level(get_tree(), level_id);
 }
 
 void GameManager::on_score_screen_main_menu() {
+    if (!finalize_selected_upgrade(pending_score_screen_stats_)) {
+        return;
+    }
+
     pending_score_screen_stats_.clear();
     SceneNavigator::go_to_main_menu(get_tree());
 }
@@ -402,23 +444,16 @@ void GameManager::on_score_screen_upgrade_selected(const String &upgrade_id) {
         return;
     }
 
-    const Dictionary selected_upgrade = pending_score_screen_stats_.get("selected_upgrade", Dictionary());
-    if (!String(selected_upgrade.get("id", "")).is_empty()) {
-        return;
-    }
-
     const Array available_upgrades = pending_score_screen_stats_.get("available_upgrades", Array());
     if (!has_upgrade_option(available_upgrades, upgrade_id)) {
         return;
     }
 
     auto *progression = ProgressionManager::get_singleton();
-    const String level_id = pending_score_screen_stats_.get("current_level_id", "");
-    if (!progression->claim_level_upgrade(level_id, upgrade_id)) {
+    if (progression == nullptr) {
         return;
     }
 
-    progression->save();
     pending_score_screen_stats_["selected_upgrade"] = progression->get_upgrade_card_view(upgrade_id);
     hud->show_score_screen(pending_score_screen_stats_);
 }

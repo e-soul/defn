@@ -93,7 +93,7 @@ void add_upgrade_section(VBoxContainer *content, const Array &available_upgrades
     add_spacer(content, 12);
 
     auto *section_title = memnew(Label);
-    section_title->set_text(selected_upgrade_id.is_empty() ? "CHOOSE 1 UPGRADE" : "UPGRADE SECURED");
+    section_title->set_text("CHOOSE 1 UPGRADE");
     section_title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     section_title->add_theme_font_size_override("font_size", 24);
     section_title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
@@ -101,7 +101,7 @@ void add_upgrade_section(VBoxContainer *content, const Array &available_upgrades
 
     if (!selected_upgrade_id.is_empty()) {
         auto *summary = memnew(Label);
-        summary->set_text(vformat("%s %s", String(selected_upgrade.get("emoji", "")), String(selected_upgrade.get("name", "Upgrade"))));
+        summary->set_text(vformat("Selected: %s %s", String(selected_upgrade.get("emoji", "")), String(selected_upgrade.get("name", "Upgrade"))));
         summary->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
         summary->add_theme_font_size_override("font_size", 18);
         summary->add_theme_color_override("font_color", Color(0.92, 0.95, 1.0));
@@ -119,14 +119,13 @@ void add_upgrade_section(VBoxContainer *content, const Array &available_upgrades
         const Dictionary card = card_variant;
         const String card_id = String(card.get("id", ""));
         const bool selected = !selected_upgrade_id.is_empty() && card_id == selected_upgrade_id;
-        const bool disabled = !selected_upgrade_id.is_empty();
 
         Callable pressed_action;
-        if (selected_upgrade_id.is_empty() && on_select_upgrade.is_valid() && !card_id.is_empty()) {
+        if (on_select_upgrade.is_valid() && !card_id.is_empty()) {
             pressed_action = on_select_upgrade.bind(card_id);
         }
 
-        auto *card_button = UpgradeCardPresenter::create(card, selected, disabled, pressed_action);
+        auto *card_button = UpgradeCardPresenter::create(card, selected, false, pressed_action);
         card_row->add_child(card_button);
     }
 }

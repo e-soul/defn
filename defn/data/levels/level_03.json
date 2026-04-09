@@ -3,7 +3,7 @@
   "name": "Crumbling District",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
   "starting_core_resource": 150,
-  "base_integrity": 4,
+  "base_integrity": 3,
   "waves": [
     {
       "wave_number": 1,

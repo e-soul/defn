@@ -3,7 +3,7 @@
   "name": "The Last Stand",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
   "starting_core_resource": 200,
-  "base_integrity": 5,
+  "base_integrity": 3,
   "waves": [
     {
       "wave_number": 1,
