@@ -4,6 +4,7 @@
 #include "camera_scroll_controller.h"
 #include "match_session.h"
 #include "unit_data.h"
+#include <cstdint>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/classes/input_event.hpp>
@@ -20,6 +21,7 @@ using namespace godot;
 
 class WaveManager;
 class HUD;
+class BaseObjective;
 class Unit;
 
 class GameManager : public Node2D {
@@ -38,19 +40,24 @@ class GameManager : public Node2D {
   private:
     void setup_background(const String &bg_path);
     void setup_camera();
-    void setup_scroll_trigger();
-    void update_scroll_trigger_position();
+    void setup_base_objective();
+    void setup_scroll_triggers();
+    Area2D *create_scroll_trigger(const String &name, uint32_t collision_mask);
+    void update_scroll_trigger_positions();
+    static Vector2 get_base_objective_position();
+    static bool is_valid_scroll_trigger_unit(Area2D *area, const char *required_group);
     void deploy_friendly(const String &unit_type);
     void update_camera_scroll(double delta);
 
     // Signal callbacks
-    void on_scroll_triggered(Area2D *area);
+    void on_scroll_triggered(Area2D *area, bool move_left);
     void on_enemy_spawned(Node *enemy_node);
     void on_wave_changed(int wave_number);
     void on_all_spawns_complete();
     void on_enemy_died(Node *unit);
     void on_friendly_died(Node *unit);
-    void on_enemy_breached();
+    void on_base_durability_changed(int current_hp, int max_hp);
+    void on_base_destroyed();
     void on_core_resource_tick();
     void on_deploy_requested(const String &unit_type);
 
@@ -71,7 +78,9 @@ class GameManager : public Node2D {
     Node2D *entity_container = nullptr;
     Timer *core_resource_timer = nullptr;
     Camera2D *camera = nullptr;
-    Area2D *scroll_trigger = nullptr;
+    BaseObjective *base_objective = nullptr;
+    Area2D *left_scroll_trigger = nullptr;
+    Area2D *right_scroll_trigger = nullptr;
 
     // Scrolling state
     CameraScrollController camera_scroll_controller_;

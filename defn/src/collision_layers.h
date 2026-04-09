@@ -21,7 +21,9 @@ inline constexpr CollisionMask FRIENDLY_HITBOX = 1U;
 inline constexpr CollisionMask HOSTILE_HITBOX = 2U;
 inline constexpr CollisionMask FRIENDLY_SENSOR_MASK = HOSTILE_HITBOX;
 inline constexpr CollisionMask HOSTILE_SENSOR_MASK = FRIENDLY_HITBOX;
-inline constexpr CollisionMask SCROLL_TRIGGER_MASK = FRIENDLY_HITBOX;
+inline constexpr CollisionMask RIGHT_SCROLL_TRIGGER_MASK = FRIENDLY_HITBOX;
+inline constexpr CollisionMask LEFT_SCROLL_TRIGGER_MASK = HOSTILE_HITBOX;
+inline constexpr CollisionMask SCROLL_TRIGGER_MASK = RIGHT_SCROLL_TRIGGER_MASK;
 
 } // namespace CollisionLayers
 

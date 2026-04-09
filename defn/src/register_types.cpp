@@ -5,6 +5,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "animation_controller.h"
+#include "base_objective.h"
 #include "combat_component.h"
 #include "detection_component.h"
 #include "game_manager.h"
@@ -35,6 +36,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::HealthBarWidget>();
     ClassDB::register_class<defn::AnimationController>();
     ClassDB::register_class<defn::SoundController>();
+    ClassDB::register_class<defn::BaseObjective>();
     ClassDB::register_class<defn::DetectionComponent>();
     ClassDB::register_class<defn::CombatComponent>();
     ClassDB::register_class<defn::ProjectileAttack>();

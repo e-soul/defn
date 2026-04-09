@@ -2,7 +2,9 @@
 #define COMBAT_RUNTIME_H
 
 #include "unit_data.h"
+
 #include <godot_cpp/classes/area2d.hpp>
+#include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/core/object_id.hpp>
 
@@ -48,16 +50,15 @@ class CombatRuntime {
         double attack_cooldown_seconds = 0.0;
         AttackMode attack_mode = AttackMode::NONE;
         bool engaged = false;
-        Unit *target = nullptr;
+        Node2D *target = nullptr;
         PendingProjectileSpawn pending_projectile{};
     };
 
-    void check_breach() const;
     void update_cooldowns(double delta);
     void update_target();
     bool try_keep_target();
     void find_new_target();
-    real_t get_forward_distance(Unit *other) const;
+    real_t get_forward_distance(Node2D *other) const;
     void try_spawn_pending_projectile();
     void perform_behavior(double delta);
     void reset_engagement();

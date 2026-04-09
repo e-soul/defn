@@ -12,10 +12,7 @@ using godot::UtilityFunctions;
 
 Unit::Unit() = default;
 
-void Unit::_bind_methods() {
-    ADD_SIGNAL(MethodInfo("unit_died", PropertyInfo(Variant::OBJECT, "unit")));
-    ADD_SIGNAL(MethodInfo("enemy_breached"));
-}
+void Unit::_bind_methods() { ADD_SIGNAL(MethodInfo("unit_died", PropertyInfo(Variant::OBJECT, "unit"))); }
 
 void Unit::set_unit_config(const UnitConfig &cfg) {
     unit_config_ = cfg;
@@ -90,11 +87,6 @@ void Unit::do_movement(double delta) {
         set_velocity(Vector2(-speed, 0));
         move_and_slide();
     }
-}
-
-void Unit::notify_breach() {
-    emit_signal("enemy_breached");
-    queue_free();
 }
 
 } // namespace defn

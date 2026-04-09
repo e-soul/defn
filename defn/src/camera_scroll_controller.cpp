@@ -16,7 +16,7 @@ constexpr real_t CAMERA_SMOOTH_FACTOR = 3.0F;
 void CameraScrollController::configure(const GameplayRules &rules, real_t world_width) {
     rules_ = rules;
     world_width_ = world_width;
-    camera_target_x_ = rules_.viewport_width / HALF;
+    camera_target_x_ = get_min_target_x();
 }
 
 real_t CameraScrollController::calculate_world_width(real_t background_display_width) const {
@@ -27,7 +27,14 @@ real_t CameraScrollController::get_trigger_height() const { return (rules_.belt_
 
 Vector2 CameraScrollController::get_camera_anchor_position() const { return {camera_target_x_, rules_.viewport_height / HALF}; }
 
-Vector2 CameraScrollController::get_trigger_position() const {
+Vector2 CameraScrollController::get_left_trigger_position() const {
+    const real_t scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
+    const real_t trigger_x = camera_target_x_ - (rules_.viewport_width / HALF) + scroll_step;
+    const real_t trigger_y = (rules_.belt_top_y + rules_.belt_bottom_y) / HALF;
+    return {trigger_x, trigger_y};
+}
+
+Vector2 CameraScrollController::get_right_trigger_position() const {
     const real_t scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
     const real_t trigger_x = camera_target_x_ + (rules_.viewport_width / HALF) - scroll_step;
     const real_t trigger_y = (rules_.belt_top_y + rules_.belt_bottom_y) / HALF;
@@ -55,11 +62,22 @@ void CameraScrollController::update_camera(Camera2D *camera, GridManager *grid, 
 
 bool CameraScrollController::advance_target() {
     const real_t scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
-    const real_t max_target = world_width_ - (rules_.viewport_width / HALF);
-    const real_t next_target = std::min(camera_target_x_ + scroll_step, max_target);
+    const real_t next_target = std::min(camera_target_x_ + scroll_step, get_max_target_x());
     const bool changed = next_target != camera_target_x_;
     camera_target_x_ = next_target;
     return changed;
 }
+
+bool CameraScrollController::retreat_target() {
+    const real_t scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
+    const real_t next_target = std::max(camera_target_x_ - scroll_step, get_min_target_x());
+    const bool changed = next_target != camera_target_x_;
+    camera_target_x_ = next_target;
+    return changed;
+}
+
+real_t CameraScrollController::get_min_target_x() const { return rules_.viewport_width / HALF; }
+
+real_t CameraScrollController::get_max_target_x() const { return std::max(get_min_target_x(), world_width_ - (rules_.viewport_width / HALF)); }
 
 } // namespace defn

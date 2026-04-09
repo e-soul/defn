@@ -20,7 +20,8 @@ struct MatchConfig {
 
 struct MatchRuntimeState {
     int core_resource = 100;
-    int base_integrity = 3;
+    int base_health = 300;
+    int base_max_health = 300;
     int initial_integrity = 3;
     int enemies_killed = 0;
     int kill_score = 0;
@@ -31,6 +32,8 @@ struct MatchRuntimeState {
 
 class MatchSession {
   public:
+    static constexpr int BASE_HEALTH_PER_HEART = 100;
+
     MatchSession() = default;
 
     void start(const MatchConfig &config);
@@ -40,15 +43,17 @@ class MatchSession {
     bool can_spend_energy(int amount) const;
     void spend_energy(int amount);
     void tick_energy();
+    void set_base_health(int current_health);
 
     void record_enemy_spawned();
     void mark_all_spawns_complete() { state_.all_spawned = true; }
     void record_enemy_died(int base_bounty);
-    bool record_enemy_breached();
     bool should_end_with_victory() const;
 
     int get_core_resource() const { return state_.core_resource; }
-    int get_base_integrity() const { return state_.base_integrity; }
+    int get_base_health() const { return state_.base_health; }
+    int get_base_max_health() const { return state_.base_max_health; }
+    int get_base_integrity() const;
     int get_initial_integrity() const { return state_.initial_integrity; }
     int get_enemies_killed() const { return state_.enemies_killed; }
     int get_kill_score() const { return state_.kill_score; }
@@ -61,6 +66,8 @@ class MatchSession {
                                     const PackedStringArray &new_unlocks, const Array &available_upgrades, const Dictionary &selected_upgrade) const;
 
   private:
+    static int calculate_hearts_from_health(int health);
+
     MatchConfig config_{};
     MatchRuntimeState state_{};
 };

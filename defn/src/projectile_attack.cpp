@@ -1,6 +1,6 @@
 #include "projectile_attack.h"
 
-#include "unit.h"
+#include "attack_target_helpers.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,7 +29,7 @@ float linear_to_db(float linear) {
 void ProjectileAttack::_bind_methods() {}
 
 void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const Color &flash_color, const Vector2 &start_global_position,
-                                 const Vector2 &target_global_position, Unit *direct_target, int fallback_damage) {
+                                 const Vector2 &target_global_position, Node2D *direct_target, int fallback_damage) {
     config_ = config;
     shooter_side_ = shooter_side;
     flash_color_ = flash_color;
@@ -199,11 +199,12 @@ void ProjectileAttack::explode() {
 }
 
 void ProjectileAttack::apply_splash_damage() {
-    std::vector<Unit *> candidates;
+    std::vector<Node2D *> candidates;
     candidates.reserve(8);
 
-    Unit *direct_target = resolve_direct_target();
-    if (config_.include_direct_target && direct_target != nullptr && !direct_target->is_dead() && direct_target->get_side() != shooter_side_) {
+    Node2D *direct_target = resolve_direct_target();
+    if (config_.include_direct_target && direct_target != nullptr && !AttackTarget::is_dead(direct_target) &&
+        AttackTarget::get_side(direct_target) != shooter_side_) {
         candidates.push_back(direct_target);
     }
 
@@ -212,20 +213,20 @@ void ProjectileAttack::apply_splash_damage() {
         const Array children = parent->get_children();
         const real_t splash_radius_squared = config_.splash_radius * config_.splash_radius;
         for (const Variant &child_variant : children) {
-            auto *unit = Object::cast_to<Unit>(child_variant.operator Object *());
-            if (unit == nullptr || unit->is_dead() || unit->get_side() == shooter_side_) {
+            auto *target = AttackTarget::resolve(child_variant.operator Object *());
+            if (target == nullptr || AttackTarget::is_dead(target) || AttackTarget::get_side(target) == shooter_side_) {
                 continue;
             }
 
-            if (std::ranges::find(candidates, unit) != candidates.end()) {
+            if (std::ranges::find(candidates, target) != candidates.end()) {
                 continue;
             }
 
-            if (unit->get_global_position().distance_squared_to(target_global_position_) > splash_radius_squared) {
+            if (AttackTarget::get_global_position(target).distance_squared_to(target_global_position_) > splash_radius_squared) {
                 continue;
             }
 
-            candidates.push_back(unit);
+            candidates.push_back(target);
         }
     }
 
@@ -235,14 +236,14 @@ void ProjectileAttack::apply_splash_damage() {
 
     const int affected_count = compute_affected_target_count(static_cast<int>(candidates.size()));
     for (int index = 0; index < affected_count; ++index) {
-        Unit *victim = candidates[static_cast<size_t>(index)];
-        if (victim == nullptr || victim->is_dead()) {
+        Node2D *victim = candidates[static_cast<size_t>(index)];
+        if (victim == nullptr || AttackTarget::is_dead(victim)) {
             continue;
         }
 
         const int damage = victim == direct_target ? resolve_impact_damage() : resolve_splash_damage();
-        victim->take_damage(damage);
-        victim->flash_damage(flash_color_);
+        AttackTarget::take_damage(victim, damage);
+        AttackTarget::flash_damage(victim, flash_color_);
     }
 }
 
@@ -258,12 +259,12 @@ void ProjectileAttack::on_explosion_sfx_finished() {
     try_finish();
 }
 
-Unit *ProjectileAttack::resolve_direct_target() const {
+Node2D *ProjectileAttack::resolve_direct_target() const {
     if (direct_target_id_.is_null()) {
         return nullptr;
     }
 
-    return Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(direct_target_id_)));
+    return AttackTarget::resolve(ObjectDB::get_instance(static_cast<uint64_t>(direct_target_id_)));
 }
 
 int ProjectileAttack::resolve_impact_damage() const { return config_.impact_damage.value_or(fallback_damage_); }

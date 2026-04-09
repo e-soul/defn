@@ -9,9 +9,11 @@ namespace defn {
 
 void MatchSession::start(const MatchConfig &config) {
     config_ = config;
+    const int base_max_health = std::max(config.initial_integrity, 0) * BASE_HEALTH_PER_HEART;
     state_ = MatchRuntimeState{
         .core_resource = config.starting_core_resource,
-        .base_integrity = config.initial_integrity,
+        .base_health = base_max_health,
+        .base_max_health = base_max_health,
         .initial_integrity = config.initial_integrity,
     };
 }
@@ -37,6 +39,8 @@ void MatchSession::spend_energy(int amount) {
 
 void MatchSession::tick_energy() { state_.core_resource += config_.energy_regen_rate; }
 
+void MatchSession::set_base_health(int current_health) { state_.base_health = std::clamp(current_health, 0, state_.base_max_health); }
+
 void MatchSession::record_enemy_spawned() { ++state_.living_enemies; }
 
 void MatchSession::record_enemy_died(int base_bounty) {
@@ -48,15 +52,11 @@ void MatchSession::record_enemy_died(int base_bounty) {
     state_.living_enemies = std::max(state_.living_enemies - 1, 0);
 }
 
-bool MatchSession::record_enemy_breached() {
-    state_.base_integrity = std::max(state_.base_integrity - 1, 0);
-    state_.living_enemies = std::max(state_.living_enemies - 1, 0);
-    return state_.base_integrity <= 0;
-}
+int MatchSession::get_base_integrity() const { return calculate_hearts_from_health(state_.base_health); }
 
-bool MatchSession::should_end_with_victory() const { return !state_.game_over && state_.all_spawned && state_.living_enemies <= 0; }
+bool MatchSession::should_end_with_victory() const { return !state_.game_over && state_.base_health > 0 && state_.all_spawned && state_.living_enemies <= 0; }
 
-int MatchSession::calculate_integrity_bonus() const { return state_.base_integrity * 50; }
+int MatchSession::calculate_integrity_bonus() const { return get_base_integrity() * 50; }
 
 int MatchSession::calculate_completion_bonus(bool victory) { return victory ? 100 : 0; }
 
@@ -68,7 +68,7 @@ Dictionary MatchSession::build_end_game_stats(bool victory, int new_total_score,
     stats["victory"] = victory;
     stats["enemies_killed"] = state_.enemies_killed;
     stats["kill_score"] = state_.kill_score;
-    stats["hearts_remaining"] = state_.base_integrity;
+    stats["hearts_remaining"] = get_base_integrity();
     stats["hearts_total"] = state_.initial_integrity;
     stats["integrity_bonus"] = calculate_integrity_bonus();
     stats["completion_bonus"] = calculate_completion_bonus(victory);
@@ -86,6 +86,14 @@ Dictionary MatchSession::build_end_game_stats(bool victory, int new_total_score,
     stats["selected_upgrade"] = selected_upgrade;
 
     return stats;
+}
+
+int MatchSession::calculate_hearts_from_health(int health) {
+    if (health <= 0) {
+        return 0;
+    }
+
+    return (health + BASE_HEALTH_PER_HEART - 1) / BASE_HEALTH_PER_HEART;
 }
 
 } // namespace defn

@@ -39,7 +39,6 @@ class Unit : public CharacterBody2D {
     real_t get_ranged_range() const { return ranged_range; }
 
     void do_movement(double delta);
-    void notify_breach();
 
     void _ready() override;
 

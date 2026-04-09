@@ -1,4 +1,6 @@
 #include "game_manager.h"
+
+#include "base_objective.h"
 #include "collision_layers.h"
 #include "game_background_builder.h"
 #include "grid_manager.h"
@@ -110,7 +112,6 @@ void GameManager::_ready() {
     }
     setup_background(bg_path);
     setup_camera();
-    setup_scroll_trigger();
 
     // Entity container (y-sort so closer-to-bottom entities render in front)
     entity_container = memnew(Node2D);
@@ -160,6 +161,9 @@ void GameManager::_ready() {
     hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
     hud->connect("score_screen_main_menu", callable_mp(this, &GameManager::on_score_screen_main_menu));
     hud->connect("score_screen_upgrade_selected", callable_mp(this, &GameManager::on_score_screen_upgrade_selected));
+
+    setup_base_objective();
+    setup_scroll_triggers();
 
     // Core resource generation timer
     core_resource_timer = memnew(Timer);
@@ -222,13 +226,26 @@ void GameManager::setup_camera() {
 
 void GameManager::update_camera_scroll(double delta) { camera_scroll_controller_.update_camera(camera, GridManager::get_singleton(), delta); }
 
-void GameManager::setup_scroll_trigger() {
-    scroll_trigger = memnew(Area2D);
-    scroll_trigger->set_name("ScrollTrigger");
-    scroll_trigger->set_collision_layer(CollisionLayers::NONE);
-    scroll_trigger->set_collision_mask(CollisionLayers::SCROLL_TRIGGER_MASK);
-    scroll_trigger->set_monitoring(true);
-    scroll_trigger->set_monitorable(false);
+void GameManager::setup_base_objective() {
+    if (entity_container == nullptr) {
+        return;
+    }
+
+    base_objective = memnew(BaseObjective);
+    base_objective->set_name("BaseObjective");
+    base_objective->connect("durability_changed", callable_mp(this, &GameManager::on_base_durability_changed));
+    base_objective->connect("objective_destroyed", callable_mp(this, &GameManager::on_base_destroyed));
+    entity_container->add_child(base_objective);
+    base_objective->configure(match_session_.get_base_max_health(), get_base_objective_position());
+}
+
+Area2D *GameManager::create_scroll_trigger(const String &name, uint32_t collision_mask) {
+    auto *trigger = memnew(Area2D);
+    trigger->set_name(name);
+    trigger->set_collision_layer(CollisionLayers::NONE);
+    trigger->set_collision_mask(collision_mask);
+    trigger->set_monitoring(true);
+    trigger->set_monitorable(false);
 
     auto *shape_node = memnew(CollisionShape2D);
     Ref<RectangleShape2D> rect;
@@ -236,37 +253,70 @@ void GameManager::setup_scroll_trigger() {
     // Tall vertical strip covering well beyond the belt area
     rect->set_size(Vector2(20.0, camera_scroll_controller_.get_trigger_height()));
     shape_node->set_shape(rect);
-    scroll_trigger->add_child(shape_node);
+    trigger->add_child(shape_node);
 
-    update_scroll_trigger_position();
-
-    scroll_trigger->connect("area_entered", callable_mp(this, &GameManager::on_scroll_triggered));
-    add_child(scroll_trigger);
+    add_child(trigger);
+    return trigger;
 }
 
-void GameManager::update_scroll_trigger_position() {
-    if (scroll_trigger != nullptr) {
-        scroll_trigger->set_position(camera_scroll_controller_.get_trigger_position());
+void GameManager::setup_scroll_triggers() {
+    right_scroll_trigger = create_scroll_trigger("RightScrollTrigger", CollisionLayers::RIGHT_SCROLL_TRIGGER_MASK);
+    left_scroll_trigger = create_scroll_trigger("LeftScrollTrigger", CollisionLayers::LEFT_SCROLL_TRIGGER_MASK);
+
+    update_scroll_trigger_positions();
+
+    right_scroll_trigger->connect("area_entered", callable_mp(this, &GameManager::on_scroll_triggered).bind(false));
+    left_scroll_trigger->connect("area_entered", callable_mp(this, &GameManager::on_scroll_triggered).bind(true));
+}
+
+void GameManager::update_scroll_trigger_positions() {
+    if (right_scroll_trigger != nullptr) {
+        right_scroll_trigger->set_position(camera_scroll_controller_.get_right_trigger_position());
+    }
+
+    if (left_scroll_trigger != nullptr) {
+        left_scroll_trigger->set_position(camera_scroll_controller_.get_left_trigger_position());
     }
 }
 
-void GameManager::on_scroll_triggered(Area2D *area) {
+Vector2 GameManager::get_base_objective_position() {
+    auto *grid = GridManager::get_singleton();
+    if (grid == nullptr) {
+        return {};
+    }
+
+    const auto &rules = grid->get_rules();
+    const real_t objective_x = rules.breach_x + 96.0F;
+    const real_t objective_y = (rules.belt_top_y + rules.belt_bottom_y) / HALF;
+    return {objective_x, objective_y};
+}
+
+bool GameManager::is_valid_scroll_trigger_unit(Area2D *area, const char *required_group) {
+    if (area == nullptr) {
+        return false;
+    }
+
+    Node *parent = area->get_parent();
+    if (parent == nullptr || !parent->is_in_group(required_group)) {
+        return false;
+    }
+
+    auto *unit = Object::cast_to<Unit>(parent);
+    return unit != nullptr && !unit->is_dead();
+}
+
+void GameManager::on_scroll_triggered(Area2D *area, bool move_left) {
     if (match_session_.is_game_over()) {
         return;
     }
 
-    // Verify the overlapping area belongs to a living friendly
-    Node *parent = area->get_parent();
-    if (!parent || !parent->is_in_group("friendlies")) {
-        return;
-    }
-    auto *unit = Object::cast_to<Unit>(parent);
-    if (!unit || unit->is_dead()) {
+    if (!is_valid_scroll_trigger_unit(area, move_left ? "hostiles" : "friendlies")) {
         return;
     }
 
-    if (camera_scroll_controller_.advance_target()) {
-        update_scroll_trigger_position();
+    const bool changed = move_left ? camera_scroll_controller_.retreat_target() : camera_scroll_controller_.advance_target();
+    if (changed) {
+        update_scroll_trigger_positions();
     }
 }
 
@@ -301,7 +351,6 @@ void GameManager::on_enemy_spawned(Node *enemy_node) {
     }
 
     enemy->connect("unit_died", callable_mp(this, &GameManager::on_enemy_died));
-    enemy->connect("enemy_breached", callable_mp(this, &GameManager::on_enemy_breached));
     entity_container->add_child(enemy);
     match_session_.record_enemy_spawned();
 }
@@ -329,6 +378,23 @@ void GameManager::on_friendly_died(Node * /*unit*/) {
     // Defender died — no special handling needed beyond removal
 }
 
+void GameManager::on_base_durability_changed(int current_hp, int /*max_hp*/) {
+    match_session_.set_base_health(current_hp);
+    if (hud != nullptr) {
+        hud->update_hearts(match_session_.get_base_integrity());
+    }
+}
+
+void GameManager::on_base_destroyed() {
+    base_objective = nullptr;
+    match_session_.set_base_health(0);
+    if (hud != nullptr) {
+        hud->update_hearts(match_session_.get_base_integrity());
+    }
+
+    end_game(false);
+}
+
 void GameManager::on_core_resource_tick() {
     match_session_.tick_energy();
     hud->update_core_resource(match_session_.get_core_resource());
@@ -346,15 +412,6 @@ void GameManager::on_deploy_requested(const String &unit_type) {
     }
 
     deploy_friendly(unit_type);
-}
-
-void GameManager::on_enemy_breached() {
-    const bool defeated = match_session_.record_enemy_breached();
-    hud->update_hearts(match_session_.get_base_integrity());
-
-    if (defeated) {
-        end_game(false);
-    }
 }
 
 void GameManager::check_victory() {

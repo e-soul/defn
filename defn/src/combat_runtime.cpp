@@ -1,7 +1,7 @@
 #include "combat_runtime.h"
 
 #include "animation_controller.h"
-#include "grid_manager.h"
+#include "attack_target_helpers.h"
 #include "health_component.h"
 #include "projectile_attack.h"
 #include "unit.h"
@@ -27,21 +27,10 @@ void CombatRuntime::update(double delta) {
         return;
     }
 
-    if (config_.side == UnitSide::HOSTILE) {
-        check_breach();
-    }
-
     try_spawn_pending_projectile();
     update_cooldowns(delta);
     update_target();
     perform_behavior(delta);
-}
-
-void CombatRuntime::check_breach() const {
-    auto *grid = GridManager::get_singleton();
-    if (unit_ != nullptr && grid != nullptr && unit_->get_position().x < grid->get_rules().breach_x) {
-        unit_->notify_breach();
-    }
 }
 
 void CombatRuntime::update_cooldowns(double delta) {
@@ -59,7 +48,7 @@ void CombatRuntime::update_target() {
 }
 
 bool CombatRuntime::try_keep_target() {
-    if (state_.target == nullptr || state_.target->is_dead()) {
+    if (state_.target == nullptr || AttackTarget::is_dead(state_.target)) {
         return false;
     }
 
@@ -90,8 +79,8 @@ void CombatRuntime::find_new_target() {
     state_.target = nullptr;
     state_.engaged = false;
 
-    Unit *best_melee_target = nullptr;
-    Unit *best_ranged_target = nullptr;
+    Node2D *best_melee_target = nullptr;
+    Node2D *best_ranged_target = nullptr;
     real_t closest_melee_distance = std::numeric_limits<real_t>::max();
     real_t closest_ranged_distance = std::numeric_limits<real_t>::max();
 
@@ -102,8 +91,8 @@ void CombatRuntime::find_new_target() {
             continue;
         }
 
-        auto *other = Object::cast_to<Unit>(hitbox->get_parent());
-        if (other == nullptr || other->is_dead()) {
+        auto *other = AttackTarget::resolve(hitbox->get_parent());
+        if (other == nullptr || AttackTarget::is_dead(other) || AttackTarget::get_side(other) == config_.side) {
             continue;
         }
 
@@ -139,12 +128,12 @@ void CombatRuntime::find_new_target() {
     }
 }
 
-real_t CombatRuntime::get_forward_distance(Unit *other) const {
+real_t CombatRuntime::get_forward_distance(Node2D *other) const {
     if (config_.side == UnitSide::FRIENDLY) {
-        return other->get_position().x - unit_->get_position().x;
+        return other->get_global_position().x - unit_->get_global_position().x;
     }
 
-    return unit_->get_position().x - other->get_position().x;
+    return unit_->get_global_position().x - other->get_global_position().x;
 }
 
 void CombatRuntime::try_spawn_pending_projectile() {
@@ -159,9 +148,9 @@ void CombatRuntime::try_spawn_pending_projectile() {
     }
 
     if (projectile_parent != nullptr && config_.projectile_attack.has_value()) {
-        Unit *direct_target = nullptr;
+        Node2D *direct_target = nullptr;
         if (!state_.pending_projectile.target_id.is_null()) {
-            direct_target = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(state_.pending_projectile.target_id)));
+            direct_target = AttackTarget::resolve(ObjectDB::get_instance(static_cast<uint64_t>(state_.pending_projectile.target_id)));
         }
 
         projectile_parent->add_child(projectile);
@@ -178,7 +167,7 @@ void CombatRuntime::perform_behavior(double delta) {
         return;
     }
 
-    if (state_.engaged && state_.target != nullptr && !state_.target->is_dead()) {
+    if (state_.engaged && state_.target != nullptr && !AttackTarget::is_dead(state_.target)) {
         unit_->set_velocity(Vector2(0, 0));
 
         const auto current_anim = animation_->get_anim_state();
@@ -238,8 +227,8 @@ void CombatRuntime::trigger_attack() {
 
     if (state_.attack_mode == AttackMode::MELEE) {
         animation_->play_attack_animation();
-        state_.target->take_damage(config_.melee_damage);
-        state_.target->flash_damage(config_.melee_flash_color);
+        AttackTarget::take_damage(state_.target, config_.melee_damage);
+        AttackTarget::flash_damage(state_.target, config_.melee_flash_color);
         return;
     }
 
@@ -248,7 +237,7 @@ void CombatRuntime::trigger_attack() {
             state_.pending_projectile = {
                 .active = true,
                 .target_id = ObjectID(state_.target->get_instance_id()),
-                .target_global_position = state_.target->get_global_position(),
+                .target_global_position = AttackTarget::get_global_position(state_.target),
             };
             animation_->play_shoot_animation(false, config_.projectile_attack->spawn_animation_frame);
             try_spawn_pending_projectile();
@@ -258,8 +247,8 @@ void CombatRuntime::trigger_attack() {
         animation_->play_shoot_animation();
         animation_->consume_shoot_effect_triggered();
 
-        state_.target->take_damage(config_.ranged_damage);
-        state_.target->flash_damage(config_.ranged_flash_color);
+        AttackTarget::take_damage(state_.target, config_.ranged_damage);
+        AttackTarget::flash_damage(state_.target, config_.ranged_flash_color);
     }
 }
 

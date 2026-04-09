@@ -14,14 +14,12 @@ namespace defn {
 
 using namespace godot;
 
-class Unit;
-
 class ProjectileAttack : public Node2D {
     GDCLASS(ProjectileAttack, Node2D)
 
   public:
     void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const Color &flash_color, const Vector2 &start_global_position,
-                   const Vector2 &target_global_position, Unit *direct_target, int fallback_damage);
+                   const Vector2 &target_global_position, Node2D *direct_target, int fallback_damage);
 
     void _process(double delta) override;
 
@@ -39,7 +37,7 @@ class ProjectileAttack : public Node2D {
     void apply_splash_damage();
     void on_animation_finished();
     void on_explosion_sfx_finished();
-    Unit *resolve_direct_target() const;
+    Node2D *resolve_direct_target() const;
     int resolve_impact_damage() const;
     int resolve_splash_damage() const;
     int compute_affected_target_count(int candidate_count) const;

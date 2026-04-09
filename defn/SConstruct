@@ -37,6 +37,7 @@ else:
 # 4. Define your sources
 sources = [
     "src/register_types.cpp",
+    "src/base_objective.cpp",
     "src/grid_manager.cpp",
     "src/progression_manager.cpp",
     "src/progression_catalog.cpp",
