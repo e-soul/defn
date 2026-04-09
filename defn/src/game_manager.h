@@ -11,6 +11,7 @@
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <vector>
 
 namespace defn {
@@ -57,6 +58,7 @@ class GameManager : public Node2D {
     void on_score_screen_next_level(const String &level_id);
     void on_score_screen_retry(const String &level_id);
     void on_score_screen_main_menu();
+    void on_score_screen_upgrade_selected(const String &upgrade_id);
 
     void check_victory();
     void end_game(bool victory);
@@ -76,6 +78,8 @@ class GameManager : public Node2D {
 
     // Unit data
     UnitDataLoader unit_data_;
+
+    Dictionary pending_score_screen_stats_;
 };
 
 } // namespace defn

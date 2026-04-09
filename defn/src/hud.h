@@ -44,10 +44,12 @@ class HUD : public CanvasLayer {
 
   private:
     void build_ui();
+    void ensure_heart_icons(int count);
     void on_card_pressed(const String &unit_type);
     void on_next_level_pressed(const String &level_id);
     void on_retry_pressed(const String &level_id);
     void on_main_menu_pressed();
+    void on_upgrade_card_pressed(const String &upgrade_id);
 
     Label *core_resource_label = nullptr;
     Label *wave_label = nullptr;

@@ -5,6 +5,7 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <utility>
 
 namespace defn {
 
@@ -15,6 +16,7 @@ void HUD::_bind_methods() {
     ADD_SIGNAL(MethodInfo("score_screen_next_level", PropertyInfo(Variant::STRING, "level_id")));
     ADD_SIGNAL(MethodInfo("score_screen_retry", PropertyInfo(Variant::STRING, "level_id")));
     ADD_SIGNAL(MethodInfo("score_screen_main_menu"));
+    ADD_SIGNAL(MethodInfo("score_screen_upgrade_selected", PropertyInfo(Variant::STRING, "upgrade_id")));
 }
 
 void HUD::_ready() { build_ui(); }
@@ -63,16 +65,7 @@ void HUD::build_ui() {
     hearts_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     hearts_container->set_alignment(BoxContainer::ALIGNMENT_END);
     top_bar->add_child(hearts_container);
-
-    // Create 3 heart icons
-    for (int i = 0; i < 3; ++i) {
-        auto *heart = memnew(Label);
-        heart->set_text(String::utf8("\u2665")); // ♥
-        heart->add_theme_font_size_override("font_size", 32);
-        heart->add_theme_color_override("font_color", Color(0.9, 0.15, 0.15));
-        hearts_container->add_child(heart);
-        heart_icons.push_back(heart);
-    }
+    ensure_heart_icons(3);
 
     // ==========================================================
     // Deploy card container (bottom center)
@@ -97,6 +90,21 @@ void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
     }
 }
 
+void HUD::ensure_heart_icons(int count) {
+    if (hearts_container == nullptr) {
+        return;
+    }
+
+    while (std::cmp_less(heart_icons.size(), count)) {
+        auto *heart = memnew(Label);
+        heart->set_text(String::utf8("\u2665"));
+        heart->add_theme_font_size_override("font_size", 32);
+        heart->add_theme_color_override("font_color", Color(0.9, 0.15, 0.15));
+        hearts_container->add_child(heart);
+        heart_icons.push_back(heart);
+    }
+}
+
 void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_requested", unit_type); }
 
 void HUD::update_core_resource(int value) {
@@ -112,6 +120,7 @@ void HUD::update_wave(int current, int total) {
 }
 
 void HUD::update_hearts(int integrity) {
+    ensure_heart_icons(integrity);
     for (int i = 0; std::cmp_less(i, heart_icons.size()); ++i) {
         heart_icons[i]->set_visible(i < integrity);
     }
@@ -145,6 +154,7 @@ void HUD::show_score_screen(const Dictionary &stats) {
                                                                 .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(next_level_id),
                                                                 .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(current_level_id),
                                                                 .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
+                                                                .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
                                                             });
 
     score_screen_overlay = view.overlay;
@@ -156,5 +166,7 @@ void HUD::on_next_level_pressed(const String &level_id) { emit_signal("score_scr
 void HUD::on_retry_pressed(const String &level_id) { emit_signal("score_screen_retry", level_id); }
 
 void HUD::on_main_menu_pressed() { emit_signal("score_screen_main_menu"); }
+
+void HUD::on_upgrade_card_pressed(const String &upgrade_id) { emit_signal("score_screen_upgrade_selected", upgrade_id); }
 
 } // namespace defn

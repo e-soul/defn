@@ -3,8 +3,8 @@
 
 #include "unit_data.h"
 #include <godot_cpp/classes/area2d.hpp>
-#include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/core/math.hpp>
+#include <godot_cpp/core/object_id.hpp>
 
 namespace defn {
 
@@ -39,9 +39,9 @@ class CombatRuntime {
 
   private:
     struct PendingProjectileSpawn {
-      bool active = false;
-      ObjectID target_id{};
-      Vector2 target_global_position;
+        bool active = false;
+        ObjectID target_id{};
+        Vector2 target_global_position;
     };
 
     struct State {
@@ -49,7 +49,7 @@ class CombatRuntime {
         AttackMode attack_mode = AttackMode::NONE;
         bool engaged = false;
         Unit *target = nullptr;
-      PendingProjectileSpawn pending_projectile{};
+        PendingProjectileSpawn pending_projectile{};
     };
 
     void check_breach() const;

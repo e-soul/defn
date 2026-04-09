@@ -11,6 +11,7 @@
 #include "unit.h"
 #include "unit_factory.h"
 #include "wave_manager.h"
+#include <algorithm>
 #include <cmath>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
@@ -26,6 +27,18 @@ namespace defn {
 namespace {
 
 constexpr real_t HALF = 2.0F;
+
+bool has_upgrade_option(const Array &available_upgrades, const String &upgrade_id) {
+    // NOLINTNEXTLINE(readability-use-anyofallof)
+    for (const Variant &card_variant : available_upgrades) {
+        const Dictionary card = card_variant;
+        if (String(card.get("id", "")) == upgrade_id) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 } // namespace
 
@@ -77,7 +90,7 @@ void GameManager::_ready() {
 
     const int base_resource = wave_manager->get_starting_core_resource();
     const int starting_core_resource = progression->get_effective_starting_energy(base_resource);
-    const int initial_integrity = wave_manager->get_base_integrity();
+    const int initial_integrity = progression->get_effective_base_integrity(wave_manager->get_base_integrity());
 
     MatchConfig match_config{
         .starting_core_resource = starting_core_resource,
@@ -116,6 +129,7 @@ void GameManager::_ready() {
     hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
     hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
     hud->connect("score_screen_main_menu", callable_mp(this, &GameManager::on_score_screen_main_menu));
+    hud->connect("score_screen_upgrade_selected", callable_mp(this, &GameManager::on_score_screen_upgrade_selected));
 
     // Core resource generation timer
     core_resource_timer = memnew(Timer);
@@ -335,6 +349,10 @@ void GameManager::end_game(bool victory) {
 
     // Update progression
     progression->add_score(level_score);
+    Array available_upgrades;
+    if (victory && progression->can_claim_level_upgrade(level_id)) {
+        available_upgrades = progression->build_upgrade_draft_for_level(level_id);
+    }
     if (victory) {
         progression->mark_level_completed(level_id, level_score);
     }
@@ -359,14 +377,50 @@ void GameManager::end_game(bool victory) {
         }
     }
 
-    Dictionary stats = match_session_.build_end_game_stats(victory, new_total, level_id, next_level_id, new_unlocks);
-    hud->show_score_screen(stats);
+    pending_score_screen_stats_ =
+        match_session_.build_end_game_stats(victory, new_total, level_id, next_level_id, new_unlocks, available_upgrades, Dictionary());
+    hud->show_score_screen(pending_score_screen_stats_);
 }
 
-void GameManager::on_score_screen_next_level(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
+void GameManager::on_score_screen_next_level(const String &level_id) {
+    pending_score_screen_stats_.clear();
+    SceneNavigator::go_to_level(get_tree(), level_id);
+}
 
-void GameManager::on_score_screen_retry(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
+void GameManager::on_score_screen_retry(const String &level_id) {
+    pending_score_screen_stats_.clear();
+    SceneNavigator::go_to_level(get_tree(), level_id);
+}
 
-void GameManager::on_score_screen_main_menu() { SceneNavigator::go_to_main_menu(get_tree()); }
+void GameManager::on_score_screen_main_menu() {
+    pending_score_screen_stats_.clear();
+    SceneNavigator::go_to_main_menu(get_tree());
+}
+
+void GameManager::on_score_screen_upgrade_selected(const String &upgrade_id) {
+    if (upgrade_id.is_empty() || pending_score_screen_stats_.is_empty()) {
+        return;
+    }
+
+    const Dictionary selected_upgrade = pending_score_screen_stats_.get("selected_upgrade", Dictionary());
+    if (!String(selected_upgrade.get("id", "")).is_empty()) {
+        return;
+    }
+
+    const Array available_upgrades = pending_score_screen_stats_.get("available_upgrades", Array());
+    if (!has_upgrade_option(available_upgrades, upgrade_id)) {
+        return;
+    }
+
+    auto *progression = ProgressionManager::get_singleton();
+    const String level_id = pending_score_screen_stats_.get("current_level_id", "");
+    if (!progression->claim_level_upgrade(level_id, upgrade_id)) {
+        return;
+    }
+
+    progression->save();
+    pending_score_screen_stats_["selected_upgrade"] = progression->get_upgrade_card_view(upgrade_id);
+    hud->show_score_screen(pending_score_screen_stats_);
+}
 
 } // namespace defn

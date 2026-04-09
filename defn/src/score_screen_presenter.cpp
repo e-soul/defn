@@ -1,5 +1,6 @@
 #include "score_screen_presenter.h"
 
+#include "upgrade_card_presenter.h"
 #include "variant_tools.h"
 
 #include <godot_cpp/classes/button.hpp>
@@ -73,6 +74,63 @@ void connect_if_valid(Button *button, const Callable &callable) {
     }
 }
 
+void apply_button_enabled(Button *button, bool enabled) {
+    if (button == nullptr) {
+        return;
+    }
+
+    button->set_disabled(!enabled);
+    button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.6, 0.6, 0.65, 0.85));
+}
+
+void add_upgrade_section(VBoxContainer *content, const Array &available_upgrades, const Dictionary &selected_upgrade, const Callable &on_select_upgrade) {
+    if (content == nullptr || available_upgrades.is_empty()) {
+        return;
+    }
+
+    const String selected_upgrade_id = String(selected_upgrade.get("id", ""));
+
+    add_spacer(content, 12);
+
+    auto *section_title = memnew(Label);
+    section_title->set_text(selected_upgrade_id.is_empty() ? "CHOOSE 1 UPGRADE" : "UPGRADE SECURED");
+    section_title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    section_title->add_theme_font_size_override("font_size", 24);
+    section_title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    content->add_child(section_title);
+
+    if (!selected_upgrade_id.is_empty()) {
+        auto *summary = memnew(Label);
+        summary->set_text(vformat("%s %s", String(selected_upgrade.get("emoji", "")), String(selected_upgrade.get("name", "Upgrade"))));
+        summary->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+        summary->add_theme_font_size_override("font_size", 18);
+        summary->add_theme_color_override("font_color", Color(0.92, 0.95, 1.0));
+        content->add_child(summary);
+    }
+
+    add_spacer(content, 8);
+
+    auto *card_row = memnew(HBoxContainer);
+    card_row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    card_row->add_theme_constant_override("separation", 12);
+    content->add_child(card_row);
+
+    for (const Variant &card_variant : available_upgrades) {
+        const Dictionary card = card_variant;
+        const String card_id = String(card.get("id", ""));
+        const bool selected = !selected_upgrade_id.is_empty() && card_id == selected_upgrade_id;
+        const bool disabled = !selected_upgrade_id.is_empty();
+
+        Callable pressed_action;
+        if (selected_upgrade_id.is_empty() && on_select_upgrade.is_valid() && !card_id.is_empty()) {
+            pressed_action = on_select_upgrade.bind(card_id);
+        }
+
+        auto *card_button = UpgradeCardPresenter::create(card, selected, disabled, pressed_action);
+        card_row->add_child(card_button);
+    }
+}
+
 } // namespace
 
 ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats, const ScoreScreenActions &actions) {
@@ -91,6 +149,10 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     const int new_total_score = VariantTools::as_int(stats.get("new_total_score", 0));
     const String next_level_id = stats.get("next_level_id", "");
     const Array new_unlocks = stats.get("new_unlocks", Array());
+    const Array available_upgrades = stats.get("available_upgrades", Array());
+    const Dictionary selected_upgrade = stats.get("selected_upgrade", Dictionary());
+    const String selected_upgrade_id = String(selected_upgrade.get("id", ""));
+    const bool reward_choice_required = victory && !available_upgrades.is_empty() && selected_upgrade_id.is_empty();
 
     ScoreScreenView view;
 
@@ -158,6 +220,8 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
         }
     }
 
+    add_upgrade_section(content, available_upgrades, selected_upgrade, actions.on_select_upgrade);
+
     add_spacer(content, 16);
 
     auto *button_row = memnew(HBoxContainer);
@@ -168,15 +232,18 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     if (victory && !next_level_id.is_empty()) {
         auto *next_button = make_action_button("Next Level");
         connect_if_valid(next_button, actions.on_next_level);
+        apply_button_enabled(next_button, !reward_choice_required);
         button_row->add_child(next_button);
     }
 
     auto *retry_button = make_action_button("Retry");
     connect_if_valid(retry_button, actions.on_retry);
+    apply_button_enabled(retry_button, !reward_choice_required);
     button_row->add_child(retry_button);
 
     auto *menu_button = make_action_button("Main Menu");
     connect_if_valid(menu_button, actions.on_main_menu);
+    apply_button_enabled(menu_button, !reward_choice_required);
     button_row->add_child(menu_button);
 
     return view;

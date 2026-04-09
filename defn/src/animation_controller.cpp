@@ -203,7 +203,7 @@ Vector2 AnimationController::get_muzzle_global_position() const {
         return owner_node->to_global(muzzle_offset);
     }
 
-    return Vector2();
+    return {};
 }
 
 void AnimationController::play_muzzle_flash() {

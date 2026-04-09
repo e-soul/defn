@@ -8,6 +8,12 @@
 
 namespace defn {
 
+namespace {
+
+constexpr int CURRENT_SAVE_VERSION = 2;
+
+} // namespace
+
 std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String &path) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
     if (!file.is_valid()) {
@@ -26,6 +32,7 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
 
     Dictionary data = json->get_data();
     ProgressionSaveData save_data;
+    save_data.schema_version = VariantTools::as_int(data.get("version", 1));
     save_data.total_score = VariantTools::as_int(data.get("total_score", 0));
 
     Array completed = data.get("levels_completed", Array());
@@ -41,12 +48,25 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
         save_data.highest_level_scores.emplace_back(key, score);
     }
 
+    Array owned_upgrades = data.get("owned_upgrades", Array());
+    for (const Variant &upgrade_var : owned_upgrades) {
+        save_data.owned_upgrades.push_back(String(upgrade_var));
+    }
+
+    Dictionary claimed = data.get("claimed_level_upgrades", Dictionary());
+    Array claimed_levels = claimed.keys();
+    for (const Variant &level_var : claimed_levels) {
+        const String level_id = level_var;
+        const String upgrade_id = String(claimed[level_id]);
+        save_data.claimed_level_upgrades.emplace_back(level_id, upgrade_id);
+    }
+
     return save_data;
 }
 
 bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveData &save_data) {
     Dictionary data;
-    data["version"] = 1;
+    data["version"] = CURRENT_SAVE_VERSION;
     data["total_score"] = save_data.total_score;
 
     Array completed;
@@ -60,6 +80,18 @@ bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveDa
         highest[level_id] = score;
     }
     data["highest_level_score"] = highest;
+
+    Array owned_upgrades;
+    for (const auto &upgrade_id : save_data.owned_upgrades) {
+        owned_upgrades.push_back(upgrade_id);
+    }
+    data["owned_upgrades"] = owned_upgrades;
+
+    Dictionary claimed_level_upgrades;
+    for (const auto &[level_id, upgrade_id] : save_data.claimed_level_upgrades) {
+        claimed_level_upgrades[level_id] = upgrade_id;
+    }
+    data["claimed_level_upgrades"] = claimed_level_upgrades;
 
     const String json_text = JSON::stringify(data, "  ");
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);

@@ -10,9 +10,12 @@ namespace defn {
 using namespace godot;
 
 struct ProgressionSaveData {
+    int schema_version = 1;
     int total_score = 0;
     std::vector<String> levels_completed;
     std::vector<std::pair<String, int>> highest_level_scores;
+    std::vector<String> owned_upgrades;
+    std::vector<std::pair<String, String>> claimed_level_upgrades;
 };
 
 class ProgressionSaveRepository {

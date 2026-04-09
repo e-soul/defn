@@ -6,8 +6,8 @@
 #include <cmath>
 #include <vector>
 
-#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/object.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -17,7 +17,7 @@ namespace defn {
 
 namespace {
 
-constexpr char PLAYBACK_ANIMATION[] = "play";
+constexpr auto PLAYBACK_ANIMATION = "play";
 
 float linear_to_db(float linear) {
     const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
@@ -65,7 +65,7 @@ void ProjectileAttack::_process(double delta) {
         return;
     }
 
-    const real_t delta_seconds = static_cast<real_t>(delta);
+    const auto delta_seconds = static_cast<real_t>(delta);
     const real_t step_distance = config_.speed_pixels_per_second * delta_seconds;
     if (step_distance <= 0.0F) {
         explode();
@@ -84,7 +84,7 @@ void ProjectileAttack::_process(double delta) {
     set_global_position(get_global_position() + (travel_direction_ * step_distance));
 }
 
-Ref<SpriteFrames> ProjectileAttack::build_frames(const AnimConfig &animation) const {
+Ref<SpriteFrames> ProjectileAttack::build_frames(const AnimConfig &animation) {
     auto *loader = ResourceLoader::get_singleton();
     Ref<SpriteFrames> frames;
     frames.instantiate();
@@ -179,8 +179,7 @@ void ProjectileAttack::play_explosion_sfx() {
     explosion_player_->set_stream(stream);
     explosion_player_->set_volume_db(linear_to_db(config_.explosion_sfx->volume_linear));
     const float variance = config_.explosion_sfx->pitch_variance;
-    const float randomized_pitch =
-        config_.explosion_sfx->pitch_scale + static_cast<float>(UtilityFunctions::randf_range(-variance, variance));
+    const float randomized_pitch = config_.explosion_sfx->pitch_scale + static_cast<float>(UtilityFunctions::randf_range(-variance, variance));
     explosion_player_->set_pitch_scale(randomized_pitch > 0.01F ? randomized_pitch : 0.01F);
     explosion_player_->play();
 }
@@ -277,18 +276,18 @@ int ProjectileAttack::compute_affected_target_count(int candidate_count) const {
     }
 
     const real_t raw_count = static_cast<real_t>(candidate_count) * config_.affected_fraction;
-    real_t rounded_count = raw_count;
-    switch (config_.affected_target_rounding) {
-    case SplashTargetRoundingMode::FLOOR:
-        rounded_count = std::floor(raw_count);
-        break;
-    case SplashTargetRoundingMode::NEAREST:
-        rounded_count = std::round(raw_count);
-        break;
-    case SplashTargetRoundingMode::CEIL:
-        rounded_count = std::ceil(raw_count);
-        break;
-    }
+    const real_t rounded_count = [this, raw_count]() {
+        switch (config_.affected_target_rounding) {
+        case SplashTargetRoundingMode::FLOOR:
+            return std::floor(raw_count);
+        case SplashTargetRoundingMode::NEAREST:
+            return std::round(raw_count);
+        case SplashTargetRoundingMode::CEIL:
+            return std::ceil(raw_count);
+        }
+
+        return raw_count;
+    }();
 
     const int rounded_targets = static_cast<int>(rounded_count);
     return std::clamp(std::max(rounded_targets, config_.min_affected_targets), 1, candidate_count);

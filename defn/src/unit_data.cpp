@@ -209,10 +209,8 @@ void apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
     projectile.affected_target_rounding =
         parse_splash_rounding_mode(projectile_dict.get("affected_target_rounding", Variant("nearest")), projectile.affected_target_rounding);
     projectile.include_direct_target = VariantTools::as_bool(projectile_dict.get("include_direct_target", projectile.include_direct_target));
-    projectile.projectile_scale_multiplier =
-        VariantTools::as_real(projectile_dict.get("projectile_scale_multiplier", projectile.projectile_scale_multiplier));
-    projectile.explosion_scale_multiplier =
-        VariantTools::as_real(projectile_dict.get("explosion_scale_multiplier", projectile.explosion_scale_multiplier));
+    projectile.projectile_scale_multiplier = VariantTools::as_real(projectile_dict.get("projectile_scale_multiplier", projectile.projectile_scale_multiplier));
+    projectile.explosion_scale_multiplier = VariantTools::as_real(projectile_dict.get("explosion_scale_multiplier", projectile.explosion_scale_multiplier));
 
     if (projectile_dict.has("impact_damage")) {
         projectile.impact_damage = VariantTools::as_int(projectile_dict.get("impact_damage", 0));

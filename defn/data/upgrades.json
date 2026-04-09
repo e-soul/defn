@@ -1,0 +1,137 @@
+{
+  "draft_size": 3,
+  "reserve_unit_slot": true,
+  "base_units": ["breacher"],
+  "cards": [
+    {
+      "id": "battery_pack",
+      "name": "Battery Pack",
+      "description": "+25 starting energy next mission.",
+      "emoji": "🔋",
+      "category": "economy",
+      "minimum_completed_levels": 0,
+      "weight": 4,
+      "max_picks": 1,
+      "effects": [
+        { "type": "starting_energy_delta", "value": 25 }
+      ]
+    },
+    {
+      "id": "sharpshooter_contract",
+      "name": "Sharpshooter Contract",
+      "description": "Unlock the Marksman deploy card.",
+      "emoji": "🎯",
+      "category": "unit",
+      "minimum_completed_levels": 0,
+      "weight": 3,
+      "max_picks": 1,
+      "effects": [
+        { "type": "unit_unlock", "unit_id": "marksman" }
+      ]
+    },
+    {
+      "id": "reinforced_bulkhead",
+      "name": "Reinforced Bulkhead",
+      "description": "+1 base integrity next mission.",
+      "emoji": "🧱",
+      "category": "defense",
+      "minimum_completed_levels": 0,
+      "weight": 3,
+      "max_picks": 1,
+      "effects": [
+        { "type": "base_integrity_delta", "value": 1 }
+      ]
+    },
+    {
+      "id": "overclocked_capacitors",
+      "name": "Overclocked Capacitors",
+      "description": "+1 energy regen every second.",
+      "emoji": "⚡",
+      "category": "economy",
+      "minimum_completed_levels": 1,
+      "weight": 3,
+      "max_picks": 1,
+      "effects": [
+        { "type": "energy_regen_delta", "value": 1 }
+      ]
+    },
+    {
+      "id": "demolition_permit",
+      "name": "Demolition Permit",
+      "description": "Unlock the Impact deploy card.",
+      "emoji": "💥",
+      "category": "unit",
+      "minimum_completed_levels": 1,
+      "weight": 2,
+      "max_picks": 1,
+      "effects": [
+        { "type": "unit_unlock", "unit_id": "impact" }
+      ]
+    },
+    {
+      "id": "salvage_rights",
+      "name": "Salvage Rights",
+      "description": "Enemies drop 25% more energy.",
+      "emoji": "💰",
+      "category": "economy",
+      "minimum_completed_levels": 1,
+      "weight": 2,
+      "max_picks": 1,
+      "effects": [
+        { "type": "bounty_multiplier_delta", "value": 0.25 }
+      ]
+    },
+    {
+      "id": "reserve_cells",
+      "name": "Reserve Cells",
+      "description": "+40 starting energy next mission.",
+      "emoji": "🔋",
+      "category": "economy",
+      "minimum_completed_levels": 2,
+      "weight": 2,
+      "max_picks": 1,
+      "effects": [
+        { "type": "starting_energy_delta", "value": 40 }
+      ]
+    },
+    {
+      "id": "hardened_bulkhead",
+      "name": "Hardened Bulkhead",
+      "description": "+1 base integrity next mission.",
+      "emoji": "🛡️",
+      "category": "defense",
+      "minimum_completed_levels": 2,
+      "weight": 2,
+      "max_picks": 1,
+      "effects": [
+        { "type": "base_integrity_delta", "value": 1 }
+      ]
+    },
+    {
+      "id": "command_uplink",
+      "name": "Command Uplink",
+      "description": "Unlock the Operator deploy card.",
+      "emoji": "🛰️",
+      "category": "unit",
+      "minimum_completed_levels": 2,
+      "weight": 1,
+      "max_picks": 1,
+      "effects": [
+        { "type": "unit_unlock", "unit_id": "operator" }
+      ]
+    },
+    {
+      "id": "war_chest",
+      "name": "War Chest",
+      "description": "Enemies drop 50% more energy.",
+      "emoji": "💵",
+      "category": "economy",
+      "minimum_completed_levels": 2,
+      "weight": 1,
+      "max_picks": 1,
+      "effects": [
+        { "type": "bounty_multiplier_delta", "value": 0.5 }
+      ]
+    }
+  ]
+}

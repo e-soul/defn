@@ -26,16 +26,6 @@ bool ProgressionCatalog::load(const String &path) {
 
     Dictionary data = json->get_data();
 
-    Array unit_arr = data.get("unit_unlocks", Array());
-    unit_unlocks_.clear();
-    for (const auto &entry_var : unit_arr) {
-        Dictionary entry = entry_var;
-        unit_unlocks_.push_back({
-            .unit_id = String(entry.get("unit_id", "")),
-            .score_required = VariantTools::as_int(entry.get("score_required", 0)),
-        });
-    }
-
     Array level_arr = data.get("level_unlocks", Array());
     level_unlocks_.clear();
     for (const auto &entry_var : level_arr) {
@@ -53,20 +43,7 @@ bool ProgressionCatalog::load(const String &path) {
         level_unlocks_.push_back(unlock);
     }
 
-    Array upgrade_arr = data.get("upgrades", Array());
-    upgrades_.clear();
-    for (const auto &entry_var : upgrade_arr) {
-        Dictionary entry = entry_var;
-        upgrades_.push_back({
-            .id = String(entry.get("id", "")),
-            .score_required = VariantTools::as_int(entry.get("score_required", 0)),
-            .type = String(entry.get("type", "")),
-            .value = VariantTools::as_real(entry.get("value", 0.0)),
-        });
-    }
-
-    UtilityFunctions::print("ProgressionCatalog: Loaded ", unit_unlocks_.size(), " unit unlocks, ", level_unlocks_.size(), " level unlocks, ", upgrades_.size(),
-                            " upgrades");
+    UtilityFunctions::print("ProgressionCatalog: Loaded ", level_unlocks_.size(), " level unlocks");
     return true;
 }
 

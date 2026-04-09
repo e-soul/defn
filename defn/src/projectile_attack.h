@@ -29,7 +29,7 @@ class ProjectileAttack : public Node2D {
     static void _bind_methods();
 
   private:
-    Ref<SpriteFrames> build_frames(const AnimConfig &animation) const;
+    static Ref<SpriteFrames> build_frames(const AnimConfig &animation);
     void ensure_sprite();
     void start_flight_animation();
     void start_explosion_animation();
