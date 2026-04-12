@@ -27,7 +27,7 @@ void change_scene(SceneTree *tree, const String &scene_path) {
 void SceneNavigator::go_to_main_menu(SceneTree *tree) { change_scene(tree, MENU_SCENE_PATH); }
 
 void SceneNavigator::go_to_level(SceneTree *tree, const String &level_id) {
-    if (auto *progression = ProgressionManager::get_singleton()) {
+    if (auto *progression = CampaignService::get_singleton()) {
         progression->set_current_level_id(level_id);
     }
     change_scene(tree, GAME_SCENE_PATH);

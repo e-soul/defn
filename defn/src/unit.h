@@ -1,6 +1,7 @@
 #ifndef UNIT_H
 #define UNIT_H
 
+#include "attack_target.h"
 #include "unit_data.h"
 #include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -18,7 +19,7 @@ class DetectionComponent;
 class SoundController;
 class UnitFactory;
 
-class Unit : public CharacterBody2D {
+class Unit : public CharacterBody2D, public AttackTarget {
     GDCLASS(Unit, CharacterBody2D)
 
   public:
@@ -27,16 +28,18 @@ class Unit : public CharacterBody2D {
 
     void set_unit_config(const UnitConfig &cfg);
 
-    void take_damage(int amount);
-    void flash_damage(const Color &color);
-    bool is_dead() const;
+    void take_damage(int amount) override;
+    void flash_damage(const Color &color) override;
+    bool is_dead() const override;
 
     int get_cost() const { return unit_config_.cost; }
     int get_bounty() const { return unit_config_.bounty; }
-    UnitSide get_side() const { return unit_config_.side; }
+    UnitSide get_side() const override { return unit_config_.side; }
     const UnitConfig &get_unit_config() const { return unit_config_; }
     real_t get_attack_range() const { return attack_range; }
     real_t get_ranged_range() const { return ranged_range; }
+    Node2D *get_target_node() override { return this; }
+    const Node2D *get_target_node() const override { return this; }
 
     void do_movement(double delta);
 

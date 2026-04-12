@@ -142,17 +142,15 @@ void HUD::update_score(int score) {
     }
 }
 
-void HUD::show_score_screen(const Dictionary &stats) {
+void HUD::show_score_screen(const ScoreScreenModel &summary) {
     if (score_screen_overlay != nullptr && !score_screen_overlay->is_queued_for_deletion()) {
         score_screen_overlay->queue_free();
     }
 
-    const String current_level_id = stats.get("current_level_id", "");
-    const String next_level_id = stats.get("next_level_id", "");
-    const ScoreScreenView view = ScoreScreenPresenter::show(this, stats,
+    const ScoreScreenView view = ScoreScreenPresenter::show(this, summary,
                                                             {
-                                                                .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(next_level_id),
-                                                                .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(current_level_id),
+                                                                .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(summary.next_level_id),
+                                                                .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(summary.current_level_id),
                                                                 .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
                                                                 .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
                                                             });

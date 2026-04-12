@@ -1,9 +1,9 @@
 #ifndef MATCH_SESSION_H
 #define MATCH_SESSION_H
 
+#include "score_screen_models.h"
+
 #include <godot_cpp/core/math.hpp>
-#include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
@@ -62,9 +62,8 @@ class MatchSession {
     int calculate_integrity_bonus() const;
     static int calculate_completion_bonus(bool victory);
     int calculate_level_score(bool victory) const;
-    Dictionary build_end_game_stats(bool victory, int new_total_score, const String &current_level_id, const String &next_level_id,
-                                    const PackedStringArray &new_unlocks, const Array &available_upgrades, const Dictionary &selected_upgrade,
-                                    const Dictionary &reward_context) const;
+    ScoreScreenModel build_end_game_summary(bool victory, int new_total_score, const String &current_level_id, const String &next_level_id,
+                                            const PackedStringArray &new_unlocks, const ScoreScreenRewardModel &reward) const;
 
   private:
     static int calculate_hearts_from_health(int health);

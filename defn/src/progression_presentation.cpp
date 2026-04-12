@@ -28,7 +28,7 @@ String ProgressionPresentation::format_reward_subtitle(const String &reward_sour
     return {};
 }
 
-PackedStringArray ProgressionPresentation::describe_new_unlocks(const ProgressionManager &progression, bool victory, const String &completed_level_id) {
+PackedStringArray ProgressionPresentation::describe_new_unlocks(const CampaignService &progression, bool victory, const String &completed_level_id) {
     PackedStringArray result;
 
     if (!victory || completed_level_id.is_empty()) {
@@ -44,7 +44,7 @@ PackedStringArray ProgressionPresentation::describe_new_unlocks(const Progressio
     return result;
 }
 
-String ProgressionPresentation::format_level_button_label(const ProgressionManager &progression, const LevelUnlock &level_unlock) {
+String ProgressionPresentation::format_level_button_label(const CampaignService &progression, const LevelUnlock &level_unlock) {
     String label_text = format_level_name(level_unlock.level_id);
     if (!progression.is_level_unlocked(level_unlock.level_id)) {
         if (!level_unlock.requires_completed.is_empty()) {

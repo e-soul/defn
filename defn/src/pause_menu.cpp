@@ -1,4 +1,5 @@
 #include "pause_menu.h"
+#include "data_paths.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
 #include "scene_navigator.h"
@@ -39,7 +40,7 @@ void PauseMenu::_input(const Ref<InputEvent> &event) {
 }
 
 bool PauseMenu::load_config() {
-    const auto loaded_menu_data = MenuDataLoader::load("res://data/menu_data.json");
+    const auto loaded_menu_data = MenuDataLoader::load(DataPaths::MENU_DATA);
     if (!loaded_menu_data) {
         return false;
     }
@@ -49,15 +50,18 @@ bool PauseMenu::load_config() {
 }
 
 void PauseMenu::build_ui() {
-    Dictionary menus = menu_data_.get("menus", Dictionary());
-    Dictionary pause_def = menus.get("pause_menu", Dictionary());
-    Dictionary style = menu_data_.get("style", Dictionary());
+    const MenuDefinition *pause_menu = menu_data_.find_menu("pause_menu");
+    if (pause_menu == nullptr) {
+        UtilityFunctions::printerr("PauseMenu: Missing pause_menu definition");
+        return;
+    }
+
+    const Dictionary style = menu_data_.style_data;
 
     // Dark overlay
-    Color overlay_color = parse_color_array(pause_def.get("overlay_color", Array()), Color(0, 0, 0, 0.6));
     overlay_ = memnew(ColorRect);
     overlay_->set_anchors_preset(Control::PRESET_FULL_RECT);
-    overlay_->set_color(overlay_color);
+    overlay_->set_color(pause_menu->overlay_color);
     overlay_->set_mouse_filter(Control::MOUSE_FILTER_STOP);
     add_child(overlay_);
 
@@ -75,21 +79,16 @@ void PauseMenu::build_ui() {
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
-    Array entries = pause_def.get("entries", Array());
-    for (const auto &entry_variant : entries) {
-        Dictionary entry = entry_variant;
-        String label = entry.get("label", "???");
-        String action = entry.get("action", "");
-
+    for (const auto &entry : pause_menu->entries) {
         auto *btn = memnew(Button);
-        btn->set_text(label);
+        btn->set_text(entry.label.is_empty() ? String("???") : entry.label);
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
 
-        if (action == "resume") {
+        if (entry.action == "resume") {
             btn->connect("pressed", callable_mp(this, &PauseMenu::on_resume));
-        } else if (action == "main_menu") {
+        } else if (entry.action == "main_menu") {
             btn->connect("pressed", callable_mp(this, &PauseMenu::on_main_menu));
         }
 

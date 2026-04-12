@@ -1,6 +1,7 @@
 #ifndef BASE_OBJECTIVE_H
 #define BASE_OBJECTIVE_H
 
+#include "attack_target.h"
 #include "unit_data.h"
 
 #include <godot_cpp/classes/area2d.hpp>
@@ -16,21 +17,23 @@ using namespace godot;
 
 class HealthComponent;
 
-class BaseObjective : public Node2D {
+class BaseObjective : public Node2D, public AttackTarget {
     GDCLASS(BaseObjective, Node2D)
 
   public:
     BaseObjective();
 
     void configure(int max_hp, const Vector2 &position);
-    void take_damage(int amount);
-    void flash_damage(const Color &color);
-    bool is_dead() const;
+    void take_damage(int amount) override;
+    void flash_damage(const Color &color) override;
+    bool is_dead() const override;
 
-    UnitSide get_side() const { return UnitSide::FRIENDLY; }
+    UnitSide get_side() const override { return UnitSide::FRIENDLY; }
     int get_current_hp() const;
     int get_max_hp() const;
     Area2D *get_hitbox() const { return hitbox_; }
+    Node2D *get_target_node() override { return this; }
+    const Node2D *get_target_node() const override { return this; }
 
     void _draw() override;
     void _process(double delta) override;

@@ -3,13 +3,12 @@
 
 #include "progression_catalog.h"
 #include "progression_save_repository.h"
+#include "score_screen_models.h"
 #include "upgrade_catalog.h"
 
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
-#include <godot_cpp/variant/array.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <string>
@@ -21,13 +20,13 @@ using namespace godot;
 
 struct UnitConfig;
 
-class ProgressionManager : public Object {
-    GDCLASS(ProgressionManager, Object)
+class CampaignService : public Object {
+    GDCLASS(CampaignService, Object)
 
   public:
-    ProgressionManager() = default;
+    CampaignService() = default;
 
-    static ProgressionManager *get_singleton();
+    static CampaignService *get_singleton();
     static void register_singleton();
     static void unregister_singleton();
 
@@ -54,9 +53,8 @@ class ProgressionManager : public Object {
     real_t get_effective_bounty_multiplier() const;
     int get_effective_base_integrity(int base) const;
     int get_completed_level_count() const;
-    Array build_upgrade_draft_for_level(const String &level_id) const;
-    Array build_rescue_draft_for_level(const String &level_id) const;
-    Dictionary get_upgrade_card_view(const String &upgrade_id) const;
+    std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level(const String &level_id) const;
+    std::vector<UpgradeCardViewModel> build_rescue_draft_for_level(const String &level_id) const;
 
     String get_current_level_id() const { return current_level_id_; }
     void set_current_level_id(const String &level_id) { current_level_id_ = level_id; }
@@ -76,22 +74,21 @@ class ProgressionManager : public Object {
     static void _bind_methods();
 
   private:
-    static Dictionary build_upgrade_card_view(const UpgradeCardDefinition &card);
+    static UpgradeCardViewModel build_upgrade_card_view(const UpgradeCardDefinition &card);
 
     const LevelUnlock *find_level_unlock(const String &level_id) const;
-    Array build_upgrade_draft() const;
+    std::vector<UpgradeCardViewModel> build_upgrade_draft() const;
     void load_save();
     void create_default_save();
-    void migrate_legacy_save_if_needed();
     void grant_upgrade(const String &upgrade_id);
     int get_owned_upgrade_count(const String &upgrade_id) const;
     void set_rescue_drafts_claimed(const String &level_id, int claimed_count);
 
-    static ProgressionManager *singleton_;
+    static CampaignService *singleton_;
 
     ProgressionCatalog catalog_;
     UpgradeCatalog upgrade_catalog_;
-    ProgressionSaveData save_data_;
+    PlayerProfile save_data_;
 
     // Transient
     String current_level_id_ = "level_01";

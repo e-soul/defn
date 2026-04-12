@@ -2,6 +2,7 @@
 #define COMBAT_COMPONENT_H
 
 #include "combat_runtime.h"
+#include "combat_types.h"
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>

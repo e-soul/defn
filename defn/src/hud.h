@@ -1,6 +1,7 @@
 #ifndef HUD_H
 #define HUD_H
 
+#include "score_screen_models.h"
 #include "unit_data.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
@@ -10,7 +11,6 @@
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <vector>
 
 namespace defn {
@@ -37,7 +37,7 @@ class HUD : public CanvasLayer {
     void update_hearts(int integrity);
     void update_card_affordability(int energy);
     void update_score(int score);
-    void show_score_screen(const Dictionary &stats);
+    void show_score_screen(const ScoreScreenModel &summary);
 
   protected:
     static void _bind_methods();

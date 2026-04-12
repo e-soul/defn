@@ -8,13 +8,7 @@
 
 namespace defn {
 
-namespace {
-
-constexpr int CURRENT_SAVE_VERSION = 4;
-
-} // namespace
-
-std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String &path) {
+std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
     if (!file.is_valid()) {
         return std::nullopt;
@@ -31,26 +25,27 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
     }
 
     Dictionary data = json->get_data();
-    ProgressionSaveData save_data;
-    save_data.schema_version = VariantTools::as_int(data.get("version", 1));
+    PlayerProfile save_data;
     save_data.total_score = VariantTools::as_int(data.get("total_score", 0));
 
     Array completed = data.get("levels_completed", Array());
     for (const auto &level_var : completed) {
-        save_data.levels_completed.push_back(String(level_var));
+        save_data.completed_levels.insert(String(level_var));
     }
 
-    Dictionary highest = data.get("highest_level_score", Dictionary());
+    Dictionary highest = data.get("best_level_scores", Dictionary());
     Array keys = highest.keys();
     for (const auto &key_var : keys) {
         const String key = key_var;
         const int score = VariantTools::as_int(highest[key]);
-        save_data.highest_level_scores.emplace_back(key, score);
+        save_data.best_level_scores[key] = score;
     }
 
-    Array owned_upgrades = data.get("owned_upgrades", Array());
-    for (const Variant &upgrade_var : owned_upgrades) {
-        save_data.owned_upgrades.push_back(String(upgrade_var));
+    Dictionary owned_upgrades = data.get("owned_upgrade_counts", Dictionary());
+    Array owned_upgrade_ids = owned_upgrades.keys();
+    for (const Variant &upgrade_var : owned_upgrade_ids) {
+        const String upgrade_id = upgrade_var;
+        save_data.owned_upgrade_counts[upgrade_id] = std::max(0, VariantTools::as_int(owned_upgrades[upgrade_id]));
     }
 
     Dictionary claimed = data.get("claimed_level_upgrades", Dictionary());
@@ -58,7 +53,7 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
     for (const Variant &level_var : claimed_levels) {
         const String level_id = level_var;
         const String upgrade_id = String(claimed[level_id]);
-        save_data.claimed_level_upgrades.emplace_back(level_id, upgrade_id);
+        save_data.claimed_level_upgrades[level_id] = upgrade_id;
     }
 
     Dictionary rescue_claimed = data.get("rescue_drafts_claimed", Dictionary());
@@ -66,34 +61,33 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
     for (const Variant &level_var : rescue_levels) {
         const String level_id = level_var;
         const int claimed_count = VariantTools::as_int(rescue_claimed[level_id]);
-        save_data.rescue_drafts_claimed.emplace_back(level_id, claimed_count);
+        save_data.claimed_rescue_drafts[level_id] = std::max(0, claimed_count);
     }
 
     return save_data;
 }
 
-bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveData &save_data) {
+bool ProgressionSaveRepository::save(const String &path, const PlayerProfile &save_data) {
     Dictionary data;
-    data["version"] = CURRENT_SAVE_VERSION;
     data["total_score"] = save_data.total_score;
 
     Array completed;
-    for (const auto &level_id : save_data.levels_completed) {
+    for (const auto &level_id : save_data.completed_levels) {
         completed.push_back(level_id);
     }
     data["levels_completed"] = completed;
 
-    Dictionary highest;
-    for (const auto &[level_id, score] : save_data.highest_level_scores) {
-        highest[level_id] = score;
+    Dictionary best_level_scores;
+    for (const auto &[level_id, score] : save_data.best_level_scores) {
+        best_level_scores[level_id] = score;
     }
-    data["highest_level_score"] = highest;
+    data["best_level_scores"] = best_level_scores;
 
-    Array owned_upgrades;
-    for (const auto &upgrade_id : save_data.owned_upgrades) {
-        owned_upgrades.push_back(upgrade_id);
+    Dictionary owned_upgrade_counts;
+    for (const auto &[upgrade_id, count] : save_data.owned_upgrade_counts) {
+        owned_upgrade_counts[upgrade_id] = count;
     }
-    data["owned_upgrades"] = owned_upgrades;
+    data["owned_upgrade_counts"] = owned_upgrade_counts;
 
     Dictionary claimed_level_upgrades;
     for (const auto &[level_id, upgrade_id] : save_data.claimed_level_upgrades) {
@@ -102,7 +96,7 @@ bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveDa
     data["claimed_level_upgrades"] = claimed_level_upgrades;
 
     Dictionary rescue_drafts_claimed;
-    for (const auto &[level_id, claimed_count] : save_data.rescue_drafts_claimed) {
+    for (const auto &[level_id, claimed_count] : save_data.claimed_rescue_drafts) {
         rescue_drafts_claimed[level_id] = claimed_count;
     }
     data["rescue_drafts_claimed"] = rescue_drafts_claimed;

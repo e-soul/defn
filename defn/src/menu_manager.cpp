@@ -1,4 +1,5 @@
 #include "menu_manager.h"
+#include "data_paths.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
 #include "progression_manager.h"
@@ -26,22 +27,22 @@ namespace defn {
 
 namespace {
 
-void add_section_label(VBoxContainer *button_container, const Dictionary &setting, const OptionsLayout &options_layout) {
+void add_section_label(VBoxContainer *button_container, const MenuSetting &setting, const OptionsLayout &options_layout) {
     auto *section_label = memnew(Label);
-    section_label->set_text(String(setting.get("label", "")));
+    section_label->set_text(setting.label);
     section_label->add_theme_font_size_override("font_size", options_layout.section_font_size);
     section_label->add_theme_color_override("font_color", options_layout.section_color);
     section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     button_container->add_child(section_label);
 }
 
-HBoxContainer *create_option_row(const Dictionary &setting, const OptionsLayout &options_layout) {
+HBoxContainer *create_option_row(const MenuSetting &setting, const OptionsLayout &options_layout) {
     auto *row = memnew(HBoxContainer);
     row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     row->add_theme_constant_override("separation", 16);
 
     auto *name_label = memnew(Label);
-    name_label->set_text(String(setting.get("label", "???")));
+    name_label->set_text(setting.label.is_empty() ? String("???") : setting.label);
     name_label->set_custom_minimum_size(options_layout.label_minimum_size);
     name_label->add_theme_font_size_override("font_size", options_layout.label_font_size);
     name_label->add_theme_color_override("font_color", options_layout.label_color);
@@ -51,14 +52,10 @@ HBoxContainer *create_option_row(const Dictionary &setting, const OptionsLayout 
     return row;
 }
 
-bool is_setting(const Dictionary &setting, const String &expected_type, const String &expected_setting_id) {
-    return String(setting.get("type", "")) == expected_type && String(setting.get("setting", "")) == expected_setting_id;
-}
-
-bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const ButtonStyle &button_style,
+bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const MenuSetting &setting, const ButtonStyle &button_style,
                                   const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode,
                                   std::vector<DisplayServer::WindowMode> &display_mode_values) {
-    if (!is_setting(setting, "dropdown", "display_mode")) {
+    if (setting.kind != MenuSettingKind::DISPLAY_MODE) {
         return false;
     }
 
@@ -68,13 +65,11 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     apply_button_theme(option_button, button_style, options_layout.label_font_size);
 
     display_mode_values.clear();
-    const Array options = setting.get("options", Array());
     int selected_index = 0;
     int option_index = 0;
-    for (const Variant &option_variant : options) {
-        Dictionary option_data = option_variant;
-        option_button->add_item(String(option_data.get("label", "???")));
-        const auto mode_value = static_cast<DisplayServer::WindowMode>(VariantTools::as_int(option_data.get("value", 0)));
+    for (const auto &option : setting.options) {
+        option_button->add_item(option.label);
+        const auto mode_value = static_cast<DisplayServer::WindowMode>(option.value.to_int());
         display_mode_values.push_back(mode_value);
         if (static_cast<int>(mode_value) == static_cast<int>(current_mode)) {
             selected_index = option_index;
@@ -88,10 +83,10 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     return true;
 }
 
-bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const ButtonStyle &button_style,
+bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const MenuSetting &setting, const ButtonStyle &button_style,
                                 const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode, const Vector2i &current_size,
                                 OptionButton *&resolution_dropdown, std::vector<Vector2i> &resolution_values) {
-    if (!is_setting(setting, "dropdown", "resolution")) {
+    if (setting.kind != MenuSettingKind::RESOLUTION) {
         return false;
     }
 
@@ -101,13 +96,11 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     apply_button_theme(option_button, button_style, options_layout.label_font_size);
 
     resolution_values.clear();
-    const Array options = setting.get("options", Array());
     int selected_index = 0;
     int option_index = 0;
-    for (const Variant &option_variant : options) {
-        Dictionary option_data = option_variant;
-        option_button->add_item(String(option_data.get("label", "???")));
-        const Vector2i resolution = SettingsService::parse_resolution_value(String(option_data.get("value", "")));
+    for (const auto &option : setting.options) {
+        option_button->add_item(option.label);
+        const Vector2i resolution = SettingsService::parse_resolution_value(option.value);
         resolution_values.push_back(resolution);
         if (resolution == current_size) {
             selected_index = option_index;
@@ -126,8 +119,8 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     return true;
 }
 
-bool try_add_vsync_control(HBoxContainer *row, const Dictionary &setting, const OptionsLayout &options_layout, bool vsync_on, MenuManager *manager) {
-    if (!is_setting(setting, "checkbox", "vsync")) {
+bool try_add_vsync_control(HBoxContainer *row, const MenuSetting &setting, const OptionsLayout &options_layout, bool vsync_on, MenuManager *manager) {
+    if (setting.kind != MenuSettingKind::VSYNC) {
         return false;
     }
 
@@ -140,16 +133,16 @@ bool try_add_vsync_control(HBoxContainer *row, const Dictionary &setting, const 
     return true;
 }
 
-bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Dictionary &setting, const OptionsLayout &options_layout,
+bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const MenuSetting &setting, const OptionsLayout &options_layout,
                             const SettingsState &settings_state, std::vector<std::pair<String, Label *>> &volume_labels) {
-    if (!is_setting(setting, "slider", "bus_volume")) {
+    if (setting.kind != MenuSettingKind::BUS_VOLUME) {
         return false;
     }
 
-    const String bus_name = setting.get("bus", "Master");
-    const int min_value = VariantTools::as_int(setting.get("min", 0));
-    const int max_value = VariantTools::as_int(setting.get("max", 100));
-    const int step_value = VariantTools::as_int(setting.get("step", 1));
+    const String bus_name = setting.bus_name.is_empty() ? String("Master") : setting.bus_name;
+    const int min_value = setting.min_value;
+    const int max_value = setting.max_value;
+    const int step_value = setting.step_value;
     const double current_percent = SettingsService::get_bus_volume_percent(settings_state, bus_name);
 
     auto *slider = memnew(HSlider);
@@ -174,20 +167,18 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Dict
     return true;
 }
 
-void add_back_button(MenuManager *manager, VBoxContainer *button_container, const Dictionary &back, const ButtonStyle &button_style) {
-    if (back.is_empty()) {
+void add_back_button(MenuManager *manager, VBoxContainer *button_container, const std::optional<MenuAction> &back, const ButtonStyle &button_style) {
+    if (!back.has_value()) {
         return;
     }
 
     auto *button = memnew(Button);
-    button->set_text(String(back.get("label", "Back")));
+    button->set_text(back->label.is_empty() ? String("Back") : back->label);
     button->set_custom_minimum_size(button_style.minimum_size);
     button->set_focus_mode(Control::FOCUS_NONE);
     apply_button_theme(button, button_style, button_style.font_size);
 
-    const String action = back.get("action", "none");
-    const String target = back.get("target", "");
-    button->connect("pressed", callable_mp(manager, &MenuManager::on_button_pressed).bind(action, target));
+    button->connect("pressed", callable_mp(manager, &MenuManager::on_button_pressed).bind(back->action, back->target));
     button_container->add_child(button);
 }
 
@@ -211,7 +202,7 @@ void MenuManager::_ready() {
     setup_background();
 
     // Total score label (top right)
-    auto *progression = ProgressionManager::get_singleton();
+    auto *progression = CampaignService::get_singleton();
     total_score_label_ = memnew(Label);
     total_score_label_->set_text(vformat("Career Score: %d", progression->get_total_score()));
     total_score_label_->set_anchors_preset(Control::PRESET_TOP_RIGHT);
@@ -237,7 +228,7 @@ void MenuManager::_ready() {
 }
 
 bool MenuManager::load_menu_data() {
-    const auto loaded_menu_data = MenuDataLoader::load("res://data/menu_data.json");
+    const auto loaded_menu_data = MenuDataLoader::load(DataPaths::MENU_DATA);
     if (!loaded_menu_data) {
         return false;
     }
@@ -247,7 +238,7 @@ bool MenuManager::load_menu_data() {
 }
 
 void MenuManager::setup_background() {
-    String bg_path = menu_data_.get("background", "");
+    const String bg_path = menu_data_.background;
     if (bg_path.is_empty()) {
         return;
     }
@@ -289,44 +280,34 @@ void MenuManager::show_menu(const String &menu_name) {
     clear_buttons();
     current_menu_ = menu_name;
 
-    Dictionary menus = menu_data_.get("menus", Dictionary());
-    if (!menus.has(menu_name)) {
+    const MenuDefinition *menu = menu_data_.find_menu(menu_name);
+    if (menu == nullptr) {
         UtilityFunctions::printerr("MenuManager: Unknown menu: ", menu_name);
         return;
     }
 
-    Dictionary menu = menus[menu_name];
-
-    String menu_type = menu.get("type", "buttons");
-    if (menu_type == "options") {
-        build_options_ui(menu);
+    if (menu->type == MenuDefinitionType::OPTIONS) {
+        build_options_ui(*menu);
         return;
     }
 
-    Array entries = menu.get("entries", Array());
-    Dictionary style_data = menu_data_.get("style", Dictionary());
-    const ButtonStyle button_style = build_button_style(style_data);
+    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
-    for (const Variant &entry_variant : entries) {
-        Dictionary entry = entry_variant;
-        String label = entry.get("label", "???");
-        String action = entry.get("action", "none");
-        String target = entry.get("target", "");
-
+    for (const auto &entry : menu->entries) {
         auto *btn = memnew(Button);
-        btn->set_text(label);
+        btn->set_text(entry.label.is_empty() ? String("???") : entry.label);
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
 
-        if (action == "none") {
+        if (entry.action == "none") {
             btn->set_disabled(true);
             btn->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
         }
 
-        btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(action, target));
+        btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(entry.action, entry.target));
         button_container_->add_child(btn);
     }
 }
@@ -347,8 +328,7 @@ void MenuManager::show_level_select() {
     clear_buttons();
     current_menu_ = "level_select";
 
-    Dictionary style_data = menu_data_.get("style", Dictionary());
-    const ButtonStyle button_style = build_button_style(style_data);
+    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
@@ -360,7 +340,7 @@ void MenuManager::show_level_select() {
     title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
     button_container_->add_child(title);
 
-    auto *progression = ProgressionManager::get_singleton();
+    auto *progression = CampaignService::get_singleton();
     const auto &level_data = progression->get_level_unlock_data();
 
     for (const auto &level : level_data) {
@@ -394,10 +374,9 @@ void MenuManager::show_level_select() {
 
 void MenuManager::on_level_selected(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
 
-void MenuManager::build_options_ui(const Dictionary &menu_def) {
-    const Dictionary style = menu_data_.get("style", Dictionary());
-    const ButtonStyle button_style = build_button_style(style);
-    const OptionsLayout options_layout = build_options_layout(style.get("options", Dictionary()));
+void MenuManager::build_options_ui(const MenuDefinition &menu_def) {
+    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
+    const OptionsLayout options_layout = build_options_layout(menu_data_.style_data.get("options", Dictionary()));
 
     button_container_->add_theme_constant_override("separation", options_layout.row_separation);
 
@@ -405,10 +384,8 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
     const Vector2i current_size = settings_state_.resolution;
     const bool vsync_on = settings_state_.vsync_enabled;
 
-    const Array settings = menu_def.get("settings", Array());
-    for (const Variant &setting_variant : settings) {
-        Dictionary setting = setting_variant;
-        if (String(setting.get("type", "")) == "section") {
+    for (const auto &setting : menu_def.settings) {
+        if (setting.kind == MenuSettingKind::SECTION) {
             add_section_label(button_container_, setting, options_layout);
             continue;
         }
@@ -424,11 +401,11 @@ void MenuManager::build_options_ui(const Dictionary &menu_def) {
             button_container_->add_child(row);
         } else {
             row->queue_free();
-            UtilityFunctions::printerr("MenuManager: Unknown option setting: ", setting.get("setting", "<missing>"));
+            UtilityFunctions::printerr("MenuManager: Unknown option setting: ", setting.setting_id);
         }
     }
 
-    add_back_button(this, button_container_, menu_def.get("back", Dictionary()), button_style);
+    add_back_button(this, button_container_, menu_def.back, button_style);
 }
 
 void MenuManager::on_display_mode_changed(int index) {

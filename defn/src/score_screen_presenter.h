@@ -1,12 +1,13 @@
 #ifndef SCORE_SCREEN_PRESENTER_H
 #define SCORE_SCREEN_PRESENTER_H
 
+#include "score_screen_models.h"
+
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/variant/callable.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 
 namespace defn {
 
@@ -28,7 +29,7 @@ class ScoreScreenPresenter {
   public:
     ScoreScreenPresenter() = delete;
 
-    static ScoreScreenView show(Node *parent, const Dictionary &stats, const ScoreScreenActions &actions);
+    static ScoreScreenView show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions);
 };
 
 } // namespace defn

@@ -1,12 +1,13 @@
 #ifndef PAUSE_MENU_H
 #define PAUSE_MENU_H
 
+#include "menu_models.h"
+
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 
 namespace defn {
 
@@ -31,7 +32,7 @@ class PauseMenu : public CanvasLayer {
     void on_resume();
     void on_main_menu();
 
-    Dictionary menu_data_;
+    MenuContentData menu_data_;
     bool paused_ = false;
 
     ColorRect *overlay_ = nullptr;

@@ -1,6 +1,7 @@
 #ifndef MENU_MANAGER_H
 #define MENU_MANAGER_H
 
+#include "menu_models.h"
 #include "settings_service.h"
 
 #include <godot_cpp/classes/button.hpp>
@@ -12,7 +13,6 @@
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/vector2i.hpp>
 #include <utility>
@@ -43,9 +43,9 @@ class MenuManager : public Node2D {
     void show_menu(const String &menu_name);
     void show_level_select();
     void clear_buttons();
-    void build_options_ui(const Dictionary &menu_def);
+    void build_options_ui(const MenuDefinition &menu_def);
 
-    Dictionary menu_data_;
+    MenuContentData menu_data_;
     String current_menu_;
     SettingsState settings_state_;
 

@@ -30,8 +30,8 @@ void initialize_module(ModuleInitializationLevel p_level) {
 
     ClassDB::register_class<defn::GridManager>();
     defn::GridManager::register_singleton();
-    ClassDB::register_class<defn::ProgressionManager>();
-    defn::ProgressionManager::register_singleton();
+    ClassDB::register_class<defn::CampaignService>();
+    defn::CampaignService::register_singleton();
     ClassDB::register_class<defn::HealthComponent>();
     ClassDB::register_class<defn::HealthBarWidget>();
     ClassDB::register_class<defn::AnimationController>();
@@ -53,7 +53,7 @@ void uninitialize_module(ModuleInitializationLevel p_level) {
         return;
     }
 
-    defn::ProgressionManager::unregister_singleton();
+    defn::CampaignService::unregister_singleton();
     defn::GridManager::unregister_singleton();
 }
 

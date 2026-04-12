@@ -1,8 +1,6 @@
 #include "score_screen_presenter.h"
 
-#include "progression_presentation.h"
 #include "upgrade_card_presenter.h"
-#include "variant_tools.h"
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/center_container.hpp>
@@ -84,35 +82,34 @@ void apply_button_enabled(Button *button, bool enabled) {
     button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.6, 0.6, 0.65, 0.85));
 }
 
-void add_upgrade_section(VBoxContainer *content, const String &reward_title, const String &reward_subtitle, const Array &available_upgrades,
-                         const Dictionary &selected_upgrade, const Callable &on_select_upgrade) {
-    if (content == nullptr || available_upgrades.is_empty()) {
+void add_upgrade_section(VBoxContainer *content, const ScoreScreenRewardModel &reward, const Callable &on_select_upgrade) {
+    if (content == nullptr || reward.available_upgrades.empty()) {
         return;
     }
 
-    const String selected_upgrade_id = String(selected_upgrade.get("id", ""));
+    const String selected_upgrade_id = reward.selected_upgrade.has_value() ? reward.selected_upgrade->id : String();
 
     add_spacer(content, 12);
 
     auto *section_title = memnew(Label);
-    section_title->set_text(reward_title.is_empty() ? String("CHOOSE 1 UPGRADE") : reward_title);
+    section_title->set_text(reward.title.is_empty() ? String("CHOOSE 1 UPGRADE") : reward.title);
     section_title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     section_title->add_theme_font_size_override("font_size", 24);
     section_title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
     content->add_child(section_title);
 
-    if (!reward_subtitle.is_empty()) {
+    if (!reward.subtitle.is_empty()) {
         auto *subtitle = memnew(Label);
-        subtitle->set_text(reward_subtitle);
+        subtitle->set_text(reward.subtitle);
         subtitle->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
         subtitle->add_theme_font_size_override("font_size", 18);
         subtitle->add_theme_color_override("font_color", Color(0.84, 0.88, 0.95));
         content->add_child(subtitle);
     }
 
-    if (!selected_upgrade_id.is_empty()) {
+    if (reward.selected_upgrade.has_value()) {
         auto *summary = memnew(Label);
-        summary->set_text(vformat("Selected: %s %s", String(selected_upgrade.get("emoji", "")), String(selected_upgrade.get("name", "Upgrade"))));
+        summary->set_text(vformat("Selected: %s %s", reward.selected_upgrade->emoji, reward.selected_upgrade->name));
         summary->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
         summary->add_theme_font_size_override("font_size", 18);
         summary->add_theme_color_override("font_color", Color(0.92, 0.95, 1.0));
@@ -126,9 +123,8 @@ void add_upgrade_section(VBoxContainer *content, const String &reward_title, con
     card_row->add_theme_constant_override("separation", 12);
     content->add_child(card_row);
 
-    for (const Variant &card_variant : available_upgrades) {
-        const Dictionary card = card_variant;
-        const String card_id = String(card.get("id", ""));
+    for (const auto &card : reward.available_upgrades) {
+        const String card_id = card.id;
         const bool selected = !selected_upgrade_id.is_empty() && card_id == selected_upgrade_id;
 
         Callable pressed_action;
@@ -143,28 +139,12 @@ void add_upgrade_section(VBoxContainer *content, const String &reward_title, con
 
 } // namespace
 
-ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats, const ScoreScreenActions &actions) {
+ScoreScreenView ScoreScreenPresenter::show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions) {
     if (parent == nullptr) {
         return {};
     }
 
-    const bool victory = VariantTools::as_bool(stats.get("victory", false));
-    const int enemies_killed = VariantTools::as_int(stats.get("enemies_killed", 0));
-    const int kill_score = VariantTools::as_int(stats.get("kill_score", 0));
-    const int hearts_remaining = VariantTools::as_int(stats.get("hearts_remaining", 0));
-    const int hearts_total = VariantTools::as_int(stats.get("hearts_total", 3));
-    const int integrity_bonus = VariantTools::as_int(stats.get("integrity_bonus", 0));
-    const int completion_bonus = VariantTools::as_int(stats.get("completion_bonus", 0));
-    const int level_score = VariantTools::as_int(stats.get("level_score", 0));
-    const int new_total_score = VariantTools::as_int(stats.get("new_total_score", 0));
-    const String next_level_id = stats.get("next_level_id", "");
-    const Array new_unlocks = stats.get("new_unlocks", Array());
-    const Array available_upgrades = stats.get("available_upgrades", Array());
-    const Dictionary selected_upgrade = stats.get("selected_upgrade", Dictionary());
-    const String reward_title = String(stats.get("reward_title", ""));
-    const String reward_subtitle = String(stats.get("reward_subtitle", ""));
-    const String selected_upgrade_id = String(selected_upgrade.get("id", ""));
-    const bool reward_choice_required = !available_upgrades.is_empty() && selected_upgrade_id.is_empty();
+    const bool reward_choice_required = model.reward.requires_selection();
 
     ScoreScreenView view;
 
@@ -197,19 +177,19 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     view.panel->add_child(content);
 
     auto *title = memnew(Label);
-    title->set_text(victory ? "VICTORY" : "DEFEAT");
+    title->set_text(model.victory ? "VICTORY" : "DEFEAT");
     title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     title->add_theme_font_size_override("font_size", 48);
-    title->add_theme_color_override("font_color", victory ? Color(0.2, 1.0, 0.3) : Color(1.0, 0.2, 0.2));
+    title->add_theme_color_override("font_color", model.victory ? Color(0.2, 1.0, 0.3) : Color(1.0, 0.2, 0.2));
     content->add_child(title);
 
     add_spacer(content, 12);
-    add_stat_row(content, "Enemies Killed:", vformat("%d", enemies_killed));
-    add_stat_row(content, "Kill Score:", vformat("%d", kill_score));
-    add_stat_row(content, "Hearts Remaining:", vformat("%d / %d", hearts_remaining, hearts_total));
-    add_stat_row(content, "Integrity Bonus:", vformat("%d", integrity_bonus));
-    if (victory) {
-        add_stat_row(content, "Completion Bonus:", vformat("%d", completion_bonus));
+    add_stat_row(content, "Enemies Killed:", vformat("%d", model.enemies_killed));
+    add_stat_row(content, "Kill Score:", vformat("%d", model.kill_score));
+    add_stat_row(content, "Hearts Remaining:", vformat("%d / %d", model.hearts_remaining, model.hearts_total));
+    add_stat_row(content, "Integrity Bonus:", vformat("%d", model.integrity_bonus));
+    if (model.victory) {
+        add_stat_row(content, "Completion Bonus:", vformat("%d", model.completion_bonus));
     }
 
     auto *separator = memnew(ColorRect);
@@ -217,12 +197,12 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     separator->set_color(Color(0.4, 0.4, 0.5));
     content->add_child(separator);
 
-    add_stat_row(content, "Level Score:", vformat("%d", level_score));
-    add_stat_row(content, "Career Total:", vformat("%d", new_total_score));
+    add_stat_row(content, "Level Score:", vformat("%d", model.level_score));
+    add_stat_row(content, "Career Total:", vformat("%d", model.new_total_score));
 
-    if (!new_unlocks.is_empty()) {
+    if (!model.new_unlocks.is_empty()) {
         add_spacer(content, 8);
-        for (const auto &new_unlock : new_unlocks) {
+        for (const auto &new_unlock : model.new_unlocks) {
             auto *unlock_label = memnew(Label);
             unlock_label->set_text(String(new_unlock));
             unlock_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
@@ -232,7 +212,7 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
         }
     }
 
-    add_upgrade_section(content, reward_title, reward_subtitle, available_upgrades, selected_upgrade, actions.on_select_upgrade);
+    add_upgrade_section(content, model.reward, actions.on_select_upgrade);
 
     add_spacer(content, 16);
 
@@ -241,7 +221,7 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     button_row->add_theme_constant_override("separation", 16);
     content->add_child(button_row);
 
-    if (victory && !next_level_id.is_empty()) {
+    if (model.victory && !model.next_level_id.is_empty()) {
         auto *next_button = make_action_button("Next Level");
         connect_if_valid(next_button, actions.on_next_level);
         apply_button_enabled(next_button, !reward_choice_required);

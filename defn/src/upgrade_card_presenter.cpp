@@ -22,7 +22,7 @@ Ref<StyleBoxFlat> make_card_style(const Color &background_color, const Color &bo
 
 } // namespace
 
-Button *UpgradeCardPresenter::create(const Dictionary &upgrade_card, bool selected, bool disabled, const Callable &pressed_action) {
+Button *UpgradeCardPresenter::create(const UpgradeCardViewModel &upgrade_card, bool selected, bool disabled, const Callable &pressed_action) {
     auto *button = memnew(Button);
     button->set_custom_minimum_size(Vector2(180, 220));
     button->set_focus_mode(Control::FOCUS_NONE);
@@ -46,14 +46,14 @@ Button *UpgradeCardPresenter::create(const Dictionary &upgrade_card, bool select
     button->add_child(content);
 
     auto *emoji_label = memnew(Label);
-    emoji_label->set_text(String(upgrade_card.get("emoji", "?")));
+    emoji_label->set_text(upgrade_card.emoji.is_empty() ? String("?") : upgrade_card.emoji);
     emoji_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     emoji_label->add_theme_font_size_override("font_size", 34);
     emoji_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
     content->add_child(emoji_label);
 
     auto *name_label = memnew(Label);
-    name_label->set_text(String(upgrade_card.get("name", "Upgrade")));
+    name_label->set_text(upgrade_card.name.is_empty() ? String("Upgrade") : upgrade_card.name);
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     name_label->add_theme_font_size_override("font_size", 18);
     name_label->add_theme_color_override("font_color", Color(0.96, 0.97, 1.0));
@@ -61,7 +61,7 @@ Button *UpgradeCardPresenter::create(const Dictionary &upgrade_card, bool select
     content->add_child(name_label);
 
     auto *description_label = memnew(Label);
-    description_label->set_text(String(upgrade_card.get("description", "")));
+    description_label->set_text(upgrade_card.description);
     description_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     description_label->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
     description_label->set_custom_minimum_size(Vector2(150, 0));

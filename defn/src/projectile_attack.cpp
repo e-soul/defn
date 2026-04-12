@@ -1,6 +1,6 @@
 #include "projectile_attack.h"
 
-#include "attack_target_helpers.h"
+#include "attack_target_resolver.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,13 +29,13 @@ float linear_to_db(float linear) {
 void ProjectileAttack::_bind_methods() {}
 
 void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const Color &flash_color, const Vector2 &start_global_position,
-                                 const Vector2 &target_global_position, Node2D *direct_target, int fallback_damage) {
+                                 const Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage) {
     config_ = config;
     shooter_side_ = shooter_side;
     flash_color_ = flash_color;
     target_global_position_ = target_global_position;
     fallback_damage_ = fallback_damage;
-    direct_target_id_ = direct_target != nullptr ? ObjectID(direct_target->get_instance_id()) : ObjectID();
+    direct_target_id_ = direct_target != nullptr ? direct_target->get_target_object_id() : ObjectID();
     const real_t projectile_scale = MAX(config_.projectile_scale_multiplier, 0.01F);
     const real_t explosion_scale = MAX(config_.explosion_scale_multiplier, 0.01F);
     flight_scale_ = Vector2(projectile_scale, projectile_scale);
@@ -199,12 +199,11 @@ void ProjectileAttack::explode() {
 }
 
 void ProjectileAttack::apply_splash_damage() {
-    std::vector<Node2D *> candidates;
+    std::vector<AttackTarget *> candidates;
     candidates.reserve(8);
 
-    Node2D *direct_target = resolve_direct_target();
-    if (config_.include_direct_target && direct_target != nullptr && !AttackTarget::is_dead(direct_target) &&
-        AttackTarget::get_side(direct_target) != shooter_side_) {
+    AttackTarget *direct_target = resolve_direct_target();
+    if (config_.include_direct_target && direct_target != nullptr && !direct_target->is_dead() && direct_target->get_side() != shooter_side_) {
         candidates.push_back(direct_target);
     }
 
@@ -213,8 +212,8 @@ void ProjectileAttack::apply_splash_damage() {
         const Array children = parent->get_children();
         const real_t splash_radius_squared = config_.splash_radius * config_.splash_radius;
         for (const Variant &child_variant : children) {
-            auto *target = AttackTarget::resolve(child_variant.operator Object *());
-            if (target == nullptr || AttackTarget::is_dead(target) || AttackTarget::get_side(target) == shooter_side_) {
+            auto *target = resolve_attack_target(child_variant.operator Object *());
+            if (target == nullptr || target->is_dead() || target->get_side() == shooter_side_) {
                 continue;
             }
 
@@ -222,7 +221,7 @@ void ProjectileAttack::apply_splash_damage() {
                 continue;
             }
 
-            if (AttackTarget::get_global_position(target).distance_squared_to(target_global_position_) > splash_radius_squared) {
+            if (target->get_target_global_position().distance_squared_to(target_global_position_) > splash_radius_squared) {
                 continue;
             }
 
@@ -236,14 +235,14 @@ void ProjectileAttack::apply_splash_damage() {
 
     const int affected_count = compute_affected_target_count(static_cast<int>(candidates.size()));
     for (int index = 0; index < affected_count; ++index) {
-        Node2D *victim = candidates[static_cast<size_t>(index)];
-        if (victim == nullptr || AttackTarget::is_dead(victim)) {
+        AttackTarget *victim = candidates[static_cast<size_t>(index)];
+        if (victim == nullptr || victim->is_dead()) {
             continue;
         }
 
         const int damage = victim == direct_target ? resolve_impact_damage() : resolve_splash_damage();
-        AttackTarget::take_damage(victim, damage);
-        AttackTarget::flash_damage(victim, flash_color_);
+        victim->take_damage(damage);
+        victim->flash_damage(flash_color_);
     }
 }
 
@@ -259,13 +258,7 @@ void ProjectileAttack::on_explosion_sfx_finished() {
     try_finish();
 }
 
-Node2D *ProjectileAttack::resolve_direct_target() const {
-    if (direct_target_id_.is_null()) {
-        return nullptr;
-    }
-
-    return AttackTarget::resolve(ObjectDB::get_instance(static_cast<uint64_t>(direct_target_id_)));
-}
+AttackTarget *ProjectileAttack::resolve_direct_target() const { return resolve_attack_target(direct_target_id_); }
 
 int ProjectileAttack::resolve_impact_damage() const { return config_.impact_damage.value_or(fallback_damage_); }
 

@@ -2,7 +2,7 @@
 #define GAME_MANAGER_H
 
 #include "camera_scroll_controller.h"
-#include "match_session.h"
+#include "match_director.h"
 #include "unit_data.h"
 #include <cstdint>
 #include <godot_cpp/classes/area2d.hpp>
@@ -12,14 +12,13 @@
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
+#include <optional>
 #include <vector>
 
 namespace defn {
 
 using namespace godot;
 
-class WaveManager;
 class HUD;
 class BaseObjective;
 class Unit;
@@ -46,14 +45,14 @@ class GameManager : public Node2D {
     void update_scroll_trigger_positions();
     static Vector2 get_base_objective_position();
     static bool is_valid_scroll_trigger_unit(Area2D *area, const char *required_group);
-    void deploy_friendly(const String &unit_type);
     void update_camera_scroll(double delta);
+    void add_friendly_unit(Unit *unit);
+    void add_enemy_unit(Unit *unit);
+    void refresh_resource_ui();
+    void apply_match_update(const MatchUpdate &update);
 
     // Signal callbacks
     void on_scroll_triggered(Area2D *area, bool move_left);
-    void on_enemy_spawned(Node *enemy_node);
-    void on_wave_changed(int wave_number);
-    void on_all_spawns_complete();
     void on_enemy_died(Node *unit);
     void on_friendly_died(Node *unit);
     void on_base_durability_changed(int current_hp, int max_hp);
@@ -67,13 +66,7 @@ class GameManager : public Node2D {
     void on_score_screen_main_menu();
     void on_score_screen_upgrade_selected(const String &upgrade_id);
 
-    void check_victory();
-    void end_game(bool victory);
-
-    MatchSession match_session_;
-
     // Child nodes
-    WaveManager *wave_manager = nullptr;
     HUD *hud = nullptr;
     Node2D *entity_container = nullptr;
     Timer *core_resource_timer = nullptr;
@@ -87,8 +80,7 @@ class GameManager : public Node2D {
 
     // Unit data
     UnitDataLoader unit_data_;
-
-    Dictionary pending_score_screen_stats_;
+    MatchDirector match_director_;
 };
 
 } // namespace defn
