@@ -8,7 +8,7 @@
 namespace defn {
 
 void CombatAttackExecutor::spawn_pending_projectile(const CombatConfig &config, Unit *unit, AnimationController *animation,
-                                                   PendingProjectileSpawn &pending_projectile) {
+                                                    PendingProjectileSpawn &pending_projectile) {
     if (!pending_projectile.active || animation == nullptr || !animation->consume_shoot_effect_triggered()) {
         return;
     }
@@ -31,7 +31,7 @@ void CombatAttackExecutor::spawn_pending_projectile(const CombatConfig &config, 
 }
 
 void CombatAttackExecutor::trigger_attack(const CombatConfig &config, AttackMode attack_mode, AttackTarget *target, AnimationController *animation,
-                                         PendingProjectileSpawn &pending_projectile) {
+                                          PendingProjectileSpawn &pending_projectile) {
     if (target == nullptr || animation == nullptr) {
         return;
     }

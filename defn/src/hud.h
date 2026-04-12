@@ -32,6 +32,7 @@ class HUD : public CanvasLayer {
     void _ready() override;
 
     void set_friendly_units(const std::vector<UnitConfig> &units);
+    void set_level(int level_number, const String &level_name);
     void update_core_resource(int value);
     void update_wave(int current, int total);
     void update_hearts(int integrity);
@@ -52,6 +53,7 @@ class HUD : public CanvasLayer {
     void on_upgrade_card_pressed(const String &upgrade_id);
 
     Label *core_resource_label = nullptr;
+    Label *level_label = nullptr;
     Label *wave_label = nullptr;
     Label *score_label = nullptr;
     HBoxContainer *hearts_container = nullptr;

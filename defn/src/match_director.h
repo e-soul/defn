@@ -51,6 +51,8 @@ class MatchDirector {
     int get_core_resource() const { return match_session_.get_core_resource(); }
     int get_base_integrity() const { return match_session_.get_base_integrity(); }
     int get_base_max_health() const { return match_session_.get_base_max_health(); }
+    int get_level_number() const { return spawn_scheduler_.get_level_number(); }
+    String get_level_name() const { return spawn_scheduler_.get_level_name(); }
     int get_total_waves() const { return spawn_scheduler_.get_total_waves(); }
     String get_background_path() const { return spawn_scheduler_.get_background_path(); }
     std::vector<UnitConfig> build_available_friendlies() const;

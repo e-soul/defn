@@ -33,6 +33,8 @@ class SpawnScheduler {
     bool is_running() const { return running_; }
     bool all_waves_spawned() const { return next_spawn_idx_ >= all_spawns_.size(); }
     int get_total_waves() const { return level_definition_ ? static_cast<int>(level_definition_->waves.size()) : 0; }
+    int get_level_number() const { return level_definition_ ? level_definition_->level_id : 0; }
+    String get_level_name() const { return level_definition_ ? level_definition_->name : String(); }
     int get_starting_core_resource() const { return level_definition_ ? level_definition_->starting_core_resource : 100; }
     int get_base_integrity() const { return level_definition_ ? level_definition_->base_integrity : 3; }
     String get_background_path() const { return level_definition_ ? level_definition_->background_path : String(); }

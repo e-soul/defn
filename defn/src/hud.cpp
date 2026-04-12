@@ -67,6 +67,18 @@ void HUD::build_ui() {
     top_bar->add_child(hearts_container);
     ensure_heart_icons(3);
 
+    level_label = memnew(Label);
+    level_label->set_anchors_preset(Control::PRESET_TOP_WIDE);
+    level_label->set_offset(Side::SIDE_LEFT, 16.0);
+    level_label->set_offset(Side::SIDE_RIGHT, -16.0);
+    level_label->set_offset(Side::SIDE_TOP, 52.0);
+    level_label->set_offset(Side::SIDE_BOTTOM, 78.0);
+    level_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    level_label->add_theme_font_size_override("font_size", 20);
+    level_label->add_theme_color_override("font_color", Color(0.95, 0.95, 0.95));
+    level_label->set_text("LEVEL");
+    add_child(level_label);
+
     // ==========================================================
     // Deploy card container (bottom center)
     // ==========================================================
@@ -88,6 +100,24 @@ void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
         card_container->add_child(btn);
         deploy_cards.push_back({.unit_type = cfg.name, .cost = cfg.cost, .button = btn});
     }
+}
+
+void HUD::set_level(int level_number, const String &level_name) {
+    if (level_label == nullptr) {
+        return;
+    }
+
+    String label_text;
+    if (level_number > 0 && !level_name.is_empty()) {
+        label_text = vformat("LEVEL %d - %s", level_number, level_name);
+    } else if (level_number > 0) {
+        label_text = vformat("LEVEL %d", level_number);
+    } else {
+        label_text = level_name;
+    }
+
+    level_label->set_text(label_text);
+    level_label->set_visible(!label_text.is_empty());
 }
 
 void HUD::ensure_heart_icons(int count) {

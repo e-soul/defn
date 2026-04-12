@@ -126,9 +126,7 @@ MatchUpdate MatchDirector::handle_core_resource_tick() {
     return make_resource_update();
 }
 
-const ScoreScreenModel *MatchDirector::get_pending_score_screen() const {
-    return pending_score_screen_.has_value() ? &*pending_score_screen_ : nullptr;
-}
+const ScoreScreenModel *MatchDirector::get_pending_score_screen() const { return pending_score_screen_.has_value() ? &*pending_score_screen_ : nullptr; }
 
 bool MatchDirector::select_upgrade(const String &upgrade_id) {
     if (upgrade_id.is_empty() || !pending_score_screen_.has_value()) {

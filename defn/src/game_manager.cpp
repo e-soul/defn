@@ -73,6 +73,7 @@ void GameManager::_ready() {
     add_child(hud);
 
     hud->set_friendly_units(match_director_.build_available_friendlies());
+    hud->set_level(match_director_.get_level_number(), match_director_.get_level_name());
     hud->update_core_resource(match_director_.get_core_resource());
     hud->update_wave(1, match_director_.get_total_waves());
     hud->update_hearts(match_director_.get_base_integrity());
