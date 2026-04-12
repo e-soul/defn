@@ -17,6 +17,32 @@
       ]
     },
     {
+      "id": "reinforced_plating",
+      "name": "Reinforced Plating",
+      "description": "Breachers gain +50 HP.",
+      "emoji": "🦾",
+      "category": "unit",
+      "minimum_completed_levels": 0,
+      "weight": 3,
+      "max_picks": 1,
+      "effects": [
+        { "type": "unit_hp_delta", "unit_id": "breacher", "value": 50 }
+      ]
+    },
+    {
+      "id": "breach_drills",
+      "name": "Breach Drills",
+      "description": "Breachers gain +8 move speed.",
+      "emoji": "🥾",
+      "category": "unit",
+      "minimum_completed_levels": 0,
+      "weight": 2,
+      "max_picks": 1,
+      "effects": [
+        { "type": "unit_move_speed_delta", "unit_id": "breacher", "value": 8 }
+      ]
+    },
+    {
       "id": "sharpshooter_contract",
       "name": "Sharpshooter Contract",
       "description": "Unlock the Marksman deploy card.",
@@ -27,6 +53,34 @@
       "max_picks": 1,
       "effects": [
         { "type": "unit_unlock", "unit_id": "marksman" }
+      ]
+    },
+    {
+      "id": "precision_ammo",
+      "name": "Precision Ammo",
+      "description": "Marksmen deal +2 ranged damage.",
+      "emoji": "🎯",
+      "category": "unit",
+      "minimum_completed_levels": 1,
+      "weight": 2,
+      "max_picks": 1,
+      "prerequisites": ["sharpshooter_contract"],
+      "effects": [
+        { "type": "unit_ranged_damage_delta", "unit_id": "marksman", "value": 2 }
+      ]
+    },
+    {
+      "id": "field_boots",
+      "name": "Field Boots",
+      "description": "Marksmen gain +10 move speed.",
+      "emoji": "🥾",
+      "category": "unit",
+      "minimum_completed_levels": 1,
+      "weight": 2,
+      "max_picks": 1,
+      "prerequisites": ["sharpshooter_contract"],
+      "effects": [
+        { "type": "unit_move_speed_delta", "unit_id": "marksman", "value": 10 }
       ]
     },
     {
@@ -67,6 +121,34 @@
       "max_picks": 1,
       "effects": [
         { "type": "unit_unlock", "unit_id": "impact" }
+      ]
+    },
+    {
+      "id": "combat_veteran",
+      "name": "Combat Veteran",
+      "description": "Impacts gain +35 HP.",
+      "emoji": "🪖",
+      "category": "unit",
+      "minimum_completed_levels": 1,
+      "weight": 2,
+      "max_picks": 1,
+      "prerequisites": ["demolition_permit"],
+      "effects": [
+        { "type": "unit_hp_delta", "unit_id": "impact", "value": 35 }
+      ]
+    },
+    {
+      "id": "accelerated_gearing",
+      "name": "Accelerated Gearing",
+      "description": "Impacts gain +12 move speed.",
+      "emoji": "⚙️",
+      "category": "unit",
+      "minimum_completed_levels": 1,
+      "weight": 2,
+      "max_picks": 1,
+      "prerequisites": ["demolition_permit"],
+      "effects": [
+        { "type": "unit_move_speed_delta", "unit_id": "impact", "value": 12 }
       ]
     },
     {
@@ -121,6 +203,34 @@
       "max_picks": 1,
       "effects": [
         { "type": "unit_unlock", "unit_id": "operator" }
+      ]
+    },
+    {
+      "id": "targeting_suite",
+      "name": "Targeting Suite",
+      "description": "Operators deal +2 ranged damage.",
+      "emoji": "🎛️",
+      "category": "unit",
+      "minimum_completed_levels": 2,
+      "weight": 2,
+      "max_picks": 1,
+      "prerequisites": ["command_uplink"],
+      "effects": [
+        { "type": "unit_ranged_damage_delta", "unit_id": "operator", "value": 2 }
+      ]
+    },
+    {
+      "id": "rapid_response",
+      "name": "Rapid Response",
+      "description": "Operators gain +10 move speed.",
+      "emoji": "🏃",
+      "category": "unit",
+      "minimum_completed_levels": 2,
+      "weight": 2,
+      "max_picks": 1,
+      "prerequisites": ["command_uplink"],
+      "effects": [
+        { "type": "unit_move_speed_delta", "unit_id": "operator", "value": 10 }
       ]
     },
     {

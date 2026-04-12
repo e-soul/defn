@@ -1,7 +1,10 @@
 #include "progression_manager.h"
 
+#include "unit_data.h"
+
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -14,7 +17,7 @@ namespace {
 constexpr auto PROGRESSION_PATH = "res://data/progression.json";
 constexpr auto UPGRADE_PATH = "res://data/upgrades.json";
 constexpr auto SAVE_PATH = "user://save_data.json";
-constexpr int CURRENT_SAVE_VERSION = 2;
+constexpr int CURRENT_SAVE_VERSION = 3;
 constexpr auto LEGACY_REWARD_SENTINEL = "__legacy_reward_claimed__";
 
 struct LegacyMigrationRule {
@@ -32,6 +35,8 @@ constexpr std::array<LegacyMigrationRule, 8> LEGACY_MIGRATION_RULES{{
     {.score_required = 1500, .upgrade_id = "command_uplink"},
     {.score_required = 2000, .upgrade_id = "war_chest"},
 }};
+
+int round_effect_delta(real_t value) { return static_cast<int>(std::lround(static_cast<double>(value))); }
 
 void push_unique(PackedStringArray &array, const String &value) {
     if (!array.has(value)) {
@@ -74,14 +79,18 @@ ProgressionManager *ProgressionManager::singleton_ = nullptr;
 
 void ProgressionManager::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_total_score"), &ProgressionManager::get_total_score);
+    ClassDB::bind_method(D_METHOD("get_rescue_points_bank"), &ProgressionManager::get_rescue_points_bank);
     ClassDB::bind_method(D_METHOD("get_unlocked_units"), &ProgressionManager::get_unlocked_units);
     ClassDB::bind_method(D_METHOD("get_unlocked_levels"), &ProgressionManager::get_unlocked_levels);
     ClassDB::bind_method(D_METHOD("can_claim_level_upgrade", "level_id"), &ProgressionManager::can_claim_level_upgrade);
+    ClassDB::bind_method(D_METHOD("can_claim_rescue_draft", "level_id"), &ProgressionManager::can_claim_rescue_draft);
     ClassDB::bind_method(D_METHOD("is_level_completed", "level_id"), &ProgressionManager::is_level_completed);
     ClassDB::bind_method(D_METHOD("is_level_unlocked", "level_id"), &ProgressionManager::is_level_unlocked);
+    ClassDB::bind_method(D_METHOD("get_frontier_level_id"), &ProgressionManager::get_frontier_level_id);
     ClassDB::bind_method(D_METHOD("get_current_level_id"), &ProgressionManager::get_current_level_id);
     ClassDB::bind_method(D_METHOD("set_current_level_id", "level_id"), &ProgressionManager::set_current_level_id);
     ClassDB::bind_method(D_METHOD("add_score", "amount"), &ProgressionManager::add_score);
+    ClassDB::bind_method(D_METHOD("add_rescue_points", "amount"), &ProgressionManager::add_rescue_points);
     ClassDB::bind_method(D_METHOD("save"), &ProgressionManager::save);
 }
 
@@ -122,7 +131,7 @@ void ProgressionManager::load_save() {
     save_data_ = *loaded_save;
     migrate_legacy_save_if_needed();
     UtilityFunctions::print("ProgressionManager: Loaded save — total_score=", save_data_.total_score, ", levels_completed=", save_data_.levels_completed.size(),
-                            ", owned_upgrades=", save_data_.owned_upgrades.size());
+                            ", owned_upgrades=", save_data_.owned_upgrades.size(), ", rescue_points_bank=", save_data_.rescue_points_bank);
 }
 
 void ProgressionManager::create_default_save() {
@@ -137,7 +146,7 @@ void ProgressionManager::save() {
         return;
     }
 
-    UtilityFunctions::print("ProgressionManager: Save written — total_score=", save_data_.total_score);
+    UtilityFunctions::print("ProgressionManager: Save written — total_score=", save_data_.total_score, ", rescue_points_bank=", save_data_.rescue_points_bank);
 }
 
 PackedStringArray ProgressionManager::get_unlocked_units() const {
@@ -186,26 +195,44 @@ bool ProgressionManager::is_level_completed(const String &level_id) const {
 }
 
 bool ProgressionManager::is_level_unlocked(const String &level_id) const {
-    for (const auto &unlock : catalog_.get_level_unlocks()) {
-        if (unlock.level_id == level_id) {
-            if (save_data_.total_score < unlock.score_required) {
-                return false;
-            }
-            if (!unlock.requires_completed.is_empty() && !is_level_completed(unlock.requires_completed)) {
-                return false;
-            }
-            return true;
-        }
+    const LevelUnlock *unlock = find_level_unlock(level_id);
+    if (unlock == nullptr) {
+        return false;
     }
-    return false;
+
+    if (save_data_.total_score < unlock->score_required) {
+        return false;
+    }
+    if (!unlock->requires_completed.is_empty() && !is_level_completed(unlock->requires_completed)) {
+        return false;
+    }
+    return true;
 }
 
 bool ProgressionManager::can_claim_level_upgrade(const String &level_id) const { return get_claimed_upgrade_for_level(level_id).is_empty(); }
+
+bool ProgressionManager::can_claim_rescue_draft(const String &level_id) const {
+    if (level_id.is_empty() || level_id != get_frontier_level_id() || is_level_completed(level_id)) {
+        return false;
+    }
+
+    const int next_cost = get_next_rescue_draft_cost(level_id);
+    return next_cost > 0 && save_data_.rescue_points_bank >= next_cost;
+}
 
 String ProgressionManager::get_claimed_upgrade_for_level(const String &level_id) const {
     for (const auto &[claimed_level_id, claimed_upgrade_id] : save_data_.claimed_level_upgrades) {
         if (claimed_level_id == level_id) {
             return claimed_upgrade_id;
+        }
+    }
+    return {};
+}
+
+String ProgressionManager::get_frontier_level_id() const {
+    for (const auto &unlock : catalog_.get_level_unlocks()) {
+        if (is_level_unlocked(unlock.level_id) && !is_level_completed(unlock.level_id)) {
+            return unlock.level_id;
         }
     }
     return {};
@@ -218,6 +245,75 @@ int ProgressionManager::get_highest_level_score(const String &level_id) const {
         }
     }
     return 0;
+}
+
+int ProgressionManager::get_rescue_drafts_claimed(const String &level_id) const {
+    for (const auto &[claimed_level_id, claimed_count] : save_data_.rescue_drafts_claimed) {
+        if (claimed_level_id == level_id) {
+            return std::max(0, claimed_count);
+        }
+    }
+    return 0;
+}
+
+int ProgressionManager::get_next_rescue_draft_cost(const String &level_id) const {
+    const LevelUnlock *unlock = find_level_unlock(level_id);
+    if (unlock == nullptr) {
+        return 0;
+    }
+
+    const int claimed_count = get_rescue_drafts_claimed(level_id);
+    if (!std::cmp_less(claimed_count, unlock->rescue.draft_costs.size())) {
+        return 0;
+    }
+
+    return unlock->rescue.draft_costs[static_cast<size_t>(claimed_count)];
+}
+
+int ProgressionManager::calculate_rescue_points_gain(const String &played_level_id, int level_score) const {
+    if (level_score <= 0 || get_frontier_level_id().is_empty()) {
+        return 0;
+    }
+
+    const LevelUnlock *unlock = find_level_unlock(played_level_id);
+    if (unlock == nullptr || unlock->rescue.point_gain_multiplier <= 0.0F) {
+        return 0;
+    }
+
+    return std::max(0, static_cast<int>(std::lround(static_cast<double>(level_score) * static_cast<double>(unlock->rescue.point_gain_multiplier))));
+}
+
+UnitConfig ProgressionManager::get_effective_friendly_unit_config(const UnitConfig &base_config) const {
+    UnitConfig effective_config = base_config;
+    if (effective_config.side != UnitSide::FRIENDLY) {
+        return effective_config;
+    }
+
+    for (const auto &owned_upgrade : save_data_.owned_upgrades) {
+        const UpgradeCardDefinition *card = upgrade_catalog_.find_card(owned_upgrade);
+        if (card == nullptr) {
+            continue;
+        }
+
+        for (const auto &effect : card->effects) {
+            if (effect.unit_id != effective_config.name) {
+                continue;
+            }
+
+            if (effect.type == UpgradeEffectType::UNIT_HP_DELTA) {
+                effective_config.hp += round_effect_delta(effect.value);
+            } else if (effect.type == UpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA) {
+                effective_config.ranged_damage += round_effect_delta(effect.value);
+            } else if (effect.type == UpgradeEffectType::UNIT_MOVE_SPEED_DELTA) {
+                effective_config.move_speed_pixels_per_second += effect.value;
+            }
+        }
+    }
+
+    effective_config.hp = std::max(effective_config.hp, 1);
+    effective_config.ranged_damage = std::max(effective_config.ranged_damage, 1);
+    effective_config.move_speed_pixels_per_second = std::max(effective_config.move_speed_pixels_per_second, static_cast<real_t>(1.0F));
+    return effective_config;
 }
 
 int ProgressionManager::get_effective_starting_energy(int base) const {
@@ -240,7 +336,7 @@ int ProgressionManager::get_effective_starting_energy(int base) const {
 }
 
 int ProgressionManager::get_effective_energy_regen() const {
-    int regen = 1; // base regen
+    int regen = 1;
 
     for (const auto &owned_upgrade : save_data_.owned_upgrades) {
         const UpgradeCardDefinition *card = upgrade_catalog_.find_card(owned_upgrade);
@@ -259,7 +355,7 @@ int ProgressionManager::get_effective_energy_regen() const {
 }
 
 real_t ProgressionManager::get_effective_bounty_multiplier() const {
-    real_t mult = 1.0;
+    real_t mult = 1.0F;
 
     for (const auto &owned_upgrade : save_data_.owned_upgrades) {
         const UpgradeCardDefinition *card = upgrade_catalog_.find_card(owned_upgrade);
@@ -298,20 +394,25 @@ int ProgressionManager::get_effective_base_integrity(int base) const {
 
 int ProgressionManager::get_completed_level_count() const { return static_cast<int>(save_data_.levels_completed.size()); }
 
-int ProgressionManager::get_score_required_for_level(const String &level_id) const {
+const LevelUnlock *ProgressionManager::find_level_unlock(const String &level_id) const {
     for (const auto &unlock : catalog_.get_level_unlocks()) {
         if (unlock.level_id == level_id) {
-            return unlock.score_required;
+            return &unlock;
         }
     }
+    return nullptr;
+}
+
+int ProgressionManager::get_score_required_for_level(const String &level_id) const {
+    if (const LevelUnlock *unlock = find_level_unlock(level_id); unlock != nullptr) {
+        return unlock->score_required;
+    }
+
     return 0;
 }
 
-Array ProgressionManager::build_upgrade_draft_for_level(const String &level_id) const {
+Array ProgressionManager::build_upgrade_draft() const {
     Array result;
-    if (!can_claim_level_upgrade(level_id)) {
-        return result;
-    }
 
     std::vector<const UpgradeCardDefinition *> unit_candidates;
     std::vector<const UpgradeCardDefinition *> general_candidates;
@@ -372,6 +473,22 @@ Array ProgressionManager::build_upgrade_draft_for_level(const String &level_id) 
     return result;
 }
 
+Array ProgressionManager::build_upgrade_draft_for_level(const String &level_id) const {
+    if (!can_claim_level_upgrade(level_id)) {
+        return {};
+    }
+
+    return build_upgrade_draft();
+}
+
+Array ProgressionManager::build_rescue_draft_for_level(const String &level_id) const {
+    if (!can_claim_rescue_draft(level_id)) {
+        return {};
+    }
+
+    return build_upgrade_draft();
+}
+
 Dictionary ProgressionManager::get_upgrade_card_view(const String &upgrade_id) const {
     const UpgradeCardDefinition *card = upgrade_catalog_.find_card(upgrade_id);
     return card == nullptr ? Dictionary() : build_upgrade_card_view(*card);
@@ -379,12 +496,13 @@ Dictionary ProgressionManager::get_upgrade_card_view(const String &upgrade_id) c
 
 void ProgressionManager::add_score(int amount) { save_data_.total_score += amount; }
 
+void ProgressionManager::add_rescue_points(int amount) { save_data_.rescue_points_bank += std::max(0, amount); }
+
 void ProgressionManager::mark_level_completed(const String &level_id, int level_score) {
     if (!is_level_completed(level_id)) {
         save_data_.levels_completed.push_back(level_id);
     }
 
-    // Update highest score
     bool found = false;
     for (auto &[level, score] : save_data_.highest_level_scores) {
         if (level == level_id) {
@@ -413,6 +531,27 @@ bool ProgressionManager::claim_level_upgrade(const String &level_id, const Strin
     return true;
 }
 
+bool ProgressionManager::claim_rescue_draft(const String &level_id, const String &upgrade_id) {
+    if (level_id.is_empty() || upgrade_id.is_empty() || !can_claim_rescue_draft(level_id)) {
+        return false;
+    }
+
+    const UpgradeCardDefinition *card = upgrade_catalog_.find_card(upgrade_id);
+    if (card == nullptr || get_owned_upgrade_count(upgrade_id) >= card->max_picks) {
+        return false;
+    }
+
+    const int draft_cost = get_next_rescue_draft_cost(level_id);
+    if (draft_cost <= 0 || save_data_.rescue_points_bank < draft_cost) {
+        return false;
+    }
+
+    save_data_.rescue_points_bank -= draft_cost;
+    set_rescue_drafts_claimed(level_id, get_rescue_drafts_claimed(level_id) + 1);
+    grant_upgrade(upgrade_id);
+    return true;
+}
+
 Dictionary ProgressionManager::build_upgrade_card_view(const UpgradeCardDefinition &card) {
     Dictionary card_view;
     card_view["id"] = card.id;
@@ -424,24 +563,33 @@ Dictionary ProgressionManager::build_upgrade_card_view(const UpgradeCardDefiniti
 }
 
 void ProgressionManager::migrate_legacy_save_if_needed() {
-    if (save_data_.schema_version >= CURRENT_SAVE_VERSION) {
-        return;
+    bool mutated = false;
+
+    if (save_data_.schema_version < 2) {
+        for (const auto &level_id : save_data_.levels_completed) {
+            if (get_claimed_upgrade_for_level(level_id).is_empty()) {
+                save_data_.claimed_level_upgrades.emplace_back(level_id, String(LEGACY_REWARD_SENTINEL));
+            }
+        }
+
+        for (const auto &rule : LEGACY_MIGRATION_RULES) {
+            if (save_data_.total_score >= rule.score_required) {
+                grant_upgrade(String(rule.upgrade_id));
+            }
+        }
+
+        mutated = true;
     }
 
-    for (const auto &level_id : save_data_.levels_completed) {
-        if (get_claimed_upgrade_for_level(level_id).is_empty()) {
-            save_data_.claimed_level_upgrades.emplace_back(level_id, String(LEGACY_REWARD_SENTINEL));
-        }
-    }
-
-    for (const auto &rule : LEGACY_MIGRATION_RULES) {
-        if (save_data_.total_score >= rule.score_required) {
-            grant_upgrade(String(rule.upgrade_id));
-        }
+    if (save_data_.schema_version < 3) {
+        save_data_.rescue_points_bank = std::max(0, save_data_.rescue_points_bank);
+        mutated = true;
     }
 
     save_data_.schema_version = CURRENT_SAVE_VERSION;
-    save();
+    if (mutated) {
+        save();
+    }
 }
 
 void ProgressionManager::grant_upgrade(const String &upgrade_id) {
@@ -455,6 +603,18 @@ void ProgressionManager::grant_upgrade(const String &upgrade_id) {
 
 int ProgressionManager::get_owned_upgrade_count(const String &upgrade_id) const {
     return static_cast<int>(std::ranges::count(save_data_.owned_upgrades, upgrade_id));
+}
+
+void ProgressionManager::set_rescue_drafts_claimed(const String &level_id, int claimed_count) {
+    const int clamped_count = std::max(0, claimed_count);
+    for (auto &[claimed_level_id, existing_count] : save_data_.rescue_drafts_claimed) {
+        if (claimed_level_id == level_id) {
+            existing_count = clamped_count;
+            return;
+        }
+    }
+
+    save_data_.rescue_drafts_claimed.emplace_back(level_id, clamped_count);
 }
 
 } // namespace defn

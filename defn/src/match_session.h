@@ -63,7 +63,8 @@ class MatchSession {
     static int calculate_completion_bonus(bool victory);
     int calculate_level_score(bool victory) const;
     Dictionary build_end_game_stats(bool victory, int new_total_score, const String &current_level_id, const String &next_level_id,
-                                    const PackedStringArray &new_unlocks, const Array &available_upgrades, const Dictionary &selected_upgrade) const;
+                                    const PackedStringArray &new_unlocks, const Array &available_upgrades, const Dictionary &selected_upgrade,
+                                    const Dictionary &reward_context) const;
 
   private:
     static int calculate_hearts_from_health(int health);

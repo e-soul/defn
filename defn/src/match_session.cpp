@@ -63,7 +63,8 @@ int MatchSession::calculate_completion_bonus(bool victory) { return victory ? 10
 int MatchSession::calculate_level_score(bool victory) const { return state_.kill_score + calculate_integrity_bonus() + calculate_completion_bonus(victory); }
 
 Dictionary MatchSession::build_end_game_stats(bool victory, int new_total_score, const String &current_level_id, const String &next_level_id,
-                                              const PackedStringArray &new_unlocks, const Array &available_upgrades, const Dictionary &selected_upgrade) const {
+                                              const PackedStringArray &new_unlocks, const Array &available_upgrades, const Dictionary &selected_upgrade,
+                                              const Dictionary &reward_context) const {
     Dictionary stats;
     stats["victory"] = victory;
     stats["enemies_killed"] = state_.enemies_killed;
@@ -84,6 +85,12 @@ Dictionary MatchSession::build_end_game_stats(bool victory, int new_total_score,
     stats["new_unlocks"] = unlocks_array;
     stats["available_upgrades"] = available_upgrades;
     stats["selected_upgrade"] = selected_upgrade;
+
+    const Array reward_keys = reward_context.keys();
+    for (const Variant &key_variant : reward_keys) {
+        const Variant value = reward_context.get(key_variant, Variant());
+        stats[key_variant] = value;
+    }
 
     return stats;
 }

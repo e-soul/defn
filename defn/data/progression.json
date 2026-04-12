@@ -1,8 +1,49 @@
 {
   "level_unlocks": [
-    { "level_id": "level_01", "score_required": 0,   "requires_completed": null },
-    { "level_id": "level_02", "score_required": 170, "requires_completed": "level_01" },
-    { "level_id": "level_03", "score_required": 460, "requires_completed": "level_02" },
-    { "level_id": "level_04", "score_required": 780, "requires_completed": "level_03" }
+    {
+      "level_id": "level_01",
+      "score_required": 0,
+      "requires_completed": null,
+      "rescue": {
+        "point_gain_multiplier": 0.35,
+        "draft_costs": []
+      }
+    },
+    {
+      "level_id": "level_02",
+      "score_required": 170,
+      "requires_completed": "level_01",
+      "rescue": {
+        "point_gain_multiplier": 0.6,
+        "draft_costs": [240, 560]
+      }
+    },
+    {
+      "level_id": "level_03",
+      "score_required": 460,
+      "requires_completed": "level_02",
+      "rescue": {
+        "point_gain_multiplier": 0.85,
+        "draft_costs": [300, 720, 1260]
+      }
+    },
+    {
+      "level_id": "level_04",
+      "score_required": 780,
+      "requires_completed": "level_03",
+      "rescue": {
+        "point_gain_multiplier": 1.0,
+        "draft_costs": [340, 820, 1440]
+      }
+    },
+    {
+      "level_id": "level_05",
+      "score_required": 1200,
+      "requires_completed": "level_04",
+      "rescue": {
+        "point_gain_multiplier": 1.0,
+        "draft_costs": [500, 1000, 1500]
+      }
+    }
   ]
 }

@@ -19,6 +19,8 @@ namespace defn {
 
 using namespace godot;
 
+struct UnitConfig;
+
 class ProgressionManager : public Object {
     GDCLASS(ProgressionManager, Object)
 
@@ -33,6 +35,7 @@ class ProgressionManager : public Object {
 
     // Queries
     int get_total_score() const { return save_data_.total_score; }
+    int get_rescue_points_bank() const { return save_data_.rescue_points_bank; }
     PackedStringArray get_unlocked_units() const;
     PackedStringArray get_unlocked_levels() const;
     PackedStringArray get_owned_upgrades() const;
@@ -40,14 +43,21 @@ class ProgressionManager : public Object {
     bool is_level_completed(const String &level_id) const;
     bool is_level_unlocked(const String &level_id) const;
     bool can_claim_level_upgrade(const String &level_id) const;
+    bool can_claim_rescue_draft(const String &level_id) const;
     String get_claimed_upgrade_for_level(const String &level_id) const;
+    String get_frontier_level_id() const;
     int get_highest_level_score(const String &level_id) const;
+    int get_rescue_drafts_claimed(const String &level_id) const;
+    int get_next_rescue_draft_cost(const String &level_id) const;
+    int calculate_rescue_points_gain(const String &played_level_id, int level_score) const;
+    UnitConfig get_effective_friendly_unit_config(const UnitConfig &base_config) const;
     int get_effective_starting_energy(int base) const;
     int get_effective_energy_regen() const;
     real_t get_effective_bounty_multiplier() const;
     int get_effective_base_integrity(int base) const;
     int get_completed_level_count() const;
     Array build_upgrade_draft_for_level(const String &level_id) const;
+    Array build_rescue_draft_for_level(const String &level_id) const;
     Dictionary get_upgrade_card_view(const String &upgrade_id) const;
 
     String get_current_level_id() const { return current_level_id_; }
@@ -60,8 +70,10 @@ class ProgressionManager : public Object {
 
     // Mutators
     void add_score(int amount);
+    void add_rescue_points(int amount);
     void mark_level_completed(const String &level_id, int level_score);
     bool claim_level_upgrade(const String &level_id, const String &upgrade_id);
+    bool claim_rescue_draft(const String &level_id, const String &upgrade_id);
     void save();
 
   protected:
@@ -70,11 +82,14 @@ class ProgressionManager : public Object {
   private:
     static Dictionary build_upgrade_card_view(const UpgradeCardDefinition &card);
 
+    const LevelUnlock *find_level_unlock(const String &level_id) const;
+    Array build_upgrade_draft() const;
     void load_save();
     void create_default_save();
     void migrate_legacy_save_if_needed();
     void grant_upgrade(const String &upgrade_id);
     int get_owned_upgrade_count(const String &upgrade_id) const;
+    void set_rescue_drafts_claimed(const String &level_id, int claimed_count);
 
     static ProgressionManager *singleton_;
 

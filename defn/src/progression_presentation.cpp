@@ -4,11 +4,29 @@
 
 namespace defn {
 
-namespace {
+String ProgressionPresentation::format_level_name(const String &level_id) { return level_id.replace("_", " ").capitalize(); }
 
-String format_level_name(const String &level_id) { return level_id.replace("_", " ").capitalize(); }
+String ProgressionPresentation::format_reward_title(const String &reward_source, const String &reward_level_id) {
+    if (reward_source == "first_clear") {
+        return vformat("FIRST CLEAR UPGRADE: %s", format_level_name(reward_level_id));
+    }
+    if (reward_source == "rescue") {
+        return vformat("RESCUE DRAFT: %s", format_level_name(reward_level_id));
+    }
 
-} // namespace
+    return "CHOOSE 1 UPGRADE";
+}
+
+String ProgressionPresentation::format_reward_subtitle(const String &reward_source, const String &reward_level_id) {
+    if (reward_source == "first_clear") {
+        return vformat("%s cleared for the first time.", format_level_name(reward_level_id));
+    }
+    if (reward_source == "rescue") {
+        return vformat("Rescue points funded emergency support for %s.", format_level_name(reward_level_id));
+    }
+
+    return {};
+}
 
 PackedStringArray ProgressionPresentation::describe_new_unlocks(const ProgressionManager &progression, int old_score, int new_score) {
     PackedStringArray result;

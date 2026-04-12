@@ -30,6 +30,24 @@ namespace {
 
 constexpr real_t HALF = 2.0F;
 
+struct RewardOffer {
+    Array available_upgrades;
+    Dictionary reward_context;
+};
+
+std::optional<UnitConfig> get_upgraded_friendly_config(const ProgressionManager *progression, const UnitDataLoader &unit_data, const String &unit_type) {
+    if (progression == nullptr) {
+        return std::nullopt;
+    }
+
+    const auto base_config = unit_data.get_unit(unit_type);
+    if (!base_config || base_config->side != UnitSide::FRIENDLY) {
+        return std::nullopt;
+    }
+
+    return progression->get_effective_friendly_unit_config(*base_config);
+}
+
 bool has_upgrade_option(const Array &available_upgrades, const String &upgrade_id) {
     // NOLINTNEXTLINE(readability-use-anyofallof)
     for (const Variant &card_variant : available_upgrades) {
@@ -54,8 +72,9 @@ bool finalize_selected_upgrade(Dictionary &pending_score_screen_stats) {
 
     const Dictionary selected_upgrade = pending_score_screen_stats.get("selected_upgrade", Dictionary());
     const String upgrade_id = selected_upgrade.get("id", "");
-    const String level_id = pending_score_screen_stats.get("current_level_id", "");
-    if (upgrade_id.is_empty() || level_id.is_empty()) {
+    const String reward_source = pending_score_screen_stats.get("reward_source", "");
+    const String reward_level_id = pending_score_screen_stats.get("reward_level_id", "");
+    if (upgrade_id.is_empty() || reward_source.is_empty() || reward_level_id.is_empty()) {
         return false;
     }
 
@@ -64,12 +83,81 @@ bool finalize_selected_upgrade(Dictionary &pending_score_screen_stats) {
         return false;
     }
 
-    if (!progression->claim_level_upgrade(level_id, upgrade_id)) {
+    bool claim_succeeded = false;
+    if (reward_source == "first_clear") {
+        claim_succeeded = progression->claim_level_upgrade(reward_level_id, upgrade_id);
+    } else if (reward_source == "rescue") {
+        claim_succeeded = progression->claim_rescue_draft(reward_level_id, upgrade_id);
+    }
+
+    if (!claim_succeeded) {
         return false;
     }
 
     progression->save();
     return true;
+}
+
+String compute_rescue_progress_level_id(bool victory, const String &level_id, const String &frontier_level_id) {
+    if (victory && level_id == frontier_level_id) {
+        return {};
+    }
+
+    return frontier_level_id;
+}
+
+RewardOffer build_reward_offer(const ProgressionManager &progression, bool victory, const String &level_id, const String &frontier_level_id) {
+    RewardOffer offer;
+
+    if (victory && progression.can_claim_level_upgrade(level_id)) {
+        offer.available_upgrades = progression.build_upgrade_draft_for_level(level_id);
+        if (!offer.available_upgrades.is_empty()) {
+            offer.reward_context["reward_source"] = "first_clear";
+            offer.reward_context["reward_level_id"] = level_id;
+        }
+        return offer;
+    }
+
+    if (!frontier_level_id.is_empty() && progression.can_claim_rescue_draft(frontier_level_id)) {
+        offer.available_upgrades = progression.build_rescue_draft_for_level(frontier_level_id);
+        if (!offer.available_upgrades.is_empty()) {
+            offer.reward_context["reward_source"] = "rescue";
+            offer.reward_context["reward_level_id"] = frontier_level_id;
+        }
+    }
+
+    return offer;
+}
+
+void finalize_reward_context(Dictionary &reward_context, const String &rescue_progress_level_id, int rescue_points_gained, int rescue_points_bank,
+                             int next_rescue_cost) {
+    const String reward_source = reward_context.get("reward_source", "");
+    const String reward_level_id = reward_context.get("reward_level_id", "");
+    if (!reward_source.is_empty() && !reward_level_id.is_empty()) {
+        reward_context["reward_title"] = ProgressionPresentation::format_reward_title(reward_source, reward_level_id);
+        reward_context["reward_subtitle"] = ProgressionPresentation::format_reward_subtitle(reward_source, reward_level_id);
+    }
+
+    reward_context["frontier_level_id"] = rescue_progress_level_id;
+    reward_context["rescue_points_gained"] = rescue_points_gained;
+    reward_context["rescue_points_bank"] = rescue_points_bank;
+    reward_context["next_rescue_cost"] = rescue_progress_level_id.is_empty() ? 0 : next_rescue_cost;
+}
+
+String determine_next_level_id(const ProgressionManager &progression, bool victory, const String &level_id) {
+    if (!victory) {
+        return {};
+    }
+
+    const auto &level_data = progression.get_level_unlock_data();
+    for (size_t i = 0; i < level_data.size(); ++i) {
+        if (level_data[i].level_id == level_id && i + 1 < level_data.size()) {
+            const String candidate = level_data[i + 1].level_id;
+            return progression.is_level_unlocked(candidate) ? candidate : String();
+        }
+    }
+
+    return {};
 }
 
 } // namespace
@@ -144,9 +232,10 @@ void GameManager::_ready() {
     PackedStringArray unlocked_units = progression->get_unlocked_units();
     auto all_friendlies = unit_data_.get_friendly_units();
     std::vector<UnitConfig> available_friendlies;
+    available_friendlies.reserve(all_friendlies.size());
     for (const auto &cfg : all_friendlies) {
         if (unlocked_units.has(cfg.name)) {
-            available_friendlies.push_back(cfg);
+            available_friendlies.push_back(progression->get_effective_friendly_unit_config(cfg));
         }
     }
     hud->set_friendly_units(available_friendlies);
@@ -321,7 +410,8 @@ void GameManager::on_scroll_triggered(Area2D *area, bool move_left) {
 }
 
 void GameManager::deploy_friendly(const String &unit_type) {
-    auto cfg = unit_data_.get_unit(unit_type);
+    auto *progression = ProgressionManager::get_singleton();
+    const auto cfg = get_upgraded_friendly_config(progression, unit_data_, unit_type);
     if (!cfg) {
         return;
     }
@@ -406,7 +496,8 @@ void GameManager::on_deploy_requested(const String &unit_type) {
         return;
     }
 
-    auto cfg = unit_data_.get_unit(unit_type);
+    auto *progression = ProgressionManager::get_singleton();
+    const auto cfg = get_upgraded_friendly_config(progression, unit_data_, unit_type);
     if (!cfg || !match_session_.can_spend_energy(cfg->cost)) {
         return;
     }
@@ -430,42 +521,32 @@ void GameManager::end_game(bool victory) {
 
     auto *progression = ProgressionManager::get_singleton();
     String level_id = progression->get_current_level_id();
+    const String frontier_level_id = progression->get_frontier_level_id();
     int old_score = progression->get_total_score();
+    const int next_rescue_cost = frontier_level_id.is_empty() ? 0 : progression->get_next_rescue_draft_cost(frontier_level_id);
 
     const int level_score = match_session_.calculate_level_score(victory);
+    const int rescue_points_gained = progression->calculate_rescue_points_gain(level_id, level_score);
 
-    // Update progression
     progression->add_score(level_score);
-    Array available_upgrades;
-    if (victory && progression->can_claim_level_upgrade(level_id)) {
-        available_upgrades = progression->build_upgrade_draft_for_level(level_id);
-    }
+    progression->add_rescue_points(rescue_points_gained);
+
+    const int rescue_points_bank = progression->get_rescue_points_bank();
+    const String rescue_progress_level_id = compute_rescue_progress_level_id(victory, level_id, frontier_level_id);
+    RewardOffer reward_offer = build_reward_offer(*progression, victory, level_id, frontier_level_id);
+    finalize_reward_context(reward_offer.reward_context, rescue_progress_level_id, rescue_points_gained, rescue_points_bank, next_rescue_cost);
+
     if (victory) {
         progression->mark_level_completed(level_id, level_score);
     }
     int new_total = progression->get_total_score();
     progression->save();
 
-    // Compute new unlocks
     PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*progression, old_score, new_total);
+    const String next_level_id = determine_next_level_id(*progression, victory, level_id);
 
-    // Determine next level
-    String next_level_id;
-    if (victory) {
-        const auto &level_data = progression->get_level_unlock_data();
-        for (size_t i = 0; i < level_data.size(); ++i) {
-            if (level_data[i].level_id == level_id && i + 1 < level_data.size()) {
-                String candidate = level_data[i + 1].level_id;
-                if (progression->is_level_unlocked(candidate)) {
-                    next_level_id = candidate;
-                }
-                break;
-            }
-        }
-    }
-
-    pending_score_screen_stats_ =
-        match_session_.build_end_game_stats(victory, new_total, level_id, next_level_id, new_unlocks, available_upgrades, Dictionary());
+    pending_score_screen_stats_ = match_session_.build_end_game_stats(victory, new_total, level_id, next_level_id, new_unlocks, reward_offer.available_upgrades,
+                                                                      Dictionary(), reward_offer.reward_context);
     hud->show_score_screen(pending_score_screen_stats_);
 }
 

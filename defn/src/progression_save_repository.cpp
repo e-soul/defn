@@ -10,7 +10,7 @@ namespace defn {
 
 namespace {
 
-constexpr int CURRENT_SAVE_VERSION = 2;
+constexpr int CURRENT_SAVE_VERSION = 3;
 
 } // namespace
 
@@ -34,6 +34,7 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
     ProgressionSaveData save_data;
     save_data.schema_version = VariantTools::as_int(data.get("version", 1));
     save_data.total_score = VariantTools::as_int(data.get("total_score", 0));
+    save_data.rescue_points_bank = VariantTools::as_int(data.get("rescue_points_bank", 0));
 
     Array completed = data.get("levels_completed", Array());
     for (const auto &level_var : completed) {
@@ -61,6 +62,14 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
         save_data.claimed_level_upgrades.emplace_back(level_id, upgrade_id);
     }
 
+    Dictionary rescue_claimed = data.get("rescue_drafts_claimed", Dictionary());
+    Array rescue_levels = rescue_claimed.keys();
+    for (const Variant &level_var : rescue_levels) {
+        const String level_id = level_var;
+        const int claimed_count = VariantTools::as_int(rescue_claimed[level_id]);
+        save_data.rescue_drafts_claimed.emplace_back(level_id, claimed_count);
+    }
+
     return save_data;
 }
 
@@ -68,6 +77,7 @@ bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveDa
     Dictionary data;
     data["version"] = CURRENT_SAVE_VERSION;
     data["total_score"] = save_data.total_score;
+    data["rescue_points_bank"] = save_data.rescue_points_bank;
 
     Array completed;
     for (const auto &level_id : save_data.levels_completed) {
@@ -92,6 +102,12 @@ bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveDa
         claimed_level_upgrades[level_id] = upgrade_id;
     }
     data["claimed_level_upgrades"] = claimed_level_upgrades;
+
+    Dictionary rescue_drafts_claimed;
+    for (const auto &[level_id, claimed_count] : save_data.rescue_drafts_claimed) {
+        rescue_drafts_claimed[level_id] = claimed_count;
+    }
+    data["rescue_drafts_claimed"] = rescue_drafts_claimed;
 
     const String json_text = JSON::stringify(data, "  ");
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);

@@ -1,0 +1,77 @@
+{
+  "level_id": 5,
+  "name": "Feldkirchen",
+  "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
+  "starting_core_resource": 105,
+  "base_integrity": 4,
+  "waves": [
+    {
+      "wave_number": 1,
+      "spawns": [
+        {"time": 3.0, "type": "grime"},
+        {"time": 4.0, "type": "wrecker"},
+        {"time": 5.0, "type": "mason"},
+        {"time": 6.0, "type": "grime"},
+        {"time": 7.0, "type": "jackal"},
+        {"time": 8.0, "type": "wrecker"}
+      ]
+    },
+    {
+      "wave_number": 2,
+      "spawns": [
+        {"time": 23.0, "type": "grime"},
+        {"time": 24.0, "type": "wrecker"},
+        {"time": 25.0, "type": "mason"},
+        {"time": 26.0, "type": "grime"},
+        {"time": 27.0, "type": "jackal"},
+        {"time": 28.0, "type": "wrecker"},
+        {"time": 30.0, "type": "wrecker"},
+        {"time": 32.0, "type": "wrecker"}
+      ]
+    },
+    {
+      "wave_number": 3,
+      "spawns": [
+        {"time": 53.0, "type": "grime"},
+        {"time": 54.0, "type": "wrecker"},
+        {"time": 55.0, "type": "mason"},
+        {"time": 56.0, "type": "grime"},
+        {"time": 57.0, "type": "jackal"},
+        {"time": 58.0, "type": "wrecker"},
+        {"time": 60.0, "type": "wrecker"},
+        {"time": 62.0, "type": "wrecker"}
+      ]
+    },
+    {
+      "wave_number": 4,
+      "spawns": [
+        {"time": 103.0, "type": "grime"},
+        {"time": 104.0, "type": "wrecker"},
+        {"time": 105.0, "type": "mason"},
+        {"time": 106.0, "type": "grime"},
+        {"time": 107.0, "type": "jackal"},
+        {"time": 108.0, "type": "wrecker"},
+        {"time": 110.0, "type": "wrecker"},
+        {"time": 112.0, "type": "wrecker"},
+        {"time": 113.0, "type": "grime"},
+        {"time": 114.0, "type": "grime"}
+      ]
+    },
+    {
+      "wave_number": 5,
+      "spawns": [
+        {"time": 133.0, "type": "grime"},
+        {"time": 134.0, "type": "wrecker"},
+        {"time": 135.0, "type": "mason"},
+        {"time": 136.0, "type": "grime"},
+        {"time": 137.0, "type": "jackal"},
+        {"time": 138.0, "type": "wrecker"},
+        {"time": 140.0, "type": "wrecker"},
+        {"time": 142.0, "type": "wrecker"},
+        {"time": 146.0, "type": "grime"},
+        {"time": 147.0, "type": "jackal"},
+        {"time": 150.0, "type": "mason"}
+      ]
+    }
+  ]
+}

@@ -31,6 +31,18 @@ bool try_parse_effect_type(const String &value, UpgradeEffectType &out_type) {
         out_type = UpgradeEffectType::BASE_INTEGRITY_DELTA;
         return true;
     }
+    if (normalized == "unit_hp_delta") {
+        out_type = UpgradeEffectType::UNIT_HP_DELTA;
+        return true;
+    }
+    if (normalized == "unit_ranged_damage_delta") {
+        out_type = UpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA;
+        return true;
+    }
+    if (normalized == "unit_move_speed_delta") {
+        out_type = UpgradeEffectType::UNIT_MOVE_SPEED_DELTA;
+        return true;
+    }
     if (normalized == "unit_unlock") {
         out_type = UpgradeEffectType::UNIT_UNLOCK;
         return true;

@@ -1,8 +1,11 @@
 #include "progression_catalog.h"
 
 #include "variant_tools.h"
+#include <algorithm>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>
+#include <godot_cpp/variant/array.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -38,6 +41,20 @@ bool ProgressionCatalog::load(const String &path) {
         const Variant required_level = entry.get("requires_completed", Variant());
         if (required_level.get_type() == Variant::STRING) {
             unlock.requires_completed = String(required_level);
+        }
+
+        const Variant rescue_variant = entry.get("rescue", Variant());
+        if (rescue_variant.get_type() == Variant::DICTIONARY) {
+            const Dictionary rescue_dict = rescue_variant;
+            unlock.rescue.point_gain_multiplier = std::max(0.0F, VariantTools::as_real(rescue_dict.get("point_gain_multiplier", 0.0)));
+
+            const Array draft_costs = rescue_dict.get("draft_costs", Array());
+            for (const Variant &cost_variant : draft_costs) {
+                const int cost = std::max(0, VariantTools::as_int(cost_variant));
+                if (cost > 0) {
+                    unlock.rescue.draft_costs.push_back(cost);
+                }
+            }
         }
 
         level_unlocks_.push_back(unlock);

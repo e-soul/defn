@@ -1,5 +1,6 @@
 #include "score_screen_presenter.h"
 
+#include "progression_presentation.h"
 #include "upgrade_card_presenter.h"
 #include "variant_tools.h"
 
@@ -83,7 +84,8 @@ void apply_button_enabled(Button *button, bool enabled) {
     button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.6, 0.6, 0.65, 0.85));
 }
 
-void add_upgrade_section(VBoxContainer *content, const Array &available_upgrades, const Dictionary &selected_upgrade, const Callable &on_select_upgrade) {
+void add_upgrade_section(VBoxContainer *content, const String &reward_title, const String &reward_subtitle, const Array &available_upgrades,
+                         const Dictionary &selected_upgrade, const Callable &on_select_upgrade) {
     if (content == nullptr || available_upgrades.is_empty()) {
         return;
     }
@@ -93,11 +95,20 @@ void add_upgrade_section(VBoxContainer *content, const Array &available_upgrades
     add_spacer(content, 12);
 
     auto *section_title = memnew(Label);
-    section_title->set_text("CHOOSE 1 UPGRADE");
+    section_title->set_text(reward_title.is_empty() ? String("CHOOSE 1 UPGRADE") : reward_title);
     section_title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     section_title->add_theme_font_size_override("font_size", 24);
     section_title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
     content->add_child(section_title);
+
+    if (!reward_subtitle.is_empty()) {
+        auto *subtitle = memnew(Label);
+        subtitle->set_text(reward_subtitle);
+        subtitle->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+        subtitle->add_theme_font_size_override("font_size", 18);
+        subtitle->add_theme_color_override("font_color", Color(0.84, 0.88, 0.95));
+        content->add_child(subtitle);
+    }
 
     if (!selected_upgrade_id.is_empty()) {
         auto *summary = memnew(Label);
@@ -150,8 +161,14 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     const Array new_unlocks = stats.get("new_unlocks", Array());
     const Array available_upgrades = stats.get("available_upgrades", Array());
     const Dictionary selected_upgrade = stats.get("selected_upgrade", Dictionary());
+    const String reward_title = String(stats.get("reward_title", ""));
+    const String reward_subtitle = String(stats.get("reward_subtitle", ""));
+    const String frontier_level_id = String(stats.get("frontier_level_id", ""));
+    const int rescue_points_gained = VariantTools::as_int(stats.get("rescue_points_gained", 0));
+    const int rescue_points_bank = VariantTools::as_int(stats.get("rescue_points_bank", 0));
+    const int next_rescue_cost = VariantTools::as_int(stats.get("next_rescue_cost", 0));
     const String selected_upgrade_id = String(selected_upgrade.get("id", ""));
-    const bool reward_choice_required = victory && !available_upgrades.is_empty() && selected_upgrade_id.is_empty();
+    const bool reward_choice_required = !available_upgrades.is_empty() && selected_upgrade_id.is_empty();
 
     ScoreScreenView view;
 
@@ -206,6 +223,13 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
 
     add_stat_row(content, "Level Score:", vformat("%d", level_score));
     add_stat_row(content, "Career Total:", vformat("%d", new_total_score));
+    if (rescue_points_gained > 0) {
+        add_stat_row(content, "Rescue Points:", vformat("+%d", rescue_points_gained));
+    }
+    if (!frontier_level_id.is_empty() && next_rescue_cost > 0) {
+        add_stat_row(content, "Frontier Rescue:",
+                     vformat("%s %d / %d", ProgressionPresentation::format_level_name(frontier_level_id), rescue_points_bank, next_rescue_cost));
+    }
 
     if (!new_unlocks.is_empty()) {
         add_spacer(content, 8);
@@ -219,7 +243,7 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
         }
     }
 
-    add_upgrade_section(content, available_upgrades, selected_upgrade, actions.on_select_upgrade);
+    add_upgrade_section(content, reward_title, reward_subtitle, available_upgrades, selected_upgrade, actions.on_select_upgrade);
 
     add_spacer(content, 16);
 
