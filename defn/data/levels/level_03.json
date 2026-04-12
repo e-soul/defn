@@ -2,90 +2,62 @@
   "level_id": 3,
   "name": "Crumbling District",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
-  "starting_core_resource": 150,
+  "starting_core_resource": 68,
   "base_integrity": 3,
   "waves": [
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 3.0,  "type": "grime"},
-        {"time": 4.0,  "type": "wrecker"},
-        {"time": 5.0,  "type": "grime"},
-        {"time": 6.0,  "type": "mason"},
-        {"time": 7.0,  "type": "grime"}
+        {"time": 4.0, "type": "grime"},
+        {"time": 5.1, "type": "wrecker"},
+        {"time": 6.2, "type": "grime"},
+        {"time": 7.3, "type": "mason"},
+        {"time": 8.4, "type": "grime"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 22.0, "type": "grime"},
-        {"time": 23.0, "type": "wrecker"},
-        {"time": 24.0, "type": "mason"},
-        {"time": 25.0, "type": "grime"},
-        {"time": 26.0, "type": "grime"},
-        {"time": 27.5, "type": "wrecker"},
-        {"time": 29.0, "type": "mason"},
-        {"time": 30.5, "type": "grime"}
+        {"time": 23.5, "type": "grime"},
+        {"time": 24.6, "type": "wrecker"},
+        {"time": 25.7, "type": "mason"},
+        {"time": 26.8, "type": "grime"},
+        {"time": 27.9, "type": "wrecker"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
         {"time": 45.0, "type": "grime"},
-        {"time": 45.5, "type": "wrecker"},
-        {"time": 46.5, "type": "grime"},
-        {"time": 47.5, "type": "mason"},
-        {"time": 48.5, "type": "grime"},
-        {"time": 49.5, "type": "wrecker"},
-        {"time": 51.0, "type": "grime"},
-        {"time": 52.5, "type": "mason"},
-        {"time": 54.0, "type": "wrecker"},
-        {"time": 55.5, "type": "grime"},
-        {"time": 57.0, "type": "grime"},
-        {"time": 58.5, "type": "mason"}
+        {"time": 45.9, "type": "wrecker"},
+        {"time": 46.8, "type": "mason"},
+        {"time": 47.7, "type": "grime"},
+        {"time": 48.6, "type": "mason"},
+        {"time": 49.8, "type": "wrecker"}
       ]
     },
     {
       "wave_number": 4,
       "spawns": [
-        {"time": 72.0, "type": "grime"},
-        {"time": 72.5, "type": "wrecker"},
-        {"time": 73.0, "type": "mason"},
-        {"time": 74.0, "type": "grime"},
-        {"time": 75.0, "type": "wrecker"},
-        {"time": 76.0, "type": "grime"},
-        {"time": 77.0, "type": "mason"},
-        {"time": 78.0, "type": "grime"},
-        {"time": 79.5, "type": "wrecker"},
-        {"time": 81.0, "type": "grime"},
-        {"time": 82.5, "type": "mason"},
-        {"time": 84.0, "type": "wrecker"},
-        {"time": 85.5, "type": "grime"},
-        {"time": 87.0, "type": "mason"},
-        {"time": 88.5, "type": "grime"}
+        {"time": 67.5, "type": "grime"},
+        {"time": 68.3, "type": "wrecker"},
+        {"time": 69.1, "type": "mason"},
+        {"time": 69.9, "type": "grime"},
+        {"time": 70.7, "type": "mason"},
+        {"time": 71.5, "type": "wrecker"}
       ]
     },
     {
       "wave_number": 5,
       "spawns": [
-        {"time": 100.0, "type": "grime"},
-        {"time": 100.5, "type": "wrecker"},
-        {"time": 101.0, "type": "mason"},
-        {"time": 101.5, "type": "grime"},
-        {"time": 102.5, "type": "wrecker"},
-        {"time": 103.5, "type": "grime"},
-        {"time": 104.5, "type": "mason"},
-        {"time": 105.5, "type": "grime"},
-        {"time": 107.0, "type": "wrecker"},
-        {"time": 108.5, "type": "grime"},
-        {"time": 110.0, "type": "mason"},
-        {"time": 111.5, "type": "wrecker"},
-        {"time": 113.0, "type": "grime"},
-        {"time": 114.5, "type": "mason"},
-        {"time": 116.0, "type": "grime"},
-        {"time": 117.5, "type": "wrecker"},
-        {"time": 119.0, "type": "grime"},
-        {"time": 120.5, "type": "mason"}
+        {"time": 92.5, "type": "grime"},
+        {"time": 93.3, "type": "wrecker"},
+        {"time": 94.1, "type": "mason"},
+        {"time": 94.9, "type": "grime"},
+        {"time": 95.7, "type": "mason"},
+        {"time": 96.5, "type": "wrecker"},
+        {"time": 97.3, "type": "mason"},
+        {"time": 98.1, "type": "grime"}
       ]
     }
   ]

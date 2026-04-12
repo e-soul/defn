@@ -12,8 +12,8 @@
     "camera_scroll_step_factor": 0.25
   },
   "attack_range_variation": {
-    "melee": [0.8, 1.2],
-    "ranged": [0.8, 1.2]
+    "melee": [0.95, 1.05],
+    "ranged": [0.95, 1.05]
   },
   "health_bar_color": {
     "friendly": [0.2, 0.9, 0.2, 0.9],

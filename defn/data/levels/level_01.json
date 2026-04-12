@@ -2,38 +2,40 @@
   "level_id": 1,
   "name": "Desert Outpost",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
-  "starting_core_resource": 100,
+  "starting_core_resource": 44,
   "base_integrity": 3,
   "waves": [
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 5.0,  "type": "grime"},
-        {"time": 7.0,  "type": "grime"},
-        {"time": 9.0,  "type": "grime"}
+        {"time": 6.0,  "type": "grime"},
+        {"time": 7.3,  "type": "grime"},
+        {"time": 8.6,  "type": "grime"},
+        {"time": 10.0, "type": "grime"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 30.0, "type": "grime"},
-        {"time": 32.0, "type": "grime"},
-        {"time": 34.0, "type": "grime"},
-        {"time": 36.0, "type": "grime"},
-        {"time": 38.0, "type": "grime"}
+        {"time": 27.5, "type": "grime"},
+        {"time": 28.8, "type": "grime"},
+        {"time": 30.1, "type": "grime"},
+        {"time": 31.4, "type": "grime"},
+        {"time": 32.7, "type": "grime"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
-        {"time": 60.0, "type": "grime"},
-        {"time": 61.0, "type": "grime"},
-        {"time": 63.0, "type": "grime"},
-        {"time": 64.0, "type": "grime"},
-        {"time": 66.0, "type": "grime"},
-        {"time": 67.0, "type": "grime"},
-        {"time": 69.0, "type": "grime"},
-        {"time": 71.0, "type": "grime"}
+        {"time": 52.5, "type": "grime"},
+        {"time": 53.4, "type": "grime"},
+        {"time": 54.3, "type": "grime"},
+        {"time": 55.2, "type": "grime"},
+        {"time": 56.1, "type": "grime"},
+        {"time": 57.0, "type": "grime"},
+        {"time": 58.2, "type": "grime"},
+        {"time": 59.4, "type": "grime"},
+        {"time": 61.6, "type": "grime"}
       ]
     }
   ]

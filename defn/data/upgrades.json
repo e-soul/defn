@@ -6,14 +6,14 @@
     {
       "id": "battery_pack",
       "name": "Battery Pack",
-      "description": "+25 starting energy next mission.",
+      "description": "+15 starting energy next mission.",
       "emoji": "🔋",
       "category": "economy",
       "minimum_completed_levels": 0,
-      "weight": 4,
+      "weight": 3,
       "max_picks": 1,
       "effects": [
-        { "type": "starting_energy_delta", "value": 25 }
+        { "type": "starting_energy_delta", "value": 15 }
       ]
     },
     {
@@ -23,7 +23,7 @@
       "emoji": "🎯",
       "category": "unit",
       "minimum_completed_levels": 0,
-      "weight": 3,
+      "weight": 4,
       "max_picks": 1,
       "effects": [
         { "type": "unit_unlock", "unit_id": "marksman" }
@@ -36,7 +36,7 @@
       "emoji": "🧱",
       "category": "defense",
       "minimum_completed_levels": 0,
-      "weight": 3,
+      "weight": 2,
       "max_picks": 1,
       "effects": [
         { "type": "base_integrity_delta", "value": 1 }
@@ -48,9 +48,10 @@
       "description": "+1 energy regen every second.",
       "emoji": "⚡",
       "category": "economy",
-      "minimum_completed_levels": 1,
-      "weight": 3,
+      "minimum_completed_levels": 2,
+      "weight": 1,
       "max_picks": 1,
+      "prerequisites": ["battery_pack"],
       "effects": [
         { "type": "energy_regen_delta", "value": 1 }
       ]
@@ -62,7 +63,7 @@
       "emoji": "💥",
       "category": "unit",
       "minimum_completed_levels": 1,
-      "weight": 2,
+      "weight": 3,
       "max_picks": 1,
       "effects": [
         { "type": "unit_unlock", "unit_id": "impact" }
@@ -71,27 +72,28 @@
     {
       "id": "salvage_rights",
       "name": "Salvage Rights",
-      "description": "Enemies drop 25% more energy.",
+      "description": "Enemies drop 20% more energy.",
       "emoji": "💰",
       "category": "economy",
       "minimum_completed_levels": 1,
       "weight": 2,
       "max_picks": 1,
       "effects": [
-        { "type": "bounty_multiplier_delta", "value": 0.25 }
+        { "type": "bounty_multiplier_delta", "value": 0.2 }
       ]
     },
     {
       "id": "reserve_cells",
       "name": "Reserve Cells",
-      "description": "+40 starting energy next mission.",
+      "description": "+20 starting energy next mission.",
       "emoji": "🔋",
       "category": "economy",
       "minimum_completed_levels": 2,
-      "weight": 2,
+      "weight": 1,
       "max_picks": 1,
+      "prerequisites": ["battery_pack"],
       "effects": [
-        { "type": "starting_energy_delta", "value": 40 }
+        { "type": "starting_energy_delta", "value": 20 }
       ]
     },
     {
@@ -101,8 +103,9 @@
       "emoji": "🛡️",
       "category": "defense",
       "minimum_completed_levels": 2,
-      "weight": 2,
+      "weight": 1,
       "max_picks": 1,
+      "prerequisites": ["reinforced_bulkhead"],
       "effects": [
         { "type": "base_integrity_delta", "value": 1 }
       ]
@@ -114,7 +117,7 @@
       "emoji": "🛰️",
       "category": "unit",
       "minimum_completed_levels": 2,
-      "weight": 1,
+      "weight": 2,
       "max_picks": 1,
       "effects": [
         { "type": "unit_unlock", "unit_id": "operator" }
@@ -123,14 +126,15 @@
     {
       "id": "war_chest",
       "name": "War Chest",
-      "description": "Enemies drop 50% more energy.",
+      "description": "Enemies drop 30% more energy.",
       "emoji": "💵",
       "category": "economy",
       "minimum_completed_levels": 2,
       "weight": 1,
       "max_picks": 1,
+      "prerequisites": ["salvage_rights"],
       "effects": [
-        { "type": "bounty_multiplier_delta", "value": 0.5 }
+        { "type": "bounty_multiplier_delta", "value": 0.3 }
       ]
     }
   ]

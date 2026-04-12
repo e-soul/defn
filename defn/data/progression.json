@@ -1,8 +1,8 @@
 {
   "level_unlocks": [
-    { "level_id": "level_01", "score_required": 0,    "requires_completed": null },
-    { "level_id": "level_02", "score_required": 200,  "requires_completed": "level_01" },
-    { "level_id": "level_03", "score_required": 600,  "requires_completed": "level_02" },
-    { "level_id": "level_04", "score_required": 1500, "requires_completed": "level_03" }
+    { "level_id": "level_01", "score_required": 0,   "requires_completed": null },
+    { "level_id": "level_02", "score_required": 170, "requires_completed": "level_01" },
+    { "level_id": "level_03", "score_required": 460, "requires_completed": "level_02" },
+    { "level_id": "level_04", "score_required": 780, "requires_completed": "level_03" }
   ]
 }

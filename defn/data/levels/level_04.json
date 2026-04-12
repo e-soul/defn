@@ -2,128 +2,69 @@
   "level_id": 4,
   "name": "The Last Stand",
   "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
-  "starting_core_resource": 200,
+  "starting_core_resource": 84,
   "base_integrity": 3,
   "waves": [
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 2.0,  "type": "grime"},
-        {"time": 3.0,  "type": "wrecker"},
-        {"time": 4.0,  "type": "mason"},
-        {"time": 5.0,  "type": "grime"},
-        {"time": 6.0,  "type": "jackal"},
-        {"time": 7.0,  "type": "grime"}
+        {"time": 3.0, "type": "grime"},
+        {"time": 4.0, "type": "wrecker"},
+        {"time": 5.0, "type": "mason"},
+        {"time": 6.0, "type": "grime"},
+        {"time": 7.0, "type": "jackal"},
+        {"time": 8.0, "type": "wrecker"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 18.0, "type": "grime"},
-        {"time": 18.5, "type": "wrecker"},
-        {"time": 19.0, "type": "jackal"},
-        {"time": 20.0, "type": "mason"},
         {"time": 21.0, "type": "grime"},
-        {"time": 22.0, "type": "wrecker"},
-        {"time": 23.0, "type": "grime"},
-        {"time": 24.0, "type": "jackal"},
-        {"time": 25.5, "type": "mason"},
-        {"time": 27.0, "type": "grime"}
+        {"time": 21.9, "type": "wrecker"},
+        {"time": 22.8, "type": "jackal"},
+        {"time": 23.7, "type": "grime"},
+        {"time": 24.6, "type": "mason"},
+        {"time": 25.5, "type": "jackal"},
+        {"time": 26.4, "type": "wrecker"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
-        {"time": 40.0, "type": "grime"},
-        {"time": 40.5, "type": "wrecker"},
-        {"time": 41.0, "type": "mason"},
-        {"time": 41.5, "type": "jackal"},
-        {"time": 42.5, "type": "grime"},
-        {"time": 43.5, "type": "wrecker"},
-        {"time": 44.5, "type": "grime"},
-        {"time": 45.5, "type": "mason"},
-        {"time": 47.0, "type": "jackal"},
-        {"time": 48.5, "type": "grime"},
-        {"time": 50.0, "type": "wrecker"},
-        {"time": 51.5, "type": "grime"},
-        {"time": 53.0, "type": "mason"},
-        {"time": 54.5, "type": "jackal"},
-        {"time": 56.0, "type": "grime"}
+        {"time": 43.0, "type": "grime"},
+        {"time": 43.8, "type": "wrecker"},
+        {"time": 44.6, "type": "mason"},
+        {"time": 45.4, "type": "jackal"},
+        {"time": 46.2, "type": "grime"},
+        {"time": 47.0, "type": "wrecker"},
+        {"time": 47.8, "type": "jackal"}
       ]
     },
     {
       "wave_number": 4,
       "spawns": [
-        {"time": 68.0, "type": "grime"},
-        {"time": 68.5, "type": "wrecker"},
-        {"time": 69.0, "type": "mason"},
-        {"time": 69.5, "type": "jackal"},
-        {"time": 70.0, "type": "grime"},
-        {"time": 71.0, "type": "wrecker"},
-        {"time": 72.0, "type": "mason"},
-        {"time": 73.0, "type": "grime"},
-        {"time": 74.0, "type": "jackal"},
-        {"time": 75.0, "type": "wrecker"},
-        {"time": 76.5, "type": "grime"},
-        {"time": 78.0, "type": "mason"},
-        {"time": 79.5, "type": "jackal"},
-        {"time": 81.0, "type": "grime"},
-        {"time": 82.5, "type": "wrecker"},
-        {"time": 84.0, "type": "mason"},
-        {"time": 85.5, "type": "jackal"},
-        {"time": 87.0, "type": "grime"}
+        {"time": 69.0, "type": "grime"},
+        {"time": 69.7, "type": "wrecker"},
+        {"time": 70.4, "type": "jackal"},
+        {"time": 71.1, "type": "mason"},
+        {"time": 71.8, "type": "grime"},
+        {"time": 72.5, "type": "jackal"},
+        {"time": 73.2, "type": "wrecker"},
+        {"time": 73.9, "type": "mason"}
       ]
     },
     {
       "wave_number": 5,
       "spawns": [
-        {"time": 98.0,  "type": "grime"},
-        {"time": 98.5,  "type": "wrecker"},
-        {"time": 99.0,  "type": "mason"},
-        {"time": 99.5,  "type": "jackal"},
-        {"time": 100.0, "type": "grime"},
+        {"time": 97.0,  "type": "grime"},
+        {"time": 97.7,  "type": "wrecker"},
+        {"time": 98.4,  "type": "jackal"},
+        {"time": 99.1,  "type": "mason"},
+        {"time": 99.8,  "type": "jackal"},
         {"time": 100.5, "type": "wrecker"},
-        {"time": 101.5, "type": "mason"},
-        {"time": 102.5, "type": "jackal"},
-        {"time": 103.5, "type": "grime"},
-        {"time": 104.5, "type": "wrecker"},
-        {"time": 106.0, "type": "mason"},
-        {"time": 107.5, "type": "jackal"},
-        {"time": 109.0, "type": "grime"},
-        {"time": 110.5, "type": "wrecker"},
-        {"time": 112.0, "type": "mason"},
-        {"time": 113.5, "type": "jackal"},
-        {"time": 115.0, "type": "grime"},
-        {"time": 116.5, "type": "wrecker"},
-        {"time": 118.0, "type": "mason"},
-        {"time": 119.5, "type": "jackal"}
-      ]
-    },
-    {
-      "wave_number": 6,
-      "spawns": [
-        {"time": 132.0, "type": "jackal"},
-        {"time": 132.5, "type": "mason"},
-        {"time": 133.0, "type": "wrecker"},
-        {"time": 133.5, "type": "jackal"},
-        {"time": 134.0, "type": "grime"},
-        {"time": 134.5, "type": "jackal"},
-        {"time": 135.5, "type": "mason"},
-        {"time": 136.5, "type": "wrecker"},
-        {"time": 137.5, "type": "jackal"},
-        {"time": 138.5, "type": "grime"},
-        {"time": 140.0, "type": "jackal"},
-        {"time": 141.5, "type": "mason"},
-        {"time": 143.0, "type": "wrecker"},
-        {"time": 144.5, "type": "jackal"},
-        {"time": 146.0, "type": "grime"},
-        {"time": 147.5, "type": "jackal"},
-        {"time": 149.0, "type": "mason"},
-        {"time": 150.5, "type": "wrecker"},
-        {"time": 152.0, "type": "jackal"},
-        {"time": 153.5, "type": "jackal"},
-        {"time": 155.0, "type": "mason"},
-        {"time": 156.5, "type": "jackal"}
+        {"time": 101.2, "type": "grime"},
+        {"time": 101.9, "type": "jackal"},
+        {"time": 102.6, "type": "mason"}
       ]
     }
   ]
