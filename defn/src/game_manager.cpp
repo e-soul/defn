@@ -98,14 +98,6 @@ bool finalize_selected_upgrade(Dictionary &pending_score_screen_stats) {
     return true;
 }
 
-String compute_rescue_progress_level_id(bool victory, const String &level_id, const String &frontier_level_id) {
-    if (victory && level_id == frontier_level_id) {
-        return {};
-    }
-
-    return frontier_level_id;
-}
-
 RewardOffer build_reward_offer(const ProgressionManager &progression, bool victory, const String &level_id, const String &frontier_level_id) {
     RewardOffer offer;
 
@@ -118,7 +110,7 @@ RewardOffer build_reward_offer(const ProgressionManager &progression, bool victo
         return offer;
     }
 
-    if (!frontier_level_id.is_empty() && progression.can_claim_rescue_draft(frontier_level_id)) {
+    if (!victory && !frontier_level_id.is_empty() && progression.can_claim_rescue_draft(frontier_level_id)) {
         offer.available_upgrades = progression.build_rescue_draft_for_level(frontier_level_id);
         if (!offer.available_upgrades.is_empty()) {
             offer.reward_context["reward_source"] = "rescue";
@@ -129,19 +121,13 @@ RewardOffer build_reward_offer(const ProgressionManager &progression, bool victo
     return offer;
 }
 
-void finalize_reward_context(Dictionary &reward_context, const String &rescue_progress_level_id, int rescue_points_gained, int rescue_points_bank,
-                             int next_rescue_cost) {
+void finalize_reward_context(Dictionary &reward_context) {
     const String reward_source = reward_context.get("reward_source", "");
     const String reward_level_id = reward_context.get("reward_level_id", "");
     if (!reward_source.is_empty() && !reward_level_id.is_empty()) {
         reward_context["reward_title"] = ProgressionPresentation::format_reward_title(reward_source, reward_level_id);
         reward_context["reward_subtitle"] = ProgressionPresentation::format_reward_subtitle(reward_source, reward_level_id);
     }
-
-    reward_context["frontier_level_id"] = rescue_progress_level_id;
-    reward_context["rescue_points_gained"] = rescue_points_gained;
-    reward_context["rescue_points_bank"] = rescue_points_bank;
-    reward_context["next_rescue_cost"] = rescue_progress_level_id.is_empty() ? 0 : next_rescue_cost;
 }
 
 String determine_next_level_id(const ProgressionManager &progression, bool victory, const String &level_id) {
@@ -522,19 +508,12 @@ void GameManager::end_game(bool victory) {
     auto *progression = ProgressionManager::get_singleton();
     String level_id = progression->get_current_level_id();
     const String frontier_level_id = progression->get_frontier_level_id();
-    int old_score = progression->get_total_score();
-    const int next_rescue_cost = frontier_level_id.is_empty() ? 0 : progression->get_next_rescue_draft_cost(frontier_level_id);
 
     const int level_score = match_session_.calculate_level_score(victory);
-    const int rescue_points_gained = progression->calculate_rescue_points_gain(level_id, level_score);
 
     progression->add_score(level_score);
-    progression->add_rescue_points(rescue_points_gained);
-
-    const int rescue_points_bank = progression->get_rescue_points_bank();
-    const String rescue_progress_level_id = compute_rescue_progress_level_id(victory, level_id, frontier_level_id);
     RewardOffer reward_offer = build_reward_offer(*progression, victory, level_id, frontier_level_id);
-    finalize_reward_context(reward_offer.reward_context, rescue_progress_level_id, rescue_points_gained, rescue_points_bank, next_rescue_cost);
+    finalize_reward_context(reward_offer.reward_context);
 
     if (victory) {
         progression->mark_level_completed(level_id, level_score);
@@ -542,7 +521,7 @@ void GameManager::end_game(bool victory) {
     int new_total = progression->get_total_score();
     progression->save();
 
-    PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*progression, old_score, new_total);
+    PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*progression, victory, level_id);
     const String next_level_id = determine_next_level_id(*progression, victory, level_id);
 
     pending_score_screen_stats_ = match_session_.build_end_game_stats(victory, new_total, level_id, next_level_id, new_unlocks, reward_offer.available_upgrades,

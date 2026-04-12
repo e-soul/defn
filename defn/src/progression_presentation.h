@@ -19,7 +19,7 @@ class ProgressionPresentation {
     static String format_level_name(const String &level_id);
     static String format_reward_title(const String &reward_source, const String &reward_level_id);
     static String format_reward_subtitle(const String &reward_source, const String &reward_level_id);
-    static PackedStringArray describe_new_unlocks(const ProgressionManager &progression, int old_score, int new_score);
+    static PackedStringArray describe_new_unlocks(const ProgressionManager &progression, bool victory, const String &completed_level_id);
     static String format_level_button_label(const ProgressionManager &progression, const LevelUnlock &level_unlock);
 };
 

@@ -17,7 +17,7 @@ namespace {
 constexpr auto PROGRESSION_PATH = "res://data/progression.json";
 constexpr auto UPGRADE_PATH = "res://data/upgrades.json";
 constexpr auto SAVE_PATH = "user://save_data.json";
-constexpr int CURRENT_SAVE_VERSION = 3;
+constexpr int CURRENT_SAVE_VERSION = 4;
 constexpr auto LEGACY_REWARD_SENTINEL = "__legacy_reward_claimed__";
 
 struct LegacyMigrationRule {
@@ -79,7 +79,6 @@ ProgressionManager *ProgressionManager::singleton_ = nullptr;
 
 void ProgressionManager::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_total_score"), &ProgressionManager::get_total_score);
-    ClassDB::bind_method(D_METHOD("get_rescue_points_bank"), &ProgressionManager::get_rescue_points_bank);
     ClassDB::bind_method(D_METHOD("get_unlocked_units"), &ProgressionManager::get_unlocked_units);
     ClassDB::bind_method(D_METHOD("get_unlocked_levels"), &ProgressionManager::get_unlocked_levels);
     ClassDB::bind_method(D_METHOD("can_claim_level_upgrade", "level_id"), &ProgressionManager::can_claim_level_upgrade);
@@ -90,7 +89,6 @@ void ProgressionManager::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_current_level_id"), &ProgressionManager::get_current_level_id);
     ClassDB::bind_method(D_METHOD("set_current_level_id", "level_id"), &ProgressionManager::set_current_level_id);
     ClassDB::bind_method(D_METHOD("add_score", "amount"), &ProgressionManager::add_score);
-    ClassDB::bind_method(D_METHOD("add_rescue_points", "amount"), &ProgressionManager::add_rescue_points);
     ClassDB::bind_method(D_METHOD("save"), &ProgressionManager::save);
 }
 
@@ -131,7 +129,7 @@ void ProgressionManager::load_save() {
     save_data_ = *loaded_save;
     migrate_legacy_save_if_needed();
     UtilityFunctions::print("ProgressionManager: Loaded save — total_score=", save_data_.total_score, ", levels_completed=", save_data_.levels_completed.size(),
-                            ", owned_upgrades=", save_data_.owned_upgrades.size(), ", rescue_points_bank=", save_data_.rescue_points_bank);
+                            ", owned_upgrades=", save_data_.owned_upgrades.size());
 }
 
 void ProgressionManager::create_default_save() {
@@ -146,7 +144,7 @@ void ProgressionManager::save() {
         return;
     }
 
-    UtilityFunctions::print("ProgressionManager: Save written — total_score=", save_data_.total_score, ", rescue_points_bank=", save_data_.rescue_points_bank);
+    UtilityFunctions::print("ProgressionManager: Save written — total_score=", save_data_.total_score);
 }
 
 PackedStringArray ProgressionManager::get_unlocked_units() const {
@@ -200,9 +198,6 @@ bool ProgressionManager::is_level_unlocked(const String &level_id) const {
         return false;
     }
 
-    if (save_data_.total_score < unlock->score_required) {
-        return false;
-    }
     if (!unlock->requires_completed.is_empty() && !is_level_completed(unlock->requires_completed)) {
         return false;
     }
@@ -216,8 +211,8 @@ bool ProgressionManager::can_claim_rescue_draft(const String &level_id) const {
         return false;
     }
 
-    const int next_cost = get_next_rescue_draft_cost(level_id);
-    return next_cost > 0 && save_data_.rescue_points_bank >= next_cost;
+    const int next_threshold = get_next_rescue_draft_threshold(level_id);
+    return next_threshold > 0 && save_data_.total_score >= next_threshold;
 }
 
 String ProgressionManager::get_claimed_upgrade_for_level(const String &level_id) const {
@@ -256,31 +251,18 @@ int ProgressionManager::get_rescue_drafts_claimed(const String &level_id) const 
     return 0;
 }
 
-int ProgressionManager::get_next_rescue_draft_cost(const String &level_id) const {
+int ProgressionManager::get_next_rescue_draft_threshold(const String &level_id) const {
     const LevelUnlock *unlock = find_level_unlock(level_id);
     if (unlock == nullptr) {
         return 0;
     }
 
     const int claimed_count = get_rescue_drafts_claimed(level_id);
-    if (!std::cmp_less(claimed_count, unlock->rescue.draft_costs.size())) {
+    if (!std::cmp_less(claimed_count, unlock->rescue_thresholds.size())) {
         return 0;
     }
 
-    return unlock->rescue.draft_costs[static_cast<size_t>(claimed_count)];
-}
-
-int ProgressionManager::calculate_rescue_points_gain(const String &played_level_id, int level_score) const {
-    if (level_score <= 0 || get_frontier_level_id().is_empty()) {
-        return 0;
-    }
-
-    const LevelUnlock *unlock = find_level_unlock(played_level_id);
-    if (unlock == nullptr || unlock->rescue.point_gain_multiplier <= 0.0F) {
-        return 0;
-    }
-
-    return std::max(0, static_cast<int>(std::lround(static_cast<double>(level_score) * static_cast<double>(unlock->rescue.point_gain_multiplier))));
+    return unlock->rescue_thresholds[static_cast<size_t>(claimed_count)];
 }
 
 UnitConfig ProgressionManager::get_effective_friendly_unit_config(const UnitConfig &base_config) const {
@@ -403,14 +385,6 @@ const LevelUnlock *ProgressionManager::find_level_unlock(const String &level_id)
     return nullptr;
 }
 
-int ProgressionManager::get_score_required_for_level(const String &level_id) const {
-    if (const LevelUnlock *unlock = find_level_unlock(level_id); unlock != nullptr) {
-        return unlock->score_required;
-    }
-
-    return 0;
-}
-
 Array ProgressionManager::build_upgrade_draft() const {
     Array result;
 
@@ -496,8 +470,6 @@ Dictionary ProgressionManager::get_upgrade_card_view(const String &upgrade_id) c
 
 void ProgressionManager::add_score(int amount) { save_data_.total_score += amount; }
 
-void ProgressionManager::add_rescue_points(int amount) { save_data_.rescue_points_bank += std::max(0, amount); }
-
 void ProgressionManager::mark_level_completed(const String &level_id, int level_score) {
     if (!is_level_completed(level_id)) {
         save_data_.levels_completed.push_back(level_id);
@@ -541,12 +513,11 @@ bool ProgressionManager::claim_rescue_draft(const String &level_id, const String
         return false;
     }
 
-    const int draft_cost = get_next_rescue_draft_cost(level_id);
-    if (draft_cost <= 0 || save_data_.rescue_points_bank < draft_cost) {
+    const int next_threshold = get_next_rescue_draft_threshold(level_id);
+    if (next_threshold <= 0 || save_data_.total_score < next_threshold) {
         return false;
     }
 
-    save_data_.rescue_points_bank -= draft_cost;
     set_rescue_drafts_claimed(level_id, get_rescue_drafts_claimed(level_id) + 1);
     grant_upgrade(upgrade_id);
     return true;
@@ -581,8 +552,7 @@ void ProgressionManager::migrate_legacy_save_if_needed() {
         mutated = true;
     }
 
-    if (save_data_.schema_version < 3) {
-        save_data_.rescue_points_bank = std::max(0, save_data_.rescue_points_bank);
+    if (save_data_.schema_version < 4) {
         mutated = true;
     }
 

@@ -31,29 +31,21 @@ bool ProgressionCatalog::load(const String &path) {
 
     Array level_arr = data.get("level_unlocks", Array());
     level_unlocks_.clear();
-    for (const auto &entry_var : level_arr) {
-        Dictionary entry = entry_var;
-        LevelUnlock unlock{
-            .level_id = String(entry.get("level_id", "")),
-            .score_required = VariantTools::as_int(entry.get("score_required", 0)),
-        };
+    for (const Variant &entry_var : level_arr) {
+        const Dictionary entry = entry_var;
+        LevelUnlock unlock;
+        unlock.level_id = entry.get("level_id", String());
 
         const Variant required_level = entry.get("requires_completed", Variant());
         if (required_level.get_type() == Variant::STRING) {
             unlock.requires_completed = String(required_level);
         }
 
-        const Variant rescue_variant = entry.get("rescue", Variant());
-        if (rescue_variant.get_type() == Variant::DICTIONARY) {
-            const Dictionary rescue_dict = rescue_variant;
-            unlock.rescue.point_gain_multiplier = std::max(0.0F, VariantTools::as_real(rescue_dict.get("point_gain_multiplier", 0.0)));
-
-            const Array draft_costs = rescue_dict.get("draft_costs", Array());
-            for (const Variant &cost_variant : draft_costs) {
-                const int cost = std::max(0, VariantTools::as_int(cost_variant));
-                if (cost > 0) {
-                    unlock.rescue.draft_costs.push_back(cost);
-                }
+        const Array rescue_thresholds = entry.get("rescue_thresholds", Array());
+        for (const Variant &threshold_variant : rescue_thresholds) {
+            const int threshold = std::max(0, VariantTools::as_int(threshold_variant));
+            if (threshold > 0) {
+                unlock.rescue_thresholds.push_back(threshold);
             }
         }
 

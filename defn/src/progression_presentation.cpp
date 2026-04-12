@@ -22,17 +22,21 @@ String ProgressionPresentation::format_reward_subtitle(const String &reward_sour
         return vformat("%s cleared for the first time.", format_level_name(reward_level_id));
     }
     if (reward_source == "rescue") {
-        return vformat("Rescue points funded emergency support for %s.", format_level_name(reward_level_id));
+        return vformat("Career progress unlocked emergency support for %s.", format_level_name(reward_level_id));
     }
 
     return {};
 }
 
-PackedStringArray ProgressionPresentation::describe_new_unlocks(const ProgressionManager &progression, int old_score, int new_score) {
+PackedStringArray ProgressionPresentation::describe_new_unlocks(const ProgressionManager &progression, bool victory, const String &completed_level_id) {
     PackedStringArray result;
 
+    if (!victory || completed_level_id.is_empty()) {
+        return result;
+    }
+
     for (const auto &unlock : progression.get_level_unlock_data()) {
-        if (old_score < unlock.score_required && new_score >= unlock.score_required && progression.is_level_unlocked(unlock.level_id)) {
+        if (unlock.requires_completed == completed_level_id && progression.is_level_unlocked(unlock.level_id)) {
             result.push_back(vformat("NEW UNLOCK: %s!", format_level_name(unlock.level_id)));
         }
     }
@@ -43,7 +47,11 @@ PackedStringArray ProgressionPresentation::describe_new_unlocks(const Progressio
 String ProgressionPresentation::format_level_button_label(const ProgressionManager &progression, const LevelUnlock &level_unlock) {
     String label_text = format_level_name(level_unlock.level_id);
     if (!progression.is_level_unlocked(level_unlock.level_id)) {
-        label_text += vformat(" (Score: %d needed)", level_unlock.score_required);
+        if (!level_unlock.requires_completed.is_empty()) {
+            label_text += vformat(" (Complete %s)", format_level_name(level_unlock.requires_completed));
+        } else {
+            label_text += " (Locked)";
+        }
         return label_text;
     }
 

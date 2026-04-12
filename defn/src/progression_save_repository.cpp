@@ -10,7 +10,7 @@ namespace defn {
 
 namespace {
 
-constexpr int CURRENT_SAVE_VERSION = 3;
+constexpr int CURRENT_SAVE_VERSION = 4;
 
 } // namespace
 
@@ -34,7 +34,6 @@ std::optional<ProgressionSaveData> ProgressionSaveRepository::load(const String 
     ProgressionSaveData save_data;
     save_data.schema_version = VariantTools::as_int(data.get("version", 1));
     save_data.total_score = VariantTools::as_int(data.get("total_score", 0));
-    save_data.rescue_points_bank = VariantTools::as_int(data.get("rescue_points_bank", 0));
 
     Array completed = data.get("levels_completed", Array());
     for (const auto &level_var : completed) {
@@ -77,7 +76,6 @@ bool ProgressionSaveRepository::save(const String &path, const ProgressionSaveDa
     Dictionary data;
     data["version"] = CURRENT_SAVE_VERSION;
     data["total_score"] = save_data.total_score;
-    data["rescue_points_bank"] = save_data.rescue_points_bank;
 
     Array completed;
     for (const auto &level_id : save_data.levels_completed) {

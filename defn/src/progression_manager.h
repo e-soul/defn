@@ -35,7 +35,6 @@ class ProgressionManager : public Object {
 
     // Queries
     int get_total_score() const { return save_data_.total_score; }
-    int get_rescue_points_bank() const { return save_data_.rescue_points_bank; }
     PackedStringArray get_unlocked_units() const;
     PackedStringArray get_unlocked_levels() const;
     PackedStringArray get_owned_upgrades() const;
@@ -48,8 +47,7 @@ class ProgressionManager : public Object {
     String get_frontier_level_id() const;
     int get_highest_level_score(const String &level_id) const;
     int get_rescue_drafts_claimed(const String &level_id) const;
-    int get_next_rescue_draft_cost(const String &level_id) const;
-    int calculate_rescue_points_gain(const String &played_level_id, int level_score) const;
+    int get_next_rescue_draft_threshold(const String &level_id) const;
     UnitConfig get_effective_friendly_unit_config(const UnitConfig &base_config) const;
     int get_effective_starting_energy(int base) const;
     int get_effective_energy_regen() const;
@@ -64,13 +62,11 @@ class ProgressionManager : public Object {
     void set_current_level_id(const String &level_id) { current_level_id_ = level_id; }
 
     // Progression queries for gameplay and presentation
-    int get_score_required_for_level(const String &level_id) const;
     const std::vector<LevelUnlock> &get_level_unlock_data() const { return catalog_.get_level_unlocks(); }
     const std::vector<UpgradeCardDefinition> &get_upgrade_card_data() const { return upgrade_catalog_.get_cards(); }
 
     // Mutators
     void add_score(int amount);
-    void add_rescue_points(int amount);
     void mark_level_completed(const String &level_id, int level_score);
     bool claim_level_upgrade(const String &level_id, const String &upgrade_id);
     bool claim_rescue_draft(const String &level_id, const String &upgrade_id);

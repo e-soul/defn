@@ -163,10 +163,6 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
     const Dictionary selected_upgrade = stats.get("selected_upgrade", Dictionary());
     const String reward_title = String(stats.get("reward_title", ""));
     const String reward_subtitle = String(stats.get("reward_subtitle", ""));
-    const String frontier_level_id = String(stats.get("frontier_level_id", ""));
-    const int rescue_points_gained = VariantTools::as_int(stats.get("rescue_points_gained", 0));
-    const int rescue_points_bank = VariantTools::as_int(stats.get("rescue_points_bank", 0));
-    const int next_rescue_cost = VariantTools::as_int(stats.get("next_rescue_cost", 0));
     const String selected_upgrade_id = String(selected_upgrade.get("id", ""));
     const bool reward_choice_required = !available_upgrades.is_empty() && selected_upgrade_id.is_empty();
 
@@ -223,13 +219,6 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const Dictionary &stats
 
     add_stat_row(content, "Level Score:", vformat("%d", level_score));
     add_stat_row(content, "Career Total:", vformat("%d", new_total_score));
-    if (rescue_points_gained > 0) {
-        add_stat_row(content, "Rescue Points:", vformat("+%d", rescue_points_gained));
-    }
-    if (!frontier_level_id.is_empty() && next_rescue_cost > 0) {
-        add_stat_row(content, "Frontier Rescue:",
-                     vformat("%s %d / %d", ProgressionPresentation::format_level_name(frontier_level_id), rescue_points_bank, next_rescue_cost));
-    }
 
     if (!new_unlocks.is_empty()) {
         add_spacer(content, 8);
