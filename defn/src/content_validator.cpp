@@ -125,7 +125,57 @@ void validate_levels(const ProgressionCatalog &catalog, const UnitDataLoader &un
     }
 }
 
+void validate_levels(const ProgressionCatalog &catalog, const UnitDataLoader &unit_data, const std::vector<LoadedLevelValidationInput> &levels,
+                     std::vector<String> &issues) {
+    for (const auto &unlock : catalog.get_level_unlocks()) {
+        const auto found_level = std::ranges::find_if(levels, [&unlock](const LoadedLevelValidationInput &level) { return level.level_id == unlock.level_id; });
+        if (found_level == levels.end() || !found_level->definition.has_value()) {
+            push_issue(issues, vformat("missing or invalid level definition for '%s'", unlock.level_id));
+            continue;
+        }
+
+        const LevelDefinition &level_definition = *found_level->definition;
+        if (level_definition.waves.empty()) {
+            push_issue(issues, vformat("level '%s' has no waves", unlock.level_id));
+        }
+
+        for (const auto &wave : level_definition.waves) {
+            for (const auto &spawn : wave.spawns) {
+                const auto unit = unit_data.get_unit(spawn.type);
+                if (!unit.has_value()) {
+                    push_issue(issues, vformat("level '%s' references unknown spawn type '%s'", unlock.level_id, spawn.type));
+                    continue;
+                }
+                if (unit->side != UnitSide::HOSTILE) {
+                    push_issue(issues, vformat("level '%s' uses non-hostile spawn type '%s'", unlock.level_id, spawn.type));
+                }
+            }
+        }
+    }
+}
+
 } // namespace
+
+ContentValidationReport ContentValidator::validate_loaded_content(const std::optional<MenuContentData> &menu_data, const ProgressionCatalog *progression_catalog,
+                                                                 const UpgradeCatalog *upgrade_catalog, const UnitDataLoader *unit_data,
+                                                                 const std::vector<LoadedLevelValidationInput> &levels) {
+    ContentValidationReport report;
+
+    if (menu_data.has_value()) {
+        validate_menu_content(*menu_data, report.issues);
+    }
+    if (progression_catalog != nullptr) {
+        validate_progression_catalog(*progression_catalog, report.issues);
+    }
+    if (upgrade_catalog != nullptr && unit_data != nullptr) {
+        validate_upgrade_catalog(*upgrade_catalog, *unit_data, report.issues);
+    }
+    if (progression_catalog != nullptr && unit_data != nullptr) {
+        validate_levels(*progression_catalog, *unit_data, levels, report.issues);
+    }
+
+    return report;
+}
 
 bool ContentValidator::report_startup_validation() {
     static std::optional<bool> cached_result;
@@ -158,18 +208,20 @@ bool ContentValidator::report_startup_validation() {
         push_issue(issues, "failed to load unit_data.json or unit_globals.json");
     }
 
-    if (menu_data) {
-        validate_menu_content(*menu_data, issues);
-    }
+    std::vector<LoadedLevelValidationInput> loaded_levels;
     if (progression_loaded) {
-        validate_progression_catalog(progression_catalog, issues);
+        loaded_levels.reserve(progression_catalog.get_level_unlocks().size());
+        for (const auto &unlock : progression_catalog.get_level_unlocks()) {
+            loaded_levels.push_back({
+                .level_id = unlock.level_id,
+                .definition = units_loaded ? LevelLoader::load(DataPaths::level_definition(unlock.level_id)) : std::nullopt,
+            });
+        }
     }
-    if (upgrades_loaded && units_loaded) {
-        validate_upgrade_catalog(upgrade_catalog, unit_data, issues);
-    }
-    if (progression_loaded && units_loaded) {
-        validate_levels(progression_catalog, unit_data, issues);
-    }
+
+    const ContentValidationReport report = validate_loaded_content(menu_data, progression_loaded ? &progression_catalog : nullptr,
+                                                                   upgrades_loaded ? &upgrade_catalog : nullptr, units_loaded ? &unit_data : nullptr, loaded_levels);
+    issues.insert(issues.end(), report.issues.begin(), report.issues.end());
 
     if (issues.empty()) {
         UtilityFunctions::print("ContentValidator: content validation passed");

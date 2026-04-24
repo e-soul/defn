@@ -1,13 +1,11 @@
 #include "match_director.h"
 
-#include "grid_manager.h"
-#include "progression_manager.h"
 #include "progression_presentation.h"
 #include "unit.h"
 
 namespace defn {
 
-bool MatchDirector::configure(CampaignService *campaign, const UnitDataLoader *unit_data, GridManager *grid) {
+bool MatchDirector::configure(ProgressionService *campaign, const UnitDataLoader *unit_data, const GridQueryService *grid) {
     campaign_ = campaign;
     unit_data_ = unit_data;
     grid_ = grid;
@@ -22,6 +20,11 @@ bool MatchDirector::load_level(const String &path) {
 
     level_id_ = campaign_->get_current_level_id();
     return true;
+}
+
+void MatchDirector::load_level_definition(const LevelDefinition &level_definition, const String &level_id) {
+    spawn_scheduler_.load_level_definition(level_definition);
+    level_id_ = level_id;
 }
 
 void MatchDirector::begin_match() {
@@ -67,11 +70,11 @@ MatchUpdate MatchDirector::update(double delta) {
     }
 
     const SpawnSchedulerUpdate scheduler_update = spawn_scheduler_.update(delta);
-    update_result.spawned_enemies = scheduler_update.spawned_enemies;
+    update_result.enemy_spawn_requests = scheduler_update.spawn_requests;
     update_result.wave_changed = scheduler_update.wave_changed;
 
-    for (Unit *enemy : update_result.spawned_enemies) {
-        if (enemy != nullptr) {
+    for (const UnitSpawnRequest &enemy : update_result.enemy_spawn_requests) {
+        if (!enemy.config.name.is_empty()) {
             match_session_.record_enemy_spawned();
         }
     }
@@ -90,8 +93,8 @@ MatchUpdate MatchDirector::update(double delta) {
 MatchUpdate MatchDirector::handle_deploy_request(const String &unit_type) {
     MatchUpdate update_result;
     const DeploymentResult result = deployment_service_.deploy_friendly(unit_type);
-    if (result.succeeded && result.unit != nullptr) {
-        update_result.spawned_friendlies.push_back(result.unit);
+    if (result.succeeded && result.spawn_request.has_value()) {
+        update_result.friendly_spawn_requests.push_back(*result.spawn_request);
         update_result.resources_changed = true;
         update_result.core_resource = result.remaining_energy;
     }

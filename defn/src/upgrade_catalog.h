@@ -2,7 +2,9 @@
 #define UPGRADE_CATALOG_H
 
 #include <godot_cpp/core/math.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
+
 #include <vector>
 
 namespace defn {
@@ -41,9 +43,12 @@ struct UpgradeCardDefinition {
     bool grants_unit_unlock() const;
 };
 
+bool try_parse_upgrade_effect_type(const String &value, UpgradeEffectType &out_type);
+
 class UpgradeCatalog {
   public:
     bool load(const String &path);
+    bool load_from_data(const Dictionary &data);
 
     const std::vector<String> &get_base_units() const { return base_units_; }
     const std::vector<UpgradeCardDefinition> &get_cards() const { return cards_; }

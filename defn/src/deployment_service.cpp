@@ -1,15 +1,10 @@
 #include "deployment_service.h"
 
-#include "grid_manager.h"
-#include "progression_manager.h"
-#include "unit.h"
-#include "unit_factory.h"
-
 namespace defn {
 
 namespace {
 
-std::optional<UnitConfig> resolve_friendly_config(const CampaignService *progression, const UnitDataLoader *unit_data, const String &unit_type) {
+std::optional<UnitConfig> resolve_friendly_config(const ProgressionService *progression, const UnitDataLoader *unit_data, const String &unit_type) {
     if (progression == nullptr || unit_data == nullptr) {
         return std::nullopt;
     }
@@ -24,7 +19,8 @@ std::optional<UnitConfig> resolve_friendly_config(const CampaignService *progres
 
 } // namespace
 
-void DeploymentService::configure(MatchSession *match_session, const UnitDataLoader *unit_data, CampaignService *progression, GridManager *grid) {
+void DeploymentService::configure(MatchSession *match_session, const UnitDataLoader *unit_data, const ProgressionService *progression,
+                                  const GridQueryService *grid) {
     match_session_ = match_session;
     unit_data_ = unit_data;
     progression_ = progression;
@@ -68,12 +64,15 @@ DeploymentResult DeploymentService::deploy_friendly(const String &unit_type) {
 
     match_session_->spend_energy(config->cost);
     const real_t spawn_x_pos = grid_->deploy_x();
-    const real_t spawn_y_pos = GridManager::random_belt_y();
+    const real_t spawn_y_pos = grid_->sample_belt_y();
 
     result.succeeded = true;
     result.failure_reason = DeploymentFailureReason::NONE;
     result.remaining_energy = match_session_->get_core_resource();
-    result.unit = UnitFactory::create(*config, Vector2(spawn_x_pos, spawn_y_pos));
+    result.spawn_request = UnitSpawnRequest{
+        .config = *config,
+        .position = Vector2(spawn_x_pos, spawn_y_pos),
+    };
     return result;
 }
 

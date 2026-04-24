@@ -26,7 +26,10 @@ std::optional<LevelDefinition> LevelLoader::load(const String &path) {
     }
 
     Dictionary data = json->get_data();
+    return load_from_data(data);
+}
 
+std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &data) {
     LevelDefinition level_definition;
     level_definition.level_id = VariantTools::as_int(data.get("level_id", 0));
     level_definition.name = String(data.get("name", ""));

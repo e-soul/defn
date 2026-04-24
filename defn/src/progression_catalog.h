@@ -1,7 +1,9 @@
 #ifndef PROGRESSION_CATALOG_H
 #define PROGRESSION_CATALOG_H
 
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
+
 #include <vector>
 
 namespace defn {
@@ -17,6 +19,7 @@ struct LevelUnlock {
 class ProgressionCatalog {
   public:
     bool load(const String &path);
+    bool load_from_data(const Dictionary &data);
 
     const std::vector<LevelUnlock> &get_level_unlocks() const { return level_unlocks_; }
 

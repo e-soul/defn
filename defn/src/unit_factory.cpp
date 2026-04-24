@@ -91,6 +91,8 @@ Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position) {
     return unit;
 }
 
+Unit *UnitFactory::materialize(const UnitSpawnRequest &request) { return create(request.config, request.position); }
+
 void UnitFactory::initialize(Unit *unit) {
     if (unit == nullptr || unit->runtime_initialized_) {
         return;

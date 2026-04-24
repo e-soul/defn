@@ -11,6 +11,7 @@
 #include "progression_manager.h"
 #include "scene_navigator.h"
 #include "unit.h"
+#include "unit_factory.h"
 #include <algorithm>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
@@ -268,12 +269,12 @@ void GameManager::refresh_resource_ui() {
 }
 
 void GameManager::apply_match_update(const MatchUpdate &update) {
-    for (Unit *friendly : update.spawned_friendlies) {
-        add_friendly_unit(friendly);
+    for (const UnitSpawnRequest &friendly : update.friendly_spawn_requests) {
+        add_friendly_unit(UnitFactory::materialize(friendly));
     }
 
-    for (Unit *enemy : update.spawned_enemies) {
-        add_enemy_unit(enemy);
+    for (const UnitSpawnRequest &enemy : update.enemy_spawn_requests) {
+        add_enemy_unit(UnitFactory::materialize(enemy));
     }
 
     if (hud != nullptr) {

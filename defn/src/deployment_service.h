@@ -2,17 +2,16 @@
 #define DEPLOYMENT_SERVICE_H
 
 #include "match_session.h"
+#include "runtime_service_interfaces.h"
+#include "unit_spawn_request.h"
 #include "unit_data.h"
 
+#include <optional>
 #include <godot_cpp/variant/string.hpp>
 
 namespace defn {
 
 using namespace godot;
-
-class GridManager;
-class CampaignService;
-class Unit;
 
 enum class DeploymentFailureReason {
     NONE,
@@ -29,19 +28,19 @@ struct DeploymentResult {
     String unit_type;
     int unit_cost = 0;
     int remaining_energy = 0;
-    Unit *unit = nullptr;
+    std::optional<UnitSpawnRequest> spawn_request;
 };
 
 class DeploymentService {
   public:
-    void configure(MatchSession *match_session, const UnitDataLoader *unit_data, CampaignService *progression, GridManager *grid);
+    void configure(MatchSession *match_session, const UnitDataLoader *unit_data, const ProgressionService *progression, const GridQueryService *grid);
     DeploymentResult deploy_friendly(const String &unit_type);
 
   private:
     MatchSession *match_session_ = nullptr;
     const UnitDataLoader *unit_data_ = nullptr;
-    CampaignService *progression_ = nullptr;
-    GridManager *grid_ = nullptr;
+    const ProgressionService *progression_ = nullptr;
+    const GridQueryService *grid_ = nullptr;
 };
 
 } // namespace defn

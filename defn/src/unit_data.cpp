@@ -75,7 +75,7 @@ AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig 
     return animation;
 }
 
-SplashTargetRoundingMode parse_splash_rounding_mode(const Variant &value, SplashTargetRoundingMode fallback) {
+SplashTargetRoundingMode parse_splash_target_rounding_mode_impl(const Variant &value, SplashTargetRoundingMode fallback) {
     const String mode = String(value).to_lower();
     if (mode == "floor") {
         return SplashTargetRoundingMode::FLOOR;
@@ -144,7 +144,7 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
     }
 }
 
-UnitSide parse_unit_side(const Dictionary &unit_dict) {
+UnitSide parse_unit_side_impl(const Dictionary &unit_dict) {
     const String side_str = String(unit_dict.get("side", "friendly"));
     return side_str == "hostile" ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
 }
@@ -207,7 +207,7 @@ void apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
     projectile.min_affected_targets = std::max(1, VariantTools::as_int(projectile_dict.get("min_affected_targets", projectile.min_affected_targets)));
     projectile.spawn_animation_frame = std::max(0, VariantTools::as_int(projectile_dict.get("spawn_animation_frame", projectile.spawn_animation_frame)));
     projectile.affected_target_rounding =
-        parse_splash_rounding_mode(projectile_dict.get("affected_target_rounding", Variant("nearest")), projectile.affected_target_rounding);
+        parse_splash_target_rounding_mode_impl(projectile_dict.get("affected_target_rounding", Variant("nearest")), projectile.affected_target_rounding);
     projectile.include_direct_target = VariantTools::as_bool(projectile_dict.get("include_direct_target", projectile.include_direct_target));
     projectile.projectile_scale_multiplier = VariantTools::as_real(projectile_dict.get("projectile_scale_multiplier", projectile.projectile_scale_multiplier));
     projectile.explosion_scale_multiplier = VariantTools::as_real(projectile_dict.get("explosion_scale_multiplier", projectile.explosion_scale_multiplier));
@@ -249,7 +249,7 @@ void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
 UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, const GlobalUnitConfig &globals) {
     UnitConfig config;
     config.name = key;
-    config.side = parse_unit_side(unit_dict);
+    config.side = parse_unit_side_impl(unit_dict);
     config.hp = VariantTools::as_int(unit_dict.get("hp", 100));
     config.melee_damage = VariantTools::as_int(unit_dict.get("melee_damage", 15));
     config.melee_attack_period_seconds = VariantTools::as_double(unit_dict.get("melee_attack_period_seconds", 1.0));
@@ -280,22 +280,35 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
 
 } // namespace
 
+UnitSide parse_unit_side(const Dictionary &unit_dict) { return parse_unit_side_impl(unit_dict); }
+
+SplashTargetRoundingMode parse_splash_target_rounding_mode(const Variant &value, SplashTargetRoundingMode fallback) {
+    return parse_splash_target_rounding_mode_impl(value, fallback);
+}
+
 bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
     Variant global_data_variant;
     if (!parse_json_file(global_path, global_data_variant)) {
         return false;
     }
 
-    Dictionary global_data = global_data_variant;
-    globals_ = {};
-    load_global_config(global_data, globals_);
-
     Variant unit_data_variant;
     if (!parse_json_file(unit_path, unit_data_variant)) {
         return false;
     }
 
-    Dictionary data = unit_data_variant;
+    const bool loaded = load_from_data(Dictionary(unit_data_variant), Dictionary(global_data_variant));
+    if (loaded) {
+        UtilityFunctions::print("UnitDataLoader: Loaded ", units_.size(), " unit types");
+    }
+    return loaded;
+}
+
+bool UnitDataLoader::load_from_data(const Dictionary &unit_data, const Dictionary &global_data) {
+    globals_ = {};
+    load_global_config(global_data, globals_);
+
+    Dictionary data = unit_data;
     Dictionary units_dict = data.get("units", Dictionary());
     Array keys = units_dict.keys();
     units_.clear();
@@ -306,7 +319,6 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
         units_.push_back(parse_unit_config(key, unit_dict, globals_));
     }
 
-    UtilityFunctions::print("UnitDataLoader: Loaded ", units_.size(), " unit types");
     return true;
 }
 

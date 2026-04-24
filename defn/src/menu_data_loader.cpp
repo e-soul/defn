@@ -11,8 +11,6 @@
 
 namespace defn {
 
-namespace {
-
 MenuDefinitionType parse_menu_type(const Dictionary &menu_dict) {
     return String(menu_dict.get("type", "buttons")) == "options" ? MenuDefinitionType::OPTIONS : MenuDefinitionType::BUTTONS;
 }
@@ -97,8 +95,6 @@ MenuDefinition parse_menu_definition(const String &menu_name, const Dictionary &
     return definition;
 }
 
-} // namespace
-
 std::optional<MenuContentData> MenuDataLoader::load(const String &path) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
     if (!file.is_valid()) {
@@ -117,6 +113,10 @@ std::optional<MenuContentData> MenuDataLoader::load(const String &path) {
     }
 
     const Dictionary data = json->get_data();
+    return load_from_data(data);
+}
+
+std::optional<MenuContentData> MenuDataLoader::load_from_data(const Dictionary &data) {
     MenuContentData menu_data;
     menu_data.background = String(data.get("background", ""));
     menu_data.style_data = data.get("style", Dictionary());

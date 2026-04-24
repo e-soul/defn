@@ -2,6 +2,8 @@
 #define SPAWN_SCHEDULER_H
 
 #include "level_definition.h"
+#include "runtime_service_interfaces.h"
+#include "unit_spawn_request.h"
 
 #include <godot_cpp/variant/string.hpp>
 
@@ -12,12 +14,10 @@ namespace defn {
 
 using namespace godot;
 
-class GridManager;
-class Unit;
 class UnitDataLoader;
 
 struct SpawnSchedulerUpdate {
-    std::vector<Unit *> spawned_enemies;
+    std::vector<UnitSpawnRequest> spawn_requests;
     std::optional<int> wave_changed;
     bool all_spawns_completed = false;
 };
@@ -25,7 +25,8 @@ struct SpawnSchedulerUpdate {
 class SpawnScheduler {
   public:
     bool load_level(const String &path);
-    void configure(const UnitDataLoader *unit_data, GridManager *grid);
+    void load_level_definition(const LevelDefinition &level_definition);
+    void configure(const UnitDataLoader *unit_data, const GridQueryService *grid);
     void start();
     void stop();
     SpawnSchedulerUpdate update(double delta);
@@ -49,7 +50,7 @@ class SpawnScheduler {
     std::optional<LevelDefinition> level_definition_;
     std::vector<FlatSpawn> all_spawns_;
     const UnitDataLoader *unit_data_ = nullptr;
-    GridManager *grid_ = nullptr;
+    const GridQueryService *grid_ = nullptr;
     double level_timer_ = 0.0;
     int current_wave_ = 0;
     bool running_ = false;

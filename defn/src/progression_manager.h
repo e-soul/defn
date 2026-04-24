@@ -2,6 +2,7 @@
 #define PROGRESSION_MANAGER_H
 
 #include "progression_catalog.h"
+#include "runtime_service_interfaces.h"
 #include "progression_save_repository.h"
 #include "score_screen_models.h"
 #include "upgrade_catalog.h"
@@ -20,7 +21,7 @@ using namespace godot;
 
 struct UnitConfig;
 
-class CampaignService : public Object {
+class CampaignService : public Object, public ProgressionService {
     GDCLASS(CampaignService, Object)
 
   public:
@@ -33,42 +34,42 @@ class CampaignService : public Object {
     void initialize();
 
     // Queries
-    int get_total_score() const { return save_data_.total_score; }
-    PackedStringArray get_unlocked_units() const;
+    int get_total_score() const override { return save_data_.total_score; }
+    PackedStringArray get_unlocked_units() const override;
     PackedStringArray get_unlocked_levels() const;
     PackedStringArray get_owned_upgrades() const;
     bool has_upgrade(const String &upgrade_id) const;
-    bool is_level_completed(const String &level_id) const;
-    bool is_level_unlocked(const String &level_id) const;
-    bool can_claim_level_upgrade(const String &level_id) const;
-    bool can_claim_rescue_draft(const String &level_id) const;
+    bool is_level_completed(const String &level_id) const override;
+    bool is_level_unlocked(const String &level_id) const override;
+    bool can_claim_level_upgrade(const String &level_id) const override;
+    bool can_claim_rescue_draft(const String &level_id) const override;
     String get_claimed_upgrade_for_level(const String &level_id) const;
-    String get_frontier_level_id() const;
-    int get_highest_level_score(const String &level_id) const;
+    String get_frontier_level_id() const override;
+    int get_highest_level_score(const String &level_id) const override;
     int get_rescue_drafts_claimed(const String &level_id) const;
     int get_next_rescue_draft_threshold(const String &level_id) const;
-    UnitConfig get_effective_friendly_unit_config(const UnitConfig &base_config) const;
-    int get_effective_starting_energy(int base) const;
-    int get_effective_energy_regen() const;
-    real_t get_effective_bounty_multiplier() const;
-    int get_effective_base_integrity(int base) const;
+    UnitConfig get_effective_friendly_unit_config(const UnitConfig &base_config) const override;
+    int get_effective_starting_energy(int base) const override;
+    int get_effective_energy_regen() const override;
+    real_t get_effective_bounty_multiplier() const override;
+    int get_effective_base_integrity(int base) const override;
     int get_completed_level_count() const;
-    std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level(const String &level_id) const;
-    std::vector<UpgradeCardViewModel> build_rescue_draft_for_level(const String &level_id) const;
+    std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level(const String &level_id) const override;
+    std::vector<UpgradeCardViewModel> build_rescue_draft_for_level(const String &level_id) const override;
 
-    String get_current_level_id() const { return current_level_id_; }
+    String get_current_level_id() const override { return current_level_id_; }
     void set_current_level_id(const String &level_id) { current_level_id_ = level_id; }
 
     // Progression queries for gameplay and presentation
-    const std::vector<LevelUnlock> &get_level_unlock_data() const { return catalog_.get_level_unlocks(); }
+    const std::vector<LevelUnlock> &get_level_unlock_data() const override { return catalog_.get_level_unlocks(); }
     const std::vector<UpgradeCardDefinition> &get_upgrade_card_data() const { return upgrade_catalog_.get_cards(); }
 
     // Mutators
-    void add_score(int amount);
-    void mark_level_completed(const String &level_id, int level_score);
-    bool claim_level_upgrade(const String &level_id, const String &upgrade_id);
-    bool claim_rescue_draft(const String &level_id, const String &upgrade_id);
-    void save();
+    void add_score(int amount) override;
+    void mark_level_completed(const String &level_id, int level_score) override;
+    bool claim_level_upgrade(const String &level_id, const String &upgrade_id) override;
+    bool claim_rescue_draft(const String &level_id, const String &upgrade_id) override;
+    void save() override;
 
   protected:
     static void _bind_methods();

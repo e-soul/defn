@@ -57,6 +57,8 @@ real_t GridManager::deploy_x() const { return camera_x_ - (rules_.viewport_width
 
 real_t GridManager::spawn_x() const { return camera_x_ + (rules_.viewport_width / 2.0F) + rules_.spawn_offset; }
 
+real_t GridManager::sample_belt_y() const { return random_belt_y(); }
+
 void GridManager::set_world_width(real_t width) { world_width_ = width; }
 
 real_t GridManager::get_world_width() const { return world_width_; }

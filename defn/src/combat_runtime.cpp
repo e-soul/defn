@@ -16,7 +16,9 @@ void CombatRuntime::configure(Unit *unit, HealthComponent *health, AnimationCont
     animation_ = animation;
     detection_area_ = detection_area;
     config_ = config;
+    selection_ = {};
     state_ = {};
+    pending_projectile_ = {};
 }
 
 void CombatRuntime::update(double delta) {
@@ -25,90 +27,77 @@ void CombatRuntime::update(double delta) {
     }
 
     try_spawn_pending_projectile();
-    update_cooldowns(delta);
     update_target();
-    perform_behavior(delta);
-}
 
-void CombatRuntime::update_cooldowns(double delta) {
-    if (state_.attack_cooldown_seconds > 0.0) {
-        state_.attack_cooldown_seconds = std::max(state_.attack_cooldown_seconds - delta, 0.0);
-    }
+    CombatLogicInput input;
+    input.state = state_;
+    input.selection = selection_;
+    input.current_pose = animation_ != nullptr ? map_pose_state(animation_->get_anim_state()) : CombatPoseState::OTHER;
+    input.delta = delta;
+    input.unit_dead = health_->is_dead();
+    input.projectile_pending = pending_projectile_.active;
+
+    apply_logic_step(advance_combat_logic(config_, input), delta);
 }
 
 void CombatRuntime::update_target() {
-    const CombatTargetSelection selection = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target);
-    const bool mode_changed = selection.attack_mode != state_.attack_mode;
-
-    state_.engaged = selection.engaged;
-    state_.target = selection.target;
-    state_.attack_mode = selection.attack_mode;
-
-    if (mode_changed && selection.attack_mode != AttackMode::RANGED && animation_ != nullptr) {
-        animation_->hide_muzzle_flash();
-    }
+    selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target);
 }
 
-void CombatRuntime::try_spawn_pending_projectile() { CombatAttackExecutor::spawn_pending_projectile(config_, unit_, animation_, state_.pending_projectile); }
+void CombatRuntime::try_spawn_pending_projectile() { CombatAttackExecutor::spawn_pending_projectile(config_, unit_, animation_, pending_projectile_); }
 
-void CombatRuntime::perform_behavior(double delta) {
-    if (state_.pending_projectile.active) {
-        unit_->set_velocity(Vector2(0, 0));
+void CombatRuntime::apply_logic_step(const CombatLogicStep &step, double delta) {
+    state_ = step.state;
+
+    if (unit_ == nullptr) {
         return;
     }
 
-    if (state_.engaged && state_.target != nullptr && !state_.target->is_dead()) {
+    if (animation_ != nullptr) {
+        if (step.intent.hide_muzzle_flash) {
+            animation_->hide_muzzle_flash();
+        }
+
+        switch (step.intent.pose) {
+        case CombatPoseIntent::WALK:
+            animation_->set_anim_state(AnimState::WALK);
+            break;
+        case CombatPoseIntent::ATTACK:
+            animation_->hold_anim_state(AnimState::ATTACK);
+            break;
+        case CombatPoseIntent::SHOOT:
+            animation_->hold_anim_state(AnimState::SHOOT);
+            break;
+        case CombatPoseIntent::NONE:
+            break;
+        }
+    }
+
+    if (step.intent.movement == CombatMovementIntent::STOP) {
         unit_->set_velocity(Vector2(0, 0));
-
-        const auto current_anim = animation_->get_anim_state();
-        const bool needs_pose_update = (current_anim == AnimState::WALK) || (state_.attack_mode == AttackMode::MELEE && current_anim != AnimState::ATTACK) ||
-                                       (state_.attack_mode == AttackMode::RANGED && current_anim != AnimState::SHOOT);
-
-        if (needs_pose_update) {
-            if (state_.attack_mode == AttackMode::MELEE) {
-                animation_->hold_anim_state(AnimState::ATTACK);
-            } else if (state_.attack_mode == AttackMode::RANGED) {
-                animation_->hold_anim_state(AnimState::SHOOT);
-            }
-        }
-
-        const double attack_period_seconds = get_attack_period_seconds();
-        if (attack_period_seconds > 0.0 && state_.attack_cooldown_seconds <= 0.0) {
-            CombatAttackExecutor::trigger_attack(config_, state_.attack_mode, state_.target, animation_, state_.pending_projectile);
-            try_spawn_pending_projectile();
-            state_.attack_cooldown_seconds = attack_period_seconds;
-        }
-        return;
+    } else if (step.intent.movement == CombatMovementIntent::MOVE) {
+        unit_->do_movement(delta);
     }
 
-    reset_engagement();
-
-    const auto current_anim = animation_->get_anim_state();
-    if (current_anim == AnimState::ATTACK || current_anim == AnimState::SHOOT) {
-        animation_->set_anim_state(AnimState::WALK);
+    if (step.intent.trigger_attack) {
+        CombatAttackExecutor::trigger_attack(config_, state_.attack_mode, state_.target, animation_, pending_projectile_);
+        try_spawn_pending_projectile();
     }
-    unit_->do_movement(delta);
 }
 
-void CombatRuntime::reset_engagement() {
-    state_.engaged = false;
-    state_.target = nullptr;
-    animation_->hide_muzzle_flash();
-    state_.attack_mode = AttackMode::NONE;
-    state_.attack_cooldown_seconds = 0.0;
-}
-
-double CombatRuntime::get_attack_period_seconds() const {
-    switch (state_.attack_mode) {
-    case AttackMode::MELEE:
-        return config_.melee_attack_period_seconds;
-    case AttackMode::RANGED:
-        return config_.ranged_attack_period_seconds;
-    case AttackMode::NONE:
-        return 0.0;
+CombatPoseState CombatRuntime::map_pose_state(AnimState state) {
+    switch (state) {
+    case AnimState::WALK:
+        return CombatPoseState::WALK;
+    case AnimState::ATTACK:
+        return CombatPoseState::ATTACK;
+    case AnimState::SHOOT:
+        return CombatPoseState::SHOOT;
+    case AnimState::DEATH:
+        return CombatPoseState::OTHER;
     }
 
-    return 0.0;
+    return CombatPoseState::OTHER;
 }
 
 } // namespace defn

@@ -1,4 +1,6 @@
 import os
+import pathlib
+import subprocess
 
 
 def remove_standard_flags(flags):
@@ -30,12 +32,12 @@ env["CXXFLAGS"] = remove_standard_flags(env.get("CXXFLAGS", []))
 
 # Enable C++23
 if env["platform"] == "windows":
-    env.Append(CXXFLAGS=["/std:c++latest"])
+    env.Append(CXXFLAGS=["/std:c++latest", "/EHsc"])
 else:
     env.Append(CXXFLAGS=["-std=c++23"])
 
 # 4. Define your sources
-sources = [
+extension_sources = [
     "src/register_types.cpp",
     "src/attack_target_resolver.cpp",
     "src/base_objective.cpp",
@@ -66,6 +68,7 @@ sources = [
     "src/projectile_attack.cpp",
     "src/score_screen_presenter.cpp",
     "src/spawn_scheduler.cpp",
+    "src/combat_logic.cpp",
     "src/combat_runtime.cpp",
     "src/combat_target_selector.cpp",
     "src/combat_attack_executor.cpp",
@@ -80,10 +83,21 @@ sources = [
     "src/pause_menu.cpp",
 ]
 
+test_support_sources = [
+    "src/match_session.cpp",
+    "src/combat_logic.cpp",
+]
+
+unit_test_sources = [
+    "tests/test_main.cpp",
+    "tests/test_match_session_core.cpp",
+    "tests/test_combat_logic.cpp",
+]
+
 # 5. Compile into a dedicated object directory
 obj_dir = os.path.join("build", "obj")
 objects = []
-for src in sources:
+for src in extension_sources:
     obj_name = os.path.splitext(src.replace(os.sep, "_").replace("/", "_"))[0]
     obj_target = os.path.join(obj_dir, obj_name)
     objects.append(env.SharedObject(target=obj_target, source=src))
@@ -98,7 +112,7 @@ library = env.SharedLibrary(
 if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
     comp_db = env.Alias('compilation_db', 'compile_commands.json')
     tidy_targets = []
-    for src in sources:
+    for src in extension_sources:
         action = Action('clang-tidy --quiet -p . $SOURCE', 'Running clang-tidy on $SOURCE')
         tidy_node = env.Command(src + ".tidy", [src, comp_db], action)
         tidy_targets.append(tidy_node)
@@ -106,5 +120,26 @@ if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
     env.Alias('tidy', tidy_targets)
     if env.get("with_tidy", False):
         env.Depends(library, tidy_targets)
+
+test_env = env.Clone()
+test_env.Append(CPPPATH=["tests/"])
+test_program = test_env.Program(
+    target=os.path.join("bin", "defn_unit_tests"),
+    source=test_support_sources + unit_test_sources,
+)
+
+
+def run_unit_tests(target, source, env):
+    result = subprocess.run([str(source[0].abspath)], check=False)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
+test_stamp = env.Command(os.path.join("build", "defn_unit_tests.stamp"), test_program, run_unit_tests)
+AlwaysBuild(test_stamp)
+env.Alias("unit_tests", test_program)
+env.Alias("test", test_stamp)
 
 Default(library)

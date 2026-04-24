@@ -2,6 +2,7 @@
 #define COMBAT_RUNTIME_H
 
 #include "attack_target.h"
+#include "combat_logic.h"
 #include "combat_types.h"
 
 #include <godot_cpp/classes/area2d.hpp>
@@ -14,6 +15,7 @@ using namespace godot;
 class Unit;
 class AnimationController;
 class HealthComponent;
+enum class AnimState : int;
 
 class CombatRuntime {
   public:
@@ -24,27 +26,19 @@ class CombatRuntime {
     AttackMode get_attack_mode() const { return state_.attack_mode; }
 
   private:
-    struct State {
-        double attack_cooldown_seconds = 0.0;
-        AttackMode attack_mode = AttackMode::NONE;
-        bool engaged = false;
-        AttackTarget *target = nullptr;
-        PendingProjectileSpawn pending_projectile{};
-    };
-
-    void update_cooldowns(double delta);
     void update_target();
     void try_spawn_pending_projectile();
-    void perform_behavior(double delta);
-    void reset_engagement();
-    double get_attack_period_seconds() const;
+    void apply_logic_step(const CombatLogicStep &step, double delta);
+    static CombatPoseState map_pose_state(AnimState state);
 
     Unit *unit_ = nullptr;
     HealthComponent *health_ = nullptr;
     AnimationController *animation_ = nullptr;
     Area2D *detection_area_ = nullptr;
     CombatConfig config_{};
-    State state_{};
+    CombatTargetSelection selection_{};
+    CombatLogicState state_{};
+    PendingProjectileSpawn pending_projectile_{};
 };
 
 } // namespace defn

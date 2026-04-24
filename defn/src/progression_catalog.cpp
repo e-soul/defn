@@ -28,7 +28,14 @@ bool ProgressionCatalog::load(const String &path) {
     }
 
     Dictionary data = json->get_data();
+    const bool loaded = load_from_data(data);
+    if (loaded) {
+        UtilityFunctions::print("ProgressionCatalog: Loaded ", level_unlocks_.size(), " level unlocks");
+    }
+    return loaded;
+}
 
+bool ProgressionCatalog::load_from_data(const Dictionary &data) {
     Array level_arr = data.get("level_unlocks", Array());
     level_unlocks_.clear();
     for (const Variant &entry_var : level_arr) {
@@ -52,7 +59,6 @@ bool ProgressionCatalog::load(const String &path) {
         level_unlocks_.push_back(unlock);
     }
 
-    UtilityFunctions::print("ProgressionCatalog: Loaded ", level_unlocks_.size(), " level unlocks");
     return true;
 }
 

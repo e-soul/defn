@@ -3,8 +3,10 @@
 
 #include "deployment_service.h"
 #include "match_session.h"
+#include "runtime_service_interfaces.h"
 #include "score_screen_models.h"
 #include "spawn_scheduler.h"
+#include "unit_spawn_request.h"
 #include "unit_data.h"
 
 #include <godot_cpp/variant/packed_string_array.hpp>
@@ -17,13 +19,11 @@ namespace defn {
 
 using namespace godot;
 
-class CampaignService;
-class GridManager;
 class Unit;
 
 struct MatchUpdate {
-    std::vector<Unit *> spawned_friendlies;
-    std::vector<Unit *> spawned_enemies;
+  std::vector<UnitSpawnRequest> friendly_spawn_requests;
+  std::vector<UnitSpawnRequest> enemy_spawn_requests;
     std::optional<int> wave_changed;
     bool resources_changed = false;
     bool hearts_changed = false;
@@ -37,8 +37,9 @@ struct MatchUpdate {
 
 class MatchDirector {
   public:
-    bool configure(CampaignService *campaign, const UnitDataLoader *unit_data, GridManager *grid);
+    bool configure(ProgressionService *campaign, const UnitDataLoader *unit_data, const GridQueryService *grid);
     bool load_level(const String &path);
+    void load_level_definition(const LevelDefinition &level_definition, const String &level_id);
     void begin_match();
     MatchUpdate update(double delta);
     MatchUpdate handle_deploy_request(const String &unit_type);
@@ -69,9 +70,9 @@ class MatchDirector {
     ScoreScreenRewardModel build_reward_model(bool victory) const;
     String determine_next_level_id(bool victory) const;
 
-    CampaignService *campaign_ = nullptr;
+    ProgressionService *campaign_ = nullptr;
     const UnitDataLoader *unit_data_ = nullptr;
-    GridManager *grid_ = nullptr;
+    const GridQueryService *grid_ = nullptr;
     String level_id_;
     MatchSession match_session_;
     DeploymentService deployment_service_;

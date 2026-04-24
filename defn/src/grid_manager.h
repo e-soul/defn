@@ -2,6 +2,7 @@
 #define GRID_MANAGER_H
 
 #include "gameplay_rules.h"
+#include "runtime_service_interfaces.h"
 
 #include <godot_cpp/classes/object.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -11,7 +12,7 @@ namespace defn {
 
 using namespace godot;
 
-class GridManager : public Object {
+class GridManager : public Object, public GridQueryService {
     GDCLASS(GridManager, Object)
 
   public:
@@ -24,9 +25,10 @@ class GridManager : public Object {
     void configure(const GameplayRules &rules);
     const GameplayRules &get_rules() const { return rules_; }
 
-    static real_t random_belt_y(); // random Y within the belt area
-    real_t deploy_x() const;       // friendly spawn: just left of camera
-    real_t spawn_x() const;        // hostile spawn: just right of camera
+    static real_t random_belt_y();    // random Y within the belt area
+    real_t deploy_x() const override; // friendly spawn: just left of camera
+    real_t spawn_x() const override;  // hostile spawn: just right of camera
+    real_t sample_belt_y() const override;
 
     void set_world_width(real_t w);
     real_t get_world_width() const;

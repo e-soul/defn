@@ -2,7 +2,10 @@
 #define LEVEL_LOADER_H
 
 #include "level_definition.h"
+
+#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
+
 #include <optional>
 
 namespace defn {
@@ -14,6 +17,7 @@ class LevelLoader {
     LevelLoader() = delete;
 
     static std::optional<LevelDefinition> load(const String &path);
+    static std::optional<LevelDefinition> load_from_data(const Dictionary &data);
 };
 
 } // namespace defn

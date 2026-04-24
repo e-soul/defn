@@ -1,10 +1,7 @@
 #include "spawn_scheduler.h"
 
-#include "grid_manager.h"
 #include "level_loader.h"
-#include "unit.h"
 #include "unit_data.h"
-#include "unit_factory.h"
 
 #include <algorithm>
 
@@ -18,7 +15,12 @@ bool SpawnScheduler::load_level(const String &path) {
         return false;
     }
 
-    level_definition_ = *loaded_level;
+    load_level_definition(*loaded_level);
+    return true;
+}
+
+void SpawnScheduler::load_level_definition(const LevelDefinition &level_definition) {
+    level_definition_ = level_definition;
     all_spawns_.clear();
     level_timer_ = 0.0;
     current_wave_ = 0;
@@ -37,10 +39,9 @@ bool SpawnScheduler::load_level(const String &path) {
     }
 
     std::ranges::sort(all_spawns_, [](const FlatSpawn &left, const FlatSpawn &right) { return left.time < right.time; });
-    return true;
 }
 
-void SpawnScheduler::configure(const UnitDataLoader *unit_data, GridManager *grid) {
+void SpawnScheduler::configure(const UnitDataLoader *unit_data, const GridQueryService *grid) {
     unit_data_ = unit_data;
     grid_ = grid;
 }
@@ -76,14 +77,16 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
 
         const auto config = unit_data_->get_unit(spawn.type);
         if (!config) {
-            UtilityFunctions::printerr("SpawnScheduler: Missing unit config for enemy type: ", spawn.type);
             ++next_spawn_idx_;
             continue;
         }
 
-        const real_t spawn_y_pos = GridManager::random_belt_y();
+        const real_t spawn_y_pos = grid_->sample_belt_y();
         const real_t spawn_x_pos = grid_->spawn_x();
-        update.spawned_enemies.push_back(UnitFactory::create(*config, Vector2(spawn_x_pos, spawn_y_pos)));
+        update.spawn_requests.push_back({
+            .config = *config,
+            .position = Vector2(spawn_x_pos, spawn_y_pos),
+        });
         ++next_spawn_idx_;
     }
 

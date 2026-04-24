@@ -11,9 +11,7 @@
 
 namespace defn {
 
-namespace {
-
-bool try_parse_effect_type(const String &value, UpgradeEffectType &out_type) {
+bool try_parse_upgrade_effect_type(const String &value, UpgradeEffectType &out_type) {
     const String normalized = value.to_lower();
     if (normalized == "starting_energy_delta") {
         out_type = UpgradeEffectType::STARTING_ENERGY_DELTA;
@@ -50,8 +48,6 @@ bool try_parse_effect_type(const String &value, UpgradeEffectType &out_type) {
     return false;
 }
 
-} // namespace
-
 bool UpgradeCardDefinition::grants_unit_unlock() const {
     return std::ranges::any_of(effects, [](const UpgradeCardEffect &effect) { return effect.type == UpgradeEffectType::UNIT_UNLOCK; });
 }
@@ -74,6 +70,14 @@ bool UpgradeCatalog::load(const String &path) {
     }
 
     const Dictionary data = json->get_data();
+    const bool loaded = load_from_data(data);
+    if (loaded) {
+        UtilityFunctions::print("UpgradeCatalog: Loaded ", cards_.size(), " upgrade cards");
+    }
+    return loaded;
+}
+
+bool UpgradeCatalog::load_from_data(const Dictionary &data) {
     draft_size_ = std::max(1, VariantTools::as_int(data.get("draft_size", 3)));
     reserve_unit_slot_ = VariantTools::as_bool(data.get("reserve_unit_slot", true));
 
@@ -113,7 +117,7 @@ bool UpgradeCatalog::load(const String &path) {
         for (const Variant &effect_variant : effect_array) {
             const Dictionary effect_dict = effect_variant;
             UpgradeEffectType effect_type = UpgradeEffectType::STARTING_ENERGY_DELTA;
-            if (!try_parse_effect_type(String(effect_dict.get("type", "")), effect_type)) {
+            if (!try_parse_upgrade_effect_type(String(effect_dict.get("type", "")), effect_type)) {
                 continue;
             }
 
@@ -129,7 +133,6 @@ bool UpgradeCatalog::load(const String &path) {
         }
     }
 
-    UtilityFunctions::print("UpgradeCatalog: Loaded ", cards_.size(), " upgrade cards");
     return true;
 }
 
