@@ -6,6 +6,8 @@
 
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/sprite2d.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/color.hpp>
@@ -32,8 +34,8 @@ class BaseObjective : public Node2D, public AttackTarget {
     int get_current_hp() const;
     int get_max_hp() const;
     Area2D *get_hitbox() const { return hitbox_; }
-    Node2D *get_target_node() override { return this; }
-    const Node2D *get_target_node() const override { return this; }
+    Node2D *get_target_node() override { return target_anchor_ != nullptr ? target_anchor_ : this; }
+    const Node2D *get_target_node() const override { return target_anchor_ != nullptr ? target_anchor_ : this; }
 
     void _draw() override;
     void _process(double delta) override;
@@ -42,13 +44,20 @@ class BaseObjective : public Node2D, public AttackTarget {
     static void _bind_methods();
 
   private:
+    void ensure_sprite();
+    void ensure_target_anchor();
     void ensure_health_component();
     void ensure_hitbox();
+    Vector2 get_local_anchor_position() const;
+    void update_visual_state();
     void on_health_changed(int current_hp, int max_hp);
     void on_destroyed();
 
     HealthComponent *health_ = nullptr;
     Area2D *hitbox_ = nullptr;
+    Node2D *target_anchor_ = nullptr;
+    Sprite2D *sprite_ = nullptr;
+    Ref<Texture2D> sprite_texture_;
     Color flash_color_ = Color(1.0, 1.0, 1.0);
     real_t flash_time_remaining_ = 0.0F;
 };
