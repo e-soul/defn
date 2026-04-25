@@ -37,9 +37,8 @@ CombatTargetSelection CombatTargetSelector::select(Unit *unit, Area2D *detection
     }
 
     if (current_target != nullptr) {
-        const bool has_current_target = std::ranges::any_of(snapshots, [current_target](const CombatTargetSnapshot &snapshot) {
-            return snapshot.target == current_target;
-        });
+        const bool has_current_target =
+            std::ranges::any_of(snapshots, [current_target](const CombatTargetSnapshot &snapshot) { return snapshot.target == current_target; });
         if (!has_current_target) {
             snapshots.push_back({
                 .target = current_target,

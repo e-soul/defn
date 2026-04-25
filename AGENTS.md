@@ -30,7 +30,7 @@ This is a **Godot 4.6** game built as a **Belt Scroller** (2.5D side-scroller). 
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 .\.venv\Scripts\Activate.ps1
 cd defn
-scons with_tidy=True
+scons with_tidy=True test_all
 ```
 
 Note: Fix any clang-tidy issues reported by the build.

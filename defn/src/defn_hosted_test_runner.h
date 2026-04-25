@@ -13,7 +13,7 @@ class DefnHostedTestRunner : public RefCounted {
     GDCLASS(DefnHostedTestRunner, RefCounted);
 
   public:
-    Dictionary run_registered_tests() const;
+    static Dictionary run_registered_tests();
 
   protected:
     static void _bind_methods();

@@ -12,12 +12,12 @@ class DummyTarget final : public AttackTarget {
   public:
     explicit DummyTarget(UnitSide side) : side_(side) {}
 
-    bool is_dead() const override { return dead_; }
-    UnitSide get_side() const override { return side_; }
+    [[nodiscard]] bool is_dead() const override { return dead_; }
+    [[nodiscard]] UnitSide get_side() const override { return side_; }
     void take_damage(int /*amount*/) override {}
     void flash_damage(const Color & /*color*/) override {}
-    Node2D *get_target_node() override { return nullptr; }
-    const Node2D *get_target_node() const override { return nullptr; }
+    [[nodiscard]] Node2D *get_target_node() override { return nullptr; }
+    [[nodiscard]] const Node2D *get_target_node() const override { return nullptr; }
 
     void set_dead(bool dead) { dead_ = dead; }
 

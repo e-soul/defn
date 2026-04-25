@@ -1,8 +1,8 @@
 #ifndef UNIT_FACTORY_H
 #define UNIT_FACTORY_H
 
-#include "unit_spawn_request.h"
 #include "unit_data.h"
+#include "unit_spawn_request.h"
 #include <godot_cpp/variant/vector2.hpp>
 
 namespace defn {

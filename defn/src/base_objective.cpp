@@ -19,11 +19,10 @@ namespace {
 constexpr real_t OBJECTIVE_RADIUS = 96.0F;
 constexpr real_t OBJECTIVE_CORE_RADIUS = 32.0F;
 constexpr real_t OBJECTIVE_OUTLINE_RADIUS = 108.0F;
-constexpr real_t OBJECTIVE_DISPLAY_WIDTH = 192.0F;
 constexpr real_t DAMAGE_FLASH_DURATION_SECONDS = 0.12F;
 
-constexpr char OBJECTIVE_TEXTURE_PATH[] = "res://assets/tower.png";
-constexpr char OBJECTIVE_DESTROYED_TEXTURE_PATH[] = "res://assets/tower_destroyed.png";
+constexpr auto OBJECTIVE_IDLE_ANIMATION = "idle";
+constexpr auto OBJECTIVE_DEATH_ANIMATION = "death";
 
 const Color OBJECTIVE_FILL_COLOR = Color(0.82, 0.11, 0.08);
 const Color OBJECTIVE_OUTLINE_COLOR = Color(0.32, 0.03, 0.03);
@@ -38,7 +37,8 @@ void BaseObjective::_bind_methods() {
     ADD_SIGNAL(MethodInfo("objective_destroyed"));
 }
 
-void BaseObjective::configure(int max_hp, const Vector2 &position) {
+void BaseObjective::configure(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config) {
+    visual_config_ = visual_config;
     ensure_sprite();
     ensure_target_anchor();
     ensure_health_component();
@@ -110,29 +110,74 @@ void BaseObjective::ensure_sprite() {
         return;
     }
 
+    if (!set_sprite_animation(OBJECTIVE_IDLE_ANIMATION)) {
+        return;
+    }
+
+    sprite_->set_position(Vector2());
+}
+
+bool BaseObjective::set_sprite_animation(const String &animation_name) {
+    const AnimConfig *animation = find_animation_config(animation_name);
+    if (animation == nullptr) {
+        return false;
+    }
+
     auto *loader = ResourceLoader::get_singleton();
     if (loader == nullptr) {
-        return;
+        return false;
     }
 
-    sprite_texture_ = loader->load(OBJECTIVE_TEXTURE_PATH);
+    const String texture_path = resolve_animation_frame_path(*animation, 0);
+    if (texture_path.is_empty()) {
+        return false;
+    }
+
+    sprite_texture_ = loader->load(texture_path);
     if (!sprite_texture_.is_valid()) {
-        UtilityFunctions::printerr("BaseObjective: Failed to load sprite: ", OBJECTIVE_TEXTURE_PATH);
-        return;
+        UtilityFunctions::printerr("BaseObjective: Failed to load sprite: ", texture_path);
+        return false;
     }
 
-    sprite_ = memnew(Sprite2D);
-    sprite_->set_name("TowerSprite");
+    if (sprite_ == nullptr) {
+        sprite_ = memnew(Sprite2D);
+        sprite_->set_name("TowerSprite");
+        sprite_->set_centered(false);
+        add_child(sprite_);
+    }
+
     sprite_->set_texture(sprite_texture_);
-    sprite_->set_centered(false);
+    sprite_->set_flip_h(visual_config_.has_value() && visual_config_->sprite_flip_h);
+    const real_t sprite_scale = visual_config_.has_value() ? visual_config_->scale : 1.0F;
+    sprite_->set_scale(Vector2(sprite_scale, sprite_scale));
 
-    const Vector2 texture_size = sprite_texture_->get_size();
-    if (texture_size.x > 0.0F) {
-        const real_t scale_factor = OBJECTIVE_DISPLAY_WIDTH / texture_size.x;
-        sprite_->set_scale(Vector2(scale_factor, scale_factor));
+    return true;
+}
+
+const AnimConfig *BaseObjective::find_animation_config(const String &animation_name) const {
+    if (!visual_config_.has_value()) {
+        return nullptr;
     }
 
-    add_child(sprite_);
+    for (const auto &[candidate_name, animation] : visual_config_->animations) {
+        if (candidate_name == animation_name) {
+            return &animation;
+        }
+    }
+
+    return nullptr;
+}
+
+String BaseObjective::resolve_animation_frame_path(const AnimConfig &animation, int frame_index) {
+    if (animation.path_template.is_empty()) {
+        return {};
+    }
+
+    if (animation.path_template.contains("%")) {
+        return vformat(animation.path_template, frame_index);
+    }
+
+    return animation.path_template;
 }
 
 void BaseObjective::ensure_target_anchor() {
@@ -183,7 +228,7 @@ Vector2 BaseObjective::get_local_anchor_position() const {
     if (sprite_texture_.is_valid()) {
         const Vector2 texture_size = sprite_texture_->get_size();
         if (texture_size.x > 0.0F && texture_size.y > 0.0F) {
-            const real_t scale_factor = OBJECTIVE_DISPLAY_WIDTH / texture_size.x;
+            const real_t scale_factor = visual_config_.has_value() ? visual_config_->scale : 1.0F;
             const Vector2 display_size = texture_size * scale_factor;
             return {
                 display_size.x * 0.5F,
@@ -192,7 +237,7 @@ Vector2 BaseObjective::get_local_anchor_position() const {
         }
     }
 
-    return Vector2(OBJECTIVE_RADIUS, OBJECTIVE_RADIUS);
+    return {OBJECTIVE_RADIUS, OBJECTIVE_RADIUS};
 }
 
 void BaseObjective::update_visual_state() {
@@ -217,27 +262,9 @@ void BaseObjective::on_destroyed() {
         hitbox_->set_monitorable(false);
     }
 
-    if (sprite_ != nullptr) {
-        auto *loader = ResourceLoader::get_singleton();
-        if (loader != nullptr) {
-            const Ref<Texture2D> destroyed_texture = loader->load(OBJECTIVE_DESTROYED_TEXTURE_PATH);
-            if (destroyed_texture.is_valid()) {
-                const Vector2 anchor_position = target_anchor_ != nullptr ? target_anchor_->get_position() : Vector2();
-                sprite_texture_ = destroyed_texture;
-                sprite_->set_texture(sprite_texture_);
-
-                const Vector2 texture_size = sprite_texture_->get_size();
-                if (texture_size.x > 0.0F) {
-                    const real_t scale_factor = OBJECTIVE_DISPLAY_WIDTH / texture_size.x;
-                    sprite_->set_scale(Vector2(scale_factor, scale_factor));
-                }
-
-                sprite_->set_position(anchor_position - get_local_anchor_position());
-            } else {
-                UtilityFunctions::printerr("BaseObjective: Failed to load destroyed sprite: ", OBJECTIVE_DESTROYED_TEXTURE_PATH);
-            }
-        }
-
+    if (set_sprite_animation(OBJECTIVE_DEATH_ANIMATION) && sprite_ != nullptr) {
+        const Vector2 anchor_position = target_anchor_ != nullptr ? target_anchor_->get_position() : Vector2();
+        sprite_->set_position(anchor_position - get_local_anchor_position());
         sprite_->set_modulate(Color(1.0, 1.0, 1.0));
     }
 

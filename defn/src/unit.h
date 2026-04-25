@@ -30,16 +30,16 @@ class Unit : public CharacterBody2D, public AttackTarget {
 
     void take_damage(int amount) override;
     void flash_damage(const Color &color) override;
-    bool is_dead() const override;
+    [[nodiscard]] bool is_dead() const override;
 
     int get_cost() const { return unit_config_.cost; }
     int get_bounty() const { return unit_config_.bounty; }
-    UnitSide get_side() const override { return unit_config_.side; }
+    [[nodiscard]] UnitSide get_side() const override { return unit_config_.side; }
     const UnitConfig &get_unit_config() const { return unit_config_; }
     real_t get_attack_range() const { return attack_range; }
     real_t get_ranged_range() const { return ranged_range; }
-    Node2D *get_target_node() override { return this; }
-    const Node2D *get_target_node() const override { return this; }
+    [[nodiscard]] Node2D *get_target_node() override { return this; }
+    [[nodiscard]] const Node2D *get_target_node() const override { return this; }
 
     void do_movement(double delta);
 

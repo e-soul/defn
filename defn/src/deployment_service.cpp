@@ -9,6 +9,10 @@ std::optional<UnitConfig> resolve_friendly_config(const ProgressionService *prog
         return std::nullopt;
     }
 
+    if (unit_type == "base") {
+        return std::nullopt;
+    }
+
     const auto base_config = unit_data->get_unit(unit_type);
     if (!base_config || base_config->side != UnitSide::FRIENDLY) {
         return std::nullopt;

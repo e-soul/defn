@@ -308,8 +308,7 @@ bool UnitDataLoader::load_from_data(const Dictionary &unit_data, const Dictionar
     globals_ = {};
     load_global_config(global_data, globals_);
 
-    Dictionary data = unit_data;
-    Dictionary units_dict = data.get("units", Dictionary());
+    Dictionary units_dict = unit_data.get("units", Dictionary());
     Array keys = units_dict.keys();
     units_.clear();
 

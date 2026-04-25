@@ -124,10 +124,13 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
             step.intent.pose = CombatPoseIntent::SHOOT;
         }
 
-        const double attack_period_seconds = input.selection.attack_mode == AttackMode::MELEE ? config.melee_attack_period_seconds
-                                                                                               : input.selection.attack_mode == AttackMode::RANGED
-                                                                                                     ? config.ranged_attack_period_seconds
-                                                                                                     : 0.0;
+        double attack_period_seconds = 0.0;
+        if (input.selection.attack_mode == AttackMode::MELEE) {
+            attack_period_seconds = config.melee_attack_period_seconds;
+        } else if (input.selection.attack_mode == AttackMode::RANGED) {
+            attack_period_seconds = config.ranged_attack_period_seconds;
+        }
+
         if (attack_period_seconds > 0.0 && step.state.attack_cooldown_seconds <= 0.0) {
             step.intent.trigger_attack = true;
             step.state.attack_cooldown_seconds = attack_period_seconds;

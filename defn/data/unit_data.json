@@ -1,5 +1,35 @@
 {
   "units": {
+    "base": {
+      "description": "Friendly objective. Uses single-frame idle and death animations for the intact and destroyed base.",
+      "side": "friendly",
+      "hp": 300,
+      "melee_damage": 0,
+      "melee_attack_period_seconds": 1.0,
+      "melee_attack_range": 0.0,
+      "ranged_damage": 0,
+      "ranged_attack_period_seconds": 1.0,
+      "ranged_attack_range": 0.0,
+      "move_speed_pixels_per_second": 0.0,
+      "cost": 0,
+      "bounty": 0,
+      "scale": 0.55,
+      "sprite_flip_h": false,
+      "animations": {
+        "idle": {
+          "path_template": "res://assets/tower.png",
+          "frame_count": 1,
+          "speed": 1.0,
+          "loop": true
+        },
+        "death": {
+          "path_template": "res://assets/tower_destroyed.png",
+          "frame_count": 1,
+          "speed": 1.0,
+          "loop": false
+        }
+      }
+    },
     "breacher": {
       "description": "Frontline anchor. Cheapest friendly, highest durability, and a short-range rifle make the breacher the safest first deployment.",
       "side": "friendly",

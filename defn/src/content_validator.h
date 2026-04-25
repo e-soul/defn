@@ -17,23 +17,23 @@ namespace defn {
 using namespace godot;
 
 struct LoadedLevelValidationInput {
-  String level_id;
-  std::optional<LevelDefinition> definition;
+    String level_id;
+    std::optional<LevelDefinition> definition;
 };
 
 struct ContentValidationReport {
-  std::vector<String> issues;
+    std::vector<String> issues;
 
-  bool is_valid() const { return issues.empty(); }
+    bool is_valid() const { return issues.empty(); }
 };
 
 class ContentValidator {
   public:
     ContentValidator() = delete;
 
-  static ContentValidationReport validate_loaded_content(const std::optional<MenuContentData> &menu_data, const ProgressionCatalog *progression_catalog,
-                               const UpgradeCatalog *upgrade_catalog, const UnitDataLoader *unit_data,
-                               const std::vector<LoadedLevelValidationInput> &levels);
+    static ContentValidationReport validate_loaded_content(const std::optional<MenuContentData> &menu_data, const ProgressionCatalog *progression_catalog,
+                                                           const UpgradeCatalog *upgrade_catalog, const UnitDataLoader *unit_data,
+                                                           const std::vector<LoadedLevelValidationInput> &levels);
     static bool report_startup_validation();
 };
 

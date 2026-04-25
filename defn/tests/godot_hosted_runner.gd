@@ -11,8 +11,13 @@ func _run() -> void:
 		quit(2)
 		return
 
-	var runner := DefnHostedTestRunner.new()
-	var result: Dictionary = runner.run_registered_tests()
+	var result_variant: Variant = ClassDB.class_call_static("DefnHostedTestRunner", "run_registered_tests")
+	if typeof(result_variant) != TYPE_DICTIONARY:
+		printerr("Hosted test runner returned an invalid result payload.")
+		quit(2)
+		return
+
+	var result: Dictionary = result_variant
 	var failures: Array = result.get("failures", [])
 
 	if result.get("success", false):

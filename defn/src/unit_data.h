@@ -114,7 +114,7 @@ SplashTargetRoundingMode parse_splash_target_rounding_mode(const Variant &value,
 class UnitDataLoader {
   public:
     bool load(const String &unit_path, const String &global_path);
-        bool load_from_data(const Dictionary &unit_data, const Dictionary &global_data);
+    bool load_from_data(const Dictionary &unit_data, const Dictionary &global_data);
 
     std::optional<UnitConfig> get_unit(const String &name) const;
     std::vector<UnitConfig> get_friendly_units() const;

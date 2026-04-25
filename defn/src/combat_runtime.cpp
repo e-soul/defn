@@ -40,9 +40,7 @@ void CombatRuntime::update(double delta) {
     apply_logic_step(advance_combat_logic(config_, input), delta);
 }
 
-void CombatRuntime::update_target() {
-    selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target);
-}
+void CombatRuntime::update_target() { selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target); }
 
 void CombatRuntime::try_spawn_pending_projectile() { CombatAttackExecutor::spawn_pending_projectile(config_, unit_, animation_, pending_projectile_); }
 

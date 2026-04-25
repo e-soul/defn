@@ -6,8 +6,8 @@
 #include "runtime_service_interfaces.h"
 #include "score_screen_models.h"
 #include "spawn_scheduler.h"
-#include "unit_spawn_request.h"
 #include "unit_data.h"
+#include "unit_spawn_request.h"
 
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -22,8 +22,8 @@ using namespace godot;
 class Unit;
 
 struct MatchUpdate {
-  std::vector<UnitSpawnRequest> friendly_spawn_requests;
-  std::vector<UnitSpawnRequest> enemy_spawn_requests;
+    std::vector<UnitSpawnRequest> friendly_spawn_requests;
+    std::vector<UnitSpawnRequest> enemy_spawn_requests;
     std::optional<int> wave_changed;
     bool resources_changed = false;
     bool hearts_changed = false;

@@ -42,16 +42,16 @@ inline void check_close(double left, double right, double epsilon, const char *f
 
 } // namespace defn::tests
 
-#define DEFN_TEST(name)                                                                                                                                    \
-    static void name();                                                                                                                                    \
-    static ::defn::tests::Registrar registrar_##name(#name, &name);                                                                                       \
+#define DEFN_TEST(name)                                                                                                                                        \
+    static void name();                                                                                                                                        \
+    static ::defn::tests::Registrar registrar_##name(#name, &name);                                                                                            \
     static void name()
 
-#define DEFN_REQUIRE(expr)                                                                                                                                 \
-    do {                                                                                                                                                   \
-        if (!(expr)) {                                                                                                                                     \
-            ::defn::tests::fail(__FILE__, __LINE__, std::string("require failed: ") + #expr);                                                           \
-        }                                                                                                                                                  \
+#define DEFN_REQUIRE(expr)                                                                                                                                     \
+    do {                                                                                                                                                       \
+        if (!(expr)) {                                                                                                                                         \
+            ::defn::tests::fail(__FILE__, __LINE__, std::string("require failed: ") + #expr);                                                                  \
+        }                                                                                                                                                      \
     } while (false)
 
 #define DEFN_CHECK(expr) DEFN_REQUIRE(expr)

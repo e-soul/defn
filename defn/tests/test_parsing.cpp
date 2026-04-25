@@ -7,6 +7,8 @@
 #include "unit_data.h"
 #include "upgrade_catalog.h"
 
+#include <algorithm>
+
 namespace defn {
 
 namespace {
@@ -74,13 +76,50 @@ Dictionary make_unit_data() {
 }
 
 bool contains_issue(const ContentValidationReport &report, const String &needle) {
-    for (const String &issue : report.issues) {
-        if (issue.contains(needle)) {
-            return true;
-        }
-    }
+    return std::ranges::any_of(report.issues, [&needle](const String &issue) { return issue.contains(needle); });
+}
 
-    return false;
+bool contains_issues(const ContentValidationReport &report, std::initializer_list<String> needles) {
+    return std::ranges::all_of(needles, [&report](const String &needle) { return contains_issue(report, needle); });
+}
+
+ContentValidationReport make_cross_reference_validation_report() {
+    Dictionary level_unlock;
+    level_unlock["level_id"] = "level_01";
+
+    Dictionary progression_data;
+    progression_data["level_unlocks"] = make_array({level_unlock});
+    ProgressionCatalog progression_catalog;
+    DEFN_REQUIRE(progression_catalog.load_from_data(progression_data));
+
+    Dictionary bad_effect;
+    bad_effect["type"] = "unit_unlock";
+    bad_effect["unit_id"] = "ghost_unit";
+
+    Dictionary bad_card;
+    bad_card["id"] = "bad_card";
+    bad_card["name"] = "Bad Card";
+    bad_card["description"] = "Broken";
+    bad_card["prerequisites"] = make_array({String("missing_prereq")});
+    bad_card["effects"] = make_array({bad_effect});
+
+    Dictionary upgrade_data;
+    upgrade_data["base_units"] = make_array({String("ghost_unit")});
+    upgrade_data["cards"] = make_array({bad_card});
+    UpgradeCatalog upgrade_catalog;
+    DEFN_REQUIRE(upgrade_catalog.load_from_data(upgrade_data));
+
+    UnitDataLoader unit_data;
+    DEFN_REQUIRE(unit_data.load_from_data(make_unit_data(), make_global_data()));
+
+    MenuContentData menu_data;
+    menu_data.menus.push_back({.name = "main_menu"});
+
+    LevelDefinition level_definition;
+    level_definition.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "operator"}}});
+
+    return ContentValidator::validate_loaded_content(menu_data, &progression_catalog, &upgrade_catalog, &unit_data,
+                                                     {{.level_id = "level_01", .definition = level_definition}});
 }
 
 } // namespace
@@ -190,6 +229,7 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
 
     const auto friendly = loader.get_unit("operator");
     DEFN_REQUIRE(friendly.has_value());
+    DEFN_REQUIRE(friendly->projectile_attack.has_value());
     DEFN_CHECK_EQ(friendly->side, UnitSide::FRIENDLY);
     DEFN_CHECK_EQ(friendly->projectile_attack->affected_target_rounding, SplashTargetRoundingMode::CEIL);
     DEFN_CHECK_EQ(loader.get_globals().gameplay_rules.viewport_width, static_cast<real_t>(1280.0F));
@@ -197,49 +237,12 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
 }
 
 DEFN_TEST(content_validator_reports_cross_reference_issues_from_loaded_data) {
-    Dictionary level_unlock;
-    level_unlock["level_id"] = "level_01";
-
-    Dictionary progression_data;
-    progression_data["level_unlocks"] = make_array({level_unlock});
-    ProgressionCatalog progression_catalog;
-    DEFN_CHECK(progression_catalog.load_from_data(progression_data));
-
-    Dictionary bad_effect;
-    bad_effect["type"] = "unit_unlock";
-    bad_effect["unit_id"] = "ghost_unit";
-
-    Dictionary bad_card;
-    bad_card["id"] = "bad_card";
-    bad_card["name"] = "Bad Card";
-    bad_card["description"] = "Broken";
-    bad_card["prerequisites"] = make_array({String("missing_prereq")});
-    bad_card["effects"] = make_array({bad_effect});
-
-    Dictionary upgrade_data;
-    upgrade_data["base_units"] = make_array({String("ghost_unit")});
-    upgrade_data["cards"] = make_array({bad_card});
-    UpgradeCatalog upgrade_catalog;
-    DEFN_CHECK(upgrade_catalog.load_from_data(upgrade_data));
-
-    UnitDataLoader unit_data;
-    DEFN_CHECK(unit_data.load_from_data(make_unit_data(), make_global_data()));
-
-    MenuContentData menu_data;
-    menu_data.menus.push_back({.name = "main_menu"});
-
-    LevelDefinition level_definition;
-    level_definition.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "operator"}}});
-
-    const ContentValidationReport report = ContentValidator::validate_loaded_content(
-        menu_data, &progression_catalog, &upgrade_catalog, &unit_data, {{.level_id = "level_01", .definition = level_definition}});
+    const ContentValidationReport report = make_cross_reference_validation_report();
 
     DEFN_CHECK(!report.is_valid());
-    DEFN_CHECK(contains_issue(report, "missing required menu"));
-    DEFN_CHECK(contains_issue(report, "base unit 'ghost_unit'"));
-    DEFN_CHECK(contains_issue(report, "unknown prerequisite 'missing_prereq'"));
-    DEFN_CHECK(contains_issue(report, "unknown unit 'ghost_unit'"));
-    DEFN_CHECK(contains_issue(report, "non-hostile spawn type 'operator'"));
+    DEFN_CHECK(contains_issues(report,
+                               {"missing required menu", "base unit 'ghost_unit'", "unknown prerequisite 'missing_prereq'",
+                                "unknown unit 'ghost_unit'", "non-hostile spawn type 'operator'"}));
 }
 
 } // namespace defn

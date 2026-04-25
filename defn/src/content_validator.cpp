@@ -156,9 +156,9 @@ void validate_levels(const ProgressionCatalog &catalog, const UnitDataLoader &un
 
 } // namespace
 
-ContentValidationReport ContentValidator::validate_loaded_content(const std::optional<MenuContentData> &menu_data, const ProgressionCatalog *progression_catalog,
-                                                                 const UpgradeCatalog *upgrade_catalog, const UnitDataLoader *unit_data,
-                                                                 const std::vector<LoadedLevelValidationInput> &levels) {
+ContentValidationReport ContentValidator::validate_loaded_content(const std::optional<MenuContentData> &menu_data,
+                                                                  const ProgressionCatalog *progression_catalog, const UpgradeCatalog *upgrade_catalog,
+                                                                  const UnitDataLoader *unit_data, const std::vector<LoadedLevelValidationInput> &levels) {
     ContentValidationReport report;
 
     if (menu_data.has_value()) {
@@ -219,8 +219,9 @@ bool ContentValidator::report_startup_validation() {
         }
     }
 
-    const ContentValidationReport report = validate_loaded_content(menu_data, progression_loaded ? &progression_catalog : nullptr,
-                                                                   upgrades_loaded ? &upgrade_catalog : nullptr, units_loaded ? &unit_data : nullptr, loaded_levels);
+    const ContentValidationReport report =
+        validate_loaded_content(menu_data, progression_loaded ? &progression_catalog : nullptr, upgrades_loaded ? &upgrade_catalog : nullptr,
+                                units_loaded ? &unit_data : nullptr, loaded_levels);
     issues.insert(issues.end(), report.issues.begin(), report.issues.end());
 
     if (issues.empty()) {

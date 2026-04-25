@@ -10,10 +10,10 @@
 namespace defn {
 
 void DefnHostedTestRunner::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("run_registered_tests"), &DefnHostedTestRunner::run_registered_tests);
+    ClassDB::bind_static_method(get_class_static(), D_METHOD("run_registered_tests"), &DefnHostedTestRunner::run_registered_tests);
 }
 
-Dictionary DefnHostedTestRunner::run_registered_tests() const {
+Dictionary DefnHostedTestRunner::run_registered_tests() {
     Array failures;
     int passed = 0;
 

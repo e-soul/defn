@@ -55,6 +55,10 @@ std::vector<UnitConfig> MatchDirector::build_available_friendlies() const {
     const auto all_friendlies = unit_data_->get_friendly_units();
     friendlies.reserve(all_friendlies.size());
     for (const auto &config : all_friendlies) {
+        if (config.name == "base") {
+            continue;
+        }
+
         if (unlocked_units.has(config.name)) {
             friendlies.push_back(campaign_->get_effective_friendly_unit_config(config));
         }
