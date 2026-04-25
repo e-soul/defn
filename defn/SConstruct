@@ -1,11 +1,20 @@
 import os
 import pathlib
+import shutil
 import subprocess
 
 
 def remove_standard_flags(flags):
     cxx17_flags = {"/std:c++17", "-std=c++17"}
     return [flag for flag in flags if str(flag) not in cxx17_flags]
+
+
+def parse_bool_arg(value):
+    return str(value).lower() in {"1", "true", "yes", "on"}
+
+
+with_hosted_tests_arg = parse_bool_arg(ARGUMENTS.pop("with_hosted_tests", ""))
+godot_bin_arg = ARGUMENTS.pop("godot_bin", "")
 
 
 # 1. Setup the basic SCons environment
@@ -35,6 +44,15 @@ if env["platform"] == "windows":
     env.Append(CXXFLAGS=["/std:c++latest", "/EHsc"])
 else:
     env.Append(CXXFLAGS=["-std=c++23"])
+
+requested_targets = set(COMMAND_LINE_TARGETS)
+hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all"}))
+
+env["DEFN_GODOT_BIN"] = godot_bin_arg
+
+if hosted_tests_enabled:
+    env.Append(CPPPATH=["tests/"])
+    env.Append(CPPDEFINES=["DEFN_HOSTED_TESTS_ENABLED"])
 
 # 4. Define your sources
 extension_sources = [
@@ -83,6 +101,15 @@ extension_sources = [
     "src/pause_menu.cpp",
 ]
 
+hosted_test_sources = [
+    "src/defn_hosted_test_runner.cpp",
+    "tests/test_combat_logic.cpp",
+    "tests/test_match_and_services.cpp",
+    "tests/test_match_session_core.cpp",
+    "tests/test_models.cpp",
+    "tests/test_parsing.cpp",
+]
+
 test_support_sources = [
     "src/match_session.cpp",
     "src/combat_logic.cpp",
@@ -94,12 +121,33 @@ unit_test_sources = [
     "tests/test_combat_logic.cpp",
 ]
 
+if hosted_tests_enabled:
+    extension_sources += hosted_test_sources
+
+
+def object_target_for(source_path, prefix=""):
+    obj_name = os.path.splitext(source_path.replace(os.sep, "_").replace("/", "_"))[0]
+    return os.path.join(obj_dir, prefix + obj_name)
+
+
+def resolve_godot_executable(configured_path):
+    candidate_paths = [configured_path, os.environ.get("GODOT_BIN", "")]
+    for candidate in candidate_paths:
+        if candidate and pathlib.Path(candidate).exists():
+            return str(pathlib.Path(candidate).resolve())
+
+    for name in ["godot4", "godot"]:
+        detected = shutil.which(name)
+        if detected:
+            return detected
+
+    return None
+
 # 5. Compile into a dedicated object directory
 obj_dir = os.path.join("build", "obj")
 objects = []
 for src in extension_sources:
-    obj_name = os.path.splitext(src.replace(os.sep, "_").replace("/", "_"))[0]
-    obj_target = os.path.join(obj_dir, obj_name)
+    obj_target = object_target_for(src)
     objects.append(env.SharedObject(target=obj_target, source=src))
 
 # 6. Build the Shared Library (The DLL)
@@ -123,9 +171,13 @@ if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
 
 test_env = env.Clone()
 test_env.Append(CPPPATH=["tests/"])
+test_objects = []
+for src in test_support_sources + unit_test_sources:
+    test_objects.append(test_env.Object(target=object_target_for(src, prefix="native_"), source=src))
+
 test_program = test_env.Program(
     target=os.path.join("bin", "defn_unit_tests"),
-    source=test_support_sources + unit_test_sources,
+    source=test_objects,
 )
 
 
@@ -141,5 +193,31 @@ test_stamp = env.Command(os.path.join("build", "defn_unit_tests.stamp"), test_pr
 AlwaysBuild(test_stamp)
 env.Alias("unit_tests", test_program)
 env.Alias("test", test_stamp)
+
+
+def run_hosted_tests(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run hosted tests.")
+        return 1
+
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_hosted_runner.gd"
+    result = subprocess.run(
+        [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)],
+        check=False,
+        cwd=project_dir,
+    )
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
+hosted_test_script = os.path.join("tests", "godot_hosted_runner.gd")
+hosted_test_stamp = env.Command(os.path.join("build", "defn_hosted_tests.stamp"), [library, hosted_test_script], run_hosted_tests)
+AlwaysBuild(hosted_test_stamp)
+env.Alias("hosted_test", hosted_test_stamp)
+env.Alias("test_all", [test_stamp, hosted_test_stamp])
 
 Default(library)

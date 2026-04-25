@@ -21,6 +21,10 @@
 #include "unit.h"
 #include "wave_manager.h"
 
+#ifdef DEFN_HOSTED_TESTS_ENABLED
+#include "defn_hosted_test_runner.h"
+#endif
+
 using namespace godot;
 
 void initialize_module(ModuleInitializationLevel p_level) {
@@ -46,6 +50,9 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();
     ClassDB::register_class<defn::PauseMenu>();
+#ifdef DEFN_HOSTED_TESTS_ENABLED
+    ClassDB::register_class<defn::DefnHostedTestRunner>();
+#endif
 }
 
 void uninitialize_module(ModuleInitializationLevel p_level) {
