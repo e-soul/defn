@@ -1,9 +1,10 @@
 #ifndef UNIT_H
 #define UNIT_H
 
-#include "attack_target.h"
+#include "battle_entity.h"
 #include "unit_data.h"
-#include <godot_cpp/classes/character_body2d.hpp>
+#include "unit_runtime_profile.h"
+#include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
 
@@ -16,32 +17,30 @@ class HealthBarWidget;
 class AnimationController;
 class CombatComponent;
 class DetectionComponent;
+class HitboxComponent;
+class MovementComponent;
 class SoundController;
 class UnitFactory;
 
-class Unit : public CharacterBody2D, public AttackTarget {
-    GDCLASS(Unit, CharacterBody2D)
+class Unit : public BattleEntity {
+  GDCLASS(Unit, BattleEntity)
 
   public:
     Unit();
     ~Unit() override = default;
 
     void set_unit_config(const UnitConfig &cfg);
+    void set_runtime_profile(const UnitRuntimeProfile &profile) { runtime_profile_ = profile; }
 
-    void take_damage(int amount) override;
     void flash_damage(const Color &color) override;
-    [[nodiscard]] bool is_dead() const override;
 
     int get_cost() const { return unit_config_.cost; }
     int get_bounty() const { return unit_config_.bounty; }
-    [[nodiscard]] UnitSide get_side() const override { return unit_config_.side; }
     const UnitConfig &get_unit_config() const { return unit_config_; }
+    const UnitRuntimeProfile &get_runtime_profile() const { return runtime_profile_; }
     real_t get_attack_range() const { return attack_range; }
     real_t get_ranged_range() const { return ranged_range; }
-    [[nodiscard]] Node2D *get_target_node() override { return this; }
-    [[nodiscard]] const Node2D *get_target_node() const override { return this; }
-
-    void do_movement(double delta);
+    MovementComponent *get_movement_component() const override { return movement; }
 
     void _ready() override;
 
@@ -52,8 +51,11 @@ class Unit : public CharacterBody2D, public AttackTarget {
     friend class UnitFactory;
 
     void on_died();
+    void attach_health_component(HealthComponent *health_component) { set_health_component(health_component); }
+    void attach_hitbox_component(HitboxComponent *hitbox_component) { set_hitbox_component(hitbox_component); }
 
     UnitConfig unit_config_;
+    UnitRuntimeProfile runtime_profile_{};
     real_t attack_range = 128.0;
     real_t ranged_range = 384.0;
     bool runtime_initialized_ = false;
@@ -63,6 +65,7 @@ class Unit : public CharacterBody2D, public AttackTarget {
     AnimationController *animation = nullptr;
     CombatComponent *combat = nullptr;
     DetectionComponent *detection = nullptr;
+    MovementComponent *movement = nullptr;
     SoundController *sound = nullptr;
 };
 

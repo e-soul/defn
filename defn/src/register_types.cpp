@@ -5,6 +5,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "animation_controller.h"
+#include "battle_entity.h"
 #include "base_objective.h"
 #include "combat_component.h"
 #include "detection_component.h"
@@ -12,8 +13,10 @@
 #include "grid_manager.h"
 #include "health_bar_widget.h"
 #include "health_component.h"
+#include "hitbox_component.h"
 #include "hud.h"
 #include "menu_manager.h"
+#include "movement_component.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
 #include "projectile_attack.h"
@@ -36,10 +39,13 @@ void initialize_module(ModuleInitializationLevel p_level) {
     defn::GridManager::register_singleton();
     ClassDB::register_class<defn::CampaignService>();
     defn::CampaignService::register_singleton();
+    GDREGISTER_ABSTRACT_CLASS(defn::BattleEntity);
     ClassDB::register_class<defn::HealthComponent>();
     ClassDB::register_class<defn::HealthBarWidget>();
+    ClassDB::register_class<defn::HitboxComponent>();
     ClassDB::register_class<defn::AnimationController>();
     ClassDB::register_class<defn::SoundController>();
+    ClassDB::register_class<defn::MovementComponent>();
     ClassDB::register_class<defn::BaseObjective>();
     ClassDB::register_class<defn::DetectionComponent>();
     ClassDB::register_class<defn::CombatComponent>();

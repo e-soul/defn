@@ -17,7 +17,7 @@ class AnimationController : public Node {
     GDCLASS(AnimationController, Node)
 
   public:
-    void configure(Node *owner_node, const UnitConfig &cfg);
+    void configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite = true);
 
     AnimState get_anim_state() const { return anim_state; }
     void set_anim_state(AnimState state);

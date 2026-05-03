@@ -6,20 +6,7 @@ namespace defn {
 
 void DetectionComponent::_bind_methods() {}
 
-void DetectionComponent::configure(Node *owner_node, uint32_t hitbox_layer, uint32_t sensor_mask, real_t ranged_range, real_t scale_x) {
-    hitbox = memnew(Area2D);
-    hitbox->set_collision_layer(hitbox_layer);
-    hitbox->set_collision_mask(0);
-    hitbox->set_monitoring(false);
-    hitbox->set_monitorable(true);
-    auto *hitbox_shape = memnew(CollisionShape2D);
-    Ref<CircleShape2D> hitbox_circle;
-    hitbox_circle.instantiate();
-    hitbox_circle->set_radius(static_cast<float>(5.0 / scale_x));
-    hitbox_shape->set_shape(hitbox_circle);
-    hitbox->add_child(hitbox_shape);
-    owner_node->add_child(hitbox);
-
+void DetectionComponent::configure(Node *owner_node, uint32_t sensor_mask, real_t ranged_range, real_t scale_x) {
     detection_area = memnew(Area2D);
     detection_area->set_collision_layer(0);
     detection_area->set_collision_mask(sensor_mask);
@@ -32,6 +19,12 @@ void DetectionComponent::configure(Node *owner_node, uint32_t hitbox_layer, uint
     sensor_shape->set_shape(sensor_circle);
     detection_area->add_child(sensor_shape);
     owner_node->add_child(detection_area);
+}
+
+void DetectionComponent::set_local_position(const Vector2 &position) {
+    if (detection_area != nullptr) {
+        detection_area->set_position(position);
+    }
 }
 
 } // namespace defn

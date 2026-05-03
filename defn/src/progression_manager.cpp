@@ -269,8 +269,18 @@ UnitConfig CampaignService::get_effective_friendly_unit_config(const UnitConfig 
     });
 
     effective_config.hp = std::max(effective_config.hp, 1);
-    effective_config.ranged_damage = std::max(effective_config.ranged_damage, 1);
-    effective_config.move_speed_pixels_per_second = std::max(effective_config.move_speed_pixels_per_second, static_cast<real_t>(1.0F));
+    if (base_config.ranged_damage > 0 || effective_config.ranged_damage > 0 || base_config.projectile_attack.has_value()) {
+        effective_config.ranged_damage = std::max(effective_config.ranged_damage, 1);
+    } else {
+        effective_config.ranged_damage = std::max(effective_config.ranged_damage, 0);
+    }
+
+    if (base_config.move_speed_pixels_per_second > 0.0F || effective_config.move_speed_pixels_per_second > 0.0F) {
+        effective_config.move_speed_pixels_per_second = std::max(effective_config.move_speed_pixels_per_second, static_cast<real_t>(1.0F));
+    } else {
+        effective_config.move_speed_pixels_per_second = std::max(effective_config.move_speed_pixels_per_second, static_cast<real_t>(0.0F));
+    }
+
     return effective_config;
 }
 

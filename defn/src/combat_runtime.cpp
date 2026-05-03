@@ -1,16 +1,17 @@
 #include "combat_runtime.h"
 
 #include "animation_controller.h"
+#include "battle_entity.h"
 #include "combat_attack_executor.h"
 #include "combat_target_selector.h"
 #include "health_component.h"
-#include "unit.h"
+#include "movement_component.h"
 
 #include <algorithm>
 
 namespace defn {
 
-void CombatRuntime::configure(Unit *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config) {
+void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config) {
     unit_ = unit;
     health_ = health;
     animation_ = animation;
@@ -71,10 +72,15 @@ void CombatRuntime::apply_logic_step(const CombatLogicStep &step, double delta) 
         }
     }
 
+    auto *movement = unit_->get_movement_component();
     if (step.intent.movement == CombatMovementIntent::STOP) {
-        unit_->set_velocity(Vector2(0, 0));
+        if (movement != nullptr) {
+            movement->stop();
+        }
     } else if (step.intent.movement == CombatMovementIntent::MOVE) {
-        unit_->do_movement(delta);
+        if (movement != nullptr) {
+            movement->move(delta);
+        }
     }
 
     if (step.intent.trigger_attack) {

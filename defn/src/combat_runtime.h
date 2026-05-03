@@ -12,14 +12,14 @@ namespace defn {
 
 using namespace godot;
 
-class Unit;
+class BattleEntity;
 class AnimationController;
 class HealthComponent;
 enum class AnimState : int;
 
 class CombatRuntime {
   public:
-    void configure(Unit *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config);
+    void configure(BattleEntity *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config);
     void update(double delta);
 
     bool is_engaged() const { return state_.engaged; }
@@ -31,7 +31,7 @@ class CombatRuntime {
     void apply_logic_step(const CombatLogicStep &step, double delta);
     static CombatPoseState map_pose_state(AnimState state);
 
-    Unit *unit_ = nullptr;
+    BattleEntity *unit_ = nullptr;
     HealthComponent *health_ = nullptr;
     AnimationController *animation_ = nullptr;
     Area2D *detection_area_ = nullptr;

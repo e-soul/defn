@@ -1,20 +1,30 @@
 {
   "units": {
     "base": {
-      "description": "Friendly objective. Uses single-frame idle and death animations for the intact and destroyed base.",
+      "description": "Friendly base. Can shoot.",
       "side": "friendly",
       "hp": 300,
       "melee_damage": 0,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 0.0,
-      "ranged_damage": 0,
-      "ranged_attack_period_seconds": 1.0,
-      "ranged_attack_range": 0.0,
+      "ranged_damage": 12,
+      "ranged_attack_period_seconds": 1.2,
+      "ranged_attack_range": 520.0,
       "move_speed_pixels_per_second": 0.0,
       "cost": 0,
       "bounty": 0,
       "scale": 0.55,
       "sprite_flip_h": false,
+      "muzzle_flash": {
+        "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Objects/Muzzle/YellowMuzzle__%03d.png",
+        "offset": [320.0, 460.0],
+        "flip_h": false
+      },
+      "shoot_sfx": {
+        "path": "res://assets/sfx/walther_p38_fire.wav",
+        "volume_linear": 0.2,
+        "pitch_scale": 1.0
+      },
       "animations": {
         "idle": {
           "path_template": "res://assets/tower.png",

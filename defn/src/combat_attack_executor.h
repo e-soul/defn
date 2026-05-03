@@ -7,11 +7,11 @@
 namespace defn {
 
 class AnimationController;
-class Unit;
+class BattleEntity;
 
 class CombatAttackExecutor {
   public:
-    static void spawn_pending_projectile(const CombatConfig &config, Unit *unit, AnimationController *animation, PendingProjectileSpawn &pending_projectile);
+    static void spawn_pending_projectile(const CombatConfig &config, BattleEntity *unit, AnimationController *animation, PendingProjectileSpawn &pending_projectile);
     static void trigger_attack(const CombatConfig &config, AttackMode attack_mode, AttackTarget *target, AnimationController *animation,
                                PendingProjectileSpawn &pending_projectile);
 };

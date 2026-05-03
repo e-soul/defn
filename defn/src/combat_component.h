@@ -11,7 +11,7 @@ namespace defn {
 
 using namespace godot;
 
-class Unit;
+class BattleEntity;
 class AnimationController;
 class HealthComponent;
 
@@ -21,7 +21,7 @@ class CombatComponent : public Node {
   public:
     using Config = CombatConfig;
 
-    void configure(Unit *p_unit, HealthComponent *p_health, AnimationController *p_anim, Area2D *p_detection_area, const Config &cfg);
+    void configure(BattleEntity *p_unit, HealthComponent *p_health, AnimationController *p_anim, Area2D *p_detection_area, const Config &cfg);
 
     void _process(double delta) override;
 

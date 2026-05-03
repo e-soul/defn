@@ -58,6 +58,7 @@ if hosted_tests_enabled:
 extension_sources = [
     "src/register_types.cpp",
     "src/attack_target_resolver.cpp",
+    "src/battle_entity.cpp",
     "src/base_objective.cpp",
     "src/grid_manager.cpp",
     "src/progression_manager.cpp",
@@ -68,6 +69,7 @@ extension_sources = [
     "src/match_session.cpp",
     "src/match_director.cpp",
     "src/content_validator.cpp",
+    "src/hitbox_component.cpp",
     "src/level_loader.cpp",
     "src/camera_scroll_controller.cpp",
     "src/game_background_builder.cpp",
@@ -80,6 +82,7 @@ extension_sources = [
     "src/health_bar_widget.cpp",
     "src/animation_controller.cpp",
     "src/sound_controller.cpp",
+    "src/movement_component.cpp",
     "src/deploy_card_presenter.cpp",
     "src/upgrade_card_presenter.cpp",
     "src/detection_component.cpp",
@@ -108,6 +111,7 @@ hosted_test_sources = [
     "tests/test_match_session_core.cpp",
     "tests/test_models.cpp",
     "tests/test_parsing.cpp",
+    "tests/test_unit_profiles.cpp",
 ]
 
 test_support_sources = [

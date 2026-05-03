@@ -14,24 +14,25 @@ namespace defn {
 
 void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
-void AnimationController::configure(Node *owner_node, const UnitConfig &cfg) {
+void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite) {
     this->owner_node = Object::cast_to<Node2D>(owner_node);
     muzzle_offset = cfg.muzzle.offset;
 
-    sprite = memnew(AnimatedSprite2D);
-    if (sprite == nullptr) {
-        return;
+    if (enable_sprite) {
+        sprite = memnew(AnimatedSprite2D);
+        if (sprite == nullptr) {
+            return;
+        }
+
+        owner_node->add_child(sprite);
+        setup_sprite_frames(owner_node, cfg);
+        original_modulate = sprite->get_modulate();
+        sprite->connect("animation_finished", callable_mp(this, &AnimationController::on_animation_finished));
+        sprite->connect("animation_changed", callable_mp(this, &AnimationController::on_animation_changed));
     }
 
-    owner_node->add_child(sprite);
-
-    setup_sprite_frames(owner_node, cfg);
     setup_muzzle_flash(owner_node, cfg);
-    original_modulate = sprite->get_modulate();
     set_anim_state(AnimState::WALK);
-
-    sprite->connect("animation_finished", callable_mp(this, &AnimationController::on_animation_finished));
-    sprite->connect("animation_changed", callable_mp(this, &AnimationController::on_animation_changed));
 }
 
 void AnimationController::_process(double delta) {
@@ -154,14 +155,18 @@ void AnimationController::play_attack_animation() {
 
 void AnimationController::play_shoot_animation(bool show_muzzle_flash, int effect_frame) {
     set_anim_state(AnimState::SHOOT);
+    show_muzzle_flash_on_shoot_effect = show_muzzle_flash;
+    shoot_effect_ready = false;
+    shoot_effect_pending = false;
+
     if (!sprite) {
+        shoot_effect_ready = true;
+        trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
         return;
     }
 
     sprite->play("shoot");
     sprite->set_frame_and_progress(0, 0.0);
-    show_muzzle_flash_on_shoot_effect = show_muzzle_flash;
-    shoot_effect_ready = false;
     shoot_effect_pending = true;
 
     int max_effect_frame = 0;

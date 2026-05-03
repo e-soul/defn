@@ -1,11 +1,10 @@
 #ifndef BASE_OBJECTIVE_H
 #define BASE_OBJECTIVE_H
 
-#include "attack_target.h"
+#include "battle_entity.h"
 #include "unit_data.h"
 
 #include <godot_cpp/classes/area2d.hpp>
-#include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -17,25 +16,20 @@ namespace defn {
 
 using namespace godot;
 
+class AnimationController;
+class CombatComponent;
+class DetectionComponent;
 class HealthComponent;
+class SoundController;
 
-class BaseObjective : public Node2D, public AttackTarget {
-    GDCLASS(BaseObjective, Node2D)
+class BaseObjective : public BattleEntity {
+    GDCLASS(BaseObjective, BattleEntity)
 
   public:
     BaseObjective();
 
     void configure(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
-    void take_damage(int amount) override;
     void flash_damage(const Color &color) override;
-    [[nodiscard]] bool is_dead() const override;
-
-    [[nodiscard]] UnitSide get_side() const override { return UnitSide::FRIENDLY; }
-    int get_current_hp() const;
-    int get_max_hp() const;
-    Area2D *get_hitbox() const { return hitbox_; }
-    [[nodiscard]] Node2D *get_target_node() override { return target_anchor_ != nullptr ? target_anchor_ : this; }
-    [[nodiscard]] const Node2D *get_target_node() const override { return target_anchor_ != nullptr ? target_anchor_ : this; }
 
     void _draw() override;
     void _process(double delta) override;
@@ -44,8 +38,8 @@ class BaseObjective : public Node2D, public AttackTarget {
     static void _bind_methods();
 
   private:
+    void ensure_attack_components();
     void ensure_sprite();
-    void ensure_target_anchor();
     void ensure_health_component();
     void ensure_hitbox();
     bool set_sprite_animation(const String &animation_name);
@@ -56,9 +50,10 @@ class BaseObjective : public Node2D, public AttackTarget {
     void on_health_changed(int current_hp, int max_hp);
     void on_destroyed();
 
-    HealthComponent *health_ = nullptr;
-    Area2D *hitbox_ = nullptr;
-    Node2D *target_anchor_ = nullptr;
+    AnimationController *animation_ = nullptr;
+    CombatComponent *combat_ = nullptr;
+    DetectionComponent *detection_ = nullptr;
+    SoundController *sound_ = nullptr;
     Sprite2D *sprite_ = nullptr;
     Ref<Texture2D> sprite_texture_;
     std::optional<UnitConfig> visual_config_;

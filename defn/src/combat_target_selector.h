@@ -11,11 +11,11 @@ namespace defn {
 
 using namespace godot;
 
-class Unit;
+class BattleEntity;
 
 class CombatTargetSelector {
   public:
-    static CombatTargetSelection select(Unit *unit, Area2D *detection_area, const CombatConfig &config, AttackTarget *current_target);
+    static CombatTargetSelection select(const BattleEntity *unit, Area2D *detection_area, const CombatConfig &config, AttackTarget *current_target);
 };
 
 } // namespace defn

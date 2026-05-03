@@ -1,19 +1,19 @@
 #include "combat_target_selector.h"
 
 #include "attack_target_resolver.h"
-#include "unit.h"
+#include "battle_entity.h"
 
 #include <algorithm>
 #include <vector>
 
 namespace defn {
 
-CombatTargetSelection CombatTargetSelector::select(Unit *unit, Area2D *detection_area, const CombatConfig &config, AttackTarget *current_target) {
+CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Area2D *detection_area, const CombatConfig &config, AttackTarget *current_target) {
     if (unit == nullptr || detection_area == nullptr) {
         return {};
     }
 
-    const Vector2 origin = unit->get_global_position();
+    const Vector2 origin = unit->get_target_global_position();
     std::vector<CombatTargetSnapshot> snapshots;
     const TypedArray<Area2D> overlapping = detection_area->get_overlapping_areas();
     snapshots.reserve(overlapping.size());
