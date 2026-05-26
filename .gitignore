@@ -1,5 +1,6 @@
 .venv/
 build-output.txt
+build/
 defn/.cache/
 defn/.godot/
 defn/.sconsign.dblite
