@@ -39,10 +39,25 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Resolve godot-cpp revision
+        id: godot-cpp-revision
+        shell: pwsh
+        run: |
+          $revision = git -C godot-cpp rev-parse HEAD
+          "sha=$revision" >> $env:GITHUB_OUTPUT
+
+      - name: Cache godot-cpp SCons outputs
+        uses: actions/cache@v4
+        with:
+          path: build/.scons-cache
+          key: godot-cpp-scons-v1-windows-2022-msvc-x64-template-release-scons-4.10.1-${{ steps.godot-cpp-revision.outputs.sha }}
+
       - name: Install SCons
         run: python -m pip install --upgrade pip scons==4.10.1
 
       - name: Build and export Windows release
+        env:
+          SCONS_CACHE: ${{ github.workspace }}/build/.scons-cache
         run: python scripts/build.py --build-version "${{ github.ref_name }}"
 
       - name: Upload release archive
