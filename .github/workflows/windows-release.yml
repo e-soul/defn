@@ -14,10 +14,24 @@ jobs:
     runs-on: windows-2022
 
     steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DEFN_ASSETS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEFN_ASSETS_APP_PRIVATE_KEY }}
+          owner: e-soul
+          repositories: |
+            defn
+            defn-assets
+          permission-contents: read
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
