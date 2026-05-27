@@ -1,5 +1,7 @@
 # Defn
 
+A belt-scroller tug of war 2D game.
+
 ## Build and test
 
 The build should be invoked from within the "defn" directory, where `SConstruct` is.
