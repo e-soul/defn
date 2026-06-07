@@ -2,6 +2,7 @@
 #define DEPLOYMENT_SERVICE_H
 
 #include "match_session.h"
+#include "progression_service.h"
 #include "runtime_service_interfaces.h"
 #include "unit_data.h"
 #include "unit_spawn_request.h"

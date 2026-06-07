@@ -42,6 +42,7 @@ class MenuManager : public Node2D {
     void setup_background();
     void show_menu(const String &menu_name);
     void show_level_select();
+    void show_progression();
     void clear_buttons();
     void build_options_ui(const MenuDefinition &menu_def);
 

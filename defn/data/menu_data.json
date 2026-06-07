@@ -11,6 +11,7 @@
         "game_menu": {
             "entries": [
                 { "id": "new_continue", "label": "New/Continue Campaign", "action": "level_select" },
+                { "id": "progression", "label": "Progression", "action": "progression" },
                 { "id": "main_menu", "label": "Main Menu", "action": "goto_menu", "target": "main_menu" }
             ]
         },

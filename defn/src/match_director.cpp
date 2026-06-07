@@ -199,6 +199,7 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
     const PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*campaign_, victory, level_id_);
     const String next_level_id = determine_next_level_id(victory);
     pending_score_screen_ = match_session_.build_end_game_summary(victory, new_total, level_id_, next_level_id, new_unlocks, reward);
+    pending_score_screen_->owned_upgrades = campaign_->build_owned_upgrade_cards();
 
     update_result.match_finished = true;
     update_result.hearts_changed = true;

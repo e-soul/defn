@@ -3,7 +3,7 @@
 
 #include "progression_catalog.h"
 #include "progression_save_repository.h"
-#include "runtime_service_interfaces.h"
+#include "progression_service.h"
 #include "score_screen_models.h"
 #include "upgrade_catalog.h"
 
@@ -56,6 +56,7 @@ class CampaignService : public Object, public ProgressionService {
     int get_completed_level_count() const;
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level(const String &level_id) const override;
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_rescue_draft_for_level(const String &level_id) const override;
+    [[nodiscard]] std::vector<UpgradeCardViewModel> build_owned_upgrade_cards() const override;
 
     [[nodiscard]] String get_current_level_id() const override { return current_level_id_; }
     void set_current_level_id(const String &level_id) { current_level_id_ = level_id; }

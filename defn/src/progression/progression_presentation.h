@@ -2,7 +2,7 @@
 #define PROGRESSION_PRESENTATION_H
 
 #include "progression_catalog.h"
-#include "runtime_service_interfaces.h"
+#include "progression_service.h"
 
 #include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>

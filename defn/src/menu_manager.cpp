@@ -2,6 +2,7 @@
 #include "data_paths.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
+#include "owned_upgrades_panel.h"
 #include "progression_manager.h"
 #include "progression_presentation.h"
 #include "scene_navigator.h"
@@ -19,6 +20,7 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <utility>
@@ -26,6 +28,22 @@
 namespace defn {
 
 namespace {
+
+constexpr real_t PROGRESSION_SCREEN_WIDTH_RATIO = 0.58;
+constexpr real_t PROGRESSION_SCREEN_HEIGHT_RATIO = 0.6;
+
+Vector2 get_progression_screen_size(Node *parent) {
+    if (parent == nullptr || parent->get_viewport() == nullptr) {
+        return make_size(800, 360);
+    }
+
+    const Vector2 viewport_size = parent->get_viewport()->get_visible_rect().size;
+    if (viewport_size.x <= 0.0 || viewport_size.y <= 0.0) {
+        return make_size(800, 360);
+    }
+
+    return {viewport_size.x * PROGRESSION_SCREEN_WIDTH_RATIO, viewport_size.y * PROGRESSION_SCREEN_HEIGHT_RATIO};
+}
 
 void add_section_label(VBoxContainer *button_container, const MenuSetting &setting, const OptionsLayout &options_layout) {
     auto *section_label = memnew(Label);
@@ -317,6 +335,8 @@ void MenuManager::on_button_pressed(const String &action, const String &target) 
         show_menu(target);
     } else if (action == "level_select") {
         show_level_select();
+    } else if (action == "progression") {
+        show_progression();
     } else if (action == "start_game") {
         SceneNavigator::go_to_current_level(get_tree());
     } else if (action == "quit") {
@@ -373,6 +393,37 @@ void MenuManager::show_level_select() {
 }
 
 void MenuManager::on_level_selected(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
+
+void MenuManager::show_progression() {
+    clear_buttons();
+    current_menu_ = "progression";
+
+    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
+    button_container_->add_theme_constant_override("separation", button_style.separation);
+
+    auto *title = memnew(Label);
+    title->set_text("YOUR UPGRADES");
+    title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    title->add_theme_font_size_override("font_size", 36);
+    title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    button_container_->add_child(title);
+
+    auto *progression = CampaignService::get_singleton();
+    OwnedUpgradesPanel::Options owned_panel_options;
+    owned_panel_options.min_size = get_progression_screen_size(this);
+    owned_panel_options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
+    owned_panel_options.grid_columns = 4;
+    button_container_->add_child(OwnedUpgradesPanel::build(progression->build_owned_upgrade_cards(), owned_panel_options));
+
+    auto *back_btn = memnew(Button);
+    back_btn->set_text("Back");
+    back_btn->set_custom_minimum_size(Vector2(160, button_style.minimum_size.y));
+    back_btn->set_h_size_flags(Control::SIZE_SHRINK_CENTER);
+    back_btn->set_focus_mode(Control::FOCUS_NONE);
+    apply_button_theme(back_btn, button_style, button_style.font_size);
+    back_btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(String("goto_menu"), String("game_menu")));
+    button_container_->add_child(back_btn);
+}
 
 void MenuManager::build_options_ui(const MenuDefinition &menu_def) {
     const ButtonStyle button_style = build_button_style(menu_data_.style_data);

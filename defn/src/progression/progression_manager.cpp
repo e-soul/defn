@@ -422,6 +422,21 @@ std::vector<UpgradeCardViewModel> CampaignService::build_rescue_draft_for_level(
     return build_upgrade_draft();
 }
 
+std::vector<UpgradeCardViewModel> CampaignService::build_owned_upgrade_cards() const {
+    std::vector<UpgradeCardViewModel> result;
+    for (const auto &card : upgrade_catalog_.get_cards()) {
+        const int owned = get_owned_upgrade_count(card.id);
+        if (owned <= 0) {
+            continue;
+        }
+
+        UpgradeCardViewModel view = build_upgrade_card_view(card);
+        view.owned_count = owned;
+        result.push_back(view);
+    }
+    return result;
+}
+
 void CampaignService::add_score(int amount) { save_data_.total_score += amount; }
 
 void CampaignService::mark_level_completed(const String &level_id, int level_score) {

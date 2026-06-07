@@ -78,9 +78,9 @@ class FakeGridService final : public GridQueryService {
     real_t spawn_x_value = 896.0F;
     real_t belt_y_value = 240.0F;
 
-        [[nodiscard]] real_t deploy_x() const override { return deploy_x_value; }
-        [[nodiscard]] real_t spawn_x() const override { return spawn_x_value; }
-        [[nodiscard]] real_t sample_belt_y() const override { return belt_y_value; }
+    [[nodiscard]] real_t deploy_x() const override { return deploy_x_value; }
+    [[nodiscard]] real_t spawn_x() const override { return spawn_x_value; }
+    [[nodiscard]] real_t sample_belt_y() const override { return belt_y_value; }
 };
 
 class FakeProgressionService final : public ProgressionService {
@@ -103,6 +103,7 @@ class FakeProgressionService final : public ProgressionService {
     bool rescue_claimed = false;
     std::vector<UpgradeCardViewModel> level_draft;
     std::vector<UpgradeCardViewModel> rescue_draft;
+    std::vector<UpgradeCardViewModel> owned_upgrades;
 
     [[nodiscard]] int get_total_score() const override { return total_score; }
     [[nodiscard]] PackedStringArray get_unlocked_units() const override { return unlocked_units; }
@@ -134,6 +135,7 @@ class FakeProgressionService final : public ProgressionService {
     [[nodiscard]] int get_effective_base_integrity(int base) const override { return base + base_integrity_bonus; }
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level(const String & /*level_id*/) const override { return level_draft; }
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_rescue_draft_for_level(const String & /*level_id*/) const override { return rescue_draft; }
+    [[nodiscard]] std::vector<UpgradeCardViewModel> build_owned_upgrade_cards() const override { return owned_upgrades; }
     [[nodiscard]] String get_current_level_id() const override { return current_level_id; }
     [[nodiscard]] const std::vector<LevelUnlock> &get_level_unlock_data() const override { return level_unlocks; }
 

@@ -3,6 +3,7 @@
 
 #include "deployment_service.h"
 #include "match_session.h"
+#include "progression_service.h"
 #include "runtime_service_interfaces.h"
 #include "score_screen_models.h"
 #include "spawn_scheduler.h"

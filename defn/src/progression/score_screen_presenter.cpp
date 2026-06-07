@@ -1,5 +1,6 @@
 #include "score_screen_presenter.h"
 
+#include "owned_upgrades_panel.h"
 #include "upgrade_card_presenter.h"
 
 #include <godot_cpp/classes/button.hpp>
@@ -8,11 +9,36 @@
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
+#include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
+#include <godot_cpp/classes/viewport.hpp>
+
+#include <algorithm>
 
 namespace defn {
 
 namespace {
+
+constexpr real_t SCORE_SCREEN_WIDTH_RATIO = 0.8;
+constexpr real_t SCORE_SCREEN_MIN_WIDTH = 600.0;
+constexpr real_t SCORE_SCREEN_HORIZONTAL_MARGIN = 32.0;
+constexpr real_t UPGRADE_SELECTION_LABEL_WIDTH = 240.0;
+
+real_t get_score_screen_width(Node *parent) {
+    if (parent == nullptr || parent->get_viewport() == nullptr) {
+        return SCORE_SCREEN_MIN_WIDTH;
+    }
+
+    const real_t viewport_width = parent->get_viewport()->get_visible_rect().size.x;
+    if (viewport_width <= 0.0) {
+        return SCORE_SCREEN_MIN_WIDTH;
+    }
+
+    const real_t horizontal_margins = SCORE_SCREEN_HORIZONTAL_MARGIN * static_cast<real_t>(2);
+    const real_t max_width = std::max<real_t>(static_cast<real_t>(0), viewport_width - horizontal_margins);
+    const real_t target_width = viewport_width * SCORE_SCREEN_WIDTH_RATIO;
+    return std::min(std::max(target_width, std::min(SCORE_SCREEN_MIN_WIDTH, max_width)), max_width);
+}
 
 Button *make_action_button(const String &text) {
     auto *button = memnew(Button);
@@ -82,8 +108,9 @@ void apply_button_enabled(Button *button, bool enabled) {
     button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.6, 0.6, 0.65, 0.85));
 }
 
-void add_upgrade_section(VBoxContainer *content, const ScoreScreenRewardModel &reward, const Callable &on_select_upgrade) {
-    if (content == nullptr || reward.available_upgrades.empty()) {
+void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel &reward, const PackedStringArray &new_unlocks,
+                           const Callable &on_select_upgrade) {
+    if (content == nullptr || (reward.available_upgrades.empty() && new_unlocks.is_empty())) {
         return;
     }
 
@@ -91,37 +118,49 @@ void add_upgrade_section(VBoxContainer *content, const ScoreScreenRewardModel &r
 
     add_spacer(content, 12);
 
-    auto *section_title = memnew(Label);
-    section_title->set_text(reward.title.is_empty() ? String("CHOOSE 1 UPGRADE") : reward.title);
-    section_title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    section_title->add_theme_font_size_override("font_size", 24);
-    section_title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
-    content->add_child(section_title);
+    auto *selection_row = memnew(HBoxContainer);
+    selection_row->set_alignment(BoxContainer::ALIGNMENT_BEGIN);
+    selection_row->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+    selection_row->add_theme_constant_override("separation", 24);
+    content->add_child(selection_row);
 
-    if (!reward.subtitle.is_empty()) {
-        auto *subtitle = memnew(Label);
-        subtitle->set_text(reward.subtitle);
-        subtitle->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-        subtitle->add_theme_font_size_override("font_size", 18);
-        subtitle->add_theme_color_override("font_color", Color(0.84, 0.88, 0.95));
-        content->add_child(subtitle);
+    auto *label_column = memnew(VBoxContainer);
+    label_column->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    label_column->set_custom_minimum_size(Vector2(UPGRADE_SELECTION_LABEL_WIDTH, 0));
+    label_column->add_theme_constant_override("separation", 6);
+    selection_row->add_child(label_column);
+
+    auto add_selection_label = [label_column](const String &text, int font_size, const Color &font_color) {
+        auto *label = memnew(Label);
+        label->set_text(text);
+        label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+        label->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
+        label->set_custom_minimum_size(Vector2(UPGRADE_SELECTION_LABEL_WIDTH, 0));
+        label->add_theme_font_size_override("font_size", font_size);
+        label->add_theme_color_override("font_color", font_color);
+        label_column->add_child(label);
+    };
+
+    if (!reward.available_upgrades.empty()) {
+        add_selection_label(reward.title.is_empty() ? String("CHOOSE 1 UPGRADE") : reward.title, 24, Color(1.0, 0.85, 0.3));
+
+        if (!reward.subtitle.is_empty()) {
+            add_selection_label(reward.subtitle, 18, Color(0.84, 0.88, 0.95));
+        }
     }
 
-    if (reward.selected_upgrade.has_value()) {
-        auto *summary = memnew(Label);
-        summary->set_text(vformat("Selected: %s %s", reward.selected_upgrade->emoji, reward.selected_upgrade->name));
-        summary->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-        summary->add_theme_font_size_override("font_size", 18);
-        summary->add_theme_color_override("font_color", Color(0.92, 0.95, 1.0));
-        content->add_child(summary);
+    for (const auto &new_unlock : new_unlocks) {
+        add_selection_label(String(new_unlock), 20, Color(1.0, 0.85, 0.3));
     }
 
-    add_spacer(content, 8);
+    if (reward.available_upgrades.empty()) {
+        return;
+    }
 
     auto *card_row = memnew(HBoxContainer);
-    card_row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    card_row->set_alignment(BoxContainer::ALIGNMENT_BEGIN);
     card_row->add_theme_constant_override("separation", 12);
-    content->add_child(card_row);
+    selection_row->add_child(card_row);
 
     for (const auto &card : reward.available_upgrades) {
         const String card_id = card.id;
@@ -135,6 +174,42 @@ void add_upgrade_section(VBoxContainer *content, const ScoreScreenRewardModel &r
         auto *card_button = UpgradeCardPresenter::create(card, selected, false, pressed_action);
         card_row->add_child(card_button);
     }
+}
+
+void add_owned_upgrades_section(VBoxContainer *content, const std::vector<UpgradeCardViewModel> &owned_upgrades) {
+    if (content == nullptr || owned_upgrades.empty()) {
+        return;
+    }
+
+    add_spacer(content, 12);
+
+    auto *owned_row = memnew(HBoxContainer);
+    owned_row->set_alignment(BoxContainer::ALIGNMENT_BEGIN);
+    owned_row->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+    owned_row->add_theme_constant_override("separation", 24);
+    content->add_child(owned_row);
+
+    auto *label_column = memnew(VBoxContainer);
+    label_column->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    label_column->set_custom_minimum_size(Vector2(UPGRADE_SELECTION_LABEL_WIDTH, 0));
+    label_column->add_theme_constant_override("separation", 6);
+    owned_row->add_child(label_column);
+
+    auto *section_title = memnew(Label);
+    section_title->set_text("YOUR UPGRADES");
+    section_title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    section_title->set_custom_minimum_size(Vector2(UPGRADE_SELECTION_LABEL_WIDTH, 0));
+    section_title->add_theme_font_size_override("font_size", 24);
+    section_title->add_theme_color_override("font_color", Color(0.7, 0.85, 1.0));
+    label_column->add_child(section_title);
+
+    OwnedUpgradesPanel::Options owned_panel_options;
+    owned_panel_options.min_size = Vector2(0, 240);
+    owned_panel_options.layout = OwnedUpgradesPanel::Layout::HorizontalStrip;
+
+    auto *owned_panel = OwnedUpgradesPanel::build(owned_upgrades, owned_panel_options);
+    owned_panel->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+    owned_row->add_child(owned_panel);
 }
 
 } // namespace
@@ -160,7 +235,7 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const ScoreScreenModel 
     view.overlay->add_child(center);
 
     view.panel = memnew(PanelContainer);
-    view.panel->set_custom_minimum_size(Vector2(600, 0));
+    view.panel->set_custom_minimum_size(Vector2(get_score_screen_width(parent), 0));
     Ref<StyleBoxFlat> panel_style;
     panel_style.instantiate();
     panel_style->set_bg_color(Color(0.08, 0.08, 0.14, 0.95));
@@ -200,19 +275,9 @@ ScoreScreenView ScoreScreenPresenter::show(Node *parent, const ScoreScreenModel 
     add_stat_row(content, "Level Score:", vformat("%d", model.level_score));
     add_stat_row(content, "Career Total:", vformat("%d", model.new_total_score));
 
-    if (!model.new_unlocks.is_empty()) {
-        add_spacer(content, 8);
-        for (const auto &new_unlock : model.new_unlocks) {
-            auto *unlock_label = memnew(Label);
-            unlock_label->set_text(String(new_unlock));
-            unlock_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-            unlock_label->add_theme_font_size_override("font_size", 20);
-            unlock_label->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
-            content->add_child(unlock_label);
-        }
-    }
+    add_upgrade_selection(content, model.reward, model.new_unlocks, actions.on_select_upgrade);
 
-    add_upgrade_section(content, model.reward, actions.on_select_upgrade);
+    add_owned_upgrades_section(content, model.owned_upgrades);
 
     add_spacer(content, 16);
 

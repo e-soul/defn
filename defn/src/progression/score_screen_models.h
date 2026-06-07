@@ -17,6 +17,7 @@ struct UpgradeCardViewModel {
     String description;
     String emoji;
     String category;
+    int owned_count = 0;
 };
 
 struct ScoreScreenRewardModel {
@@ -54,6 +55,7 @@ struct ScoreScreenModel {
     String next_level_id;
     PackedStringArray new_unlocks;
     ScoreScreenRewardModel reward;
+    std::vector<UpgradeCardViewModel> owned_upgrades;
 };
 
 } // namespace defn
