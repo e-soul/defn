@@ -1,7 +1,7 @@
 ﻿{
   "level_id": 4,
-  "name": "The Last Stand",
-  "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
+  "name": "The Winter Forst",
+  "background": "res://assets/backgrounds/background_winter_forest_tiling.png",
   "starting_core_resource": 84,
   "base_integrity": 3,
   "waves": [

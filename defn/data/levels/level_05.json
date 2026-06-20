@@ -1,7 +1,7 @@
 {
   "level_id": 5,
   "name": "Feldkirchen",
-  "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
+  "background": "res://assets/backgrounds/background_feldkirchen_tiling.png",
   "starting_core_resource": 105,
   "base_integrity": 4,
   "waves": [
