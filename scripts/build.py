@@ -13,7 +13,7 @@ import zipfile
 from pathlib import Path
 
 
-DEFAULT_GODOT_VERSION = "4.6.3"
+DEFAULT_GODOT_VERSION = "4.7"
 DEFAULT_BUILD_DIR: str = "build"
 DEFAULT_ARCHIVE_NAME: str = "defn-win-x86_64.zip"
 DEFAULT_BUILD_VERSION: str = "snapshot"

@@ -1,6 +1,6 @@
 # Defn
 
-A simple belt-scroller tug of war 2D game.
+A simple belt-scroller tug-of-war 2.5 game. See the [Game Design Document](GDD.md) for details.
 
 ## Build and test
 
