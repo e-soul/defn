@@ -46,7 +46,12 @@ else:
     env.Append(CXXFLAGS=["-std=c++23"])
 
 requested_targets = set(COMMAND_LINE_TARGETS)
-hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all"}))
+coverage_native_requested = "coverage_native" in requested_targets
+coverage_hosted_requested = "coverage_hosted" in requested_targets
+coverage_merged_requested = "coverage" in requested_targets
+coverage_targets_requested = coverage_native_requested or coverage_hosted_requested or coverage_merged_requested
+coverage_extension_requested = coverage_hosted_requested or coverage_merged_requested
+hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all"})) or coverage_extension_requested
 
 env["DEFN_GODOT_BIN"] = godot_bin_arg
 
@@ -127,6 +132,8 @@ unit_test_sources = [
     "tests/test_combat_logic.cpp",
 ]
 
+coverage_report_sources = list(extension_sources)
+
 if hosted_tests_enabled:
     extension_sources += hosted_test_sources
 
@@ -149,6 +156,188 @@ def resolve_godot_executable(configured_path):
 
     return None
 
+
+def resolve_clang_profile_runtime(arch):
+    runtime_arch = {"x86_64": "x86_64", "x86_32": "i386", "arm64": "aarch64"}.get(arch, arch)
+    runtime_name = f"clang_rt.profile-{runtime_arch}.lib"
+    clang_path = shutil.which("clang-cl") or shutil.which("clang")
+    if not clang_path:
+        return None
+
+    llvm_dir = pathlib.Path(clang_path).resolve().parent.parent
+    runtime_paths = sorted(llvm_dir.glob(f"lib/clang/*/lib/windows/{runtime_name}"))
+    if runtime_paths:
+        return str(runtime_paths[-1])
+
+    return None
+
+
+def configure_llvm_coverage_env(coverage_env):
+    if coverage_env["platform"] == "windows":
+        coverage_env.Replace(CC="clang-cl", CXX="clang-cl")
+        profile_runtime = resolve_clang_profile_runtime(coverage_env.get("arch", "x86_64"))
+        if profile_runtime:
+            coverage_env.AppendUnique(LIBS=[profile_runtime])
+        elif coverage_targets_requested:
+            print("WARNING: Unable to locate clang_rt.profile runtime; coverage link may fail.")
+    else:
+        coverage_env.Replace(CC="clang", CXX="clang++", LINK="clang++")
+        coverage_env.AppendUnique(LINKFLAGS=["-fprofile-instr-generate"])
+
+    coverage_env.AppendUnique(CCFLAGS=["-fprofile-instr-generate", "-fcoverage-mapping"])
+
+
+def prepare_coverage_raw_dir(coverage_dir):
+    raw_dir = coverage_dir / "raw"
+    if raw_dir.exists():
+        shutil.rmtree(raw_dir)
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    return raw_dir
+
+
+def collect_raw_profiles(raw_dirs):
+    raw_profiles = []
+    for raw_dir in raw_dirs:
+        raw_profiles.extend(sorted(raw_dir.glob("*.profraw")))
+    return raw_profiles
+
+
+def write_coverage_stamp(target):
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text("0", encoding="ascii")
+
+
+def merge_and_write_coverage_report(label, coverage_dir, raw_dirs, coverage_objects, coverage_sources):
+    llvm_profdata = shutil.which("llvm-profdata")
+    llvm_cov = shutil.which("llvm-cov")
+    if not llvm_profdata or not llvm_cov:
+        print("Unable to locate llvm-profdata and llvm-cov. Install LLVM or add it to PATH to run coverage.")
+        return 1
+
+    html_dir = coverage_dir / "html"
+    profdata_path = coverage_dir / "coverage.profdata"
+    summary_path = coverage_dir / "summary.txt"
+
+    coverage_dir.mkdir(parents=True, exist_ok=True)
+    if html_dir.exists():
+        shutil.rmtree(html_dir)
+
+    for output_path in [profdata_path, summary_path]:
+        if output_path.exists():
+            output_path.unlink()
+
+    raw_profiles = collect_raw_profiles(raw_dirs)
+    if not raw_profiles:
+        print(f"{label} coverage run did not produce LLVM profile data.")
+        return 1
+
+    merge_result = subprocess.run(
+        [llvm_profdata, "merge", "-sparse", *[str(profile) for profile in raw_profiles], "-o", str(profdata_path)],
+        check=False,
+    )
+    if merge_result.returncode != 0:
+        return merge_result.returncode
+
+    coverage_object_args = [str(pathlib.Path(coverage_objects[0]).resolve())]
+    coverage_object_args.extend(f"--object={pathlib.Path(coverage_object).resolve()}" for coverage_object in coverage_objects[1:])
+    coverage_source_args = [str(pathlib.Path(source_path).resolve()) for source_path in coverage_sources]
+    report_result = subprocess.run(
+        [llvm_cov, "report", *coverage_object_args, f"-instr-profile={profdata_path}", *coverage_source_args],
+        check=False,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    summary_path.write_text(report_result.stdout, encoding="utf-8")
+    print(report_result.stdout)
+    if report_result.returncode != 0:
+        return report_result.returncode
+
+    show_result = subprocess.run(
+        [llvm_cov, "show", *coverage_object_args, f"-instr-profile={profdata_path}", "-format=html", f"-output-dir={html_dir}", *coverage_source_args],
+        check=False,
+    )
+    if show_result.returncode != 0:
+        return show_result.returncode
+
+    print(f"{label} coverage HTML report: {html_dir / 'index.html'}")
+    print(f"{label} coverage summary: {summary_path}")
+    return 0
+
+
+def run_native_coverage(target, source, env):
+    coverage_dir = pathlib.Path("build") / "coverage" / "native"
+    raw_dir = prepare_coverage_raw_dir(coverage_dir)
+    test_binary = pathlib.Path(str(source[0].abspath))
+    run_env = os.environ.copy()
+    run_env["LLVM_PROFILE_FILE"] = str((raw_dir / "defn_unit_tests-%p.profraw").resolve())
+
+    test_result = subprocess.run([str(test_binary)], check=False, env=run_env)
+    if test_result.returncode != 0:
+        return test_result.returncode
+
+    report_result = merge_and_write_coverage_report("Native", coverage_dir, [raw_dir], [test_binary], test_support_sources)
+    if report_result != 0:
+        return report_result
+
+    write_coverage_stamp(target)
+    return 0
+
+
+def run_hosted_coverage(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run hosted coverage.")
+        return 1
+
+    coverage_dir = pathlib.Path("build") / "coverage" / "hosted"
+    raw_dir = prepare_coverage_raw_dir(coverage_dir)
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_hosted_runner.gd"
+    run_env = os.environ.copy()
+    run_env["LLVM_PROFILE_FILE"] = str((raw_dir / "defn_hosted_tests-%p.profraw").resolve())
+
+    test_result = subprocess.run(
+        [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)],
+        check=False,
+        cwd=project_dir,
+        env=run_env,
+    )
+    if test_result.returncode != 0:
+        return test_result.returncode
+
+    extension_binary = pathlib.Path(env["DEFN_EXTENSION_LIBRARY_PATH"]).resolve()
+    report_result = merge_and_write_coverage_report("Hosted", coverage_dir, [raw_dir], [extension_binary], coverage_report_sources)
+    if report_result != 0:
+        return report_result
+
+    write_coverage_stamp(target)
+    return 0
+
+
+def run_merged_coverage(target, source, env):
+    coverage_root = pathlib.Path("build") / "coverage"
+    native_raw_dir = coverage_root / "native" / "raw"
+    hosted_raw_dir = coverage_root / "hosted" / "raw"
+    extension_binary = pathlib.Path(env["DEFN_EXTENSION_LIBRARY_PATH"]).resolve()
+    report_result = merge_and_write_coverage_report(
+        "Merged",
+        coverage_root / "merged",
+        [native_raw_dir, hosted_raw_dir],
+        [extension_binary],
+        coverage_report_sources,
+    )
+    if report_result != 0:
+        return report_result
+
+    write_coverage_stamp(target)
+    return 0
+
+
+if coverage_extension_requested:
+    configure_llvm_coverage_env(env)
+
 # 5. Compile into a dedicated object directory
 obj_dir = os.path.join("build", "obj")
 objects = []
@@ -157,8 +346,10 @@ for src in extension_sources:
     objects.append(env.SharedObject(target=obj_target, source=src))
 
 # 6. Build the Shared Library (The DLL)
+library_path = "bin/defn_core" + env["suffix"] + env["SHLIBSUFFIX"]
+env["DEFN_EXTENSION_LIBRARY_PATH"] = library_path
 library = env.SharedLibrary(
-    target="bin/defn_core" + env["suffix"] + env["SHLIBSUFFIX"],
+    target=library_path,
     source=objects,
 )
 
@@ -186,6 +377,17 @@ test_program = test_env.Program(
     source=test_objects,
 )
 
+coverage_test_env = test_env.Clone()
+configure_llvm_coverage_env(coverage_test_env)
+coverage_test_objects = []
+for src in test_support_sources + unit_test_sources:
+    coverage_test_objects.append(coverage_test_env.Object(target=object_target_for(src, prefix="coverage_native_"), source=src))
+
+coverage_test_program = coverage_test_env.Program(
+    target=os.path.join("bin", "defn_unit_tests_coverage"),
+    source=coverage_test_objects,
+)
+
 
 def run_unit_tests(target, source, env):
     result = subprocess.run([str(source[0].abspath)], check=False)
@@ -199,6 +401,10 @@ test_stamp = env.Command(os.path.join("build", "defn_unit_tests.stamp"), test_pr
 AlwaysBuild(test_stamp)
 env.Alias("unit_tests", test_program)
 env.Alias("test", test_stamp)
+
+coverage_native_stamp = env.Command(os.path.join("build", "coverage", "native", "coverage.stamp"), coverage_test_program, run_native_coverage)
+AlwaysBuild(coverage_native_stamp)
+env.Alias("coverage_native", coverage_native_stamp)
 
 
 def run_hosted_tests(target, source, env):
@@ -225,5 +431,17 @@ hosted_test_stamp = env.Command(os.path.join("build", "defn_hosted_tests.stamp")
 AlwaysBuild(hosted_test_stamp)
 env.Alias("hosted_test", hosted_test_stamp)
 env.Alias("test_all", [test_stamp, hosted_test_stamp])
+
+coverage_hosted_stamp = env.Command(os.path.join("build", "coverage", "hosted", "coverage.stamp"), [library, hosted_test_script], run_hosted_coverage)
+AlwaysBuild(coverage_hosted_stamp)
+env.Alias("coverage_hosted", coverage_hosted_stamp)
+
+coverage_merged_stamp = env.Command(
+    os.path.join("build", "coverage", "merged", "coverage.stamp"),
+    [coverage_native_stamp, coverage_hosted_stamp, library],
+    run_merged_coverage,
+)
+AlwaysBuild(coverage_merged_stamp)
+env.Alias("coverage", coverage_merged_stamp)
 
 Default(library)

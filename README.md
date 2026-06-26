@@ -16,6 +16,14 @@ Build the native test executable only: `scons unit_tests`
 
 Build and run the native host-independent suite: `scons test`
 
+Build and run the native host-independent suite with LLVM coverage: `scons coverage_native`
+
+Build and run the Godot-hosted suite with LLVM coverage: `scons coverage_hosted`
+
+Build and run both coverage suites and emit a merged report: `scons coverage`
+
+Coverage writes text summaries to `build/coverage/<suite>/summary.txt` and HTML reports to `build/coverage/<suite>/html/index.html`, where `<suite>` is `native`, `hosted`, or `merged`.
+
 Build a test-enabled extension DLL, but do not launch Godot: `scons with_hosted_tests=yes`
 
 Build and run the broader headless Godot-hosted suite: `scons hosted_test godot_bin=path/to/godot_executable`
