@@ -69,6 +69,7 @@ extension_sources = [
     "src/progression/owned_upgrades_panel.cpp",
     "src/match_session.cpp",
     "src/match_director.cpp",
+    "src/vfx/bounty_energy_effect.cpp",
     "src/content_validator.cpp",
     "src/hitbox_component.cpp",
     "src/level_loader.cpp",

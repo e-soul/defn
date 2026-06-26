@@ -111,10 +111,11 @@ MatchUpdate MatchDirector::handle_enemy_died(Unit *unit) {
         return {};
     }
 
-    match_session_.record_enemy_died(unit->get_bounty());
+    const int bounty_awarded = match_session_.record_enemy_died(unit->get_bounty());
     MatchUpdate update_result = make_resource_update();
     update_result.score_changed = true;
     update_result.score = match_session_.get_kill_score();
+    update_result.bounty_awarded = bounty_awarded;
     return update_result;
 }
 

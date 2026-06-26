@@ -21,14 +21,15 @@ DEFN_TEST(match_session_tracks_energy_score_and_victory_state) {
     DEFN_CHECK_EQ(session.get_core_resource(), 32);
 
     session.record_enemy_spawned();
-    session.record_enemy_died(12);
+    const int awarded_bounty = session.record_enemy_died(11);
     session.mark_all_spawns_complete();
     session.set_base_health(200);
 
     DEFN_CHECK(session.should_end_with_victory());
-    DEFN_CHECK_EQ(session.get_core_resource(), 50);
+    DEFN_CHECK_EQ(awarded_bounty, 17);
+    DEFN_CHECK_EQ(session.get_core_resource(), 49);
     DEFN_CHECK_EQ(session.calculate_integrity_bonus(), 100);
-    DEFN_CHECK_EQ(session.calculate_level_score(true), 212);
+    DEFN_CHECK_EQ(session.calculate_level_score(true), 211);
 }
 
 DEFN_TEST(match_session_finish_game_is_idempotent) {

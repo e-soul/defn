@@ -33,6 +33,7 @@ struct MatchUpdate {
     int core_resource = 0;
     int hearts = 0;
     int score = 0;
+    int bounty_awarded = 0;
     std::optional<ScoreScreenModel> score_screen;
 };
 

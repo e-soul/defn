@@ -41,13 +41,15 @@ void MatchSession::set_base_health(int current_health) { state_.base_health = st
 
 void MatchSession::record_enemy_spawned() { ++state_.living_enemies; }
 
-void MatchSession::record_enemy_died(int base_bounty) {
+int MatchSession::record_enemy_died(int base_bounty) {
     state_.kill_score += base_bounty;
     ++state_.enemies_killed;
 
     const auto scaled_bounty = static_cast<double>(base_bounty) * static_cast<double>(config_.bounty_multiplier);
-    state_.core_resource += static_cast<int>(std::ceil(scaled_bounty));
+    const int awarded_bounty = static_cast<int>(std::ceil(scaled_bounty));
+    state_.core_resource += awarded_bounty;
     state_.living_enemies = std::max(state_.living_enemies - 1, 0);
+    return awarded_bounty;
 }
 
 int MatchSession::get_base_integrity() const { return calculate_hearts_from_health(state_.base_health); }

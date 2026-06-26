@@ -12,6 +12,7 @@
 #include "scene_navigator.h"
 #include "unit.h"
 #include "unit_factory.h"
+#include "vfx/bounty_energy_effect.h"
 #include <algorithm>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
@@ -304,7 +305,12 @@ void GameManager::apply_match_update(const MatchUpdate &update) {
 
 void GameManager::on_enemy_died(Node *unit) {
     auto *hostile = Object::cast_to<Unit>(unit);
-    apply_match_update(match_director_.handle_enemy_died(hostile));
+    const Vector2 death_position = hostile != nullptr ? hostile->get_global_position() : Vector2();
+    const MatchUpdate update = match_director_.handle_enemy_died(hostile);
+    if (entity_container != nullptr && update.bounty_awarded > 0) {
+        vfx::spawn_bounty_energy_effect(entity_container, death_position, update.bounty_awarded);
+    }
+    apply_match_update(update);
 }
 
 void GameManager::on_friendly_died(Node * /*unit*/) {

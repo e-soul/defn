@@ -47,7 +47,7 @@ class MatchSession {
 
     void record_enemy_spawned();
     void mark_all_spawns_complete() { state_.all_spawned = true; }
-    void record_enemy_died(int base_bounty);
+    int record_enemy_died(int base_bounty);
     bool should_end_with_victory() const;
 
     int get_core_resource() const { return state_.core_resource; }
