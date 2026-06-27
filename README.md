@@ -31,3 +31,5 @@ Build and run the broader headless Godot-hosted suite: `scons hosted_test godot_
 Build and run both suites together: `scons test_all godot_bin=path/to/godot_executable`
 
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
+
+Run the lightweight architecture audit for extracted rule and presenter slices: `powershell -ExecutionPolicy Bypass -File scripts/audit_architecture.ps1`
