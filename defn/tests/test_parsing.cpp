@@ -1,13 +1,18 @@
 #include "test_harness.h"
 
 #include "content_validator.h"
+#include "json_file_loader.h"
 #include "level_loader.h"
 #include "menu_data_loader.h"
 #include "progression_catalog.h"
+#include "progression_save_repository.h"
 #include "unit_data.h"
 #include "upgrade_catalog.h"
 
 #include <algorithm>
+
+#include <godot_cpp/classes/dir_access.hpp>
+#include <godot_cpp/classes/file_access.hpp>
 
 namespace defn {
 
@@ -120,6 +125,86 @@ ContentValidationReport make_cross_reference_validation_report() {
 
     return ContentValidator::validate_loaded_content(menu_data, &progression_catalog, &upgrade_catalog, &unit_data,
                                                      {{.level_id = "level_01", .definition = level_definition}});
+}
+
+MenuContentData make_required_menu_data() {
+    MenuContentData menu_data;
+    menu_data.menus.push_back({.name = "main_menu"});
+    menu_data.menus.push_back({.name = "game_menu"});
+    menu_data.menus.push_back({.name = "options_menu"});
+    menu_data.menus.push_back({.name = "pause_menu"});
+    return menu_data;
+}
+
+ProgressionCatalog make_progression_catalog(std::initializer_list<Dictionary> unlocks) {
+    Array unlock_array;
+    for (const Dictionary &unlock : unlocks) {
+        unlock_array.push_back(unlock);
+    }
+
+    Dictionary progression_data;
+    progression_data["level_unlocks"] = unlock_array;
+
+    ProgressionCatalog catalog;
+    DEFN_REQUIRE(catalog.load_from_data(progression_data));
+    return catalog;
+}
+
+Dictionary make_level_unlock(const String &level_id, const String &requires_completed = {}) {
+    Dictionary unlock;
+    unlock["level_id"] = level_id;
+    if (!requires_completed.is_empty()) {
+        unlock["requires_completed"] = requires_completed;
+    }
+    return unlock;
+}
+
+UpgradeCatalog make_upgrade_catalog(std::initializer_list<Dictionary> cards, std::initializer_list<String> base_units = {String("operator")}) {
+    Array base_unit_array;
+    for (const String &base_unit : base_units) {
+        base_unit_array.push_back(base_unit);
+    }
+
+    Array card_array;
+    for (const Dictionary &card : cards) {
+        card_array.push_back(card);
+    }
+
+    Dictionary upgrade_data;
+    upgrade_data["base_units"] = base_unit_array;
+    upgrade_data["cards"] = card_array;
+
+    UpgradeCatalog catalog;
+    DEFN_REQUIRE(catalog.load_from_data(upgrade_data));
+    return catalog;
+}
+
+Dictionary make_upgrade_card(const String &card_id, const String &effect_unit_id = {}) {
+    Dictionary effect;
+    effect["type"] = "unit_unlock";
+    if (!effect_unit_id.is_empty()) {
+        effect["unit_id"] = effect_unit_id;
+    }
+
+    Dictionary card;
+    card["id"] = card_id;
+    card["name"] = String("Card ") + card_id;
+    card["description"] = "A test upgrade.";
+    card["effects"] = make_array({effect});
+    return card;
+}
+
+void remove_test_file(const String &path) {
+    if (FileAccess::file_exists(path)) {
+        DirAccess::remove_absolute(path);
+    }
+}
+
+void write_text_file(const String &path, const String &text) {
+    Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);
+    DEFN_REQUIRE(file.is_valid());
+    DEFN_REQUIRE(file->store_string(text));
+    file->close();
 }
 
 } // namespace
@@ -236,13 +321,126 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_CHECK_EQ(loader.get_friendly_units().size(), static_cast<size_t>(1));
 }
 
+DEFN_TEST(json_file_loader_reads_dictionary_and_rejects_bad_inputs) {
+    const String valid_path = "user://defn_json_loader_valid_test.json";
+    const String invalid_path = "user://defn_json_loader_invalid_test.json";
+    const String missing_path = "user://defn_json_loader_missing_test.json";
+    remove_test_file(valid_path);
+    remove_test_file(invalid_path);
+    remove_test_file(missing_path);
+
+    write_text_file(valid_path, R"({"answer": 42, "label": "ok"})");
+    const auto loaded = JsonFileLoader::load_dictionary(valid_path, "JsonFileLoaderTest");
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_CHECK_EQ(static_cast<int>((*loaded)["answer"]), 42);
+    DEFN_CHECK_EQ(String((*loaded)["label"]), String("ok"));
+
+    write_text_file(invalid_path, "{");
+    DEFN_CHECK(!JsonFileLoader::load_dictionary(invalid_path, "JsonFileLoaderTest").has_value());
+    DEFN_CHECK(!JsonFileLoader::load_dictionary(missing_path, "JsonFileLoaderTest").has_value());
+
+    remove_test_file(valid_path);
+    remove_test_file(invalid_path);
+}
+
+DEFN_TEST(progression_save_repository_round_trips_player_profile) {
+    const String path = "user://defn_progression_save_roundtrip_test.json";
+    remove_test_file(path);
+
+    PlayerProfile profile;
+    profile.total_score = 900;
+    profile.completed_levels.insert("level_01");
+    profile.completed_levels.insert("level_02");
+    profile.best_level_scores["level_01"] = 350;
+    profile.owned_upgrade_counts["quick_reload"] = 2;
+    profile.claimed_level_upgrades["level_01"] = "quick_reload";
+    profile.claimed_rescue_drafts["level_02"] = 1;
+
+    DEFN_REQUIRE(ProgressionSaveRepository::save(path, profile));
+    const auto loaded = ProgressionSaveRepository::load(path);
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_CHECK_EQ(loaded->total_score, 900);
+    DEFN_CHECK_EQ(loaded->completed_levels.count("level_01"), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(loaded->completed_levels.count("level_02"), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(loaded->best_level_scores.at("level_01"), 350);
+    DEFN_CHECK_EQ(loaded->owned_upgrade_counts.at("quick_reload"), 2);
+    DEFN_CHECK_EQ(loaded->claimed_level_upgrades.at("level_01"), String("quick_reload"));
+    DEFN_CHECK_EQ(loaded->claimed_rescue_drafts.at("level_02"), 1);
+
+    remove_test_file(path);
+}
+
+DEFN_TEST(progression_save_repository_handles_missing_invalid_and_clamped_counts) {
+    const String invalid_path = "user://defn_progression_save_invalid_test.json";
+    const String clamped_path = "user://defn_progression_save_clamped_test.json";
+    const String missing_path = "user://defn_progression_save_missing_test.json";
+    remove_test_file(invalid_path);
+    remove_test_file(clamped_path);
+    remove_test_file(missing_path);
+
+    DEFN_CHECK(!ProgressionSaveRepository::load(missing_path).has_value());
+
+    write_text_file(invalid_path, "{");
+    DEFN_CHECK(!ProgressionSaveRepository::load(invalid_path).has_value());
+
+    write_text_file(clamped_path, R"({"total_score": 12, "owned_upgrade_counts": {"bad_debt": -3}, "rescue_drafts_claimed": {"level_02": -2}})");
+    const auto loaded = ProgressionSaveRepository::load(clamped_path);
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_CHECK_EQ(loaded->total_score, 12);
+    DEFN_CHECK_EQ(loaded->owned_upgrade_counts.at("bad_debt"), 0);
+    DEFN_CHECK_EQ(loaded->claimed_rescue_drafts.at("level_02"), 0);
+
+    remove_test_file(invalid_path);
+    remove_test_file(clamped_path);
+}
+
+DEFN_TEST(content_validator_accepts_valid_loaded_content) {
+    const ProgressionCatalog progression_catalog = make_progression_catalog({make_level_unlock("level_01")});
+    const UpgradeCatalog upgrade_catalog = make_upgrade_catalog({make_upgrade_card("unlock_operator", "operator")});
+
+    UnitDataLoader unit_data;
+    DEFN_REQUIRE(unit_data.load_from_data(make_unit_data(), make_global_data()));
+
+    LevelDefinition level_definition;
+    level_definition.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "jackal"}}});
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(make_required_menu_data(), &progression_catalog, &upgrade_catalog,
+                                                                                     &unit_data, {{.level_id = "level_01", .definition = level_definition}});
+    DEFN_CHECK(report.is_valid());
+}
+
+DEFN_TEST(content_validator_reports_catalog_and_level_shape_issues) {
+    MenuContentData menu_data = make_required_menu_data();
+    menu_data.menus[2].settings.push_back({.setting_id = "mystery", .kind = MenuSettingKind::UNKNOWN});
+
+    const ProgressionCatalog progression_catalog =
+        make_progression_catalog({make_level_unlock(""), make_level_unlock("level_01"), make_level_unlock("level_01"),
+                                  make_level_unlock("level_02", "missing_level"), make_level_unlock("level_03")});
+    const UpgradeCatalog upgrade_catalog = make_upgrade_catalog({make_upgrade_card("duplicate"), make_upgrade_card("duplicate")});
+
+    UnitDataLoader unit_data;
+    DEFN_REQUIRE(unit_data.load_from_data(make_unit_data(), make_global_data()));
+
+    LevelDefinition empty_level;
+    LevelDefinition unknown_spawn_level;
+    unknown_spawn_level.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "ghost"}}});
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(
+        menu_data, &progression_catalog, &upgrade_catalog, &unit_data,
+        {{.level_id = "level_01", .definition = empty_level}, {.level_id = "level_02", .definition = unknown_spawn_level}, {.level_id = "level_03"}});
+
+    DEFN_CHECK(!report.is_valid());
+    DEFN_CHECK(contains_issues(report, {"unsupported setting 'mystery'", "empty level_id", "duplicate level_id 'level_01'",
+                                        "requires unknown prerequisite level 'missing_level'", "duplicate upgrade id 'duplicate'",
+                                        "level 'level_01' has no waves", "unknown spawn type 'ghost'", "missing or invalid level definition for 'level_03'"}));
+}
+
 DEFN_TEST(content_validator_reports_cross_reference_issues_from_loaded_data) {
     const ContentValidationReport report = make_cross_reference_validation_report();
 
     DEFN_CHECK(!report.is_valid());
-    DEFN_CHECK(contains_issues(report,
-                               {"missing required menu", "base unit 'ghost_unit'", "unknown prerequisite 'missing_prereq'",
-                                "unknown unit 'ghost_unit'", "non-hostile spawn type 'operator'"}));
+    DEFN_CHECK(contains_issues(report, {"missing required menu", "base unit 'ghost_unit'", "unknown prerequisite 'missing_prereq'", "unknown unit 'ghost_unit'",
+                                        "non-hostile spawn type 'operator'"}));
 }
 
 } // namespace defn

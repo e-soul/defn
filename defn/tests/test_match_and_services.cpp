@@ -43,6 +43,13 @@ Dictionary make_unit_data() {
     Dictionary units_root;
     Dictionary units;
 
+    Dictionary base;
+    base["side"] = "friendly";
+    base["hp"] = 500;
+    base["cost"] = 0;
+    base["ranged_damage"] = 10;
+    units["base"] = base;
+
     Dictionary friendly;
     friendly["side"] = "friendly";
     friendly["hp"] = 120;
@@ -217,6 +224,50 @@ DEFN_TEST(deployment_service_returns_spawn_request_and_spends_energy) {
     DEFN_CHECK_CLOSE(result.spawn_request->position.y, 240.0, 0.001);
 }
 
+DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
+    UnitDataLoader unit_loader = make_unit_loader();
+    FakeProgressionService progression;
+    FakeGridService grid;
+
+    DeploymentService missing_dependencies;
+    DEFN_CHECK_EQ(missing_dependencies.deploy_friendly("operator").failure_reason, DeploymentFailureReason::MISSING_DEPENDENCY);
+
+    MatchSession ended_session;
+    ended_session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
+    ended_session.finish_game();
+    DeploymentService game_over_service;
+    game_over_service.configure(&ended_session, &unit_loader, &progression, &grid);
+    const DeploymentResult game_over = game_over_service.deploy_friendly("operator");
+    DEFN_CHECK_EQ(game_over.failure_reason, DeploymentFailureReason::GAME_OVER);
+    DEFN_CHECK_EQ(game_over.remaining_energy, 40);
+
+    MatchSession session;
+    session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
+    DeploymentService service;
+    service.configure(&session, &unit_loader, &progression, &grid);
+
+    DEFN_CHECK_EQ(service.deploy_friendly("base").failure_reason, DeploymentFailureReason::UNKNOWN_UNIT);
+    DEFN_CHECK_EQ(service.deploy_friendly("jackal").failure_reason, DeploymentFailureReason::UNKNOWN_UNIT);
+    DEFN_CHECK_EQ(session.get_core_resource(), 40);
+
+    MatchSession low_energy_session;
+    low_energy_session.start({.starting_core_resource = 10, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
+    DeploymentService low_energy_service;
+    low_energy_service.configure(&low_energy_session, &unit_loader, &progression, &grid);
+    const DeploymentResult insufficient = low_energy_service.deploy_friendly("operator");
+    DEFN_CHECK_EQ(insufficient.failure_reason, DeploymentFailureReason::INSUFFICIENT_ENERGY);
+    DEFN_CHECK_EQ(insufficient.unit_cost, 25);
+    DEFN_CHECK_EQ(insufficient.remaining_energy, 10);
+
+    MatchSession missing_grid_session;
+    missing_grid_session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
+    DeploymentService missing_grid_service;
+    missing_grid_service.configure(&missing_grid_session, &unit_loader, &progression, nullptr);
+    const DeploymentResult missing_grid = missing_grid_service.deploy_friendly("operator");
+    DEFN_CHECK_EQ(missing_grid.failure_reason, DeploymentFailureReason::MISSING_GRID);
+    DEFN_CHECK_EQ(missing_grid.remaining_energy, 40);
+}
+
 DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
     UnitDataLoader unit_loader = make_unit_loader();
     FakeGridService grid;
@@ -242,6 +293,62 @@ DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
     DEFN_CHECK(second_update.all_spawns_completed);
 }
 
+DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
+    UnitDataLoader unit_loader = make_unit_loader();
+    FakeGridService grid;
+
+    LevelDefinition level = make_empty_level();
+    level.level_id = 4;
+    level.name = "Skipped Spawn Test";
+    level.background_path = "res://background.png";
+    level.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "jackal"}, {.time = 0.0, .type = "ghost"}}});
+
+    SpawnScheduler unconfigured_scheduler;
+    unconfigured_scheduler.load_level_definition(level);
+    DEFN_CHECK_EQ(unconfigured_scheduler.get_level_number(), 4);
+    DEFN_CHECK_EQ(unconfigured_scheduler.get_level_name(), String("Skipped Spawn Test"));
+    DEFN_CHECK_EQ(unconfigured_scheduler.get_total_waves(), 1);
+    DEFN_CHECK_EQ(unconfigured_scheduler.get_background_path(), String("res://background.png"));
+    unconfigured_scheduler.start();
+    const SpawnSchedulerUpdate unconfigured_update = unconfigured_scheduler.update(0.1);
+    DEFN_CHECK_EQ(unconfigured_update.spawn_requests.size(), static_cast<size_t>(0));
+    DEFN_CHECK(unconfigured_update.all_spawns_completed);
+
+    SpawnScheduler scheduler;
+    scheduler.configure(&unit_loader, &grid);
+    scheduler.load_level_definition(level);
+    scheduler.start();
+    const SpawnSchedulerUpdate update = scheduler.update(0.1);
+    DEFN_CHECK_EQ(update.spawn_requests.size(), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(update.spawn_requests[0].config.name, String("jackal"));
+    DEFN_CHECK(update.all_spawns_completed);
+}
+
+DEFN_TEST(match_director_filters_available_friendlies_by_unlocks_and_base_unit) {
+    UnitDataLoader unit_loader = make_unit_loader();
+    FakeGridService grid;
+    FakeProgressionService progression;
+    progression.unlocked_units.push_back("base");
+    progression.unlocked_units.push_back("operator");
+
+    MatchDirector director;
+    DEFN_CHECK(director.configure(&progression, &unit_loader, &grid));
+
+    const std::vector<UnitConfig> friendlies = director.build_available_friendlies();
+    DEFN_REQUIRE(friendlies.size() == 1);
+    DEFN_CHECK_EQ(friendlies[0].name, String("operator"));
+}
+
+DEFN_TEST(match_director_handles_missing_dependencies_and_empty_rewards) {
+    MatchDirector director;
+
+    DEFN_CHECK(!director.configure(nullptr, nullptr, nullptr));
+    director.begin_match();
+    DEFN_CHECK(director.build_available_friendlies().empty());
+    DEFN_CHECK(!director.select_upgrade("missing"));
+    DEFN_CHECK(director.finalize_selected_upgrade());
+}
+
 DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
     UnitDataLoader unit_loader = make_unit_loader();
     FakeGridService grid;
@@ -265,6 +372,12 @@ DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
     DEFN_CHECK_EQ(update.score_screen->next_level_id, String("level_02"));
     DEFN_CHECK(progression.save_called);
     DEFN_CHECK(contains_string(progression.completed_levels, String("level_01")));
+
+    progression.save_called = false;
+    const bool reward_finalization_behaved = !director.select_upgrade("") && !director.select_upgrade("missing") && !director.finalize_selected_upgrade() &&
+                                             director.select_upgrade("upgrade_a") && director.finalize_selected_upgrade() && progression.level_claimed &&
+                                             progression.save_called;
+    DEFN_CHECK(reward_finalization_behaved);
 }
 
 DEFN_TEST(match_director_defeat_produces_rescue_reward) {
@@ -288,6 +401,12 @@ DEFN_TEST(match_director_defeat_produces_rescue_reward) {
     DEFN_CHECK(!update.score_screen->victory);
     DEFN_CHECK_EQ(update.score_screen->reward.source, String("rescue"));
     DEFN_CHECK_EQ(update.score_screen->reward.level_id, String("level_02"));
+
+    progression.save_called = false;
+    DEFN_CHECK(director.select_upgrade("rescue_a"));
+    DEFN_CHECK(director.finalize_selected_upgrade());
+    DEFN_CHECK(progression.rescue_claimed);
+    DEFN_CHECK(progression.save_called);
 }
 
 } // namespace defn

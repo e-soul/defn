@@ -145,9 +145,13 @@ hosted_test_sources = [
     "src/framework/testing/defn_hosted_test_runner.cpp",
     "tests/test_combat_logic.cpp",
     "tests/test_match_and_services.cpp",
+    "tests/test_menu_style.cpp",
     "tests/test_match_session_core.cpp",
     "tests/test_models.cpp",
     "tests/test_parsing.cpp",
+    "tests/test_progression_presentation.cpp",
+    "tests/test_settings_service.cpp",
+    "tests/test_ui_presenters.cpp",
     "tests/test_unit_profiles.cpp",
 ]
 
@@ -172,6 +176,7 @@ unit_test_sources = [
     "tests/test_unit_runtime_config_resolver.cpp",
     "tests/test_spawn_timeline.cpp",
     "tests/test_presentation_view_models.cpp",
+    "tests/test_random_source.cpp",
 ]
 
 coverage_report_sources = list(extension_sources)
