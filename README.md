@@ -1,3 +1,5 @@
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/e-soul/defn)
+
 # Defn
 
 A simple belt-scroller tug-of-war 2.5 game. See the [Game Design Document](GDD.md) for details.
