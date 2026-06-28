@@ -275,7 +275,7 @@
       },
       "shoot_sfx": {
         "path": "res://assets/sfx/mp5_9mm_burst_fire.wav",
-        "volume_linear": 0.6,
+        "volume_linear": 0.45,
         "pitch_scale": 1.0
       },
       "animations": {
