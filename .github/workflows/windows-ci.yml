@@ -1,0 +1,82 @@
+name: Windows CI
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-2022
+
+    env:
+      SCONS_CACHE: ${{ github.workspace }}/build/.scons-cache
+      SCONS_VERSION: "4.10.1"
+
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DEFN_ASSETS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEFN_ASSETS_APP_PRIVATE_KEY }}
+          owner: e-soul
+          repositories: |
+            defn
+            defn-assets
+          permission-contents: read
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          lfs: true
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Set up Windows build
+        uses: ./.github/actions/setup-windows-build
+        with:
+          scons-cache: ${{ env.SCONS_CACHE }}
+          scons-version: ${{ env.SCONS_VERSION }}
+
+      - name: Verify LLVM tools
+        shell: pwsh
+        run: |
+          $llvmBin = Join-Path $env:ProgramFiles "LLVM\bin"
+          if (Test-Path $llvmBin) {
+            $llvmBin >> $env:GITHUB_PATH
+            $env:PATH = "$llvmBin;$env:PATH"
+          }
+
+          clang-cl --version
+          clang-tidy --version
+          llvm-profdata --version
+          llvm-cov --version
+
+      - name: Run tests, clang-tidy, and coverage
+        working-directory: defn
+        run: python -m SCons -Q with_tidy=yes test_all coverage
+
+      - name: Add coverage summary
+        if: always()
+        shell: pwsh
+        run: |
+          $summary = "defn/build/coverage/merged/summary.txt"
+          if (Test-Path $summary) {
+            "## Merged Coverage" >> $env:GITHUB_STEP_SUMMARY
+            "``````" >> $env:GITHUB_STEP_SUMMARY
+            Get-Content $summary >> $env:GITHUB_STEP_SUMMARY
+            "``````" >> $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-coverage
+          path: defn/build/coverage/**
+          if-no-files-found: warn

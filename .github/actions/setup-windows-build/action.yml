@@ -1,0 +1,56 @@
+name: Set up Windows build
+description: Set up Python, SCons caches, and Godot for Windows jobs.
+
+inputs:
+  python-version:
+    description: Python version to install.
+    required: false
+    default: "3.12"
+  scons-cache:
+    description: SCons cache directory.
+    required: true
+  scons-version:
+    description: SCons version to install.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Resolve godot-cpp revision
+      id: godot-cpp-revision
+      shell: pwsh
+      run: |
+        $revision = git -C godot-cpp rev-parse HEAD
+        "sha=$revision" >> $env:GITHUB_OUTPUT
+
+    - name: Cache godot-cpp SCons outputs
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: godot-cpp-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
+
+    - name: Resolve Godot version
+      id: godot-version
+      shell: pwsh
+      run: |
+        $version = python scripts/build.py --print-godot-version
+        "version=$version" >> $env:GITHUB_OUTPUT
+
+    - name: Cache Godot engine
+      uses: actions/cache@v4
+      with:
+        path: build/.cache/godot
+        key: godot-engine-${{ steps.godot-version.outputs.version }}
+
+    - name: Install SCons
+      shell: pwsh
+      run: python -m pip install --upgrade pip scons==${{ inputs.scons-version }}
+
+    - name: Set up Godot engine
+      shell: pwsh
+      run: python scripts/build.py --setup-godot-env

@@ -93,6 +93,10 @@ def copy_tree(source: Path, destination: Path) -> None:
 
 
 def find_godot_executable(directory: Path) -> Path:
+    console_executables = sorted(directory.rglob("Godot*_console.exe"))
+    if console_executables:
+        return console_executables[0]
+
     executables = sorted(directory.rglob("Godot*.exe"))
     if not executables:
         raise FileNotFoundError(
@@ -112,38 +116,47 @@ def templates_install_dir(version: str) -> Path:
     return Path(appdata) / "Godot" / "export_templates" / f"{version}.stable"
 
 
-def ensure_godot(version: str, output_dir: Path) -> str:
+def ensure_godot_export_templates(version: str, output_dir: Path) -> None:
     cache_dir = output_dir / ".cache" / "godot" / f"{version}.stable"
-    editor_archive = cache_dir / "editor.zip"
-    editor_dir = cache_dir / "editor"
     templates_archive = cache_dir / "export_templates.tpz"
     templates_dir = cache_dir / "templates"
     installed_templates_dir = templates_install_dir(version)
-    editor_url = (
-        "https://downloads.godotengine.org/"
-        f"?version={version}&flavor=stable&slug=win64.exe.zip"
-        "&platform=windows.64"
-    )
     templates_url = (
         "https://downloads.godotengine.org/"
         f"?version={version}&flavor=stable&slug=export_templates.tpz"
         "&platform=templates"
     )
 
-    try:
-        godot_executable = find_godot_executable(editor_dir)
-    except FileNotFoundError:
-        download_file(editor_url, editor_archive)
-        extract_zip(editor_archive, editor_dir)
-        godot_executable = find_godot_executable(editor_dir)
-
-    if not (installed_templates_dir / "version.txt").exists():
-        download_file(templates_url, templates_archive)
+    templates_installed = (installed_templates_dir / "version.txt").exists()
+    if not templates_installed:
+        if not templates_archive.exists():
+            download_file(templates_url, templates_archive)
         extract_zip(templates_archive, templates_dir)
         source_dir = templates_dir / "templates"
         if not source_dir.exists():
             source_dir = templates_dir
         copy_tree(source_dir, installed_templates_dir)
+
+
+def ensure_godot(version: str, output_dir: Path) -> str:
+    cache_dir = output_dir / ".cache" / "godot" / f"{version}.stable"
+    editor_archive = cache_dir / "editor.zip"
+    editor_dir = cache_dir / "editor"
+    editor_url = (
+        "https://downloads.godotengine.org/"
+        f"?version={version}&flavor=stable&slug=win64.exe.zip"
+        "&platform=windows.64"
+    )
+
+    try:
+        godot_executable = find_godot_executable(editor_dir)
+    except FileNotFoundError:
+        if not editor_archive.exists():
+            download_file(editor_url, editor_archive)
+        extract_zip(editor_archive, editor_dir)
+        godot_executable = find_godot_executable(editor_dir)
+
+    ensure_godot_export_templates(version, output_dir)
 
     return str(godot_executable)
 
@@ -154,18 +167,29 @@ def resolve_godot_executable(
     output_dir: Path,
 ) -> str:
     if configured_path:
-        return str(resolve_existing_path(configured_path, "Godot executable"))
+        godot_executable = resolve_existing_path(
+            configured_path,
+            "Godot executable",
+        )
+        ensure_godot_export_templates(version, output_dir)
+        return str(godot_executable)
 
     env_godot = os.environ.get(GODOT_EXECUTABLE_ENV_VAR, "").strip()
     if env_godot:
-        return str(resolve_existing_path(env_godot, "Godot executable"))
-
-    for candidate in ("godot4", "godot"):
-        detected = shutil.which(candidate)
-        if detected:
-            return detected
+        godot_executable = resolve_existing_path(env_godot, "Godot executable")
+        ensure_godot_export_templates(version, output_dir)
+        return str(godot_executable)
 
     return ensure_godot(version, output_dir)
+
+
+def write_github_env(name: str, value: str) -> None:
+    github_env_path = os.environ.get("GITHUB_ENV", "").strip()
+    if not github_env_path:
+        return
+
+    with Path(github_env_path).open("a", encoding="utf-8") as env_file:
+        env_file.write(f"{name}={value}\n")
 
 
 def wait_for_exported_files(
@@ -230,11 +254,25 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip ZIP creation and leave the exported files unpacked.",
     )
+    parser.add_argument(
+        "--setup-godot-env",
+        action="store_true",
+        help="Resolve or download Godot and write GODOT_BIN to GITHUB_ENV.",
+    )
+    parser.add_argument(
+        "--print-godot-version",
+        action="store_true",
+        help="Print the configured Godot version and exit.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+
+    if args.print_godot_version:
+        print(DEFAULT_GODOT_VERSION)
+        return 0
 
     repo_root = Path(__file__).resolve().parent.parent
     project_dir = repo_root / "defn"
@@ -243,6 +281,17 @@ def main() -> int:
         output_dir = Path(args.output_dir).expanduser().resolve()
     else:
         output_dir = repo_root / DEFAULT_BUILD_DIR
+
+    if args.setup_godot_env:
+        godot_executable = resolve_godot_executable(
+            args.godot_exe,
+            args.godot_version,
+            output_dir,
+        )
+        os.environ[GODOT_EXECUTABLE_ENV_VAR] = godot_executable
+        write_github_env(GODOT_EXECUTABLE_ENV_VAR, godot_executable)
+        print(f"{GODOT_EXECUTABLE_ENV_VAR}={godot_executable}")
+        return 0
 
     archive_name = versioned_archive_name(
         args.archive_name,
