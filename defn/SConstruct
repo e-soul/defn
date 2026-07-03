@@ -204,6 +204,33 @@ def resolve_godot_executable(configured_path):
     return None
 
 
+def ensure_godot_extension_list(project_dir):
+    extension_list_path = project_dir / ".godot" / "extension_list.cfg"
+    extension_list_path.parent.mkdir(parents=True, exist_ok=True)
+    extension_list_path.write_text(
+        "res://defn_core.gdextension\n",
+        encoding="ascii",
+    )
+
+
+def prepare_godot_project(godot_executable, project_dir, run_env=None):
+    ensure_godot_extension_list(project_dir)
+    import_command = [
+        godot_executable,
+        "--headless",
+        "--path",
+        str(project_dir),
+        "--import",
+    ]
+    import_result = subprocess.run(
+        import_command,
+        check=False,
+        cwd=project_dir,
+        env=run_env,
+    )
+    return import_result.returncode
+
+
 def resolve_clang_profile_runtime(arch):
     runtime_arch = {"x86_64": "x86_64", "x86_32": "i386", "arm64": "aarch64"}.get(arch, arch)
     runtime_name = f"clang_rt.profile-{runtime_arch}.lib"
@@ -344,6 +371,9 @@ def run_hosted_coverage(target, source, env):
     script_path = project_dir / "tests" / "godot_hosted_runner.gd"
     run_env = os.environ.copy()
     run_env["LLVM_PROFILE_FILE"] = str((raw_dir / "defn_hosted_tests-%p.profraw").resolve())
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
+    if prepare_result != 0:
+        return prepare_result
 
     test_result = subprocess.run(
         [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)],
@@ -389,7 +419,8 @@ if coverage_extension_requested:
 obj_dir = os.path.join("build", "obj")
 objects = []
 for src in extension_sources:
-    obj_target = object_target_for(src)
+    obj_prefix = "hosted_" if hosted_tests_enabled else ""
+    obj_target = object_target_for(src, prefix=obj_prefix)
     objects.append(env.SharedObject(target=obj_target, source=src))
 
 # 6. Build the Shared Library (The DLL)
@@ -470,6 +501,10 @@ def run_hosted_tests(target, source, env):
 
     project_dir = pathlib.Path(".").resolve()
     script_path = project_dir / "tests" / "godot_hosted_runner.gd"
+    prepare_result = prepare_godot_project(godot_executable, project_dir)
+    if prepare_result != 0:
+        return prepare_result
+
     result = subprocess.run(
         [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)],
         check=False,

@@ -59,7 +59,7 @@ jobs:
 
       - name: Run tests and coverage
         working-directory: defn
-        run: python -m SCons -Q coverage
+        run: python -m SCons -Q with_hosted_tests=yes coverage
 
       - name: Run clang-tidy report
         id: clang-tidy
