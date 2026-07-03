@@ -57,9 +57,20 @@ jobs:
           llvm-profdata --version
           llvm-cov --version
 
-      - name: Run tests, clang-tidy, and coverage
+      - name: Run tests and coverage
         working-directory: defn
-        run: python -m SCons -Q with_tidy=yes test_all coverage
+        run: python -m SCons -Q coverage
+
+      - name: Run clang-tidy report
+        id: clang-tidy
+        continue-on-error: true
+        working-directory: defn
+        shell: pwsh
+        run: |
+          python -m SCons -Q -k tidy *> build/clang-tidy-report.txt
+          $exitCode = $LASTEXITCODE
+          Get-Content build/clang-tidy-report.txt
+          exit $exitCode
 
       - name: Add coverage summary
         if: always()
@@ -80,3 +91,18 @@ jobs:
           name: windows-coverage
           path: defn/build/coverage/**
           if-no-files-found: warn
+
+      - name: Upload clang-tidy report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-clang-tidy
+          path: defn/build/clang-tidy-report.txt
+          if-no-files-found: warn
+
+      - name: Fail on clang-tidy findings
+        if: steps.clang-tidy.outcome == 'failure'
+        shell: pwsh
+        run: |
+          Write-Error "clang-tidy reported findings. See the windows-clang-tidy artifact."
+          exit 1

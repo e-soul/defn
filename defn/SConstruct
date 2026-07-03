@@ -403,9 +403,17 @@ library = env.SharedLibrary(
 # 7. Clang-Tidy alias and dependency
 if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
     comp_db = env.Alias('compilation_db', 'compile_commands.json')
+    tidy_command = " ".join([
+        "clang-tidy",
+        "--quiet",
+        "--warnings-as-errors=*",
+        "--extra-arg=-Qunused-arguments",
+        "-p .",
+        "$SOURCE",
+    ])
     tidy_targets = []
     for src in extension_sources:
-        action = Action('clang-tidy --quiet -p . $SOURCE', 'Running clang-tidy on $SOURCE')
+        action = Action(tidy_command, 'Running clang-tidy on $SOURCE')
         tidy_node = env.Command(src + ".tidy", [src, comp_db], action)
         tidy_targets.append(tidy_node)
 
