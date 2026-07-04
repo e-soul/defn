@@ -6,7 +6,7 @@ on:
       - master
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   test:
@@ -72,6 +72,10 @@ jobs:
           Get-Content build/clang-tidy-report.txt
           exit $exitCode
 
+      - name: Generate badge artifacts
+        if: always()
+        run: python scripts/github-workflow.py badges
+
       - name: Add coverage summary
         if: always()
         shell: pwsh
@@ -99,6 +103,24 @@ jobs:
           name: windows-clang-tidy
           path: defn/build/clang-tidy-report.txt
           if-no-files-found: warn
+
+      - name: Upload badge artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-badges
+          path: build/artifacts/**
+          if-no-files-found: warn
+
+      - name: Publish badge artifacts branch
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: build-artifacts
+          publish_dir: build/artifacts
+          keep_files: true
+          commit_message: Update build artifacts [skip ci]
 
       - name: Fail on clang-tidy findings
         if: steps.clang-tidy.outcome == 'failure'
