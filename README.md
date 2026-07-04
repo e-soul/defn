@@ -1,8 +1,14 @@
+![GitHub Release](https://img.shields.io/github/v/release/e-soul/defn)
+
+![GitHub CI Workflow Status](https://img.shields.io/github/actions/workflow/status/e-soul/defn/windows-ci.yml?label=CI%20build) ![GitHub Release Workflow Status](https://img.shields.io/github/actions/workflow/status/e-soul/defn/windows-release.yml?label=release%20build)
+
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/e-soul/defn)
 
 # Defn
 
-A simple belt-scroller tug-of-war 2.5 game. See the [Game Design Document](GDD.md) for details.
+A simple belt-scroller tug-of-war 2.5D game. See the [Game Design Document](GDD.md) for details.
+
+Powered by ![The Godot Engine](https://img.shields.io/badge/Godot-white?logo=godotengine) and ![The C++ Programming Language](https://img.shields.io/badge/C++-blue?logo=cplusplus)
 
 ## Build and test
 
