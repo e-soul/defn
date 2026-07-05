@@ -1,25 +1,8 @@
 # Target Architecture
 
-## Purpose
+Clean Architecture (Robert Martin): game rules live in plain C++ modules, use cases coordinate those rules through narrow ports, and Godot classes stay as humble adapters that translate engine events into use-case calls and use-case output into nodes, visuals, audio, and scene navigation.
 
-Defn should move toward a small Clean Architecture shape: game rules live in plain C++ modules, use cases coordinate those rules through narrow ports, and Godot classes stay as humble adapters that translate engine events into use-case calls and use-case output into nodes, visuals, audio, and scene navigation.
-
-The goal is not a large rewrite or an enterprise framework. The goal is to make the important behavior easy to test without Godot while keeping the Godot-facing code straightforward.
-
-## Current Architecture Summary
-
-The current codebase is already partly aligned with this direction.
-
-- The game is code-first Godot through GDExtension. `GameManager` and `MenuManager` are scene-root nodes that create most runtime objects in C++.
-- Runtime match orchestration is split across `GameManager`, `MatchDirector`, `MatchSession`, `DeploymentService`, and `SpawnScheduler`.
-- `MatchSession`, `DeploymentService`, `SpawnScheduler`, and `combat_logic` are already close to testable application/domain code.
-- `Unit` and `BaseObjective` inherit from `BattleEntity`, and most entity behavior is componentized through health, hitbox, detection, movement, animation, sound, and combat components.
-- `CombatComponent` is a good humble-object precedent: it is a Godot `_process` adapter around `CombatRuntime` and `combat_logic`.
-- `CampaignService` currently combines several responsibilities: Godot singleton registration, save loading/saving, progression rules, upgrade draft selection, effective stat calculation, and presentation model building.
-- Data loading uses `FileAccess`, `JSON`, `Dictionary`, and `Variant` directly in loaders such as `UnitDataLoader`, `LevelLoader`, `MenuDataLoader`, `ProgressionCatalog`, `UpgradeCatalog`, and `ProgressionSaveRepository`.
-- Native tests cover several rule-heavy slices, while hosted tests are used for engine-backed behavior.
-
-The target architecture should preserve the good direction that already exists and make the dependency rule explicit.
+The goal is the important behavior to be easy to test without Godot while keeping the Godot-facing code straightforward.
 
 ## Clean Architecture Dependency Rule
 
@@ -69,7 +52,7 @@ Dependency rules:
 - Interface adapters translate between Godot/JSON concepts and use-case/domain concepts.
 - Framework code owns Godot lifecycle, file access, resources, node construction, and engine callbacks.
 - Cross-boundary calls pass value objects, IDs, snapshots, commands, and intents rather than `Node *` whenever possible.
-- Godot value types such as `String`, `Vector2`, and `Color` can remain temporarily where they keep migration small, but the target inner model should prefer engine-neutral value types for code that must be native-testable without Godot startup.
+- Godot value types such as `String`, `Vector2`, and `Color` should not be named from within inner circles. The model should prefer engine-neutral value types for code that must be native-testable without Godot startup.
 
 ## Humble Object Policy
 
@@ -107,7 +90,7 @@ Target refinements:
 
 ## Target Source Layout
 
-Physical folders can be migrated incrementally. The important part is ownership and dependency direction.
+The important part is ownership and dependency direction.
 
 ```mermaid
 flowchart TB
@@ -144,7 +127,6 @@ Recommended directory intent:
 - `adapters/godot/`: implementations of ports backed by Godot APIs.
 - `framework/godot_nodes/`: concrete `Node`, `Node2D`, `CanvasLayer`, and GDExtension classes.
 
-For a small project, do not introduce all folders at once. Move a file only when it clarifies a real dependency boundary or enables a useful test.
 
 ## Module 1: Match Runtime
 
@@ -554,16 +536,6 @@ Hosted tests should cover:
 
 The native suite should be the default place for behavior. Hosted tests should prove that the humble objects are wired correctly.
 
-## Incremental Migration Plan
-
-1. Write down and enforce the dependency rule for new files: domain and application code cannot include Godot node classes or call engine singletons.
-2. Split `CampaignService` first. Keep the public Godot singleton facade, but move profile mutations, unlock checks, effective stat calculation, and draft selection into progression rules/use cases.
-3. Introduce `RandomSource` for upgrade drafts and range variation. Add deterministic tests for draft selection and resolved unit combat ranges.
-4. Split `SpawnScheduler` into a pure timeline plus an adapter/use-case wrapper that obtains level data and spawn points.
-5. Turn `UnitDataLoader`, `LevelLoader`, and catalog loaders into repositories/parsers that produce content models. Keep `load_from_data` tests as migration safety checks.
-6. Continue the combat pattern by removing `AttackTarget *` from inner combat selection. Use entity IDs and target snapshots internally; let Godot adapters map IDs back to nodes when applying commands.
-7. Split UI presenters from UI construction. Start with score screen and deploy cards, since they already have presenter-like classes.
-8. Rename classes only when the behavior has moved. Avoid a folder-only refactor that changes paths without improving testability.
 
 ## Practical Rules for Future Features
 
@@ -577,10 +549,6 @@ When adding a feature, use this checklist:
 
 ## Things Not to Do
 
-- Do not rewrite the game into a full ECS just to be architectural.
-- Do not add a dependency injection container.
-- Do not create abstract interfaces for every concrete class.
-- Do not move every file into new folders before behavior is isolated.
 - Do not make Godot-hosted tests the only way to test rules.
 - Do not let `GameManager` or `CampaignService` accumulate new gameplay decisions.
 
