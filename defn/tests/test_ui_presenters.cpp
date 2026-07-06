@@ -487,16 +487,16 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
 
     DEFN_CHECK(menu_manager_shows_main_menu(menu_manager));
 
-    menu_manager->on_button_pressed("goto_menu", "game_menu");
+    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "game_menu");
     DEFN_CHECK(menu_manager_shows_game_menu(menu_manager));
 
-    menu_manager->on_button_pressed("goto_menu", "options_menu");
+    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "options_menu");
     DEFN_CHECK(menu_manager_shows_options_menu(menu_manager));
 
-    menu_manager->on_button_pressed("level_select", {});
+    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
     DEFN_CHECK(menu_manager_shows_level_select(menu_manager));
 
-    menu_manager->on_button_pressed("progression", {});
+    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowProgression), {});
     DEFN_CHECK(menu_manager_shows_progression(menu_manager));
 
     memdelete(menu_manager);

@@ -27,6 +27,15 @@ constexpr real_t DAMAGE_FLASH_DURATION_SECONDS = 0.12F;
 constexpr auto OBJECTIVE_IDLE_ANIMATION = "idle";
 constexpr auto OBJECTIVE_DEATH_ANIMATION = "death";
 
+CombatColor to_combat_color(const Color &color) {
+    return {
+        .r = static_cast<float>(color.r),
+        .g = static_cast<float>(color.g),
+        .b = static_cast<float>(color.b),
+        .a = static_cast<float>(color.a),
+    };
+}
+
 const Color OBJECTIVE_FILL_COLOR = Color(0.82, 0.11, 0.08);
 const Color OBJECTIVE_OUTLINE_COLOR = Color(0.32, 0.03, 0.03);
 const Color OBJECTIVE_CORE_COLOR = Color(1.0, 0.38, 0.36, 0.9);
@@ -46,8 +55,8 @@ CombatComponent::Config make_combat_config(const UnitConfig &config) {
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? config.melee_attack_range : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? config.ranged_attack_range : -1.0F;
-    combat_config.melee_flash_color = config.melee_flash_color;
-    combat_config.ranged_flash_color = config.ranged_flash_color;
+    combat_config.melee_flash_color = to_combat_color(config.melee_flash_color);
+    combat_config.ranged_flash_color = to_combat_color(config.ranged_flash_color);
     combat_config.projectile_attack = config.projectile_attack;
     return combat_config;
 }

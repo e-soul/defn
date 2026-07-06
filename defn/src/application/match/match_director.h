@@ -20,7 +20,9 @@ namespace defn {
 
 using namespace godot;
 
-class Unit;
+struct EnemyDefeatedReport {
+  int bounty = 0;
+};
 
 struct MatchUpdate {
     std::vector<UnitSpawnRequest> friendly_spawn_requests;
@@ -45,7 +47,7 @@ class MatchDirector {
     void begin_match();
     MatchUpdate update(double delta);
     MatchUpdate handle_deploy_request(const String &unit_type);
-    MatchUpdate handle_enemy_died(Unit *unit);
+    MatchUpdate handle_enemy_defeated(const EnemyDefeatedReport &report);
     MatchUpdate handle_base_durability_changed(int current_hp);
     MatchUpdate handle_base_destroyed();
     MatchUpdate handle_core_resource_tick();

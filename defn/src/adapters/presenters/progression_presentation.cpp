@@ -60,4 +60,14 @@ String ProgressionPresentation::format_level_button_label(const ProgressionServi
     return label_text;
 }
 
+UpgradeCardViewModel ProgressionPresentation::build_upgrade_card_view_model(const UpgradeCardDefinition &card) {
+    return {
+        .id = card.id,
+        .name = card.name,
+        .description = card.description,
+        .emoji = card.emoji,
+        .category = card.category,
+    };
+}
+
 } // namespace defn

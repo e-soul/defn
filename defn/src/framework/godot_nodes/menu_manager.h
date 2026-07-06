@@ -1,6 +1,7 @@
 #ifndef MENU_MANAGER_H
 #define MENU_MANAGER_H
 
+#include "menu_view_model.h"
 #include "menu_models.h"
 #include "settings_service.h"
 
@@ -27,7 +28,7 @@ class MenuManager : public Node2D {
 
   public:
     void _ready() override;
-    void on_button_pressed(const String &action, const String &target);
+    void on_button_pressed(int intent_type, const String &target);
     void on_level_selected(const String &level_id);
     void on_display_mode_changed(int index);
     void on_resolution_changed(int index);
@@ -43,8 +44,9 @@ class MenuManager : public Node2D {
     void show_menu(const String &menu_name);
     void show_level_select();
     void show_progression();
+    void handle_menu_intent(const MenuIntent &intent);
     void clear_buttons();
-    void build_options_ui(const MenuDefinition &menu_def);
+    void build_options_ui(const MenuScreenViewModel &view_model);
 
     MenuContentData menu_data_;
     String current_menu_;

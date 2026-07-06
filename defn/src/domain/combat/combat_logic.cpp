@@ -5,7 +5,7 @@
 
 namespace defn {
 
-real_t get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &target_position) {
+float get_forward_distance(UnitSide side, const CombatPoint &origin, const CombatPoint &target_position) {
     if (side == UnitSide::FRIENDLY) {
         return target_position.x - origin.x;
     }
@@ -13,7 +13,7 @@ real_t get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 
     return origin.x - target_position.x;
 }
 
-AttackMode classify_target_by_distance(const CombatConfig &config, real_t distance) {
+AttackMode classify_target_by_distance(const CombatConfig &config, float distance) {
     if (distance < 0.0F) {
         return AttackMode::NONE;
     }
@@ -27,7 +27,7 @@ AttackMode classify_target_by_distance(const CombatConfig &config, real_t distan
     return AttackMode::NONE;
 }
 
-CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
+CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, const CombatConfig &config, EntityId current_target_id,
                                                    std::span<const CombatTargetSnapshot> targets) {
     if (current_target_id.is_valid()) {
         for (const CombatTargetSnapshot &snapshot : targets) {
@@ -49,15 +49,15 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
 
     EntityId best_melee_target_id;
     EntityId best_ranged_target_id;
-    real_t closest_melee_distance = std::numeric_limits<real_t>::max();
-    real_t closest_ranged_distance = std::numeric_limits<real_t>::max();
+    float closest_melee_distance = std::numeric_limits<float>::max();
+    float closest_ranged_distance = std::numeric_limits<float>::max();
 
     for (const CombatTargetSnapshot &snapshot : targets) {
         if (!snapshot.id.is_valid() || snapshot.dead || snapshot.side == config.side) {
             continue;
         }
 
-        const real_t distance = get_forward_distance(config.side, origin, snapshot.position);
+        const float distance = get_forward_distance(config.side, origin, snapshot.position);
         if (distance < 0.0F) {
             continue;
         }

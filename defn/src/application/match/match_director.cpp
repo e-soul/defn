@@ -1,7 +1,6 @@
 #include "match_director.h"
 
 #include "progression_presentation.h"
-#include "unit.h"
 
 namespace defn {
 
@@ -106,12 +105,12 @@ MatchUpdate MatchDirector::handle_deploy_request(const String &unit_type) {
     return update_result;
 }
 
-MatchUpdate MatchDirector::handle_enemy_died(Unit *unit) {
-    if (unit == nullptr || unit->is_queued_for_deletion()) {
+MatchUpdate MatchDirector::handle_enemy_defeated(const EnemyDefeatedReport &report) {
+    if (report.bounty <= 0) {
         return {};
     }
 
-    const int bounty_awarded = match_session_.record_enemy_died(unit->get_bounty());
+    const int bounty_awarded = match_session_.record_enemy_died(report.bounty);
     MatchUpdate update_result = make_resource_update();
     update_result.score_changed = true;
     update_result.score = match_session_.get_kill_score();

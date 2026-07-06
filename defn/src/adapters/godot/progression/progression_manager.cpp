@@ -3,6 +3,7 @@
 #include "content_validator.h"
 #include "data_paths.h"
 #include "progression_rules.h"
+#include "progression_presentation.h"
 #include "upgrade_draft_builder.h"
 #include "unit_data.h"
 
@@ -60,6 +61,27 @@ ProgressionProfile to_progression_profile(const PlayerProfile &profile) {
     }
     for (const auto &[level_id, count] : profile.claimed_rescue_drafts) {
         result.claimed_rescue_drafts[to_std_string(level_id)] = count;
+    }
+    return result;
+}
+
+PlayerProfile to_player_profile(const ProgressionProfile &profile) {
+    PlayerProfile result;
+    result.total_score = profile.total_score;
+    for (const auto &level_id : profile.completed_levels) {
+        result.completed_levels.insert(to_godot_string(level_id));
+    }
+    for (const auto &[level_id, score] : profile.best_level_scores) {
+        result.best_level_scores[to_godot_string(level_id)] = score;
+    }
+    for (const auto &[upgrade_id, count] : profile.owned_upgrade_counts) {
+        result.owned_upgrade_counts[to_godot_string(upgrade_id)] = count;
+    }
+    for (const auto &[level_id, upgrade_id] : profile.claimed_level_upgrades) {
+        result.claimed_level_upgrades[to_godot_string(level_id)] = to_godot_string(upgrade_id);
+    }
+    for (const auto &[level_id, count] : profile.claimed_rescue_drafts) {
+        result.claimed_rescue_drafts[to_godot_string(level_id)] = count;
     }
     return result;
 }
@@ -304,7 +326,7 @@ int CampaignService::get_completed_level_count() const { return defn::get_comple
 std::vector<UpgradeCardViewModel> CampaignService::build_upgrade_draft() const {
     std::vector<UpgradeCardViewModel> result;
     StdRandomSource random;
-    const std::vector<std::string> selected_card_ids = defn::build_upgrade_draft(
+    const std::vector<std::string> selected_card_ids = ProgressionUseCases::build_upgrade_draft(
         to_progression_profile(save_data_), to_upgrade_draft_cards(upgrade_catalog_.get_cards()),
         {.draft_size = upgrade_catalog_.get_draft_size(), .reserve_unit_slot = upgrade_catalog_.should_reserve_unit_slot()}, random);
 
@@ -312,7 +334,7 @@ std::vector<UpgradeCardViewModel> CampaignService::build_upgrade_draft() const {
     for (const auto &card_id : selected_card_ids) {
         const UpgradeCardDefinition *card = upgrade_catalog_.find_card(to_godot_string(card_id));
         if (card != nullptr) {
-            result.push_back(build_upgrade_card_view(*card));
+            result.push_back(ProgressionPresentation::build_upgrade_card_view_model(*card));
         }
     }
 
@@ -343,81 +365,50 @@ std::vector<UpgradeCardViewModel> CampaignService::build_owned_upgrade_cards() c
             continue;
         }
 
-        UpgradeCardViewModel view = build_upgrade_card_view(card);
+        UpgradeCardViewModel view = ProgressionPresentation::build_upgrade_card_view_model(card);
         view.owned_count = owned;
         result.push_back(view);
     }
     return result;
 }
 
-void CampaignService::add_score(int amount) { save_data_.total_score += amount; }
+void CampaignService::add_score(int amount) {
+    ProgressionProfile profile = to_progression_profile(save_data_);
+    ProgressionUseCases::add_score(profile, amount);
+    save_data_ = to_player_profile(profile);
+}
 
 void CampaignService::mark_level_completed(const String &level_id, int level_score) {
-    save_data_.completed_levels.insert(level_id);
-    save_data_.best_level_scores[level_id] = std::max(level_score, get_highest_level_score(level_id));
+    ProgressionProfile profile = to_progression_profile(save_data_);
+    ProgressionUseCases::mark_level_completed(profile, to_std_string(level_id), level_score);
+    save_data_ = to_player_profile(profile);
 }
 
 bool CampaignService::claim_level_upgrade(const String &level_id, const String &upgrade_id) {
-    if (level_id.is_empty() || upgrade_id.is_empty() || !can_claim_level_upgrade(level_id)) {
+    ProgressionProfile profile = to_progression_profile(save_data_);
+    if (!ProgressionUseCases::claim_level_upgrade(profile, to_progression_upgrade_cards(upgrade_catalog_.get_cards()), to_std_string(level_id),
+                                                  to_std_string(upgrade_id))) {
         return false;
     }
 
-    const UpgradeCardDefinition *card = upgrade_catalog_.find_card(upgrade_id);
-    if (card == nullptr || defn::get_owned_upgrade_count(to_progression_profile(save_data_), to_std_string(upgrade_id)) >= card->max_picks) {
-        return false;
-    }
-
-    save_data_.claimed_level_upgrades[level_id] = upgrade_id;
-    grant_upgrade(upgrade_id);
+    save_data_ = to_player_profile(profile);
     return true;
 }
 
 bool CampaignService::claim_rescue_draft(const String &level_id, const String &upgrade_id) {
-    if (level_id.is_empty() || upgrade_id.is_empty() || !can_claim_rescue_draft(level_id)) {
+    ProgressionProfile profile = to_progression_profile(save_data_);
+    if (!ProgressionUseCases::claim_rescue_draft(profile, to_progression_level_unlocks(catalog_.get_level_unlocks()),
+                                                 to_progression_upgrade_cards(upgrade_catalog_.get_cards()), to_std_string(level_id),
+                                                 to_std_string(upgrade_id))) {
         return false;
     }
 
-    const UpgradeCardDefinition *card = upgrade_catalog_.find_card(upgrade_id);
-    if (card == nullptr || defn::get_owned_upgrade_count(to_progression_profile(save_data_), to_std_string(upgrade_id)) >= card->max_picks) {
-        return false;
-    }
-
-    const int next_threshold = get_next_rescue_draft_threshold(level_id);
-    if (next_threshold <= 0 || save_data_.total_score < next_threshold) {
-        return false;
-    }
-
-    set_rescue_drafts_claimed(level_id, get_rescue_drafts_claimed(level_id) + 1);
-    grant_upgrade(upgrade_id);
+    save_data_ = to_player_profile(profile);
     return true;
-}
-
-UpgradeCardViewModel CampaignService::build_upgrade_card_view(const UpgradeCardDefinition &card) {
-    return {
-        .id = card.id,
-        .name = card.name,
-        .description = card.description,
-        .emoji = card.emoji,
-        .category = card.category,
-    };
-}
-
-void CampaignService::grant_upgrade(const String &upgrade_id) {
-    const UpgradeCardDefinition *card = upgrade_catalog_.find_card(upgrade_id);
-    if (card == nullptr || defn::get_owned_upgrade_count(to_progression_profile(save_data_), to_std_string(upgrade_id)) >= card->max_picks) {
-        return;
-    }
-
-    ++save_data_.owned_upgrade_counts[upgrade_id];
 }
 
 int CampaignService::get_owned_upgrade_count(const String &upgrade_id) const {
     return defn::get_owned_upgrade_count(to_progression_profile(save_data_), to_std_string(upgrade_id));
-}
-
-void CampaignService::set_rescue_drafts_claimed(const String &level_id, int claimed_count) {
-    const int clamped_count = std::max(0, claimed_count);
-    save_data_.claimed_rescue_drafts[level_id] = clamped_count;
 }
 
 } // namespace defn

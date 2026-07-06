@@ -3,15 +3,10 @@
 
 #include "combat_types.h"
 
-#include <godot_cpp/core/math.hpp>
-#include <godot_cpp/variant/vector2.hpp>
-
 #include <cstdint>
 #include <span>
 
 namespace defn {
-
-using namespace godot;
 
 struct EntityId {
     uint64_t value = 0;
@@ -20,11 +15,16 @@ struct EntityId {
     friend bool operator==(EntityId, EntityId) = default;
 };
 
+struct CombatPoint {
+    float x = 0.0F;
+    float y = 0.0F;
+};
+
 struct CombatTargetSnapshot {
     EntityId id;
     UnitSide side = UnitSide::FRIENDLY;
     bool dead = false;
-    Vector2 position;
+    CombatPoint position;
 };
 
 struct CombatTargetSelection {
@@ -65,9 +65,9 @@ struct CombatLogicStep {
     CombatLogicIntent intent;
 };
 
-real_t get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &target_position);
-AttackMode classify_target_by_distance(const CombatConfig &config, real_t distance);
-CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
+float get_forward_distance(UnitSide side, const CombatPoint &origin, const CombatPoint &target_position);
+AttackMode classify_target_by_distance(const CombatConfig &config, float distance);
+CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, const CombatConfig &config, EntityId current_target_id,
                                                    std::span<const CombatTargetSnapshot> targets);
 CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLogicInput &input);
 

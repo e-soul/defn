@@ -88,4 +88,20 @@ DEFN_TEST(progression_presentation_formats_level_button_state) {
     DEFN_CHECK_EQ(ProgressionPresentation::format_level_button_label(progression, {.level_id = "challenge"}), String("Challenge (Locked)"));
 }
 
+DEFN_TEST(progression_presentation_builds_upgrade_card_view_model) {
+    const UpgradeCardViewModel view_model = ProgressionPresentation::build_upgrade_card_view_model({
+        .id = "hp",
+        .name = "Extra Plating",
+        .description = "More health.",
+        .emoji = "+",
+        .category = "defense",
+    });
+
+    DEFN_CHECK_EQ(view_model.id, String("hp"));
+    DEFN_CHECK_EQ(view_model.name, String("Extra Plating"));
+    DEFN_CHECK_EQ(view_model.description, String("More health."));
+    DEFN_CHECK_EQ(view_model.emoji, String("+"));
+    DEFN_CHECK_EQ(view_model.category, String("defense"));
+}
+
 } // namespace defn

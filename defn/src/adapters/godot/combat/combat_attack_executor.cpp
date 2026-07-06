@@ -7,6 +7,12 @@
 
 namespace defn {
 
+namespace {
+
+Color to_godot_color(const CombatColor &color) { return {color.r, color.g, color.b, color.a}; }
+
+} // namespace
+
 void CombatAttackExecutor::spawn_pending_projectile(const CombatConfig &config, BattleEntity *unit, AnimationController *animation,
                                                     PendingProjectileSpawn &pending_projectile) {
     if (!pending_projectile.active) {
@@ -33,7 +39,7 @@ void CombatAttackExecutor::spawn_pending_projectile(const CombatConfig &config, 
         }
 
         projectile_parent->add_child(projectile);
-        projectile->configure(*config.projectile_attack, config.side, config.ranged_flash_color, launch_position,
+        projectile->configure(*config.projectile_attack, config.side, to_godot_color(config.ranged_flash_color), launch_position,
                               pending_projectile.target_global_position, direct_target, config.ranged_damage);
     }
 
@@ -51,7 +57,7 @@ void CombatAttackExecutor::trigger_attack(const CombatConfig &config, AttackMode
             animation->play_attack_animation();
         }
         target->take_damage(config.melee_damage);
-        target->flash_damage(config.melee_flash_color);
+        target->flash_damage(to_godot_color(config.melee_flash_color));
         return;
     }
 
@@ -76,7 +82,7 @@ void CombatAttackExecutor::trigger_attack(const CombatConfig &config, AttackMode
         animation->consume_shoot_effect_triggered();
     }
     target->take_damage(config.ranged_damage);
-    target->flash_damage(config.ranged_flash_color);
+    target->flash_damage(to_godot_color(config.ranged_flash_color));
 }
 
 } // namespace defn

@@ -349,6 +349,26 @@ DEFN_TEST(match_director_handles_missing_dependencies_and_empty_rewards) {
     DEFN_CHECK(director.finalize_selected_upgrade());
 }
 
+DEFN_TEST(match_director_records_enemy_defeat_from_plain_report) {
+    UnitDataLoader unit_loader = make_unit_loader();
+    FakeGridService grid;
+    FakeProgressionService progression;
+
+    MatchDirector director;
+    DEFN_CHECK(director.configure(&progression, &unit_loader, &grid));
+    director.load_level_definition(make_empty_level(), "level_01");
+    director.begin_match();
+
+    const MatchUpdate update = director.handle_enemy_defeated({.bounty = 6});
+
+    DEFN_CHECK(update.resources_changed);
+    DEFN_CHECK(update.score_changed);
+    DEFN_CHECK_EQ(update.bounty_awarded, 6);
+    DEFN_CHECK_EQ(update.score, 6);
+    DEFN_CHECK_EQ(update.core_resource, 106);
+    DEFN_CHECK(director.handle_enemy_defeated({.bounty = 0}).score == 0);
+}
+
 DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
     UnitDataLoader unit_loader = make_unit_loader();
     FakeGridService grid;

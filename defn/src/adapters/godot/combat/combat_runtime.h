@@ -2,6 +2,7 @@
 #define COMBAT_RUNTIME_H
 
 #include "attack_target.h"
+#include "combat_attack_executor.h"
 #include "combat_logic.h"
 #include "combat_types.h"
 

@@ -5,6 +5,7 @@
 #include "progression_rules.h"
 #include "progression_save_repository.h"
 #include "progression_service.h"
+#include "progression_use_cases.h"
 #include "score_screen_models.h"
 #include "upgrade_catalog.h"
 
@@ -77,14 +78,10 @@ class CampaignService : public Object, public ProgressionService {
     static void _bind_methods();
 
   private:
-    static UpgradeCardViewModel build_upgrade_card_view(const UpgradeCardDefinition &card);
-
     std::vector<UpgradeCardViewModel> build_upgrade_draft() const;
     void load_save();
     void create_default_save();
-    void grant_upgrade(const String &upgrade_id);
-    int get_owned_upgrade_count(const String &upgrade_id) const;
-    void set_rescue_drafts_claimed(const String &level_id, int claimed_count);
+    [[nodiscard]] int get_owned_upgrade_count(const String &upgrade_id) const;
 
     static CampaignService *singleton_;
 

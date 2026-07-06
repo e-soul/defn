@@ -74,20 +74,6 @@ Humble Godot objects should not:
 - own random selection logic that cannot be seeded in tests;
 - require native tests to instantiate Godot nodes just to test rules.
 
-Good current examples to preserve:
-
-- `CombatComponent` delegates `_process` work to `CombatRuntime`.
-- `combat_logic` returns intent-like outputs that can be tested directly.
-- `DeploymentService` returns a `DeploymentResult` instead of spawning nodes itself.
-- `MatchDirector` returns `MatchUpdate` objects that `GameManager` applies to Godot.
-
-Target refinements:
-
-- `GameManager` becomes a `GameSceneAdapter` in practice: it wires scene nodes and delegates match decisions.
-- `HUD` and `MenuManager` become view adapters: they render view models and emit user intents.
-- `Unit`, `BaseObjective`, and components become runtime adapters around domain state and commands.
-- `CampaignService` becomes a thin Godot-facing facade over progression use cases.
-
 ## Target Source Layout
 
 The important part is ownership and dependency direction.

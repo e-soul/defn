@@ -21,8 +21,8 @@ CombatConfig make_combat_config() {
 } // namespace
 
 DEFN_TEST(forward_distance_respects_unit_side) {
-    DEFN_CHECK_CLOSE(get_forward_distance(UnitSide::FRIENDLY, Vector2(10.0, 0.0), Vector2(25.0, 0.0)), 15.0, 0.001);
-    DEFN_CHECK_CLOSE(get_forward_distance(UnitSide::HOSTILE, Vector2(25.0, 0.0), Vector2(10.0, 0.0)), 15.0, 0.001);
+    DEFN_CHECK_CLOSE(get_forward_distance(UnitSide::FRIENDLY, {.x = 10.0F, .y = 0.0F}, {.x = 25.0F, .y = 0.0F}), 15.0, 0.001);
+    DEFN_CHECK_CLOSE(get_forward_distance(UnitSide::HOSTILE, {.x = 25.0F, .y = 0.0F}, {.x = 10.0F, .y = 0.0F}), 15.0, 0.001);
 }
 
 DEFN_TEST(classify_target_by_distance_respects_attack_ranges) {
@@ -39,11 +39,11 @@ DEFN_TEST(select_target_prefers_closest_melee_target) {
     const EntityId ranged_target{.value = 2};
 
     const std::array<CombatTargetSnapshot, 2> snapshots{{
-        {.id = ranged_target, .side = UnitSide::HOSTILE, .dead = false, .position = Vector2(90.0, 0.0)},
-        {.id = melee_target, .side = UnitSide::HOSTILE, .dead = false, .position = Vector2(25.0, 0.0)},
+        {.id = ranged_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 90.0F, .y = 0.0F}},
+        {.id = melee_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 25.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(Vector2(0.0, 0.0), make_combat_config(), {}, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{}, make_combat_config(), {}, snapshots);
     DEFN_CHECK(selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::MELEE);
     DEFN_CHECK_EQ(selection.target_id, melee_target);
@@ -54,11 +54,11 @@ DEFN_TEST(select_target_keeps_current_target_when_still_in_range) {
     const EntityId closer_target{.value = 8};
 
     const std::array<CombatTargetSnapshot, 2> snapshots{{
-        {.id = current_target, .side = UnitSide::HOSTILE, .dead = false, .position = Vector2(90.0, 0.0)},
-        {.id = closer_target, .side = UnitSide::HOSTILE, .dead = false, .position = Vector2(20.0, 0.0)},
+        {.id = current_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 90.0F, .y = 0.0F}},
+        {.id = closer_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 20.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(Vector2(0.0, 0.0), make_combat_config(), current_target, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{}, make_combat_config(), current_target, snapshots);
     DEFN_CHECK(selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::RANGED);
     DEFN_CHECK_EQ(selection.target_id, current_target);
@@ -71,13 +71,13 @@ DEFN_TEST(select_target_skips_invalid_same_side_dead_and_behind_targets) {
     const EntityId behind_target{.value = 11};
 
     const std::array<CombatTargetSnapshot, 4> snapshots{{
-        {.id = invalid_target, .side = UnitSide::HOSTILE, .dead = false, .position = Vector2(15.0, 0.0)},
-        {.id = same_side_target, .side = UnitSide::FRIENDLY, .dead = false, .position = Vector2(20.0, 0.0)},
-        {.id = dead_target, .side = UnitSide::HOSTILE, .dead = true, .position = Vector2(25.0, 0.0)},
-        {.id = behind_target, .side = UnitSide::HOSTILE, .dead = false, .position = Vector2(-25.0, 0.0)},
+        {.id = invalid_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 15.0F, .y = 0.0F}},
+        {.id = same_side_target, .side = UnitSide::FRIENDLY, .dead = false, .position = {.x = 20.0F, .y = 0.0F}},
+        {.id = dead_target, .side = UnitSide::HOSTILE, .dead = true, .position = {.x = 25.0F, .y = 0.0F}},
+        {.id = behind_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = -25.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(Vector2(0.0, 0.0), make_combat_config(), {}, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{}, make_combat_config(), {}, snapshots);
     DEFN_CHECK(!selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::NONE);
     DEFN_CHECK(!selection.target_id.is_valid());
@@ -89,10 +89,10 @@ DEFN_TEST(select_target_uses_hostile_forward_direction) {
 
     const EntityId forward_target{.value = 12};
     const std::array<CombatTargetSnapshot, 1> snapshots{{
-        {.id = forward_target, .side = UnitSide::FRIENDLY, .dead = false, .position = Vector2(60.0, 0.0)},
+        {.id = forward_target, .side = UnitSide::FRIENDLY, .dead = false, .position = {.x = 60.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(Vector2(100.0, 0.0), config, {}, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{.x = 100.0F, .y = 0.0F}, config, {}, snapshots);
     DEFN_CHECK(selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::MELEE);
     DEFN_CHECK_EQ(selection.target_id, forward_target);

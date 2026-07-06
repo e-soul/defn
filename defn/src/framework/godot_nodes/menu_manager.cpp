@@ -32,6 +32,97 @@ namespace {
 constexpr real_t PROGRESSION_SCREEN_WIDTH_RATIO = 0.58;
 constexpr real_t PROGRESSION_SCREEN_HEIGHT_RATIO = 0.6;
 
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+MenuSettingViewKind to_setting_view_kind(MenuSettingKind kind) {
+    switch (kind) {
+    case MenuSettingKind::SECTION:
+        return MenuSettingViewKind::Section;
+    case MenuSettingKind::DISPLAY_MODE:
+        return MenuSettingViewKind::DisplayMode;
+    case MenuSettingKind::RESOLUTION:
+        return MenuSettingViewKind::Resolution;
+    case MenuSettingKind::VSYNC:
+        return MenuSettingViewKind::Vsync;
+    case MenuSettingKind::BUS_VOLUME:
+        return MenuSettingViewKind::BusVolume;
+    case MenuSettingKind::UNKNOWN:
+        return MenuSettingViewKind::Unknown;
+    }
+
+    return MenuSettingViewKind::Unknown;
+}
+
+MenuScreenType to_screen_view_type(MenuDefinitionType type) { return type == MenuDefinitionType::OPTIONS ? MenuScreenType::Options : MenuScreenType::Buttons; }
+
+MenuActionPresentationInput to_action_input(const MenuAction &action) {
+    return {
+        .id = to_std_string(action.id),
+        .label = to_std_string(action.label),
+        .action = to_std_string(action.action),
+        .target = to_std_string(action.target),
+    };
+}
+
+MenuSettingPresentationInput to_setting_input(const MenuSetting &setting) {
+    MenuSettingPresentationInput input;
+    input.id = to_std_string(setting.id);
+    input.label = to_std_string(setting.label);
+    input.setting_id = to_std_string(setting.setting_id);
+    input.bus_name = to_std_string(setting.bus_name);
+    input.kind = to_setting_view_kind(setting.kind);
+    input.min_value = setting.min_value;
+    input.max_value = setting.max_value;
+    input.step_value = setting.step_value;
+    input.options.reserve(setting.options.size());
+    for (const auto &option : setting.options) {
+        input.options.push_back({
+            .label = to_std_string(option.label),
+            .value = to_std_string(option.value),
+        });
+    }
+    return input;
+}
+
+MenuScreenPresentationInput to_screen_input(const MenuDefinition &menu) {
+    MenuScreenPresentationInput input;
+    input.name = to_std_string(menu.name);
+    input.type = to_screen_view_type(menu.type);
+    input.entries.reserve(menu.entries.size());
+    for (const auto &entry : menu.entries) {
+        input.entries.push_back(to_action_input(entry));
+    }
+    input.settings.reserve(menu.settings.size());
+    for (const auto &setting : menu.settings) {
+        input.settings.push_back(to_setting_input(setting));
+    }
+    if (menu.back.has_value()) {
+        input.back = to_action_input(*menu.back);
+    }
+    return input;
+}
+
+MenuIntent to_menu_intent(int intent_type, const String &target) {
+    return {
+        .type = static_cast<MenuIntentType>(intent_type),
+        .target = to_std_string(target),
+    };
+}
+
+SceneNavigationRequest to_navigation_request(const MenuIntent &intent) {
+    switch (intent.type) {
+    case MenuIntentType::StartGame:
+        return {.destination = SceneNavigationDestination::CurrentLevel};
+    case MenuIntentType::Quit:
+        return {.destination = SceneNavigationDestination::Quit};
+    case MenuIntentType::MainMenu:
+    default:
+        return {.destination = SceneNavigationDestination::MainMenu};
+    }
+}
+
 Vector2 get_progression_screen_size(Node *parent) {
     if (parent == nullptr || parent->get_viewport() == nullptr) {
         return make_size(800, 360);
@@ -45,22 +136,22 @@ Vector2 get_progression_screen_size(Node *parent) {
     return {viewport_size.x * PROGRESSION_SCREEN_WIDTH_RATIO, viewport_size.y * PROGRESSION_SCREEN_HEIGHT_RATIO};
 }
 
-void add_section_label(VBoxContainer *button_container, const MenuSetting &setting, const OptionsLayout &options_layout) {
+void add_section_label(VBoxContainer *button_container, const MenuSettingViewModel &setting, const OptionsLayout &options_layout) {
     auto *section_label = memnew(Label);
-    section_label->set_text(setting.label);
+    section_label->set_text(to_godot_string(setting.label));
     section_label->add_theme_font_size_override("font_size", options_layout.section_font_size);
     section_label->add_theme_color_override("font_color", options_layout.section_color);
     section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     button_container->add_child(section_label);
 }
 
-HBoxContainer *create_option_row(const MenuSetting &setting, const OptionsLayout &options_layout) {
+HBoxContainer *create_option_row(const MenuSettingViewModel &setting, const OptionsLayout &options_layout) {
     auto *row = memnew(HBoxContainer);
     row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     row->add_theme_constant_override("separation", 16);
 
     auto *name_label = memnew(Label);
-    name_label->set_text(setting.label.is_empty() ? String("???") : setting.label);
+    name_label->set_text(setting.label.empty() ? String("???") : to_godot_string(setting.label));
     name_label->set_custom_minimum_size(options_layout.label_minimum_size);
     name_label->add_theme_font_size_override("font_size", options_layout.label_font_size);
     name_label->add_theme_color_override("font_color", options_layout.label_color);
@@ -70,10 +161,10 @@ HBoxContainer *create_option_row(const MenuSetting &setting, const OptionsLayout
     return row;
 }
 
-bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const MenuSetting &setting, const ButtonStyle &button_style,
+bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const ButtonStyle &button_style,
                                   const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode,
                                   std::vector<DisplayServer::WindowMode> &display_mode_values) {
-    if (setting.kind != MenuSettingKind::DISPLAY_MODE) {
+    if (setting.kind != MenuSettingViewKind::DisplayMode) {
         return false;
     }
 
@@ -86,8 +177,8 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     int selected_index = 0;
     int option_index = 0;
     for (const auto &option : setting.options) {
-        option_button->add_item(option.label);
-        const auto mode_value = static_cast<DisplayServer::WindowMode>(option.value.to_int());
+        option_button->add_item(to_godot_string(option.label));
+        const auto mode_value = static_cast<DisplayServer::WindowMode>(std::stoi(option.value));
         display_mode_values.push_back(mode_value);
         if (static_cast<int>(mode_value) == static_cast<int>(current_mode)) {
             selected_index = option_index;
@@ -101,10 +192,10 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     return true;
 }
 
-bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const MenuSetting &setting, const ButtonStyle &button_style,
+bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const ButtonStyle &button_style,
                                 const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode, const Vector2i &current_size,
                                 OptionButton *&resolution_dropdown, std::vector<Vector2i> &resolution_values) {
-    if (setting.kind != MenuSettingKind::RESOLUTION) {
+    if (setting.kind != MenuSettingViewKind::Resolution) {
         return false;
     }
 
@@ -117,8 +208,8 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     int selected_index = 0;
     int option_index = 0;
     for (const auto &option : setting.options) {
-        option_button->add_item(option.label);
-        const Vector2i resolution = SettingsService::parse_resolution_value(option.value);
+        option_button->add_item(to_godot_string(option.label));
+        const Vector2i resolution = SettingsService::parse_resolution_value(to_godot_string(option.value));
         resolution_values.push_back(resolution);
         if (resolution == current_size) {
             selected_index = option_index;
@@ -137,8 +228,8 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     return true;
 }
 
-bool try_add_vsync_control(HBoxContainer *row, const MenuSetting &setting, const OptionsLayout &options_layout, bool vsync_on, MenuManager *manager) {
-    if (setting.kind != MenuSettingKind::VSYNC) {
+bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setting, const OptionsLayout &options_layout, bool vsync_on, MenuManager *manager) {
+    if (setting.kind != MenuSettingViewKind::Vsync) {
         return false;
     }
 
@@ -151,13 +242,13 @@ bool try_add_vsync_control(HBoxContainer *row, const MenuSetting &setting, const
     return true;
 }
 
-bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const MenuSetting &setting, const OptionsLayout &options_layout,
+bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const OptionsLayout &options_layout,
                             const SettingsState &settings_state, std::vector<std::pair<String, Label *>> &volume_labels) {
-    if (setting.kind != MenuSettingKind::BUS_VOLUME) {
+    if (setting.kind != MenuSettingViewKind::BusVolume) {
         return false;
     }
 
-    const String bus_name = setting.bus_name.is_empty() ? String("Master") : setting.bus_name;
+    const String bus_name = setting.bus_name.empty() ? String("Master") : to_godot_string(setting.bus_name);
     const int min_value = setting.min_value;
     const int max_value = setting.max_value;
     const int step_value = setting.step_value;
@@ -185,19 +276,30 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     return true;
 }
 
-void add_back_button(MenuManager *manager, VBoxContainer *button_container, const std::optional<MenuAction> &back, const ButtonStyle &button_style) {
+void add_menu_button(MenuManager *manager, VBoxContainer *button_container, const MenuButtonViewModel &button_model, const ButtonStyle &button_style,
+                     real_t width_override = 0.0F) {
+    auto *button = memnew(Button);
+    button->set_text(to_godot_string(button_model.label));
+    const Vector2 minimum_size = width_override > 0.0F ? Vector2(width_override, button_style.minimum_size.y) : button_style.minimum_size;
+    button->set_custom_minimum_size(minimum_size);
+    button->set_focus_mode(Control::FOCUS_NONE);
+    apply_button_theme(button, button_style, button_style.font_size);
+
+    if (!button_model.enabled) {
+        button->set_disabled(true);
+        button->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
+    }
+
+    button->connect("pressed", callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target)));
+    button_container->add_child(button);
+}
+
+void add_back_button(MenuManager *manager, VBoxContainer *button_container, const std::optional<MenuButtonViewModel> &back, const ButtonStyle &button_style) {
     if (!back.has_value()) {
         return;
     }
 
-    auto *button = memnew(Button);
-    button->set_text(back->label.is_empty() ? String("Back") : back->label);
-    button->set_custom_minimum_size(button_style.minimum_size);
-    button->set_focus_mode(Control::FOCUS_NONE);
-    apply_button_theme(button, button_style, button_style.font_size);
-
-    button->connect("pressed", callable_mp(manager, &MenuManager::on_button_pressed).bind(back->action, back->target));
-    button_container->add_child(button);
+    add_menu_button(manager, button_container, *back, button_style);
 }
 
 } // namespace
@@ -304,8 +406,10 @@ void MenuManager::show_menu(const String &menu_name) {
         return;
     }
 
-    if (menu->type == MenuDefinitionType::OPTIONS) {
-        build_options_ui(*menu);
+    const MenuScreenViewModel view_model = build_menu_screen_view_model(to_screen_input(*menu));
+
+    if (view_model.type == MenuScreenType::Options) {
+        build_options_ui(view_model);
         return;
     }
 
@@ -313,34 +417,22 @@ void MenuManager::show_menu(const String &menu_name) {
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
-    for (const auto &entry : menu->entries) {
-        auto *btn = memnew(Button);
-        btn->set_text(entry.label.is_empty() ? String("???") : entry.label);
-        btn->set_custom_minimum_size(button_style.minimum_size);
-        btn->set_focus_mode(Control::FOCUS_NONE);
-        apply_button_theme(btn, button_style, button_style.font_size);
-
-        if (entry.action == "none") {
-            btn->set_disabled(true);
-            btn->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
-        }
-
-        btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(entry.action, entry.target));
-        button_container_->add_child(btn);
+    for (const auto &button_model : view_model.buttons) {
+        add_menu_button(this, button_container_, button_model, button_style);
     }
 }
 
-void MenuManager::on_button_pressed(const String &action, const String &target) {
-    if (action == "goto_menu") {
-        show_menu(target);
-    } else if (action == "level_select") {
+void MenuManager::on_button_pressed(int intent_type, const String &target) { handle_menu_intent(to_menu_intent(intent_type, target)); }
+
+void MenuManager::handle_menu_intent(const MenuIntent &intent) {
+    if (intent.type == MenuIntentType::GotoMenu) {
+        show_menu(to_godot_string(intent.target));
+    } else if (intent.type == MenuIntentType::ShowLevelSelect) {
         show_level_select();
-    } else if (action == "progression") {
+    } else if (intent.type == MenuIntentType::ShowProgression) {
         show_progression();
-    } else if (action == "start_game") {
-        SceneNavigator::go_to_current_level(get_tree());
-    } else if (action == "quit") {
-        SceneNavigator::quit(get_tree());
+    } else if (intent.type == MenuIntentType::StartGame || intent.type == MenuIntentType::Quit || intent.type == MenuIntentType::MainMenu) {
+        SceneNavigator::navigate(get_tree(), to_navigation_request(intent));
     }
 }
 
@@ -352,47 +444,49 @@ void MenuManager::show_level_select() {
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
-    // Title
     auto *title = memnew(Label);
-    title->set_text("SELECT LEVEL");
+    std::vector<LevelSelectRowViewModel> levels;
+    auto *progression = CampaignService::get_singleton();
+    const auto &level_data = progression->get_level_unlock_data();
+    levels.reserve(level_data.size());
+    for (const auto &level : level_data) {
+        levels.push_back({
+            .level_id = to_std_string(level.level_id),
+            .label = to_std_string(ProgressionPresentation::format_level_button_label(*progression, level)),
+            .unlocked = progression->is_level_unlocked(level.level_id),
+        });
+    }
+    const LevelSelectViewModel view_model = build_level_select_view_model(std::move(levels));
+
+    title->set_text(to_godot_string(view_model.title));
     title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     title->add_theme_font_size_override("font_size", 36);
     title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
     button_container_->add_child(title);
 
-    auto *progression = CampaignService::get_singleton();
-    const auto &level_data = progression->get_level_unlock_data();
-
-    for (const auto &level : level_data) {
-        bool unlocked = progression->is_level_unlocked(level.level_id);
-
+    for (const auto &level : view_model.levels) {
         auto *btn = memnew(Button);
-        btn->set_text(ProgressionPresentation::format_level_button_label(*progression, level));
+        btn->set_text(to_godot_string(level.label));
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
 
-        if (!unlocked) {
+        if (!level.unlocked) {
             btn->set_disabled(true);
             btn->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
         } else {
-            btn->connect("pressed", callable_mp(this, &MenuManager::on_level_selected).bind(level.level_id));
+            btn->connect("pressed", callable_mp(this, &MenuManager::on_level_selected).bind(to_godot_string(level.level_id)));
         }
 
         button_container_->add_child(btn);
     }
 
-    // Back button
-    auto *back_btn = memnew(Button);
-    back_btn->set_text("Back");
-    back_btn->set_custom_minimum_size(button_style.minimum_size);
-    back_btn->set_focus_mode(Control::FOCUS_NONE);
-    apply_button_theme(back_btn, button_style, button_style.font_size);
-    back_btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(String("goto_menu"), String("game_menu")));
-    button_container_->add_child(back_btn);
+    add_menu_button(this, button_container_, view_model.back_button, button_style);
 }
 
-void MenuManager::on_level_selected(const String &level_id) { SceneNavigator::go_to_level(get_tree(), level_id); }
+void MenuManager::on_level_selected(const String &level_id) {
+    SceneNavigator::navigate(get_tree(), {.destination = SceneNavigationDestination::Level, .level_id = to_std_string(level_id)});
+}
 
 void MenuManager::show_progression() {
     clear_buttons();
@@ -401,8 +495,10 @@ void MenuManager::show_progression() {
     const ButtonStyle button_style = build_button_style(menu_data_.style_data);
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
+    const ProgressionScreenViewModel view_model = build_progression_screen_view_model();
+
     auto *title = memnew(Label);
-    title->set_text("YOUR UPGRADES");
+    title->set_text(to_godot_string(view_model.title));
     title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     title->add_theme_font_size_override("font_size", 36);
     title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
@@ -415,17 +511,10 @@ void MenuManager::show_progression() {
     owned_panel_options.grid_columns = 4;
     button_container_->add_child(OwnedUpgradesPanel::build(progression->build_owned_upgrade_cards(), owned_panel_options));
 
-    auto *back_btn = memnew(Button);
-    back_btn->set_text("Back");
-    back_btn->set_custom_minimum_size(Vector2(160, button_style.minimum_size.y));
-    back_btn->set_h_size_flags(Control::SIZE_SHRINK_CENTER);
-    back_btn->set_focus_mode(Control::FOCUS_NONE);
-    apply_button_theme(back_btn, button_style, button_style.font_size);
-    back_btn->connect("pressed", callable_mp(this, &MenuManager::on_button_pressed).bind(String("goto_menu"), String("game_menu")));
-    button_container_->add_child(back_btn);
+    add_menu_button(this, button_container_, view_model.back_button, button_style, 160.0F);
 }
 
-void MenuManager::build_options_ui(const MenuDefinition &menu_def) {
+void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
     const ButtonStyle button_style = build_button_style(menu_data_.style_data);
     const OptionsLayout options_layout = build_options_layout(menu_data_.style_data.get("options", Dictionary()));
 
@@ -435,8 +524,8 @@ void MenuManager::build_options_ui(const MenuDefinition &menu_def) {
     const Vector2i current_size = settings_state_.resolution;
     const bool vsync_on = settings_state_.vsync_enabled;
 
-    for (const auto &setting : menu_def.settings) {
-        if (setting.kind == MenuSettingKind::SECTION) {
+    for (const auto &setting : view_model.settings) {
+        if (setting.kind == MenuSettingViewKind::Section) {
             add_section_label(button_container_, setting, options_layout);
             continue;
         }
@@ -452,11 +541,11 @@ void MenuManager::build_options_ui(const MenuDefinition &menu_def) {
             button_container_->add_child(row);
         } else {
             row->queue_free();
-            UtilityFunctions::printerr("MenuManager: Unknown option setting: ", setting.setting_id);
+            UtilityFunctions::printerr("MenuManager: Unknown option setting: ", to_godot_string(setting.setting_id));
         }
     }
 
-    add_back_button(this, button_container_, menu_def.back, button_style);
+    add_back_button(this, button_container_, view_model.back_button, button_style);
 }
 
 void MenuManager::on_display_mode_changed(int index) {
