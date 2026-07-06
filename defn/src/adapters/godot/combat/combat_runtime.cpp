@@ -1,7 +1,6 @@
 #include "combat_runtime.h"
 
 #include "animation_controller.h"
-#include "attack_target_resolver.h"
 #include "battle_entity.h"
 #include "combat_attack_executor.h"
 #include "combat_target_selector.h"
@@ -12,12 +11,14 @@
 
 namespace defn {
 
-void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config) {
+void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config,
+                              const std::optional<ProjectileAttackConfig> &projectile_attack) {
     unit_ = unit;
     health_ = health;
     animation_ = animation;
     detection_area_ = detection_area;
     config_ = config;
+    projectile_attack_ = projectile_attack;
     selection_ = {};
     state_ = {};
     pending_projectile_ = {};
@@ -39,26 +40,44 @@ void CombatRuntime::update(double delta) {
     input.unit_dead = health_->is_dead();
     input.projectile_pending = pending_projectile_.active;
 
-    apply_logic_step(advance_combat_logic(config_, input), delta);
+    apply_commands(advance_combat(config_, input), delta);
 }
 
 void CombatRuntime::update_target() { selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id); }
 
-void CombatRuntime::try_spawn_pending_projectile() { CombatAttackExecutor::spawn_pending_projectile(config_, unit_, animation_, pending_projectile_); }
+void CombatRuntime::try_spawn_pending_projectile() { CombatAttackExecutor::spawn_pending_projectile(projectile_attack_, unit_, animation_, pending_projectile_); }
 
-void CombatRuntime::apply_logic_step(const CombatLogicStep &step, double delta) {
-    state_ = step.state;
+void CombatRuntime::apply_commands(const AdvanceCombatOutput &output, double delta) {
+    state_ = output.state;
 
+    for (const CombatCommand &command : output.commands) {
+        apply_command(command, delta);
+    }
+
+    try_spawn_pending_projectile();
+}
+
+void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
     if (unit_ == nullptr) {
         return;
     }
 
-    if (animation_ != nullptr) {
-        if (step.intent.hide_muzzle_flash) {
-            animation_->hide_muzzle_flash();
+    switch (command.type) {
+    case CombatCommandType::STOP:
+        if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
+            movement->stop();
         }
-
-        switch (step.intent.pose) {
+        break;
+    case CombatCommandType::MOVE:
+        if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
+            movement->move(delta);
+        }
+        break;
+    case CombatCommandType::PLAY_POSE:
+        if (animation_ == nullptr) {
+            break;
+        }
+        switch (command.pose) {
         case CombatPoseIntent::WALK:
             animation_->set_anim_state(AnimState::WALK);
             break;
@@ -71,23 +90,17 @@ void CombatRuntime::apply_logic_step(const CombatLogicStep &step, double delta) 
         case CombatPoseIntent::NONE:
             break;
         }
-    }
-
-    auto *movement = unit_->get_movement_component();
-    if (step.intent.movement == CombatMovementIntent::STOP) {
-        if (movement != nullptr) {
-            movement->stop();
+        break;
+    case CombatCommandType::HIDE_MUZZLE_FLASH:
+        if (animation_ != nullptr) {
+            animation_->hide_muzzle_flash();
         }
-    } else if (step.intent.movement == CombatMovementIntent::MOVE) {
-        if (movement != nullptr) {
-            movement->move(delta);
-        }
-    }
-
-    if (step.intent.trigger_attack) {
-        AttackTarget *target = state_.target_id.is_valid() ? resolve_attack_target(ObjectID(state_.target_id.value)) : nullptr;
-        CombatAttackExecutor::trigger_attack(config_, state_.attack_mode, target, animation_, pending_projectile_);
-        try_spawn_pending_projectile();
+        break;
+    case CombatCommandType::DEAL_DAMAGE:
+    case CombatCommandType::SPAWN_PROJECTILE:
+    case CombatCommandType::PLAY_EFFECT:
+        CombatAttackExecutor::apply_command(command, projectile_attack_, config_.side, animation_, pending_projectile_);
+        break;
     }
 }
 

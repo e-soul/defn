@@ -41,6 +41,7 @@ CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, co
                     .engaged = true,
                     .attack_mode = current_mode,
                     .target_id = current_target_id,
+                    .target_position = snapshot.position,
                 };
             }
             break;
@@ -49,6 +50,8 @@ CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, co
 
     EntityId best_melee_target_id;
     EntityId best_ranged_target_id;
+    CombatPoint best_melee_target_position;
+    CombatPoint best_ranged_target_position;
     float closest_melee_distance = std::numeric_limits<float>::max();
     float closest_ranged_distance = std::numeric_limits<float>::max();
 
@@ -65,10 +68,12 @@ CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, co
         if (distance <= config.attack_range && distance < closest_melee_distance) {
             closest_melee_distance = distance;
             best_melee_target_id = snapshot.id;
+            best_melee_target_position = snapshot.position;
         }
         if (distance <= config.ranged_range && distance < closest_ranged_distance) {
             closest_ranged_distance = distance;
             best_ranged_target_id = snapshot.id;
+            best_ranged_target_position = snapshot.position;
         }
     }
 
@@ -77,6 +82,7 @@ CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, co
             .engaged = true,
             .attack_mode = AttackMode::MELEE,
             .target_id = best_melee_target_id,
+            .target_position = best_melee_target_position,
         };
     }
 
@@ -85,6 +91,7 @@ CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, co
             .engaged = true,
             .attack_mode = AttackMode::RANGED,
             .target_id = best_ranged_target_id,
+            .target_position = best_ranged_target_position,
         };
     }
 

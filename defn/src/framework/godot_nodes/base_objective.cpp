@@ -57,7 +57,9 @@ CombatComponent::Config make_combat_config(const UnitConfig &config) {
     combat_config.ranged_range = has_ranged_attack ? config.ranged_attack_range : -1.0F;
     combat_config.melee_flash_color = to_combat_color(config.melee_flash_color);
     combat_config.ranged_flash_color = to_combat_color(config.ranged_flash_color);
-    combat_config.projectile_attack = config.projectile_attack;
+    if (config.projectile_attack.has_value()) {
+        combat_config.projectile_attack = to_projectile_damage_config(*config.projectile_attack);
+    }
     return combat_config;
 }
 
@@ -134,7 +136,7 @@ void BaseObjective::ensure_attack_components() {
         combat_ = memnew(CombatComponent);
         combat_->set_name("CombatComponent");
         add_child(combat_);
-        combat_->configure(this, get_health_component(), animation_, detection_->get_detection_area(), make_combat_config(config));
+        combat_->configure(this, get_health_component(), animation_, detection_->get_detection_area(), make_combat_config(config), config.projectile_attack);
     }
 }
 

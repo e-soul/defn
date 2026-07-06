@@ -1,6 +1,7 @@
 #include "projectile_attack.h"
 
 #include "attack_target_resolver.h"
+#include "projectile_rules.h"
 
 #include <algorithm>
 #include <cmath>
@@ -18,6 +19,10 @@ namespace defn {
 namespace {
 
 constexpr auto PLAYBACK_ANIMATION = "play";
+
+EntityId entity_id_for(const AttackTarget &target) { return {.value = static_cast<uint64_t>(target.get_target_object_id())}; }
+
+CombatPoint to_combat_point(const Vector2 &position) { return {.x = static_cast<float>(position.x), .y = static_cast<float>(position.y)}; }
 
 float linear_to_db(float linear) {
     const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
@@ -199,49 +204,61 @@ void ProjectileAttack::explode() {
 }
 
 void ProjectileAttack::apply_splash_damage() {
-    std::vector<AttackTarget *> candidates;
-    candidates.reserve(8);
+    std::vector<ProjectileTargetSnapshot> snapshots;
+    snapshots.reserve(8);
 
     AttackTarget *direct_target = resolve_direct_target();
-    if (config_.include_direct_target && direct_target != nullptr && !direct_target->is_dead() && direct_target->get_side() != shooter_side_) {
-        candidates.push_back(direct_target);
+    if (direct_target != nullptr) {
+        snapshots.push_back({
+            .id = entity_id_for(*direct_target),
+            .side = direct_target->get_side(),
+            .dead = direct_target->is_dead(),
+            .position = to_combat_point(direct_target->get_target_global_position()),
+        });
     }
 
     Node *parent = get_parent();
     if (parent != nullptr) {
         const Array children = parent->get_children();
-        const real_t splash_radius_squared = config_.splash_radius * config_.splash_radius;
         for (const Variant &child_variant : children) {
             auto *target = resolve_attack_target(child_variant.operator Object *());
-            if (target == nullptr || target->is_dead() || target->get_side() == shooter_side_) {
+            if (target == nullptr) {
                 continue;
             }
 
-            if (std::ranges::find(candidates, target) != candidates.end()) {
+            const EntityId target_id = entity_id_for(*target);
+            const auto existing_target = std::ranges::find_if(snapshots, [target_id](const ProjectileTargetSnapshot &snapshot) {
+                return snapshot.id == target_id;
+            });
+            if (existing_target != snapshots.end()) {
                 continue;
             }
 
-            if (target->get_target_global_position().distance_squared_to(target_global_position_) > splash_radius_squared) {
-                continue;
-            }
-
-            candidates.push_back(target);
+            snapshots.push_back({
+                .id = target_id,
+                .side = target->get_side(),
+                .dead = target->is_dead(),
+                .position = to_combat_point(target->get_target_global_position()),
+            });
         }
     }
 
-    if (candidates.empty()) {
-        return;
-    }
+    const std::vector<ProjectileDamageCommand> commands = resolve_projectile_impact({
+        .config = to_projectile_damage_config(config_),
+        .shooter_side = shooter_side_,
+        .impact_position = to_combat_point(target_global_position_),
+        .direct_target_id = direct_target != nullptr ? entity_id_for(*direct_target) : EntityId{},
+        .fallback_damage = fallback_damage_,
+        .targets = snapshots,
+    });
 
-    const int affected_count = compute_affected_target_count(static_cast<int>(candidates.size()));
-    for (int index = 0; index < affected_count; ++index) {
-        AttackTarget *victim = candidates[static_cast<size_t>(index)];
+    for (const ProjectileDamageCommand &command : commands) {
+        AttackTarget *victim = resolve_attack_target(ObjectID(command.target_id.value));
         if (victim == nullptr || victim->is_dead()) {
             continue;
         }
 
-        const int damage = victim == direct_target ? resolve_impact_damage() : resolve_splash_damage();
-        victim->take_damage(damage);
+        victim->take_damage(command.damage);
         victim->flash_damage(flash_color_);
     }
 }
@@ -259,33 +276,6 @@ void ProjectileAttack::on_explosion_sfx_finished() {
 }
 
 AttackTarget *ProjectileAttack::resolve_direct_target() const { return resolve_attack_target(direct_target_id_); }
-
-int ProjectileAttack::resolve_impact_damage() const { return config_.impact_damage.value_or(fallback_damage_); }
-
-int ProjectileAttack::resolve_splash_damage() const { return config_.splash_damage.value_or(resolve_impact_damage()); }
-
-int ProjectileAttack::compute_affected_target_count(int candidate_count) const {
-    if (candidate_count <= 0) {
-        return 0;
-    }
-
-    const real_t raw_count = static_cast<real_t>(candidate_count) * config_.affected_fraction;
-    const real_t rounded_count = [this, raw_count]() {
-        switch (config_.affected_target_rounding) {
-        case SplashTargetRoundingMode::FLOOR:
-            return std::floor(raw_count);
-        case SplashTargetRoundingMode::NEAREST:
-            return std::round(raw_count);
-        case SplashTargetRoundingMode::CEIL:
-            return std::ceil(raw_count);
-        }
-
-        return raw_count;
-    }();
-
-    const int rounded_targets = static_cast<int>(rounded_count);
-    return std::clamp(std::max(rounded_targets, config_.min_affected_targets), 1, candidate_count);
-}
 
 void ProjectileAttack::try_finish() {
     if (exploding_ && explosion_animation_finished_ && explosion_sfx_finished_) {

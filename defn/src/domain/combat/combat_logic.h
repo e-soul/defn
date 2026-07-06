@@ -3,22 +3,9 @@
 
 #include "combat_types.h"
 
-#include <cstdint>
 #include <span>
 
 namespace defn {
-
-struct EntityId {
-    uint64_t value = 0;
-
-    [[nodiscard]] bool is_valid() const { return value != 0; }
-    friend bool operator==(EntityId, EntityId) = default;
-};
-
-struct CombatPoint {
-    float x = 0.0F;
-    float y = 0.0F;
-};
 
 struct CombatTargetSnapshot {
     EntityId id;
@@ -31,6 +18,7 @@ struct CombatTargetSelection {
     bool engaged = false;
     AttackMode attack_mode = AttackMode::NONE;
     EntityId target_id;
+    CombatPoint target_position;
 };
 
 enum class CombatMovementIntent { NONE, MOVE, STOP };

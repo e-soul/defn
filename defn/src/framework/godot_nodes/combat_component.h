@@ -21,7 +21,8 @@ class CombatComponent : public Node {
   public:
     using Config = CombatConfig;
 
-    void configure(BattleEntity *p_unit, HealthComponent *p_health, AnimationController *p_anim, Area2D *p_detection_area, const Config &cfg);
+    void configure(BattleEntity *p_unit, HealthComponent *p_health, AnimationController *p_anim, Area2D *p_detection_area, const Config &cfg,
+                   const std::optional<ProjectileAttackConfig> &projectile_attack = std::nullopt);
 
     void _process(double delta) override;
 

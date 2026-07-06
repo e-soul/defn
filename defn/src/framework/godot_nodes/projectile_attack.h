@@ -39,13 +39,10 @@ class ProjectileAttack : public Node2D {
     void on_animation_finished();
     void on_explosion_sfx_finished();
     AttackTarget *resolve_direct_target() const;
-    int resolve_impact_damage() const;
-    int resolve_splash_damage() const;
-    int compute_affected_target_count(int candidate_count) const;
     void try_finish();
 
     ProjectileAttackConfig config_{};
-    UnitSide shooter_side_ = UnitSide::FRIENDLY;
+  UnitSide shooter_side_ = UnitSide::FRIENDLY;
     Color flash_color_{};
     AnimatedSprite2D *sprite_ = nullptr;
     AudioStreamPlayer2D *explosion_player_ = nullptr;

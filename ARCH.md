@@ -182,7 +182,7 @@ Match use cases do not materialize `Unit` nodes. Godot adapters materialize spaw
 
 ## Module 2: Combat and Entity Runtime
 
-Combat is the best existing pattern for the target design. Keep pushing decisions into pure logic and keep Godot components as adapters.
+Pure logic produces combat decisions and commands, while Godot components adapt scene state and apply results.
 
 ```mermaid
 flowchart TB
@@ -233,8 +233,6 @@ Target combat flow:
 2. A combat use case advances deterministic combat state.
 3. The use case returns commands: stop, move, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
 4. The Godot component applies commands to `MovementComponent`, `AnimationController`, `HealthComponent`, `ProjectileAttack`, and VFX/audio adapters.
-
-Key refinement: `combat_logic` currently depends on `AttackTarget *` and Godot `Vector2`. The target should pass stable entity IDs or handles plus plain positions in the inner logic. Godot nodes can maintain the handle-to-node map outside the domain.
 
 ## Module 3: Progression and Rewards
 

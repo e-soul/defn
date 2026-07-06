@@ -1,6 +1,7 @@
 #ifndef UNIT_DATA_H
 #define UNIT_DATA_H
 
+#include "combat_types.h"
 #include "gameplay_rules.h"
 
 #include <godot_cpp/core/math.hpp>
@@ -17,8 +18,6 @@
 namespace defn {
 
 using namespace godot;
-
-enum class UnitSide { FRIENDLY, HOSTILE };
 
 struct AnimConfig {
     String path_template;
@@ -43,8 +42,6 @@ struct ShootSfxConfig {
 struct GlobalShootSfxConfig {
     float pitch_variance = 0.0F;
 };
-
-enum class SplashTargetRoundingMode { FLOOR, NEAREST, CEIL };
 
 struct RangeVariationConfig {
     real_t min = 0.8;
@@ -110,6 +107,7 @@ struct UnitConfig {
 
 UnitSide parse_unit_side(const Dictionary &unit_dict);
 SplashTargetRoundingMode parse_splash_target_rounding_mode(const Variant &value, SplashTargetRoundingMode fallback);
+ProjectileDamageConfig to_projectile_damage_config(const ProjectileAttackConfig &config);
 
 class UnitCatalog {
     public:
