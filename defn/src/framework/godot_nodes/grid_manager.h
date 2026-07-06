@@ -26,9 +26,9 @@ class GridManager : public Object, public GridQueryService {
     const GameplayRules &get_rules() const { return rules_; }
 
     [[nodiscard]] static real_t random_belt_y();    // random Y within the belt area
-    [[nodiscard]] real_t deploy_x() const override; // friendly spawn: just left of camera
-    [[nodiscard]] real_t spawn_x() const override;  // hostile spawn: just right of camera
-    [[nodiscard]] real_t sample_belt_y() const override;
+    [[nodiscard]] double deploy_x() const override; // friendly spawn: just left of camera
+    [[nodiscard]] double spawn_x() const override;  // hostile spawn: just right of camera
+    [[nodiscard]] double sample_belt_y() const override;
 
     void set_world_width(real_t w);
     real_t get_world_width() const;

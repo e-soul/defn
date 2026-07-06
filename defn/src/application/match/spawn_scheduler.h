@@ -2,9 +2,9 @@
 #define SPAWN_SCHEDULER_H
 
 #include "level_definition.h"
+#include "match_outputs.h"
 #include "runtime_service_interfaces.h"
 #include "spawn_timeline.h"
-#include "unit_spawn_request.h"
 
 #include <godot_cpp/variant/string.hpp>
 
@@ -18,14 +18,13 @@ using namespace godot;
 class UnitCatalog;
 
 struct SpawnSchedulerUpdate {
-    std::vector<UnitSpawnRequest> spawn_requests;
-    std::optional<int> wave_changed;
+    std::vector<SpawnUnitIntent> spawn_unit_intents;
+    std::optional<WaveChanged> wave_changed;
     bool all_spawns_completed = false;
 };
 
 class SpawnScheduler {
   public:
-    bool load_level(const String &path);
     void load_level_definition(const LevelDefinition &level_definition);
     void configure(const UnitCatalog *unit_catalog, const GridQueryService *grid);
     void start();

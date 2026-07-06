@@ -170,7 +170,7 @@ Current files that map into this module:
 - `MatchDirector` is currently a use-case coordinator, but should stop knowing concrete loaders and `Unit *`.
 - `GameManager` should continue to apply `MatchUpdate`/intent outputs to Godot.
 
-Target match outputs should be plain values:
+Match outputs are plain values:
 
 - `SpawnUnitIntent { unit_id, side, position, runtime_profile }`
 - `ResourceChanged { energy }`
@@ -178,7 +178,7 @@ Target match outputs should be plain values:
 - `ScoreChanged { kill_score, total_score }`
 - `MatchEnded { victory, summary_model, reward_options }`
 
-The match use cases should not materialize `Unit` nodes. They should ask adapters to materialize spawn intents.
+Match use cases do not materialize `Unit` nodes. Godot adapters materialize spawn intents.
 
 ## Module 2: Combat and Entity Runtime
 

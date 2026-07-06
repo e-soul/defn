@@ -4,16 +4,18 @@ namespace defn {
 
 namespace {
 
-std::optional<UnitConfig> resolve_friendly_config(const ProgressionService *progression, const UnitCatalog *unit_catalog, const String &unit_type) {
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+std::optional<UnitConfig> resolve_friendly_config(const ProgressionService *progression, const UnitCatalog *unit_catalog, const std::string &unit_id) {
     if (progression == nullptr || unit_catalog == nullptr) {
         return std::nullopt;
     }
 
-    if (unit_type == "base") {
+    if (unit_id == "base") {
         return std::nullopt;
     }
 
-    const auto base_config = unit_catalog->get_unit(unit_type);
+    const auto base_config = unit_catalog->get_unit(to_godot_string(unit_id));
     if (!base_config || base_config->side != UnitSide::FRIENDLY) {
         return std::nullopt;
     }
@@ -31,9 +33,9 @@ void DeploymentService::configure(MatchSession *match_session, const UnitCatalog
     grid_ = grid;
 }
 
-DeploymentResult DeploymentService::deploy_friendly(const String &unit_type) {
+DeploymentResult DeploymentService::deploy_friendly(const std::string &unit_id) {
     DeploymentResult result;
-    result.unit_type = unit_type;
+    result.unit_id = unit_id;
 
     if (match_session_ == nullptr || unit_catalog_ == nullptr || progression_ == nullptr) {
         result.failure_reason = DeploymentFailureReason::MISSING_DEPENDENCY;
@@ -46,7 +48,7 @@ DeploymentResult DeploymentService::deploy_friendly(const String &unit_type) {
         return result;
     }
 
-    const auto config = resolve_friendly_config(progression_, unit_catalog_, unit_type);
+    const auto config = resolve_friendly_config(progression_, unit_catalog_, unit_id);
     if (!config) {
         result.failure_reason = DeploymentFailureReason::UNKNOWN_UNIT;
         result.remaining_energy = match_session_->get_core_resource();
@@ -67,15 +69,17 @@ DeploymentResult DeploymentService::deploy_friendly(const String &unit_type) {
     }
 
     match_session_->spend_energy(config->cost);
-    const real_t spawn_x_pos = grid_->deploy_x();
-    const real_t spawn_y_pos = grid_->sample_belt_y();
+    const double spawn_x_pos = grid_->deploy_x();
+    const double spawn_y_pos = grid_->sample_belt_y();
 
     result.succeeded = true;
     result.failure_reason = DeploymentFailureReason::NONE;
     result.remaining_energy = match_session_->get_core_resource();
-    result.spawn_request = UnitSpawnRequest{
-        .config = *config,
-        .position = Vector2(spawn_x_pos, spawn_y_pos),
+    result.spawn_intent = SpawnUnitIntent{
+        .unit_id = unit_id,
+        .side = MatchUnitSide::Friendly,
+        .position = {.x = spawn_x_pos, .y = spawn_y_pos},
+        .runtime_profile = UnitRuntimeProfile::from_unit_config(*config),
     };
     return result;
 }

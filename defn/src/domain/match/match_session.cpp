@@ -45,7 +45,7 @@ int MatchSession::record_enemy_died(int base_bounty) {
     state_.kill_score += base_bounty;
     ++state_.enemies_killed;
 
-    const auto scaled_bounty = static_cast<double>(base_bounty) * static_cast<double>(config_.bounty_multiplier);
+    const auto scaled_bounty = static_cast<double>(base_bounty) * config_.bounty_multiplier;
     const int awarded_bounty = static_cast<int>(std::ceil(scaled_bounty));
     state_.core_resource += awarded_bounty;
     state_.living_enemies = std::max(state_.living_enemies - 1, 0);
@@ -62,9 +62,9 @@ int MatchSession::calculate_completion_bonus(bool victory) { return victory ? 10
 
 int MatchSession::calculate_level_score(bool victory) const { return state_.kill_score + calculate_integrity_bonus() + calculate_completion_bonus(victory); }
 
-ScoreScreenModel MatchSession::build_end_game_summary(bool victory, int new_total_score, const String &current_level_id, const String &next_level_id,
-                                                      const PackedStringArray &new_unlocks, const ScoreScreenRewardModel &reward) const {
-    ScoreScreenModel summary;
+MatchSummaryModel MatchSession::build_end_game_summary(bool victory, int new_total_score, const std::string &current_level_id, const std::string &next_level_id,
+                                                       const std::vector<std::string> &new_unlocks) const {
+    MatchSummaryModel summary;
     summary.victory = victory;
     summary.enemies_killed = state_.enemies_killed;
     summary.kill_score = state_.kill_score;
@@ -77,7 +77,6 @@ ScoreScreenModel MatchSession::build_end_game_summary(bool victory, int new_tota
     summary.current_level_id = current_level_id;
     summary.next_level_id = next_level_id;
     summary.new_unlocks = new_unlocks;
-    summary.reward = reward;
     return summary;
 }
 

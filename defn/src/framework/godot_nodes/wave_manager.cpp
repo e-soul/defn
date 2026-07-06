@@ -38,13 +38,14 @@ void WaveManager::_process(double delta) {
         }
 
         // Create the hostile with data-driven config
-        const real_t spawn_y_pos = GridManager::random_belt_y();
-        const real_t spawn_x_pos = grid->spawn_x();
+        const double spawn_y_pos = GridManager::random_belt_y();
+        const double spawn_x_pos = grid->spawn_x();
 
         Unit *enemy = nullptr;
         if (unit_data_) {
             if (auto cfg = unit_data_->get_unit(spawn.type)) {
-                enemy = UnitFactory::create(*cfg, Vector2(spawn_x_pos, spawn_y_pos));
+                enemy = UnitFactory::create(*cfg, Vector2(static_cast<real_t>(spawn_x_pos), static_cast<real_t>(spawn_y_pos)),
+                                            UnitRuntimeProfile::from_unit_config(*cfg));
             }
         }
         if (enemy == nullptr) {

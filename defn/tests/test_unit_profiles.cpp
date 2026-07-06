@@ -1,5 +1,6 @@
 #include "test_harness.h"
 
+#include "unit_data.h"
 #include "unit_runtime_profile.h"
 
 namespace defn {

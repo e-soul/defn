@@ -53,11 +53,11 @@ real_t GridManager::random_belt_y() {
     return static_cast<real_t>(UtilityFunctions::randf_range(rules.belt_top_y, rules.belt_bottom_y));
 }
 
-real_t GridManager::deploy_x() const { return camera_x_ - (rules_.viewport_width / 2.0F) - rules_.spawn_offset; }
+double GridManager::deploy_x() const { return camera_x_ - (rules_.viewport_width / 2.0F) - rules_.spawn_offset; }
 
-real_t GridManager::spawn_x() const { return camera_x_ + (rules_.viewport_width / 2.0F) + rules_.spawn_offset; }
+double GridManager::spawn_x() const { return camera_x_ + (rules_.viewport_width / 2.0F) + rules_.spawn_offset; }
 
-real_t GridManager::sample_belt_y() const { return random_belt_y(); }
+double GridManager::sample_belt_y() const { return random_belt_y(); }
 
 void GridManager::set_world_width(real_t width) { world_width_ = width; }
 

@@ -1,20 +1,17 @@
 #ifndef MATCH_SESSION_H
 #define MATCH_SESSION_H
 
-#include "score_screen_models.h"
+#include "match_summary.h"
 
-#include <godot_cpp/core/math.hpp>
-#include <godot_cpp/variant/packed_string_array.hpp>
-#include <godot_cpp/variant/string.hpp>
+#include <string>
+#include <vector>
 
 namespace defn {
-
-using namespace godot;
 
 struct MatchConfig {
     int starting_core_resource = 100;
     int initial_integrity = 3;
-    real_t bounty_multiplier = 1.0F;
+    double bounty_multiplier = 1.0;
     int energy_regen_rate = 1;
 };
 
@@ -62,8 +59,8 @@ class MatchSession {
     int calculate_integrity_bonus() const;
     static int calculate_completion_bonus(bool victory);
     int calculate_level_score(bool victory) const;
-    ScoreScreenModel build_end_game_summary(bool victory, int new_total_score, const String &current_level_id, const String &next_level_id,
-                                            const PackedStringArray &new_unlocks, const ScoreScreenRewardModel &reward) const;
+    MatchSummaryModel build_end_game_summary(bool victory, int new_total_score, const std::string &current_level_id, const std::string &next_level_id,
+                                             const std::vector<std::string> &new_unlocks) const;
 
   private:
     static int calculate_hearts_from_health(int health);

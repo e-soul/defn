@@ -130,8 +130,6 @@ RuntimeRangeConfig make_runtime_range_config(const UnitConfig &config) {
 
 } // namespace
 
-Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position) { return create(config, position, UnitRuntimeProfile::from_unit_config(config)); }
-
 Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, const UnitRuntimeProfile &profile) {
     auto *unit = memnew(Unit);
     unit->set_unit_config(config);
@@ -143,9 +141,9 @@ Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, con
     return unit;
 }
 
-Unit *UnitFactory::materialize(const UnitSpawnRequest &request) { return materialize(request, UnitRuntimeProfile::from_unit_config(request.config)); }
-
-Unit *UnitFactory::materialize(const UnitSpawnRequest &request, const UnitRuntimeProfile &profile) { return create(request.config, request.position, profile); }
+Unit *UnitFactory::materialize(const SpawnUnitIntent &intent, const UnitConfig &config) {
+    return create(config, Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile);
+}
 
 void UnitFactory::initialize(Unit *unit) {
     if (unit == nullptr || unit->runtime_initialized_) {

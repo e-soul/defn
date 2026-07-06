@@ -81,13 +81,13 @@ UnitDataLoader make_unit_loader() {
 
 class FakeGridService final : public GridQueryService {
   public:
-    real_t deploy_x_value = 64.0F;
-    real_t spawn_x_value = 896.0F;
-    real_t belt_y_value = 240.0F;
+    double deploy_x_value = 64.0;
+    double spawn_x_value = 896.0;
+    double belt_y_value = 240.0;
 
-    [[nodiscard]] real_t deploy_x() const override { return deploy_x_value; }
-    [[nodiscard]] real_t spawn_x() const override { return spawn_x_value; }
-    [[nodiscard]] real_t sample_belt_y() const override { return belt_y_value; }
+    [[nodiscard]] double deploy_x() const override { return deploy_x_value; }
+    [[nodiscard]] double spawn_x() const override { return spawn_x_value; }
+    [[nodiscard]] double sample_belt_y() const override { return belt_y_value; }
 };
 
 class FakeProgressionService final : public ProgressionService {
@@ -199,7 +199,7 @@ DEFN_TEST(match_session_calculates_victory_score_and_summary) {
     DEFN_CHECK_EQ(session.get_core_resource(), 68);
     DEFN_CHECK_EQ(session.calculate_level_score(true), 212);
 
-    const ScoreScreenModel summary = session.build_end_game_summary(true, 400, "level_01", "level_02", PackedStringArray(), {});
+    const MatchSummaryModel summary = session.build_end_game_summary(true, 400, "level_01", "level_02", {});
     DEFN_CHECK(summary.victory);
     DEFN_CHECK_EQ(summary.level_score, 212);
 }
@@ -216,12 +216,14 @@ DEFN_TEST(deployment_service_returns_spawn_request_and_spends_energy) {
 
     const DeploymentResult result = service.deploy_friendly("operator");
     DEFN_REQUIRE(result.succeeded);
-    DEFN_REQUIRE(result.spawn_request.has_value());
+    DEFN_REQUIRE(result.spawn_intent.has_value());
     DEFN_CHECK_EQ(result.unit_cost, 25);
     DEFN_CHECK_EQ(result.remaining_energy, 15);
-    DEFN_CHECK_EQ(result.spawn_request->config.name, String("operator"));
-    DEFN_CHECK_CLOSE(result.spawn_request->position.x, 64.0, 0.001);
-    DEFN_CHECK_CLOSE(result.spawn_request->position.y, 240.0, 0.001);
+    DEFN_CHECK(result.spawn_intent->unit_id == "operator");
+    DEFN_CHECK(result.spawn_intent->side == MatchUnitSide::Friendly);
+    DEFN_CHECK_CLOSE(result.spawn_intent->position.x, 64.0, 0.001);
+    DEFN_CHECK_CLOSE(result.spawn_intent->position.y, 240.0, 0.001);
+    DEFN_CHECK(result.spawn_intent->runtime_profile.enable_combat);
 }
 
 DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
@@ -282,14 +284,20 @@ DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
     scheduler.start();
 
     const SpawnSchedulerUpdate first_update = scheduler.update(0.75);
-    DEFN_CHECK_EQ(first_update.spawn_requests.size(), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(first_update.spawn_unit_intents.size(), static_cast<size_t>(1));
+    DEFN_CHECK(first_update.spawn_unit_intents[0].unit_id == "jackal");
+    DEFN_CHECK(first_update.spawn_unit_intents[0].side == MatchUnitSide::Hostile);
+    DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].position.x, 896.0, 0.001);
+    DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].position.y, 240.0, 0.001);
     DEFN_REQUIRE(first_update.wave_changed.has_value());
-    DEFN_CHECK_EQ(*first_update.wave_changed, 1);
+    DEFN_CHECK_EQ(first_update.wave_changed->current_wave, 1);
+    DEFN_CHECK_EQ(first_update.wave_changed->total_waves, 2);
 
     const SpawnSchedulerUpdate second_update = scheduler.update(1.0);
-    DEFN_CHECK_EQ(second_update.spawn_requests.size(), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(second_update.spawn_unit_intents.size(), static_cast<size_t>(1));
     DEFN_REQUIRE(second_update.wave_changed.has_value());
-    DEFN_CHECK_EQ(*second_update.wave_changed, 2);
+    DEFN_CHECK_EQ(second_update.wave_changed->current_wave, 2);
+    DEFN_CHECK_EQ(second_update.wave_changed->total_waves, 2);
     DEFN_CHECK(second_update.all_spawns_completed);
 }
 
@@ -311,7 +319,7 @@ DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     DEFN_CHECK_EQ(unconfigured_scheduler.get_background_path(), String("res://background.png"));
     unconfigured_scheduler.start();
     const SpawnSchedulerUpdate unconfigured_update = unconfigured_scheduler.update(0.1);
-    DEFN_CHECK_EQ(unconfigured_update.spawn_requests.size(), static_cast<size_t>(0));
+    DEFN_CHECK_EQ(unconfigured_update.spawn_unit_intents.size(), static_cast<size_t>(0));
     DEFN_CHECK(unconfigured_update.all_spawns_completed);
 
     SpawnScheduler scheduler;
@@ -319,8 +327,8 @@ DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     scheduler.load_level_definition(level);
     scheduler.start();
     const SpawnSchedulerUpdate update = scheduler.update(0.1);
-    DEFN_CHECK_EQ(update.spawn_requests.size(), static_cast<size_t>(1));
-    DEFN_CHECK_EQ(update.spawn_requests[0].config.name, String("jackal"));
+    DEFN_CHECK_EQ(update.spawn_unit_intents.size(), static_cast<size_t>(1));
+    DEFN_CHECK(update.spawn_unit_intents[0].unit_id == "jackal");
     DEFN_CHECK(update.all_spawns_completed);
 }
 
@@ -361,12 +369,13 @@ DEFN_TEST(match_director_records_enemy_defeat_from_plain_report) {
 
     const MatchUpdate update = director.handle_enemy_defeated({.bounty = 6});
 
-    DEFN_CHECK(update.resources_changed);
-    DEFN_CHECK(update.score_changed);
-    DEFN_CHECK_EQ(update.bounty_awarded, 6);
-    DEFN_CHECK_EQ(update.score, 6);
-    DEFN_CHECK_EQ(update.core_resource, 106);
-    DEFN_CHECK(director.handle_enemy_defeated({.bounty = 0}).score == 0);
+    DEFN_REQUIRE(update.resource_changed.has_value());
+    DEFN_REQUIRE(update.score_changed.has_value());
+    DEFN_CHECK_EQ(update.score_changed->bounty_awarded, 6);
+    DEFN_CHECK_EQ(update.score_changed->kill_score, 6);
+    DEFN_CHECK_EQ(update.score_changed->total_score, 6);
+    DEFN_CHECK_EQ(update.resource_changed->energy, 106);
+    DEFN_CHECK(!director.handle_enemy_defeated({.bounty = 0}).score_changed.has_value());
 }
 
 DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
@@ -384,12 +393,11 @@ DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
     director.begin_match();
 
     const MatchUpdate update = director.update(0.0);
-    DEFN_CHECK(update.match_finished);
-    DEFN_REQUIRE(update.score_screen.has_value());
-    DEFN_CHECK(update.score_screen->victory);
-    DEFN_CHECK_EQ(update.score_screen->reward.source, String("first_clear"));
-    DEFN_CHECK_EQ(update.score_screen->reward.available_upgrades.size(), static_cast<size_t>(1));
-    DEFN_CHECK_EQ(update.score_screen->next_level_id, String("level_02"));
+    DEFN_REQUIRE(update.match_ended.has_value());
+    DEFN_CHECK(update.match_ended->victory);
+    DEFN_CHECK(update.match_ended->reward_options.source == "first_clear");
+    DEFN_CHECK_EQ(update.match_ended->reward_options.available_upgrades.size(), static_cast<size_t>(1));
+    DEFN_CHECK(update.match_ended->summary_model.next_level_id == "level_02");
     DEFN_CHECK(progression.save_called);
     DEFN_CHECK(contains_string(progression.completed_levels, String("level_01")));
 
@@ -411,22 +419,19 @@ DEFN_TEST(match_director_defeat_produces_rescue_reward) {
     progression.rescue_draft.push_back({.id = "rescue_a", .name = "Rescue A"});
 
     MatchDirector director;
-    DEFN_CHECK(director.configure(&progression, &unit_loader, &grid));
+    DEFN_REQUIRE(director.configure(&progression, &unit_loader, &grid));
     director.load_level_definition(make_empty_level(), "level_01");
     director.begin_match();
 
     const MatchUpdate update = director.handle_base_destroyed();
-    DEFN_CHECK(update.match_finished);
-    DEFN_REQUIRE(update.score_screen.has_value());
-    DEFN_CHECK(!update.score_screen->victory);
-    DEFN_CHECK_EQ(update.score_screen->reward.source, String("rescue"));
-    DEFN_CHECK_EQ(update.score_screen->reward.level_id, String("level_02"));
+    const bool defeat_reward_matches = update.match_ended.has_value() && !update.match_ended->victory &&
+                                       update.match_ended->reward_options.source == "rescue" && update.match_ended->reward_options.level_id == "level_02";
+    DEFN_CHECK(defeat_reward_matches);
 
     progression.save_called = false;
-    DEFN_CHECK(director.select_upgrade("rescue_a"));
-    DEFN_CHECK(director.finalize_selected_upgrade());
-    DEFN_CHECK(progression.rescue_claimed);
-    DEFN_CHECK(progression.save_called);
+    const bool rescue_finalization_behaved =
+        director.select_upgrade("rescue_a") && director.finalize_selected_upgrade() && progression.rescue_claimed && progression.save_called;
+    DEFN_CHECK(rescue_finalization_behaved);
 }
 
 } // namespace defn

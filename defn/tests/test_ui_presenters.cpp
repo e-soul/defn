@@ -470,8 +470,13 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
     UnitRuntimeProfile combat_profile = UnitRuntimeProfile::combatant();
     combat_profile.enable_sound = false;
 
-    UnitSpawnRequest request{.config = combat_config, .position = Vector2(80.0, 90.0)};
-    auto *combat_unit = UnitFactory::materialize(request, combat_profile);
+    SpawnUnitIntent request{
+        .unit_id = "jackal",
+        .side = MatchUnitSide::Hostile,
+        .position = {.x = 80.0, .y = 90.0},
+        .runtime_profile = combat_profile,
+    };
+    auto *combat_unit = UnitFactory::materialize(request, combat_config);
     DEFN_REQUIRE(combat_unit != nullptr);
     UnitFactory::initialize(combat_unit);
     DEFN_CHECK_EQ(combat_unit->get_side(), UnitSide::HOSTILE);

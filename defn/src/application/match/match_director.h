@@ -2,18 +2,17 @@
 #define MATCH_DIRECTOR_H
 
 #include "deployment_service.h"
+#include "match_outputs.h"
 #include "match_session.h"
 #include "progression_service.h"
 #include "runtime_service_interfaces.h"
-#include "score_screen_models.h"
 #include "spawn_scheduler.h"
 #include "unit_data.h"
-#include "unit_spawn_request.h"
 
-#include <godot_cpp/variant/packed_string_array.hpp>
 #include <godot_cpp/variant/string.hpp>
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace defn {
@@ -21,32 +20,16 @@ namespace defn {
 using namespace godot;
 
 struct EnemyDefeatedReport {
-  int bounty = 0;
-};
-
-struct MatchUpdate {
-    std::vector<UnitSpawnRequest> friendly_spawn_requests;
-    std::vector<UnitSpawnRequest> enemy_spawn_requests;
-    std::optional<int> wave_changed;
-    bool resources_changed = false;
-    bool hearts_changed = false;
-    bool score_changed = false;
-    bool match_finished = false;
-    int core_resource = 0;
-    int hearts = 0;
-    int score = 0;
-    int bounty_awarded = 0;
-    std::optional<ScoreScreenModel> score_screen;
+    int bounty = 0;
 };
 
 class MatchDirector {
   public:
     bool configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid);
-    bool load_level(const String &path);
     void load_level_definition(const LevelDefinition &level_definition, const String &level_id);
     void begin_match();
     MatchUpdate update(double delta);
-    MatchUpdate handle_deploy_request(const String &unit_type);
+    MatchUpdate handle_deploy_request(const std::string &unit_id);
     MatchUpdate handle_enemy_defeated(const EnemyDefeatedReport &report);
     MatchUpdate handle_base_durability_changed(int current_hp);
     MatchUpdate handle_base_destroyed();
@@ -62,16 +45,16 @@ class MatchDirector {
     String get_background_path() const { return spawn_scheduler_.get_background_path(); }
     std::vector<UnitConfig> build_available_friendlies() const;
 
-    const ScoreScreenModel *get_pending_score_screen() const;
-    bool select_upgrade(const String &upgrade_id);
+    const MatchEnded *get_pending_match_end() const;
+    bool select_upgrade(const std::string &upgrade_id);
     bool finalize_selected_upgrade();
-    void clear_pending_score_screen() { pending_score_screen_.reset(); }
+    void clear_pending_match_end() { pending_match_end_.reset(); }
 
   private:
     MatchUpdate finish_match(bool victory);
     MatchUpdate make_resource_update() const;
     MatchUpdate make_hearts_update() const;
-    ScoreScreenRewardModel build_reward_model(bool victory) const;
+    MatchRewardOptions build_reward_options(bool victory) const;
     String determine_next_level_id(bool victory) const;
 
     ProgressionService *campaign_ = nullptr;
@@ -81,7 +64,7 @@ class MatchDirector {
     MatchSession match_session_;
     DeploymentService deployment_service_;
     SpawnScheduler spawn_scheduler_;
-    std::optional<ScoreScreenModel> pending_score_screen_;
+    std::optional<MatchEnded> pending_match_end_;
 };
 
 } // namespace defn

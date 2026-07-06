@@ -1,18 +1,20 @@
 #include "game_manager.h"
 
 #include "base_objective.h"
+#include "bounty_energy_effect.h"
 #include "collision_layers.h"
 #include "data_paths.h"
 #include "game_background_builder.h"
 #include "grid_manager.h"
 #include "hud.h"
+#include "level_loader.h"
 #include "match_director.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
 #include "scene_navigator.h"
+#include "score_screen_models.h"
 #include "unit.h"
 #include "unit_factory.h"
-#include "bounty_energy_effect.h"
 #include <algorithm>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
@@ -26,6 +28,65 @@ namespace defn {
 namespace {
 
 constexpr real_t HALF = 2.0F;
+
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+UpgradeCardViewModel to_upgrade_card_view_model(const MatchUpgradeOption &option) {
+    return {
+        .id = to_godot_string(option.id),
+        .name = to_godot_string(option.name),
+        .description = to_godot_string(option.description),
+        .emoji = to_godot_string(option.emoji),
+        .category = to_godot_string(option.category),
+        .owned_count = option.owned_count,
+    };
+}
+
+std::vector<UpgradeCardViewModel> to_upgrade_card_view_models(const std::vector<MatchUpgradeOption> &options) {
+    std::vector<UpgradeCardViewModel> result;
+    result.reserve(options.size());
+    for (const auto &option : options) {
+        result.push_back(to_upgrade_card_view_model(option));
+    }
+    return result;
+}
+
+ScoreScreenRewardModel to_score_screen_reward_model(const MatchRewardOptions &options) {
+    ScoreScreenRewardModel reward;
+    reward.source = to_godot_string(options.source);
+    reward.level_id = to_godot_string(options.level_id);
+    reward.title = to_godot_string(options.title);
+    reward.subtitle = to_godot_string(options.subtitle);
+    reward.available_upgrades = to_upgrade_card_view_models(options.available_upgrades);
+    if (options.selected_upgrade.has_value()) {
+        reward.selected_upgrade = to_upgrade_card_view_model(*options.selected_upgrade);
+    }
+    return reward;
+}
+
+ScoreScreenModel to_score_screen_model(const MatchEnded &match_end) {
+    const MatchSummaryModel &summary = match_end.summary_model;
+    ScoreScreenModel model;
+    model.victory = summary.victory;
+    model.enemies_killed = summary.enemies_killed;
+    model.kill_score = summary.kill_score;
+    model.hearts_remaining = summary.hearts_remaining;
+    model.hearts_total = summary.hearts_total;
+    model.integrity_bonus = summary.integrity_bonus;
+    model.completion_bonus = summary.completion_bonus;
+    model.level_score = summary.level_score;
+    model.new_total_score = summary.new_total_score;
+    model.current_level_id = to_godot_string(summary.current_level_id);
+    model.next_level_id = to_godot_string(summary.next_level_id);
+    for (const auto &new_unlock : summary.new_unlocks) {
+        model.new_unlocks.push_back(to_godot_string(new_unlock));
+    }
+    model.reward = to_score_screen_reward_model(match_end.reward_options);
+    model.owned_upgrades = to_upgrade_card_view_models(match_end.owned_upgrades);
+    return model;
+}
 
 } // namespace
 
@@ -49,10 +110,12 @@ void GameManager::_ready() {
     }
 
     match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
-    if (!match_director_.load_level(level_path)) {
+    const auto loaded_level = LevelLoader::load(level_path);
+    if (!loaded_level) {
         UtilityFunctions::printerr("GameManager: Failed to load level: ", level_path);
         return;
     }
+    match_director_.load_level_definition(*loaded_level, level_id);
     match_director_.begin_match();
 
     // Setup camera and visual layers using background from level data
@@ -262,43 +325,60 @@ void GameManager::add_enemy_unit(Unit *unit) {
     entity_container->add_child(unit);
 }
 
-void GameManager::refresh_resource_ui() {
+Unit *GameManager::materialize_spawn_intent(const SpawnUnitIntent &intent) {
+    auto config = unit_data_.get_unit(to_godot_string(intent.unit_id));
+    if (!config) {
+        UtilityFunctions::printerr("GameManager: Missing unit config for spawn intent: ", to_godot_string(intent.unit_id));
+        return nullptr;
+    }
+
+    if (intent.side == MatchUnitSide::Friendly) {
+        if (auto *progression = CampaignService::get_singleton()) {
+            *config = progression->get_effective_friendly_unit_config(*config);
+        }
+    }
+
+    return UnitFactory::materialize(intent, *config);
+}
+
+void GameManager::refresh_resource_ui(int energy) {
     if (hud == nullptr) {
         return;
     }
 
-    hud->update_core_resource(match_director_.get_core_resource());
-    hud->update_card_affordability(match_director_.get_core_resource());
+    hud->update_core_resource(energy);
+    hud->update_card_affordability(energy);
 }
 
 void GameManager::apply_match_update(const MatchUpdate &update) {
-    for (const UnitSpawnRequest &friendly : update.friendly_spawn_requests) {
-        add_friendly_unit(UnitFactory::materialize(friendly));
-    }
-
-    for (const UnitSpawnRequest &enemy : update.enemy_spawn_requests) {
-        add_enemy_unit(UnitFactory::materialize(enemy));
+    for (const SpawnUnitIntent &intent : update.spawn_unit_intents) {
+        Unit *unit = materialize_spawn_intent(intent);
+        if (intent.side == MatchUnitSide::Friendly) {
+            add_friendly_unit(unit);
+        } else {
+            add_enemy_unit(unit);
+        }
     }
 
     if (hud != nullptr) {
         if (update.wave_changed.has_value()) {
-            hud->update_wave(*update.wave_changed, match_director_.get_total_waves());
+            hud->update_wave(update.wave_changed->current_wave, update.wave_changed->total_waves);
         }
-        if (update.resources_changed) {
-            refresh_resource_ui();
+        if (update.resource_changed.has_value()) {
+            refresh_resource_ui(update.resource_changed->energy);
         }
-        if (update.hearts_changed) {
-            hud->update_hearts(update.hearts);
+        if (update.integrity_changed.has_value()) {
+            hud->update_hearts(update.integrity_changed->hearts);
         }
-        if (update.score_changed) {
-            hud->update_score(update.score);
+        if (update.score_changed.has_value()) {
+            hud->update_score(update.score_changed->kill_score);
         }
-        if (update.score_screen.has_value()) {
-            hud->show_score_screen(*update.score_screen);
+        if (update.match_ended.has_value()) {
+            hud->show_score_screen(to_score_screen_model(*update.match_ended));
         }
     }
 
-    if (update.match_finished && core_resource_timer != nullptr) {
+    if (update.match_ended.has_value() && core_resource_timer != nullptr) {
         core_resource_timer->stop();
     }
 }
@@ -306,11 +386,10 @@ void GameManager::apply_match_update(const MatchUpdate &update) {
 void GameManager::on_enemy_died(Node *unit) {
     auto *hostile = Object::cast_to<Unit>(unit);
     const Vector2 death_position = hostile != nullptr ? hostile->get_global_position() : Vector2();
-    const MatchUpdate update = hostile != nullptr && !hostile->is_queued_for_deletion()
-                                    ? match_director_.handle_enemy_defeated({.bounty = hostile->get_bounty()})
-                                    : MatchUpdate{};
-    if (entity_container != nullptr && update.bounty_awarded > 0) {
-        vfx::spawn_bounty_energy_effect(entity_container, death_position, update.bounty_awarded);
+    const MatchUpdate update =
+        hostile != nullptr && !hostile->is_queued_for_deletion() ? match_director_.handle_enemy_defeated({.bounty = hostile->get_bounty()}) : MatchUpdate{};
+    if (entity_container != nullptr && update.score_changed.has_value() && update.score_changed->bounty_awarded > 0) {
+        vfx::spawn_bounty_energy_effect(entity_container, death_position, update.score_changed->bounty_awarded);
     }
     apply_match_update(update);
 }
@@ -328,14 +407,14 @@ void GameManager::on_base_destroyed() {
 
 void GameManager::on_core_resource_tick() { apply_match_update(match_director_.handle_core_resource_tick()); }
 
-void GameManager::on_deploy_requested(const String &unit_type) { apply_match_update(match_director_.handle_deploy_request(unit_type)); }
+void GameManager::on_deploy_requested(const String &unit_type) { apply_match_update(match_director_.handle_deploy_request(to_std_string(unit_type))); }
 
 void GameManager::on_score_screen_next_level(const String &level_id) {
     if (!match_director_.finalize_selected_upgrade()) {
         return;
     }
 
-    match_director_.clear_pending_score_screen();
+    match_director_.clear_pending_match_end();
     SceneNavigator::go_to_level(get_tree(), level_id);
 }
 
@@ -344,7 +423,7 @@ void GameManager::on_score_screen_retry(const String &level_id) {
         return;
     }
 
-    match_director_.clear_pending_score_screen();
+    match_director_.clear_pending_match_end();
     SceneNavigator::go_to_level(get_tree(), level_id);
 }
 
@@ -353,18 +432,18 @@ void GameManager::on_score_screen_main_menu() {
         return;
     }
 
-    match_director_.clear_pending_score_screen();
+    match_director_.clear_pending_match_end();
     SceneNavigator::go_to_main_menu(get_tree());
 }
 
 void GameManager::on_score_screen_upgrade_selected(const String &upgrade_id) {
-    if (!match_director_.select_upgrade(upgrade_id)) {
+    if (!match_director_.select_upgrade(to_std_string(upgrade_id))) {
         return;
     }
 
-    const ScoreScreenModel *score_screen = match_director_.get_pending_score_screen();
-    if (score_screen != nullptr && hud != nullptr) {
-        hud->show_score_screen(*score_screen);
+    const MatchEnded *match_end = match_director_.get_pending_match_end();
+    if (match_end != nullptr && hud != nullptr) {
+        hud->show_score_screen(to_score_screen_model(*match_end));
     }
 }
 

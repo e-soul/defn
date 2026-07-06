@@ -133,6 +133,7 @@ extension_sources = [
     "src/adapters/godot/combat/combat_target_selector.cpp",
     "src/adapters/godot/combat/combat_attack_executor.cpp",
     "src/framework/godot_nodes/combat_component.cpp",
+    "src/domain/content/unit_runtime_profile.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
     "src/framework/godot_nodes/unit.cpp",
     "src/framework/godot_nodes/unit_factory.cpp",

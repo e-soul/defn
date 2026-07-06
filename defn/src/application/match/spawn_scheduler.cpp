@@ -1,6 +1,5 @@
 #include "spawn_scheduler.h"
 
-#include "level_loader.h"
 #include "unit_data.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -12,6 +11,8 @@ namespace {
 std::string to_std_string(const String &value) { return value.utf8().get_data(); }
 
 String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+MatchUnitSide to_match_unit_side(UnitSide side) { return side == UnitSide::FRIENDLY ? MatchUnitSide::Friendly : MatchUnitSide::Hostile; }
 
 SpawnTimelineDefinition to_spawn_timeline_definition(const LevelDefinition &level_definition) {
     SpawnTimelineDefinition result;
@@ -33,16 +34,6 @@ SpawnTimelineDefinition to_spawn_timeline_definition(const LevelDefinition &leve
 
 } // namespace
 
-bool SpawnScheduler::load_level(const String &path) {
-    const auto loaded_level = LevelLoader::load(path);
-    if (!loaded_level) {
-        return false;
-    }
-
-    load_level_definition(*loaded_level);
-    return true;
-}
-
 void SpawnScheduler::load_level_definition(const LevelDefinition &level_definition) {
     level_definition_ = level_definition;
     timeline_.load(to_spawn_timeline_definition(level_definition));
@@ -60,7 +51,9 @@ void SpawnScheduler::stop() { timeline_.stop(); }
 SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
     SpawnSchedulerUpdate update;
     const SpawnTimelineUpdate timeline_update = timeline_.advance(delta);
-    update.wave_changed = timeline_update.wave_changed;
+    if (timeline_update.wave_changed.has_value()) {
+        update.wave_changed = WaveChanged{.current_wave = *timeline_update.wave_changed, .total_waves = get_total_waves()};
+    }
     update.all_spawns_completed = timeline_update.all_spawns_completed;
 
     for (const auto &spawn : timeline_update.due_spawns) {
@@ -73,11 +66,13 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
             continue;
         }
 
-        const real_t spawn_y_pos = grid_->sample_belt_y();
-        const real_t spawn_x_pos = grid_->spawn_x();
-        update.spawn_requests.push_back({
-            .config = *config,
-            .position = Vector2(spawn_x_pos, spawn_y_pos),
+        const double spawn_y_pos = grid_->sample_belt_y();
+        const double spawn_x_pos = grid_->spawn_x();
+        update.spawn_unit_intents.push_back({
+            .unit_id = spawn.type,
+            .side = to_match_unit_side(config->side),
+            .position = {.x = spawn_x_pos, .y = spawn_y_pos},
+            .runtime_profile = UnitRuntimeProfile::from_unit_config(*config),
         });
     }
 

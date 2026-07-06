@@ -2,7 +2,46 @@
 
 #include "progression_presentation.h"
 
+#include <godot_cpp/variant/packed_string_array.hpp>
+
 namespace defn {
+
+namespace {
+
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+std::vector<std::string> to_std_strings(const PackedStringArray &values) {
+    std::vector<std::string> result;
+    result.reserve(values.size());
+    for (const auto &value : values) {
+        result.push_back(to_std_string(String(value)));
+    }
+    return result;
+}
+
+MatchUpgradeOption to_match_upgrade_option(const UpgradeCardViewModel &card) {
+    return {
+        .id = to_std_string(card.id),
+        .name = to_std_string(card.name),
+        .description = to_std_string(card.description),
+        .emoji = to_std_string(card.emoji),
+        .category = to_std_string(card.category),
+        .owned_count = card.owned_count,
+    };
+}
+
+std::vector<MatchUpgradeOption> to_match_upgrade_options(const std::vector<UpgradeCardViewModel> &cards) {
+    std::vector<MatchUpgradeOption> result;
+    result.reserve(cards.size());
+    for (const auto &card : cards) {
+        result.push_back(to_match_upgrade_option(card));
+    }
+    return result;
+}
+
+} // namespace
 
 bool MatchDirector::configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid) {
     campaign_ = campaign;
@@ -10,15 +49,6 @@ bool MatchDirector::configure(ProgressionService *campaign, const UnitCatalog *u
     grid_ = grid;
     spawn_scheduler_.configure(unit_catalog_, grid_);
     return campaign_ != nullptr && unit_catalog_ != nullptr && grid_ != nullptr;
-}
-
-bool MatchDirector::load_level(const String &path) {
-    if (campaign_ == nullptr || !spawn_scheduler_.load_level(path)) {
-        return false;
-    }
-
-    level_id_ = campaign_->get_current_level_id();
-    return true;
 }
 
 void MatchDirector::load_level_definition(const LevelDefinition &level_definition, const String &level_id) {
@@ -39,7 +69,7 @@ void MatchDirector::begin_match() {
     };
 
     match_session_.start(match_config);
-    pending_score_screen_.reset();
+    pending_match_end_.reset();
     deployment_service_.configure(&match_session_, unit_catalog_, campaign_, grid_);
     spawn_scheduler_.start();
 }
@@ -73,11 +103,11 @@ MatchUpdate MatchDirector::update(double delta) {
     }
 
     const SpawnSchedulerUpdate scheduler_update = spawn_scheduler_.update(delta);
-    update_result.enemy_spawn_requests = scheduler_update.spawn_requests;
+    update_result.spawn_unit_intents = scheduler_update.spawn_unit_intents;
     update_result.wave_changed = scheduler_update.wave_changed;
 
-    for (const UnitSpawnRequest &enemy : update_result.enemy_spawn_requests) {
-        if (!enemy.config.name.is_empty()) {
+    for (const SpawnUnitIntent &intent : update_result.spawn_unit_intents) {
+        if (intent.side == MatchUnitSide::Hostile && !intent.unit_id.empty()) {
             match_session_.record_enemy_spawned();
         }
     }
@@ -93,13 +123,12 @@ MatchUpdate MatchDirector::update(double delta) {
     return update_result;
 }
 
-MatchUpdate MatchDirector::handle_deploy_request(const String &unit_type) {
+MatchUpdate MatchDirector::handle_deploy_request(const std::string &unit_id) {
     MatchUpdate update_result;
-    const DeploymentResult result = deployment_service_.deploy_friendly(unit_type);
-    if (result.succeeded && result.spawn_request.has_value()) {
-        update_result.friendly_spawn_requests.push_back(*result.spawn_request);
-        update_result.resources_changed = true;
-        update_result.core_resource = result.remaining_energy;
+    const DeploymentResult result = deployment_service_.deploy_friendly(unit_id);
+    if (result.succeeded && result.spawn_intent.has_value()) {
+        update_result.spawn_unit_intents.push_back(*result.spawn_intent);
+        update_result.resource_changed = ResourceChanged{.energy = result.remaining_energy};
     }
 
     return update_result;
@@ -112,9 +141,9 @@ MatchUpdate MatchDirector::handle_enemy_defeated(const EnemyDefeatedReport &repo
 
     const int bounty_awarded = match_session_.record_enemy_died(report.bounty);
     MatchUpdate update_result = make_resource_update();
-    update_result.score_changed = true;
-    update_result.score = match_session_.get_kill_score();
-    update_result.bounty_awarded = bounty_awarded;
+    const int kill_score = match_session_.get_kill_score();
+    const int career_score = campaign_ != nullptr ? campaign_->get_total_score() : 0;
+    update_result.score_changed = ScoreChanged{.kill_score = kill_score, .total_score = career_score + kill_score, .bounty_awarded = bounty_awarded};
     return update_result;
 }
 
@@ -133,41 +162,41 @@ MatchUpdate MatchDirector::handle_core_resource_tick() {
     return make_resource_update();
 }
 
-const ScoreScreenModel *MatchDirector::get_pending_score_screen() const { return pending_score_screen_.has_value() ? &*pending_score_screen_ : nullptr; }
+const MatchEnded *MatchDirector::get_pending_match_end() const { return pending_match_end_.has_value() ? &*pending_match_end_ : nullptr; }
 
-bool MatchDirector::select_upgrade(const String &upgrade_id) {
-    if (upgrade_id.is_empty() || !pending_score_screen_.has_value()) {
+bool MatchDirector::select_upgrade(const std::string &upgrade_id) {
+    if (upgrade_id.empty() || !pending_match_end_.has_value()) {
         return false;
     }
 
-    const UpgradeCardViewModel *selected_upgrade = pending_score_screen_->reward.find_upgrade(upgrade_id);
+    const MatchUpgradeOption *selected_upgrade = pending_match_end_->reward_options.find_upgrade(upgrade_id);
     if (selected_upgrade == nullptr) {
         return false;
     }
 
-    pending_score_screen_->reward.selected_upgrade = *selected_upgrade;
+    pending_match_end_->reward_options.selected_upgrade = *selected_upgrade;
     return true;
 }
 
 bool MatchDirector::finalize_selected_upgrade() {
-    if (!pending_score_screen_.has_value()) {
+    if (!pending_match_end_.has_value()) {
         return true;
     }
 
-    auto &reward = pending_score_screen_->reward;
+    auto &reward = pending_match_end_->reward_options;
     if (reward.available_upgrades.empty()) {
         return true;
     }
 
-    if (campaign_ == nullptr || !reward.selected_upgrade.has_value() || reward.source.is_empty() || reward.level_id.is_empty()) {
+    if (campaign_ == nullptr || !reward.selected_upgrade.has_value() || reward.source.empty() || reward.level_id.empty()) {
         return false;
     }
 
     bool claim_succeeded = false;
     if (reward.source == "first_clear") {
-        claim_succeeded = campaign_->claim_level_upgrade(reward.level_id, reward.selected_upgrade->id);
+        claim_succeeded = campaign_->claim_level_upgrade(to_godot_string(reward.level_id), to_godot_string(reward.selected_upgrade->id));
     } else if (reward.source == "rescue") {
-        claim_succeeded = campaign_->claim_rescue_draft(reward.level_id, reward.selected_upgrade->id);
+        claim_succeeded = campaign_->claim_rescue_draft(to_godot_string(reward.level_id), to_godot_string(reward.selected_upgrade->id));
     }
 
     if (!claim_succeeded) {
@@ -188,7 +217,7 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
     const int level_score = match_session_.calculate_level_score(victory);
 
     campaign_->add_score(level_score);
-    const ScoreScreenRewardModel reward = build_reward_model(victory);
+    const MatchRewardOptions reward = build_reward_options(victory);
     if (victory) {
         campaign_->mark_level_completed(level_id_, level_score);
     }
@@ -198,54 +227,55 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
 
     const PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*campaign_, victory, level_id_);
     const String next_level_id = determine_next_level_id(victory);
-    pending_score_screen_ = match_session_.build_end_game_summary(victory, new_total, level_id_, next_level_id, new_unlocks, reward);
-    pending_score_screen_->owned_upgrades = campaign_->build_owned_upgrade_cards();
+    pending_match_end_ = MatchEnded{
+        .victory = victory,
+        .summary_model =
+            match_session_.build_end_game_summary(victory, new_total, to_std_string(level_id_), to_std_string(next_level_id), to_std_strings(new_unlocks)),
+        .reward_options = reward,
+        .owned_upgrades = to_match_upgrade_options(campaign_->build_owned_upgrade_cards()),
+    };
 
-    update_result.match_finished = true;
-    update_result.hearts_changed = true;
-    update_result.hearts = match_session_.get_base_integrity();
-    update_result.score_screen = pending_score_screen_;
+    update_result.integrity_changed = IntegrityChanged{.hearts = match_session_.get_base_integrity()};
+    update_result.match_ended = pending_match_end_;
     return update_result;
 }
 
 MatchUpdate MatchDirector::make_resource_update() const {
     MatchUpdate update_result;
-    update_result.resources_changed = true;
-    update_result.core_resource = match_session_.get_core_resource();
+    update_result.resource_changed = ResourceChanged{.energy = match_session_.get_core_resource()};
     return update_result;
 }
 
 MatchUpdate MatchDirector::make_hearts_update() const {
     MatchUpdate update_result;
-    update_result.hearts_changed = true;
-    update_result.hearts = match_session_.get_base_integrity();
+    update_result.integrity_changed = IntegrityChanged{.hearts = match_session_.get_base_integrity()};
     return update_result;
 }
 
-ScoreScreenRewardModel MatchDirector::build_reward_model(bool victory) const {
-    ScoreScreenRewardModel reward;
+MatchRewardOptions MatchDirector::build_reward_options(bool victory) const {
+    MatchRewardOptions reward;
     if (campaign_ == nullptr) {
         return reward;
     }
 
     const String frontier_level_id = campaign_->get_frontier_level_id();
     if (victory && campaign_->can_claim_level_upgrade(level_id_)) {
-        reward.available_upgrades = campaign_->build_upgrade_draft_for_level(level_id_);
+        reward.available_upgrades = to_match_upgrade_options(campaign_->build_upgrade_draft_for_level(level_id_));
         if (!reward.available_upgrades.empty()) {
             reward.source = "first_clear";
-            reward.level_id = level_id_;
+            reward.level_id = to_std_string(level_id_);
         }
     } else if (!victory && !frontier_level_id.is_empty() && campaign_->can_claim_rescue_draft(frontier_level_id)) {
-        reward.available_upgrades = campaign_->build_rescue_draft_for_level(frontier_level_id);
+        reward.available_upgrades = to_match_upgrade_options(campaign_->build_rescue_draft_for_level(frontier_level_id));
         if (!reward.available_upgrades.empty()) {
             reward.source = "rescue";
-            reward.level_id = frontier_level_id;
+            reward.level_id = to_std_string(frontier_level_id);
         }
     }
 
-    if (!reward.source.is_empty() && !reward.level_id.is_empty()) {
-        reward.title = ProgressionPresentation::format_reward_title(reward.source, reward.level_id);
-        reward.subtitle = ProgressionPresentation::format_reward_subtitle(reward.source, reward.level_id);
+    if (!reward.source.empty() && !reward.level_id.empty()) {
+        reward.title = to_std_string(ProgressionPresentation::format_reward_title(to_godot_string(reward.source), to_godot_string(reward.level_id)));
+        reward.subtitle = to_std_string(ProgressionPresentation::format_reward_subtitle(to_godot_string(reward.source), to_godot_string(reward.level_id)));
     }
 
     return reward;

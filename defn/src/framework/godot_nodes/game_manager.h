@@ -46,9 +46,10 @@ class GameManager : public Node2D {
     static Vector2 get_base_objective_position();
     static bool is_valid_scroll_trigger_unit(Area2D *area, const char *required_group);
     void update_camera_scroll(double delta);
+    Unit *materialize_spawn_intent(const SpawnUnitIntent &intent);
     void add_friendly_unit(Unit *unit);
     void add_enemy_unit(Unit *unit);
-    void refresh_resource_ui();
+    void refresh_resource_ui(int energy);
     void apply_match_update(const MatchUpdate &update);
 
     // Signal callbacks
