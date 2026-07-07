@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
   "label": "clang-tidy",
-  "message": "0 issues",
-  "color": "brightgreen"
+  "message": "9 issues",
+  "color": "yellow"
 }
