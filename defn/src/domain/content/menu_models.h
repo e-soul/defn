@@ -1,37 +1,79 @@
 #ifndef MENU_MODELS_H
 #define MENU_MODELS_H
 
-#include <godot_cpp/variant/color.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
-#include <godot_cpp/variant/string.hpp>
+#include "content_values.h"
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace defn {
 
-using namespace godot;
-
 enum class MenuDefinitionType { BUTTONS, OPTIONS };
 enum class MenuSettingKind { SECTION, DISPLAY_MODE, RESOLUTION, VSYNC, BUS_VOLUME, UNKNOWN };
+enum class MenuActionType { NONE, GOTO_MENU, LEVEL_SELECT, PROGRESSION, START_GAME, QUIT, RESUME, MAIN_MENU };
+
+struct MenuStyleBoxData {
+    ContentColor bg_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    ContentColor border_color = {0.4F, 0.4F, 0.5F, 1.0F};
+    int border_width = 2;
+    int corner_radius = 8;
+    ContentColor font_color = {0.9F, 0.9F, 0.95F, 1.0F};
+};
+
+struct MenuOptionsStyleData {
+    int label_font_size = 24;
+    int label_min_width = 250;
+    int control_min_width = 300;
+    int control_min_height = 40;
+    int row_separation = 12;
+    int section_font_size = 28;
+    int value_font_size = 20;
+    ContentColor section_font_color = {1.0F, 0.85F, 0.3F, 1.0F};
+    ContentColor label_font_color = {0.85F, 0.85F, 0.9F, 1.0F};
+    ContentColor value_font_color = {0.7F, 0.8F, 1.0F, 1.0F};
+};
+
+struct MenuStyleData {
+    int button_font_size = 32;
+    int button_min_width = 400;
+    int button_min_height = 60;
+    int button_separation = 16;
+    MenuStyleBoxData normal;
+    MenuStyleBoxData hover = {
+        .bg_color = {1.0F, 1.0F, 1.0F, 1.0F},
+        .border_color = {0.4F, 0.4F, 0.5F, 1.0F},
+        .border_width = 2,
+        .corner_radius = 8,
+        .font_color = {1.0F, 1.0F, 1.0F, 1.0F},
+    };
+    MenuStyleBoxData pressed = {
+        .bg_color = {1.0F, 1.0F, 1.0F, 1.0F},
+        .border_color = {0.4F, 0.4F, 0.5F, 1.0F},
+        .border_width = 2,
+        .corner_radius = 8,
+        .font_color = {0.8F, 0.8F, 0.9F, 1.0F},
+    };
+    MenuOptionsStyleData options;
+};
 
 struct MenuAction {
-    String id;
-    String label;
-    String action;
-    String target;
+    std::string id;
+    std::string label;
+    MenuActionType action_type = MenuActionType::NONE;
+    std::string target;
 };
 
 struct MenuOptionChoice {
-    String label;
-    String value;
+    std::string label;
+    std::string value;
 };
 
 struct MenuSetting {
-    String id;
-    String label;
-    String setting_id;
-    String bus_name;
+    std::string id;
+    std::string label;
+    std::string setting_id;
+    std::string bus_name;
     MenuSettingKind kind = MenuSettingKind::UNKNOWN;
     int min_value = 0;
     int max_value = 100;
@@ -40,20 +82,20 @@ struct MenuSetting {
 };
 
 struct MenuDefinition {
-    String name;
+    std::string name;
     MenuDefinitionType type = MenuDefinitionType::BUTTONS;
-    Color overlay_color = Color(0, 0, 0, 0.6);
+    ContentColor overlay_color = {0.0F, 0.0F, 0.0F, 0.6F};
     std::vector<MenuAction> entries;
     std::vector<MenuSetting> settings;
     std::optional<MenuAction> back;
 };
 
 struct MenuContentData {
-    String background;
-    Dictionary style_data;
+    std::string background;
+    MenuStyleData style;
     std::vector<MenuDefinition> menus;
 
-    const MenuDefinition *find_menu(const String &menu_name) const {
+    const MenuDefinition *find_menu(const std::string &menu_name) const {
         for (const auto &menu : menus) {
             if (menu.name == menu_name) {
                 return &menu;

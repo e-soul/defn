@@ -21,6 +21,7 @@ class MenuDataLoader {
 };
 
 MenuDefinitionType parse_menu_type(const Dictionary &menu_dict);
+MenuActionType parse_menu_action_type(const String &action);
 MenuSettingKind parse_setting_kind(const Dictionary &setting_dict);
 
 } // namespace defn

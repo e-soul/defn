@@ -1,6 +1,6 @@
 #include "progression_manager.h"
 
-#include "content_validator.h"
+#include "content_startup_validator.h"
 #include "data_paths.h"
 #include "progression_presentation.h"
 #include "unit_data.h"
@@ -27,7 +27,7 @@ PackedStringArray to_packed_string_array(const std::vector<std::string> &values)
 
 ProgressionUnitStats to_progression_unit_stats(const UnitConfig &config) {
     return {
-        .unit_id = to_std_string(config.name),
+        .unit_id = config.name,
         .friendly = config.side == UnitSide::FRIENDLY,
         .hp = config.hp,
         .ranged_damage = config.ranged_damage,
@@ -104,7 +104,7 @@ void CampaignService::unregister_singleton() {
 }
 
 void CampaignService::initialize() {
-    ContentValidator::report_startup_validation();
+    ContentStartupValidator::report_startup_validation();
     catalog_.load(DataPaths::PROGRESSION_DATA);
     upgrade_catalog_.load(DataPaths::UPGRADES_DATA);
     load_save();

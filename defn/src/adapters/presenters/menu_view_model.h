@@ -19,7 +19,7 @@ struct MenuIntent {
 struct MenuActionPresentationInput {
     std::string id;
     std::string label;
-    std::string action;
+    MenuIntentType intent_type = MenuIntentType::None;
     std::string target;
 };
 
@@ -97,7 +97,7 @@ struct ProgressionScreenViewModel {
     MenuButtonViewModel back_button;
 };
 
-[[nodiscard]] MenuIntent build_menu_intent(const std::string &action, const std::string &target = {});
+[[nodiscard]] MenuIntent build_menu_intent(MenuIntentType intent_type, const std::string &target = {});
 [[nodiscard]] MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input);
 [[nodiscard]] LevelSelectViewModel build_level_select_view_model(std::vector<LevelSelectRowViewModel> levels);
 [[nodiscard]] ProgressionScreenViewModel build_progression_screen_view_model();

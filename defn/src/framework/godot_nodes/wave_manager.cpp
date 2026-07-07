@@ -49,7 +49,7 @@ void WaveManager::_process(double delta) {
             }
         }
         if (enemy == nullptr) {
-            UtilityFunctions::printerr("WaveManager: Missing unit config for enemy type: ", spawn.type);
+            UtilityFunctions::printerr("WaveManager: Missing unit config for enemy type: ", String(spawn.type.c_str()));
             ++next_spawn_idx;
             continue;
         }

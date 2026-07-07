@@ -1,16 +1,14 @@
 #ifndef LEVEL_DEFINITION_H
 #define LEVEL_DEFINITION_H
 
-#include <godot_cpp/variant/string.hpp>
+#include <string>
 #include <vector>
 
 namespace defn {
 
-using namespace godot;
-
 struct SpawnDefinition {
     double time = 0.0;
-    String type = "jackal";
+    std::string type = "jackal";
 };
 
 struct WaveDefinition {
@@ -20,10 +18,10 @@ struct WaveDefinition {
 
 struct LevelDefinition {
     int level_id = 0;
-    String name;
+    std::string name;
     int starting_core_resource = 100;
     int base_integrity = 3;
-    String background_path;
+    std::string background_path;
     std::vector<WaveDefinition> waves;
 };
 

@@ -1,5 +1,6 @@
 #include "test_harness.h"
 
+#include "content_repository.h"
 #include "content_validator.h"
 #include "json_file_loader.h"
 #include "level_loader.h"
@@ -10,6 +11,7 @@
 #include "upgrade_catalog.h"
 
 #include <algorithm>
+#include <string>
 
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/file_access.hpp>
@@ -86,6 +88,13 @@ bool contains_issue(const ContentValidationReport &report, const String &needle)
 
 bool contains_issues(const ContentValidationReport &report, std::initializer_list<String> needles) {
     return std::ranges::all_of(needles, [&report](const String &needle) { return contains_issue(report, needle); });
+}
+
+void check_content_color_close(const ContentColor &actual, const ContentColor &expected) {
+    DEFN_CHECK_CLOSE(actual.r, expected.r, 0.001F);
+    DEFN_CHECK_CLOSE(actual.g, expected.g, 0.001F);
+    DEFN_CHECK_CLOSE(actual.b, expected.b, 0.001F);
+    DEFN_CHECK_CLOSE(actual.a, expected.a, 0.001F);
 }
 
 ContentValidationReport make_cross_reference_validation_report() {
@@ -200,6 +209,13 @@ void remove_test_file(const String &path) {
     }
 }
 
+void remove_test_directory(const String &path) {
+    Ref<DirAccess> directory = DirAccess::open(path);
+    if (directory.is_valid()) {
+        DirAccess::remove_absolute(path);
+    }
+}
+
 void write_text_file(const String &path, const String &text) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);
     DEFN_REQUIRE(file.is_valid());
@@ -226,6 +242,70 @@ DEFN_TEST(menu_setting_kind_parser_maps_known_and_unknown_values) {
     unknown_setting["type"] = "slider";
     unknown_setting["setting"] = "bogus";
     DEFN_CHECK_EQ(parse_setting_kind(unknown_setting), MenuSettingKind::UNKNOWN);
+}
+
+DEFN_TEST(menu_action_type_parser_maps_known_and_unknown_values) {
+    DEFN_CHECK_EQ(parse_menu_action_type("goto_menu"), MenuActionType::GOTO_MENU);
+    DEFN_CHECK_EQ(parse_menu_action_type("level_select"), MenuActionType::LEVEL_SELECT);
+    DEFN_CHECK_EQ(parse_menu_action_type("progression"), MenuActionType::PROGRESSION);
+    DEFN_CHECK_EQ(parse_menu_action_type("start_game"), MenuActionType::START_GAME);
+    DEFN_CHECK_EQ(parse_menu_action_type("quit"), MenuActionType::QUIT);
+    DEFN_CHECK_EQ(parse_menu_action_type("resume"), MenuActionType::RESUME);
+    DEFN_CHECK_EQ(parse_menu_action_type("main_menu"), MenuActionType::MAIN_MENU);
+    DEFN_CHECK_EQ(parse_menu_action_type("mystery"), MenuActionType::NONE);
+}
+
+DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
+    Dictionary entry;
+    entry["id"] = "start";
+    entry["label"] = "Start";
+    entry["action"] = "start_game";
+    entry["target"] = "level_01";
+
+    Dictionary normal;
+    normal["bg_color"] = make_array({0.2, 0.3, 0.4, 0.5});
+    normal["font_color"] = make_array({0.8, 0.9, 1.0, 0.7});
+    normal["border_width"] = 4;
+    normal["corner_radius"] = 10;
+
+    Dictionary options;
+    options["label_font_size"] = 21;
+    options["value_font_color"] = make_array({0.6, 0.7, 0.8, 0.9});
+
+    Dictionary style;
+    style["button_font_size"] = 18;
+    style["button_min_width"] = 220;
+    style["normal"] = normal;
+    style["options"] = options;
+
+    Dictionary main_menu;
+    main_menu["entries"] = make_array({entry});
+    main_menu["overlay_color"] = make_array({0.1, 0.2, 0.3, 0.4});
+
+    Dictionary menus;
+    menus["main_menu"] = main_menu;
+
+    Dictionary data;
+    data["background"] = "res://background.png";
+    data["style"] = style;
+    data["menus"] = menus;
+
+    const auto loaded = MenuDataLoader::load_from_data(data);
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_REQUIRE(loaded->menus.size() == 1);
+    DEFN_REQUIRE(loaded->menus[0].entries.size() == 1);
+    DEFN_CHECK_EQ(loaded->background, std::string("res://background.png"));
+    DEFN_CHECK_EQ(loaded->menus[0].entries[0].action_type, MenuActionType::START_GAME);
+    DEFN_CHECK_EQ(loaded->menus[0].entries[0].target, std::string("level_01"));
+    DEFN_CHECK_EQ(loaded->style.button_font_size, 18);
+    DEFN_CHECK_EQ(loaded->style.button_min_width, 220);
+    DEFN_CHECK_EQ(loaded->style.normal.border_width, 4);
+    DEFN_CHECK_EQ(loaded->style.normal.corner_radius, 10);
+    DEFN_CHECK_EQ(loaded->style.options.label_font_size, 21);
+    check_content_color_close(loaded->menus[0].overlay_color, {.r = 0.1F, .g = 0.2F, .b = 0.3F, .a = 0.4F});
+    check_content_color_close(loaded->style.normal.bg_color, {.r = 0.2F, .g = 0.3F, .b = 0.4F, .a = 0.5F});
+    check_content_color_close(loaded->style.normal.font_color, {.r = 0.8F, .g = 0.9F, .b = 1.0F, .a = 0.7F});
+    check_content_color_close(loaded->style.options.value_font_color, {.r = 0.6F, .g = 0.7F, .b = 0.8F, .a = 0.9F});
 }
 
 DEFN_TEST(unit_side_and_rounding_parsers_return_expected_values) {
@@ -261,7 +341,7 @@ DEFN_TEST(level_loader_maps_wave_data_from_dictionary) {
     DEFN_CHECK_EQ(level->level_id, 7);
     DEFN_CHECK_EQ(level->waves.size(), static_cast<size_t>(1));
     DEFN_CHECK_EQ(level->waves[0].spawns.size(), static_cast<size_t>(2));
-    DEFN_CHECK_EQ(level->waves[0].spawns[1].type, String("operator"));
+    DEFN_CHECK_EQ(level->waves[0].spawns[1].type, std::string("operator"));
 }
 
 DEFN_TEST(progression_catalog_loads_unlock_data_from_dictionary) {
@@ -319,6 +399,75 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_CHECK_EQ(friendly->projectile_attack->affected_target_rounding, SplashTargetRoundingMode::CEIL);
     DEFN_CHECK_EQ(loader.get_globals().gameplay_rules.viewport_width, static_cast<real_t>(1280.0F));
     DEFN_CHECK_EQ(loader.get_friendly_units().size(), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(friendly->name, std::string("operator"));
+    check_content_color_close(friendly->health_bar_color, {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F});
+}
+
+DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {
+    const String menu_path = "user://defn_content_repo_menu.json";
+    const String progression_path = "user://defn_content_repo_progression.json";
+    const String upgrades_path = "user://defn_content_repo_upgrades.json";
+    const String unit_path = "user://defn_content_repo_units.json";
+    const String unit_globals_path = "user://defn_content_repo_unit_globals.json";
+    const String levels_directory = "user://defn_content_repo_levels";
+    const String level_path = levels_directory + String("/level_01.json");
+
+    remove_test_file(menu_path);
+    remove_test_file(progression_path);
+    remove_test_file(upgrades_path);
+    remove_test_file(unit_path);
+    remove_test_file(unit_globals_path);
+    remove_test_file(level_path);
+    remove_test_directory(levels_directory);
+
+    DEFN_REQUIRE(DirAccess::make_dir_absolute(levels_directory) == OK);
+    write_text_file(
+        menu_path,
+        R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
+    write_text_file(progression_path, R"({"level_unlocks":[{"level_id":"level_01"}]})");
+    write_text_file(
+        upgrades_path,
+        R"({"base_units":["operator"],"cards":[{"id":"unlock_operator","name":"Unlock Operator","description":"Deploy the operator.","effects":[{"type":"unit_unlock","unit_id":"operator"}]}]})");
+    write_text_file(
+        unit_globals_path,
+        R"({"gameplay_rules":{"viewport_width":1280,"viewport_height":720},"health_bar_color":{"friendly":[0.1,0.8,0.1,1.0],"hostile":[0.9,0.2,0.2,1.0]}})");
+    write_text_file(
+        unit_path,
+        R"({"units":{"operator":{"side":"friendly","hp":120,"cost":25,"ranged_damage":14},"jackal":{"side":"hostile","hp":75,"bounty":6,"ranged_damage":0}}})");
+    write_text_file(
+        level_path,
+        R"({"level_id":1,"name":"Factory","starting_core_resource":150,"base_integrity":4,"waves":[{"wave_number":1,"spawns":[{"time":0.5,"type":"jackal"}]}]})");
+
+    const JsonContentRepository repository({
+        .menu_path = menu_path,
+        .progression_path = progression_path,
+        .upgrades_path = upgrades_path,
+        .unit_path = unit_path,
+        .unit_globals_path = unit_globals_path,
+        .levels_directory = levels_directory,
+    });
+
+    const JsonLoadedContent loaded = repository.load_for_validation();
+    DEFN_CHECK(loaded.load_issues.empty());
+    DEFN_CHECK(loaded.menu_data.has_value());
+    DEFN_CHECK(loaded.progression_loaded);
+    DEFN_CHECK(loaded.upgrades_loaded);
+    DEFN_CHECK(loaded.units_loaded);
+    DEFN_REQUIRE(loaded.levels.size() == 1);
+    DEFN_REQUIRE(loaded.levels[0].definition.has_value());
+    DEFN_CHECK_EQ(loaded.levels[0].definition->waves[0].spawns[0].type, std::string("jackal"));
+
+    const ContentValidationReport report =
+        ContentValidator::validate_loaded_content(loaded.menu_data, &loaded.progression_catalog, &loaded.upgrade_catalog, &loaded.unit_data, loaded.levels);
+    DEFN_CHECK(report.is_valid());
+
+    remove_test_file(menu_path);
+    remove_test_file(progression_path);
+    remove_test_file(upgrades_path);
+    remove_test_file(unit_path);
+    remove_test_file(unit_globals_path);
+    remove_test_file(level_path);
+    remove_test_directory(levels_directory);
 }
 
 DEFN_TEST(json_file_loader_reads_dictionary_and_rejects_bad_inputs) {

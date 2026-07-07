@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cmath>
 #include <initializer_list>
+#include <string>
 #include <vector>
 
 namespace defn {
@@ -88,7 +89,7 @@ Button *find_button_by_text(Node *root, const String &text) {
 
 Callable make_valid_callable(Object *receiver) { return {receiver, "queue_free"}; }
 
-UnitConfig make_presenter_unit_config(const String &name, int cost) {
+UnitConfig make_presenter_unit_config(const std::string &name, int cost) {
     UnitConfig config;
     config.name = name;
     config.cost = cost;
@@ -445,13 +446,13 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
     UnitFactory::initialize(nullptr);
 
     UnitConfig passive_config = make_presenter_unit_config("operator", 25);
-    passive_config.health_bar_color = Color(0.1F, 0.8F, 0.1F, 1.0F);
-    passive_config.health_bar_offset = Vector2(0.0, -20.0);
+    passive_config.health_bar_color = {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F};
+    passive_config.health_bar_offset = {.x = 0.0F, .y = -20.0F};
 
     UnitRuntimeProfile passive_profile = UnitRuntimeProfile::passive_static();
     auto *passive_unit = UnitFactory::create(passive_config, Vector2(12.0, 34.0), passive_profile);
     DEFN_REQUIRE(passive_unit != nullptr);
-    DEFN_CHECK_EQ(passive_unit->get_unit_config().name, String("operator"));
+    DEFN_CHECK_EQ(passive_unit->get_unit_config().name, std::string("operator"));
     DEFN_CHECK_CLOSE(passive_unit->get_position().x, 12.0, 0.001);
     DEFN_CHECK_CLOSE(passive_unit->get_position().y, 34.0, 0.001);
     DEFN_CHECK_CLOSE(passive_unit->get_attack_range(), passive_config.melee_attack_range, 0.001);

@@ -326,7 +326,7 @@ void GameManager::add_enemy_unit(Unit *unit) {
 }
 
 Unit *GameManager::materialize_spawn_intent(const SpawnUnitIntent &intent) {
-    auto config = unit_data_.get_unit(to_godot_string(intent.unit_id));
+    auto config = unit_data_.get_unit(intent.unit_id);
     if (!config) {
         UtilityFunctions::printerr("GameManager: Missing unit config for spawn intent: ", to_godot_string(intent.unit_id));
         return nullptr;

@@ -5,7 +5,7 @@ namespace defn {
 namespace {
 
 MenuButtonViewModel build_button_view_model(const MenuActionPresentationInput &input) {
-    const MenuIntent intent = build_menu_intent(input.action, input.target);
+    const MenuIntent intent = build_menu_intent(input.intent_type, input.target);
     return {
         .id = input.id,
         .label = input.label.empty() ? "???" : input.label,
@@ -45,29 +45,11 @@ MenuButtonViewModel make_back_button(const std::string &target) {
 
 } // namespace
 
-MenuIntent build_menu_intent(const std::string &action, const std::string &target) {
-    if (action == "goto_menu") {
-        return {.type = MenuIntentType::GotoMenu, .target = target};
-    }
-    if (action == "level_select") {
-        return {.type = MenuIntentType::ShowLevelSelect};
-    }
-    if (action == "progression") {
-        return {.type = MenuIntentType::ShowProgression};
-    }
-    if (action == "start_game") {
-        return {.type = MenuIntentType::StartGame};
-    }
-    if (action == "quit") {
-        return {.type = MenuIntentType::Quit};
-    }
-    if (action == "resume") {
-        return {.type = MenuIntentType::Resume};
-    }
-    if (action == "main_menu") {
-        return {.type = MenuIntentType::MainMenu};
-    }
-    return {};
+MenuIntent build_menu_intent(MenuIntentType intent_type, const std::string &target) {
+    return {
+        .type = intent_type,
+        .target = intent_type == MenuIntentType::GotoMenu ? target : std::string(),
+    };
 }
 
 MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input) {

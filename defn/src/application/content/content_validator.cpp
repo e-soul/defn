@@ -1,18 +1,14 @@
 #include "content_validator.h"
 
-#include "data_paths.h"
-#include "level_loader.h"
-#include "menu_data_loader.h"
 #include "menu_models.h"
 #include "progression_catalog.h"
 #include "unit_data.h"
 #include "upgrade_catalog.h"
 
 #include <algorithm>
+#include <array>
 #include <optional>
 #include <vector>
-
-#include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
 
@@ -22,20 +18,24 @@ bool contains_string(const std::vector<String> &values, const String &candidate)
     return std::ranges::any_of(values, [&candidate](const String &value) { return value == candidate; });
 }
 
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
 void push_issue(std::vector<String> &issues, const String &message) { issues.push_back(message); }
 
 void validate_menu_content(const MenuContentData &menu_data, std::vector<String> &issues) {
-    static const std::array<String, 4> required_menus = {"main_menu", "game_menu", "options_menu", "pause_menu"};
-    for (const String &required_menu : required_menus) {
+    static const std::array<std::string, 4> required_menus = {"main_menu", "game_menu", "options_menu", "pause_menu"};
+    for (const std::string &required_menu : required_menus) {
         if (menu_data.find_menu(required_menu) == nullptr) {
-            push_issue(issues, vformat("menu_data.json missing required menu '%s'", required_menu));
+            push_issue(issues, vformat("menu_data.json missing required menu '%s'", to_godot_string(required_menu)));
         }
     }
 
     for (const auto &menu : menu_data.menus) {
         for (const auto &setting : menu.settings) {
             if (setting.kind == MenuSettingKind::UNKNOWN) {
-                push_issue(issues, vformat("menu '%s' has unsupported setting '%s'", menu.name, setting.setting_id));
+                push_issue(issues, vformat("menu '%s' has unsupported setting '%s'", to_godot_string(menu.name), to_godot_string(setting.setting_id)));
             }
         }
     }
@@ -74,7 +74,7 @@ void validate_upgrade_catalog(const UpgradeCatalog &catalog, const UnitCatalog &
     }
 
     for (const auto &unit_id : catalog.get_base_units()) {
-        const auto unit = unit_catalog.get_unit(unit_id);
+        const auto unit = unit_catalog.get_unit(to_std_string(unit_id));
         if (!unit.has_value()) {
             push_issue(issues, vformat("base unit '%s' does not exist in unit_data.json", unit_id));
         }
@@ -90,36 +90,8 @@ void validate_upgrade_catalog(const UpgradeCatalog &catalog, const UnitCatalog &
         for (const auto &effect : card.effects) {
             const bool needs_unit = effect.type == UpgradeEffectType::UNIT_UNLOCK || effect.type == UpgradeEffectType::UNIT_HP_DELTA ||
                                     effect.type == UpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA || effect.type == UpgradeEffectType::UNIT_MOVE_SPEED_DELTA;
-            if (needs_unit && !effect.unit_id.is_empty() && !unit_catalog.get_unit(effect.unit_id).has_value()) {
+            if (needs_unit && !effect.unit_id.is_empty() && !unit_catalog.get_unit(to_std_string(effect.unit_id)).has_value()) {
                 push_issue(issues, vformat("upgrade '%s' references unknown unit '%s'", card.id, effect.unit_id));
-            }
-        }
-    }
-}
-
-void validate_levels(const ProgressionCatalog &catalog, const UnitCatalog &unit_catalog, std::vector<String> &issues) {
-    for (const auto &unlock : catalog.get_level_unlocks()) {
-        const String level_path = DataPaths::level_definition(unlock.level_id);
-        const auto level_definition = LevelLoader::load(level_path);
-        if (!level_definition) {
-            push_issue(issues, vformat("missing or invalid level definition for '%s'", unlock.level_id));
-            continue;
-        }
-
-        if (level_definition->waves.empty()) {
-            push_issue(issues, vformat("level '%s' has no waves", unlock.level_id));
-        }
-
-        for (const auto &wave : level_definition->waves) {
-            for (const auto &spawn : wave.spawns) {
-                const auto unit = unit_catalog.get_unit(spawn.type);
-                if (!unit.has_value()) {
-                    push_issue(issues, vformat("level '%s' references unknown spawn type '%s'", unlock.level_id, spawn.type));
-                    continue;
-                }
-                if (unit->side != UnitSide::HOSTILE) {
-                    push_issue(issues, vformat("level '%s' uses non-hostile spawn type '%s'", unlock.level_id, spawn.type));
-                }
             }
         }
     }
@@ -143,11 +115,11 @@ void validate_levels(const ProgressionCatalog &catalog, const UnitCatalog &unit_
             for (const auto &spawn : wave.spawns) {
                 const auto unit = unit_catalog.get_unit(spawn.type);
                 if (!unit.has_value()) {
-                    push_issue(issues, vformat("level '%s' references unknown spawn type '%s'", unlock.level_id, spawn.type));
+                    push_issue(issues, vformat("level '%s' references unknown spawn type '%s'", unlock.level_id, to_godot_string(spawn.type)));
                     continue;
                 }
                 if (unit->side != UnitSide::HOSTILE) {
-                    push_issue(issues, vformat("level '%s' uses non-hostile spawn type '%s'", unlock.level_id, spawn.type));
+                    push_issue(issues, vformat("level '%s' uses non-hostile spawn type '%s'", unlock.level_id, to_godot_string(spawn.type)));
                 }
             }
         }
@@ -175,68 +147,6 @@ ContentValidationReport ContentValidator::validate_loaded_content(const std::opt
     }
 
     return report;
-}
-
-bool ContentValidator::report_startup_validation() {
-    static std::optional<bool> cached_result;
-    if (cached_result.has_value()) {
-        return *cached_result;
-    }
-
-    std::vector<String> issues;
-
-    const auto menu_data = MenuDataLoader::load(DataPaths::MENU_DATA);
-    if (!menu_data) {
-        push_issue(issues, "failed to load menu_data.json");
-    }
-
-    ProgressionCatalog progression_catalog;
-    const bool progression_loaded = progression_catalog.load(DataPaths::PROGRESSION_DATA);
-    if (!progression_loaded) {
-        push_issue(issues, "failed to load progression.json");
-    }
-
-    UpgradeCatalog upgrade_catalog;
-    const bool upgrades_loaded = upgrade_catalog.load(DataPaths::UPGRADES_DATA);
-    if (!upgrades_loaded) {
-        push_issue(issues, "failed to load upgrades.json");
-    }
-
-    UnitDataLoader unit_data;
-    const bool units_loaded = unit_data.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
-    if (!units_loaded) {
-        push_issue(issues, "failed to load unit_data.json or unit_globals.json");
-    }
-
-    std::vector<LoadedLevelValidationInput> loaded_levels;
-    if (progression_loaded) {
-        loaded_levels.reserve(progression_catalog.get_level_unlocks().size());
-        for (const auto &unlock : progression_catalog.get_level_unlocks()) {
-            loaded_levels.push_back({
-                .level_id = unlock.level_id,
-                .definition = units_loaded ? LevelLoader::load(DataPaths::level_definition(unlock.level_id)) : std::nullopt,
-            });
-        }
-    }
-
-    const ContentValidationReport report =
-        validate_loaded_content(menu_data, progression_loaded ? &progression_catalog : nullptr, upgrades_loaded ? &upgrade_catalog : nullptr,
-                                units_loaded ? &unit_data : nullptr, loaded_levels);
-    issues.insert(issues.end(), report.issues.begin(), report.issues.end());
-
-    if (issues.empty()) {
-        UtilityFunctions::print("ContentValidator: content validation passed");
-        cached_result = true;
-        return true;
-    }
-
-    UtilityFunctions::printerr("ContentValidator: content validation found ", static_cast<int>(issues.size()), " issue(s)");
-    for (const String &issue : issues) {
-        UtilityFunctions::printerr("  - ", issue);
-    }
-
-    cached_result = false;
-    return false;
 }
 
 } // namespace defn

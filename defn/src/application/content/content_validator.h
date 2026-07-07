@@ -34,7 +34,6 @@ class ContentValidator {
     static ContentValidationReport validate_loaded_content(const std::optional<MenuContentData> &menu_data, const ProgressionCatalog *progression_catalog,
                                                            const UpgradeCatalog *upgrade_catalog, const UnitCatalog *unit_catalog,
                                                            const std::vector<LoadedLevelValidationInput> &levels);
-    static bool report_startup_validation();
 };
 
 } // namespace defn

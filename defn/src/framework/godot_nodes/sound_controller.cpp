@@ -9,6 +9,8 @@ namespace defn {
 
 namespace {
 
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
 float linear_to_db(float linear) {
     const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
     return 20.0F * std::log10(clamped_linear);
@@ -19,7 +21,7 @@ float linear_to_db(float linear) {
 void SoundController::_bind_methods() {}
 
 void SoundController::configure(Node *owner_node, const UnitConfig &cfg) {
-    if (cfg.shoot_sfx.path.is_empty()) {
+    if (cfg.shoot_sfx.path.empty()) {
         return;
     }
 
@@ -27,7 +29,7 @@ void SoundController::configure(Node *owner_node, const UnitConfig &cfg) {
     shoot_player->set_name("ShootSfxPlayer");
 
     auto *loader = ResourceLoader::get_singleton();
-    Ref<AudioStream> stream = loader->load(cfg.shoot_sfx.path);
+    Ref<AudioStream> stream = loader->load(to_godot_string(cfg.shoot_sfx.path));
     if (stream.is_valid()) {
         shoot_player->set_stream(stream);
     }

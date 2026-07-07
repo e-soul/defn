@@ -47,7 +47,7 @@ void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide 
     explosion_scale_ = Vector2(explosion_scale, explosion_scale);
     exploding_ = false;
     explosion_animation_finished_ = false;
-    explosion_sfx_finished_ = !config_.explosion_sfx.has_value() || config_.explosion_sfx->path.is_empty();
+    explosion_sfx_finished_ = !config_.explosion_sfx.has_value() || config_.explosion_sfx->path.empty();
     travelled_distance_ = 0.0F;
 
     const Vector2 travel = target_global_position_ - start_global_position;
@@ -97,9 +97,9 @@ Ref<SpriteFrames> ProjectileAttack::build_frames(const AnimConfig &animation) {
     frames->set_animation_speed(PLAYBACK_ANIMATION, animation.speed);
     frames->set_animation_loop(PLAYBACK_ANIMATION, animation.loop);
 
-    if (!animation.path_template.is_empty()) {
+    if (!animation.path_template.empty()) {
         for (int frame_index = 0; frame_index < animation.frame_count; ++frame_index) {
-            const String path = vformat(animation.path_template, frame_index);
+            const String path = vformat(String(animation.path_template.c_str()), frame_index);
             Ref<Texture2D> texture = loader->load(path);
             if (texture.is_valid()) {
                 frames->add_frame(PLAYBACK_ANIMATION, texture);
@@ -153,7 +153,7 @@ void ProjectileAttack::start_explosion_animation() {
         return;
     }
 
-    if (config_.explosion_animation.frame_count <= 0 || config_.explosion_animation.path_template.is_empty()) {
+    if (config_.explosion_animation.frame_count <= 0 || config_.explosion_animation.path_template.empty()) {
         explosion_animation_finished_ = true;
         try_finish();
         return;
@@ -166,7 +166,7 @@ void ProjectileAttack::start_explosion_animation() {
 }
 
 void ProjectileAttack::play_explosion_sfx() {
-    if (!config_.explosion_sfx.has_value() || config_.explosion_sfx->path.is_empty()) {
+    if (!config_.explosion_sfx.has_value() || config_.explosion_sfx->path.empty()) {
         explosion_sfx_finished_ = true;
         try_finish();
         return;
@@ -174,7 +174,7 @@ void ProjectileAttack::play_explosion_sfx() {
 
     ensure_explosion_audio_player();
     auto *loader = ResourceLoader::get_singleton();
-    Ref<AudioStream> stream = loader->load(config_.explosion_sfx->path);
+    Ref<AudioStream> stream = loader->load(String(config_.explosion_sfx->path.c_str()));
     if (!stream.is_valid()) {
         explosion_sfx_finished_ = true;
         try_finish();
@@ -227,9 +227,8 @@ void ProjectileAttack::apply_splash_damage() {
             }
 
             const EntityId target_id = entity_id_for(*target);
-            const auto existing_target = std::ranges::find_if(snapshots, [target_id](const ProjectileTargetSnapshot &snapshot) {
-                return snapshot.id == target_id;
-            });
+            const auto existing_target =
+                std::ranges::find_if(snapshots, [target_id](const ProjectileTargetSnapshot &snapshot) { return snapshot.id == target_id; });
             if (existing_target != snapshots.end()) {
                 continue;
             }

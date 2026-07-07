@@ -19,12 +19,16 @@ namespace {
 
 constexpr real_t DEFAULT_HITBOX_RADIUS = 5.0F;
 
-CombatColor to_combat_color(const Color &color) {
+Color to_godot_color(const ContentColor &color) { return {color.r, color.g, color.b, color.a}; }
+
+Vector2 to_godot_vector(const ContentVector2 &vector) { return {vector.x, vector.y}; }
+
+CombatColor to_combat_color(const ContentColor &color) {
     return {
-        .r = static_cast<float>(color.r),
-        .g = static_cast<float>(color.g),
-        .b = static_cast<float>(color.b),
-        .a = static_cast<float>(color.a),
+        .r = color.r,
+        .g = color.g,
+        .b = color.b,
+        .a = color.a,
     };
 }
 
@@ -40,7 +44,7 @@ HealthBarWidget *create_health_bar_widget(Unit *unit, HealthComponent *health) {
     auto *health_bar_widget = memnew(HealthBarWidget);
     health_bar_widget->set_name("HealthBarWidget");
     unit->add_child(health_bar_widget);
-    health_bar_widget->configure(health, unit->get_unit_config().health_bar_color, unit->get_unit_config().health_bar_offset);
+    health_bar_widget->configure(health, to_godot_color(unit->get_unit_config().health_bar_color), to_godot_vector(unit->get_unit_config().health_bar_offset));
     return health_bar_widget;
 }
 

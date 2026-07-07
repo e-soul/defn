@@ -67,9 +67,9 @@ DEFN_TEST(deploy_card_view_model_preserves_zero_padded_frame_templates) {
 DEFN_TEST(menu_view_model_maps_actions_to_typed_intents_and_disabled_entries) {
     const MenuScreenViewModel view_model = build_menu_screen_view_model({
         .name = "main_menu",
-        .entries = {{.id = "play", .label = "Play", .action = "goto_menu", .target = "game_menu"},
-                    {.id = "disabled", .label = "Coming Soon", .action = "none"},
-                    {.id = "quit", .label = "Quit", .action = "quit"}},
+        .entries = {{.id = "play", .label = "Play", .intent_type = MenuIntentType::GotoMenu, .target = "game_menu"},
+                    {.id = "disabled", .label = "Coming Soon"},
+                    {.id = "quit", .label = "Quit", .intent_type = MenuIntentType::Quit}},
     });
 
     DEFN_REQUIRE(view_model.buttons.size() == static_cast<size_t>(3));
@@ -90,7 +90,7 @@ DEFN_TEST(menu_view_model_keeps_options_and_back_button_as_plain_data) {
                       .setting_id = "display_mode",
                       .kind = MenuSettingViewKind::DisplayMode,
                       .options = {{.label = "Windowed", .value = "0"}}}},
-        .back = MenuActionPresentationInput{.label = "Back", .action = "goto_menu", .target = "main_menu"},
+        .back = MenuActionPresentationInput{.label = "Back", .intent_type = MenuIntentType::GotoMenu, .target = "main_menu"},
     });
 
     DEFN_CHECK_EQ(view_model.type, MenuScreenType::Options);

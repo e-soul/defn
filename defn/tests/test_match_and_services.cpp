@@ -395,7 +395,7 @@ DEFN_TEST(match_director_filters_available_friendlies_by_unlocks_and_base_unit) 
 
     const std::vector<UnitConfig> friendlies = director.build_available_friendlies();
     DEFN_REQUIRE(friendlies.size() == 1);
-    DEFN_CHECK_EQ(friendlies[0].name, String("operator"));
+    DEFN_CHECK_EQ(friendlies[0].name, std::string("operator"));
 }
 
 DEFN_TEST(match_director_handles_missing_dependencies_and_empty_rewards) {

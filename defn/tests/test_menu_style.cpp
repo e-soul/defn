@@ -24,6 +24,8 @@ void check_color_close(const Color &actual, const Color &expected) {
     DEFN_CHECK_CLOSE(actual.a, expected.a, 0.001);
 }
 
+ContentColor make_content_color(float red, float green, float blue, float alpha) { return {.r = red, .g = green, .b = blue, .a = alpha}; }
+
 } // namespace
 
 DEFN_TEST(menu_style_parse_color_array_handles_alpha_and_fallback) {
@@ -32,12 +34,12 @@ DEFN_TEST(menu_style_parse_color_array_handles_alpha_and_fallback) {
     check_color_close(parse_color_array(make_array({0.8, 0.9}), Color(0.2F, 0.3F, 0.4F, 0.5F)), Color(0.2F, 0.3F, 0.4F, 0.5F));
 }
 
-DEFN_TEST(menu_style_make_style_maps_dictionary_values) {
-    Dictionary style_data;
-    style_data["bg_color"] = make_array({0.2, 0.3, 0.4, 0.5});
-    style_data["border_color"] = make_array({0.6, 0.7, 0.8, 0.9});
-    style_data["border_width"] = 5;
-    style_data["corner_radius"] = 12;
+DEFN_TEST(menu_style_make_style_maps_plain_style_values) {
+    MenuStyleBoxData style_data;
+    style_data.bg_color = make_content_color(0.2F, 0.3F, 0.4F, 0.5F);
+    style_data.border_color = make_content_color(0.6F, 0.7F, 0.8F, 0.9F);
+    style_data.border_width = 5;
+    style_data.corner_radius = 12;
 
     const Ref<StyleBoxFlat> style = make_style(style_data);
     DEFN_REQUIRE(style.is_valid());
@@ -48,21 +50,14 @@ DEFN_TEST(menu_style_make_style_maps_dictionary_values) {
 }
 
 DEFN_TEST(menu_style_builds_button_style_with_defaults_and_overrides) {
-    Dictionary normal;
-    normal["font_color"] = make_array({0.1, 0.2, 0.3, 0.4});
-    Dictionary hover;
-    hover["font_color"] = make_array({0.5, 0.6, 0.7, 0.8});
-    Dictionary pressed;
-    pressed["font_color"] = make_array({0.9, 0.8, 0.7, 0.6});
-
-    Dictionary style_data;
-    style_data["button_font_size"] = 18;
-    style_data["button_min_width"] = 220;
-    style_data["button_min_height"] = 44;
-    style_data["button_separation"] = 9;
-    style_data["normal"] = normal;
-    style_data["hover"] = hover;
-    style_data["pressed"] = pressed;
+    MenuStyleData style_data;
+    style_data.button_font_size = 18;
+    style_data.button_min_width = 220;
+    style_data.button_min_height = 44;
+    style_data.button_separation = 9;
+    style_data.normal.font_color = make_content_color(0.1F, 0.2F, 0.3F, 0.4F);
+    style_data.hover.font_color = make_content_color(0.5F, 0.6F, 0.7F, 0.8F);
+    style_data.pressed.font_color = make_content_color(0.9F, 0.8F, 0.7F, 0.6F);
 
     const ButtonStyle button_style = build_button_style(style_data);
     DEFN_CHECK_EQ(button_style.font_size, 18);
@@ -75,17 +70,17 @@ DEFN_TEST(menu_style_builds_button_style_with_defaults_and_overrides) {
 }
 
 DEFN_TEST(menu_style_builds_options_layout_with_defaults_and_overrides) {
-    Dictionary options_style;
-    options_style["label_font_size"] = 20;
-    options_style["label_min_width"] = 180;
-    options_style["control_min_width"] = 260;
-    options_style["control_min_height"] = 34;
-    options_style["row_separation"] = 7;
-    options_style["section_font_size"] = 24;
-    options_style["value_font_size"] = 16;
-    options_style["section_font_color"] = make_array({1.0, 0.1, 0.2, 0.3});
-    options_style["label_font_color"] = make_array({0.4, 0.5, 0.6, 0.7});
-    options_style["value_font_color"] = make_array({0.8, 0.9, 1.0, 0.5});
+    MenuOptionsStyleData options_style;
+    options_style.label_font_size = 20;
+    options_style.label_min_width = 180;
+    options_style.control_min_width = 260;
+    options_style.control_min_height = 34;
+    options_style.row_separation = 7;
+    options_style.section_font_size = 24;
+    options_style.value_font_size = 16;
+    options_style.section_font_color = make_content_color(1.0F, 0.1F, 0.2F, 0.3F);
+    options_style.label_font_color = make_content_color(0.4F, 0.5F, 0.6F, 0.7F);
+    options_style.value_font_color = make_content_color(0.8F, 0.9F, 1.0F, 0.5F);
 
     const OptionsLayout layout = build_options_layout(options_style);
     DEFN_CHECK_EQ(layout.label_font_size, 20);
@@ -114,9 +109,9 @@ DEFN_TEST(menu_style_applies_theme_and_disabled_state_to_button) {
     button_style.normal_font = Color(0.1F, 0.2F, 0.3F, 0.4F);
     button_style.hover_font = Color(0.5F, 0.6F, 0.7F, 0.8F);
     button_style.pressed_font = Color(0.9F, 0.8F, 0.7F, 0.6F);
-    button_style.normal_style_data["bg_color"] = make_array({0.2, 0.2, 0.2, 1.0});
-    button_style.hover_style_data["bg_color"] = make_array({0.3, 0.3, 0.3, 1.0});
-    button_style.pressed_style_data["bg_color"] = make_array({0.4, 0.4, 0.4, 1.0});
+    button_style.normal_style_data.bg_color = make_content_color(0.2F, 0.2F, 0.2F, 1.0F);
+    button_style.hover_style_data.bg_color = make_content_color(0.3F, 0.3F, 0.3F, 1.0F);
+    button_style.pressed_style_data.bg_color = make_content_color(0.4F, 0.4F, 0.4F, 1.0F);
 
     apply_button_theme(button, button_style);
     DEFN_CHECK(button->has_theme_font_size_override("font_size"));

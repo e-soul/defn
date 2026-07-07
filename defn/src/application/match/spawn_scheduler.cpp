@@ -8,10 +8,6 @@ namespace defn {
 
 namespace {
 
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
-
 MatchUnitSide to_match_unit_side(UnitSide side) { return side == UnitSide::FRIENDLY ? MatchUnitSide::Friendly : MatchUnitSide::Hostile; }
 
 SpawnTimelineDefinition to_spawn_timeline_definition(const LevelDefinition &level_definition) {
@@ -24,7 +20,7 @@ SpawnTimelineDefinition to_spawn_timeline_definition(const LevelDefinition &leve
         for (const auto &spawn_definition : wave_definition.spawns) {
             wave.spawns.push_back({
                 .time = spawn_definition.time,
-                .type = to_std_string(spawn_definition.type),
+                .type = spawn_definition.type,
             });
         }
         result.waves.push_back(wave);
@@ -61,7 +57,7 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
             continue;
         }
 
-        const auto config = unit_catalog_->get_unit(to_godot_string(spawn.type));
+        const auto config = unit_catalog_->get_unit(spawn.type);
         if (!config) {
             continue;
         }

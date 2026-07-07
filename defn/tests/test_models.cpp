@@ -12,7 +12,7 @@ DEFN_TEST(menu_content_data_find_menu_returns_expected_definition) {
 
     const MenuDefinition *menu = data.find_menu("pause_menu");
     DEFN_REQUIRE(menu != nullptr);
-    DEFN_CHECK_EQ(menu->name, String("pause_menu"));
+    DEFN_CHECK_EQ(menu->name, std::string("pause_menu"));
     DEFN_CHECK(data.find_menu("missing") == nullptr);
 }
 

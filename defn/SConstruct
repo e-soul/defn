@@ -105,6 +105,8 @@ extension_sources = [
     "src/application/match/match_director.cpp",
     "src/framework/godot_nodes/vfx/bounty_energy_effect.cpp",
     "src/application/content/content_validator.cpp",
+    "src/adapters/json/content_repository.cpp",
+    "src/adapters/godot/content_startup_validator.cpp",
     "src/framework/godot_nodes/hitbox_component.cpp",
     "src/adapters/json/level_loader.cpp",
     "src/adapters/godot/camera_scroll_controller.cpp",

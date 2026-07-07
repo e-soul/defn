@@ -57,21 +57,44 @@ MenuSettingViewKind to_setting_view_kind(MenuSettingKind kind) {
 
 MenuScreenType to_screen_view_type(MenuDefinitionType type) { return type == MenuDefinitionType::OPTIONS ? MenuScreenType::Options : MenuScreenType::Buttons; }
 
+MenuIntentType to_menu_intent_type(MenuActionType action_type) {
+    switch (action_type) {
+    case MenuActionType::GOTO_MENU:
+        return MenuIntentType::GotoMenu;
+    case MenuActionType::LEVEL_SELECT:
+        return MenuIntentType::ShowLevelSelect;
+    case MenuActionType::PROGRESSION:
+        return MenuIntentType::ShowProgression;
+    case MenuActionType::START_GAME:
+        return MenuIntentType::StartGame;
+    case MenuActionType::QUIT:
+        return MenuIntentType::Quit;
+    case MenuActionType::RESUME:
+        return MenuIntentType::Resume;
+    case MenuActionType::MAIN_MENU:
+        return MenuIntentType::MainMenu;
+    case MenuActionType::NONE:
+        return MenuIntentType::None;
+    }
+
+    return MenuIntentType::None;
+}
+
 MenuActionPresentationInput to_action_input(const MenuAction &action) {
     return {
-        .id = to_std_string(action.id),
-        .label = to_std_string(action.label),
-        .action = to_std_string(action.action),
-        .target = to_std_string(action.target),
+        .id = action.id,
+        .label = action.label,
+        .intent_type = to_menu_intent_type(action.action_type),
+        .target = action.target,
     };
 }
 
 MenuSettingPresentationInput to_setting_input(const MenuSetting &setting) {
     MenuSettingPresentationInput input;
-    input.id = to_std_string(setting.id);
-    input.label = to_std_string(setting.label);
-    input.setting_id = to_std_string(setting.setting_id);
-    input.bus_name = to_std_string(setting.bus_name);
+    input.id = setting.id;
+    input.label = setting.label;
+    input.setting_id = setting.setting_id;
+    input.bus_name = setting.bus_name;
     input.kind = to_setting_view_kind(setting.kind);
     input.min_value = setting.min_value;
     input.max_value = setting.max_value;
@@ -79,8 +102,8 @@ MenuSettingPresentationInput to_setting_input(const MenuSetting &setting) {
     input.options.reserve(setting.options.size());
     for (const auto &option : setting.options) {
         input.options.push_back({
-            .label = to_std_string(option.label),
-            .value = to_std_string(option.value),
+            .label = option.label,
+            .value = option.value,
         });
     }
     return input;
@@ -88,7 +111,7 @@ MenuSettingPresentationInput to_setting_input(const MenuSetting &setting) {
 
 MenuScreenPresentationInput to_screen_input(const MenuDefinition &menu) {
     MenuScreenPresentationInput input;
-    input.name = to_std_string(menu.name);
+    input.name = menu.name;
     input.type = to_screen_view_type(menu.type);
     input.entries.reserve(menu.entries.size());
     for (const auto &entry : menu.entries) {
@@ -360,7 +383,7 @@ bool MenuManager::load_menu_data() {
 }
 
 void MenuManager::setup_background() {
-    const String bg_path = menu_data_.background;
+    const String bg_path = to_godot_string(menu_data_.background);
     if (bg_path.is_empty()) {
         return;
     }
@@ -402,7 +425,7 @@ void MenuManager::show_menu(const String &menu_name) {
     clear_buttons();
     current_menu_ = menu_name;
 
-    const MenuDefinition *menu = menu_data_.find_menu(menu_name);
+    const MenuDefinition *menu = menu_data_.find_menu(to_std_string(menu_name));
     if (menu == nullptr) {
         UtilityFunctions::printerr("MenuManager: Unknown menu: ", menu_name);
         return;
@@ -415,7 +438,7 @@ void MenuManager::show_menu(const String &menu_name) {
         return;
     }
 
-    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
+    const ButtonStyle button_style = build_button_style(menu_data_.style);
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
@@ -442,7 +465,7 @@ void MenuManager::show_level_select() {
     clear_buttons();
     current_menu_ = "level_select";
 
-    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
+    const ButtonStyle button_style = build_button_style(menu_data_.style);
 
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
@@ -496,7 +519,7 @@ void MenuManager::show_progression() {
     clear_buttons();
     current_menu_ = "progression";
 
-    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
+    const ButtonStyle button_style = build_button_style(menu_data_.style);
     button_container_->add_theme_constant_override("separation", button_style.separation);
 
     const ProgressionScreenViewModel view_model = build_progression_screen_view_model();
@@ -519,8 +542,8 @@ void MenuManager::show_progression() {
 }
 
 void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
-    const ButtonStyle button_style = build_button_style(menu_data_.style_data);
-    const OptionsLayout options_layout = build_options_layout(menu_data_.style_data.get("options", Dictionary()));
+    const ButtonStyle button_style = build_button_style(menu_data_.style);
+    const OptionsLayout options_layout = build_options_layout(menu_data_.style.options);
 
     button_container_->add_theme_constant_override("separation", options_layout.row_separation);
 

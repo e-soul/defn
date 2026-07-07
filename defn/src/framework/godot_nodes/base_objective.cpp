@@ -27,14 +27,16 @@ constexpr real_t DAMAGE_FLASH_DURATION_SECONDS = 0.12F;
 constexpr auto OBJECTIVE_IDLE_ANIMATION = "idle";
 constexpr auto OBJECTIVE_DEATH_ANIMATION = "death";
 
-CombatColor to_combat_color(const Color &color) {
+CombatColor to_combat_color(const ContentColor &color) {
     return {
-        .r = static_cast<float>(color.r),
-        .g = static_cast<float>(color.g),
-        .b = static_cast<float>(color.b),
-        .a = static_cast<float>(color.a),
+        .r = color.r,
+        .g = color.g,
+        .b = color.b,
+        .a = color.a,
     };
 }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 const Color OBJECTIVE_FILL_COLOR = Color(0.82, 0.11, 0.08);
 const Color OBJECTIVE_OUTLINE_COLOR = Color(0.32, 0.03, 0.03);
@@ -234,7 +236,7 @@ const AnimConfig *BaseObjective::find_animation_config(const String &animation_n
     }
 
     for (const auto &[candidate_name, animation] : visual_config_->animations) {
-        if (candidate_name == animation_name) {
+        if (to_godot_string(candidate_name) == animation_name) {
             return &animation;
         }
     }
@@ -243,15 +245,16 @@ const AnimConfig *BaseObjective::find_animation_config(const String &animation_n
 }
 
 String BaseObjective::resolve_animation_frame_path(const AnimConfig &animation, int frame_index) {
-    if (animation.path_template.is_empty()) {
+    if (animation.path_template.empty()) {
         return {};
     }
 
-    if (animation.path_template.contains("%")) {
-        return vformat(animation.path_template, frame_index);
+    const String path_template = to_godot_string(animation.path_template);
+    if (path_template.contains("%")) {
+        return vformat(path_template, frame_index);
     }
 
-    return animation.path_template;
+    return path_template;
 }
 
 void BaseObjective::ensure_health_component() {

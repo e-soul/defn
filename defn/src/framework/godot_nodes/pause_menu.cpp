@@ -14,6 +14,12 @@
 
 namespace defn {
 
+namespace {
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+} // namespace
+
 void PauseMenu::_bind_methods() {}
 
 void PauseMenu::_ready() {
@@ -56,12 +62,12 @@ void PauseMenu::build_ui() {
         return;
     }
 
-    const Dictionary style = menu_data_.style_data;
+    const MenuStyleData &style = menu_data_.style;
 
     // Dark overlay
     overlay_ = memnew(ColorRect);
     overlay_->set_anchors_preset(Control::PRESET_FULL_RECT);
-    overlay_->set_color(pause_menu->overlay_color);
+    overlay_->set_color(to_godot_color(pause_menu->overlay_color));
     overlay_->set_mouse_filter(Control::MOUSE_FILTER_STOP);
     add_child(overlay_);
 
@@ -81,14 +87,14 @@ void PauseMenu::build_ui() {
 
     for (const auto &entry : pause_menu->entries) {
         auto *btn = memnew(Button);
-        btn->set_text(entry.label.is_empty() ? String("???") : entry.label);
+        btn->set_text(entry.label.empty() ? String("???") : to_godot_string(entry.label));
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
 
-        if (entry.action == "resume") {
+        if (entry.action_type == MenuActionType::RESUME) {
             btn->connect("pressed", callable_mp(this, &PauseMenu::on_resume));
-        } else if (entry.action == "main_menu") {
+        } else if (entry.action_type == MenuActionType::MAIN_MENU) {
             btn->connect("pressed", callable_mp(this, &PauseMenu::on_main_menu));
         }
 

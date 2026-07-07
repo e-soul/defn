@@ -10,7 +10,7 @@ std::string to_std_string(const String &value) { return value.utf8().get_data();
 
 ProgressionUnitStats to_progression_unit_stats(const UnitConfig &config) {
     return {
-        .unit_id = to_std_string(config.name),
+        .unit_id = config.name,
         .friendly = config.side == UnitSide::FRIENDLY,
         .hp = config.hp,
         .ranged_damage = config.ranged_damage,
@@ -92,7 +92,7 @@ std::vector<UnitConfig> MatchDirector::build_available_friendlies() const {
             continue;
         }
 
-        if (std::ranges::find(unlocked_units, to_std_string(config.name)) != unlocked_units.end()) {
+        if (std::ranges::find(unlocked_units, config.name) != unlocked_units.end()) {
             UnitConfig effective_config = config;
             apply_progression_unit_stats(effective_config, campaign_->get_effective_friendly_unit_stats(to_progression_unit_stats(config)));
             friendlies.push_back(effective_config);

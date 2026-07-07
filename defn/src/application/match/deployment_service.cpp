@@ -4,13 +4,9 @@ namespace defn {
 
 namespace {
 
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
 ProgressionUnitStats to_progression_unit_stats(const UnitConfig &config) {
     return {
-        .unit_id = to_std_string(config.name),
+        .unit_id = config.name,
         .friendly = config.side == UnitSide::FRIENDLY,
         .hp = config.hp,
         .ranged_damage = config.ranged_damage,
@@ -34,7 +30,7 @@ std::optional<UnitConfig> resolve_friendly_config(const ProgressionService *prog
         return std::nullopt;
     }
 
-    const auto base_config = unit_catalog->get_unit(to_godot_string(unit_id));
+    const auto base_config = unit_catalog->get_unit(unit_id);
     if (!base_config || base_config->side != UnitSide::FRIENDLY) {
         return std::nullopt;
     }

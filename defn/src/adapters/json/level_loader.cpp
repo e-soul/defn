@@ -5,6 +5,12 @@
 
 namespace defn {
 
+namespace {
+
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+} // namespace
+
 std::optional<LevelDefinition> LevelLoader::load(const String &path) {
     const auto data = JsonFileLoader::load_dictionary(path, "LevelLoader");
     return data ? load_from_data(*data) : std::nullopt;
@@ -13,10 +19,10 @@ std::optional<LevelDefinition> LevelLoader::load(const String &path) {
 std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &data) {
     LevelDefinition level_definition;
     level_definition.level_id = VariantTools::as_int(data.get("level_id", 0));
-    level_definition.name = String(data.get("name", ""));
+    level_definition.name = to_std_string(String(data.get("name", "")));
     level_definition.starting_core_resource = VariantTools::as_int(data.get("starting_core_resource", 100));
     level_definition.base_integrity = VariantTools::as_int(data.get("base_integrity", 3));
-    level_definition.background_path = String(data.get("background", ""));
+    level_definition.background_path = to_std_string(String(data.get("background", "")));
 
     Array wave_array = data.get("waves", Array());
     for (int wave_idx = 0; wave_idx < wave_array.size(); ++wave_idx) {
@@ -29,7 +35,7 @@ std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &dat
             Dictionary spawn_dict = spawn_value;
             wave_definition.spawns.push_back({
                 .time = VariantTools::as_double(spawn_dict.get("time", 0.0)),
-                .type = String(spawn_dict.get("type", "jackal")),
+                .type = to_std_string(String(spawn_dict.get("type", "jackal"))),
             });
         }
 

@@ -96,9 +96,10 @@ void HUD::build_ui() {
 
 void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
     for (const auto &cfg : units) {
-        auto *btn = DeployCardPresenter::create(cfg, callable_mp(this, &HUD::on_card_pressed).bind(cfg.name));
+        const String unit_type = String(cfg.name.c_str());
+        auto *btn = DeployCardPresenter::create(cfg, callable_mp(this, &HUD::on_card_pressed).bind(unit_type));
         card_container->add_child(btn);
-        deploy_cards.push_back({.unit_type = cfg.name, .cost = cfg.cost, .button = btn});
+        deploy_cards.push_back({.unit_type = unit_type, .cost = cfg.cost, .button = btn});
     }
 }
 

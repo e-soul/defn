@@ -295,7 +295,7 @@ This split keeps singleton access, file I/O, random selection, rule calculation,
 
 ## Module 4: Content and Data Loading
 
-Content loading should be an adapter layer. Parsed content should become plain domain content models before use cases consume it.
+Content loading lives at the adapter boundary: JSON repositories own file I/O and parsing, then hand use cases already-loaded content through plain models and catalog ports. Validation stays pure and reports issues for outer startup adapters to handle.
 
 ```mermaid
 flowchart TB
@@ -334,13 +334,6 @@ flowchart TB
     JsonAdapters --> ContentDomain
     ContentUseCases --> ContentDomain
 ```
-
-Target guidelines:
-
-- Keep `load_from_data` style tests, but isolate `Dictionary`/`Variant` parsing in JSON adapters.
-- Let repositories own `FileAccess`; do not let use cases open files.
-- Keep content validation pure after parsing. `ContentValidator` should validate already-loaded models and return a report, while an outer startup adapter decides how to print or fail.
-- Avoid stringly typed action decisions in use cases. Parse menu actions, upgrade effects, and unit sides into enums/value objects at the adapter boundary.
 
 ## Module 5: Presentation, UI, and Scene Flow
 

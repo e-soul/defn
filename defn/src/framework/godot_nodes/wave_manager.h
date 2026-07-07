@@ -6,6 +6,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace defn {
@@ -34,7 +35,7 @@ class WaveManager : public Node {
     int get_total_waves() const { return level_definition_ ? static_cast<int>(level_definition_->waves.size()) : 0; }
     int get_starting_core_resource() const { return level_definition_ ? level_definition_->starting_core_resource : 100; }
     int get_base_integrity() const { return level_definition_ ? level_definition_->base_integrity : 3; }
-    String get_background_path() const { return level_definition_ ? level_definition_->background_path : String(); }
+    String get_background_path() const { return level_definition_ ? String(level_definition_->background_path.c_str()) : String(); }
 
     bool all_waves_spawned() const;
 
@@ -51,7 +52,7 @@ class WaveManager : public Node {
     // Flattened list of all spawns with absolute times, for simpler processing
     struct FlatSpawn {
         double time;
-        String type;
+        std::string type;
         int wave; // which wave this belongs to
     };
     std::vector<FlatSpawn> all_spawns;

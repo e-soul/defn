@@ -1,12 +1,13 @@
 #ifndef MENU_STYLE_H
 #define MENU_STYLE_H
 
+#include "menu_models.h"
+
 #include <godot_cpp/classes/base_button.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/color.hpp>
-#include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
 namespace defn {
@@ -17,9 +18,9 @@ struct ButtonStyle {
     int font_size = 32;
     Vector2 minimum_size;
     int separation = 16;
-    Dictionary normal_style_data;
-    Dictionary hover_style_data;
-    Dictionary pressed_style_data;
+    MenuStyleBoxData normal_style_data;
+    MenuStyleBoxData hover_style_data;
+    MenuStyleBoxData pressed_style_data;
     Color normal_font;
     Color hover_font;
     Color pressed_font;
@@ -39,9 +40,10 @@ struct OptionsLayout {
 
 Vector2 make_size(int width, int height);
 Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1));
-Ref<StyleBoxFlat> make_style(const Dictionary &style_dict);
-ButtonStyle build_button_style(const Dictionary &style_data);
-OptionsLayout build_options_layout(const Dictionary &options_style);
+Color to_godot_color(const ContentColor &color);
+Ref<StyleBoxFlat> make_style(const MenuStyleBoxData &style_data);
+ButtonStyle build_button_style(const MenuStyleData &style_data);
+OptionsLayout build_options_layout(const MenuOptionsStyleData &options_style);
 void apply_button_theme(Control *control, const ButtonStyle &button_style, int font_size = -1);
 void apply_disabled_style(BaseButton *button, bool enabled);
 
