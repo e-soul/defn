@@ -1,8 +1,6 @@
 #include "match_director.h"
 
-#include "progression_presentation.h"
-
-#include <godot_cpp/variant/packed_string_array.hpp>
+#include <algorithm>
 
 namespace defn {
 
@@ -10,29 +8,35 @@ namespace {
 
 std::string to_std_string(const String &value) { return value.utf8().get_data(); }
 
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
-
-std::vector<std::string> to_std_strings(const PackedStringArray &values) {
-    std::vector<std::string> result;
-    result.reserve(values.size());
-    for (const auto &value : values) {
-        result.push_back(to_std_string(String(value)));
-    }
-    return result;
+ProgressionUnitStats to_progression_unit_stats(const UnitConfig &config) {
+    return {
+        .unit_id = to_std_string(config.name),
+        .friendly = config.side == UnitSide::FRIENDLY,
+        .hp = config.hp,
+        .ranged_damage = config.ranged_damage,
+        .move_speed = static_cast<float>(config.move_speed_pixels_per_second),
+        .has_projectile_attack = config.projectile_attack.has_value(),
+    };
 }
 
-MatchUpgradeOption to_match_upgrade_option(const UpgradeCardViewModel &card) {
+void apply_progression_unit_stats(UnitConfig &config, const ProgressionUnitStats &stats) {
+    config.hp = stats.hp;
+    config.ranged_damage = stats.ranged_damage;
+    config.move_speed_pixels_per_second = stats.move_speed;
+}
+
+MatchUpgradeOption to_match_upgrade_option(const ProgressionUpgradeCardViewModel &card) {
     return {
-        .id = to_std_string(card.id),
-        .name = to_std_string(card.name),
-        .description = to_std_string(card.description),
-        .emoji = to_std_string(card.emoji),
-        .category = to_std_string(card.category),
+        .id = card.id,
+        .name = card.name,
+        .description = card.description,
+        .emoji = card.emoji,
+        .category = card.category,
         .owned_count = card.owned_count,
     };
 }
 
-std::vector<MatchUpgradeOption> to_match_upgrade_options(const std::vector<UpgradeCardViewModel> &cards) {
+std::vector<MatchUpgradeOption> to_match_upgrade_options(const std::vector<ProgressionUpgradeCardViewModel> &cards) {
     std::vector<MatchUpgradeOption> result;
     result.reserve(cards.size());
     for (const auto &card : cards) {
@@ -80,7 +84,7 @@ std::vector<UnitConfig> MatchDirector::build_available_friendlies() const {
         return friendlies;
     }
 
-    const PackedStringArray unlocked_units = campaign_->get_unlocked_units();
+    const std::vector<std::string> unlocked_units = campaign_->get_unlocked_units();
     const auto all_friendlies = unit_catalog_->get_friendly_units();
     friendlies.reserve(all_friendlies.size());
     for (const auto &config : all_friendlies) {
@@ -88,8 +92,10 @@ std::vector<UnitConfig> MatchDirector::build_available_friendlies() const {
             continue;
         }
 
-        if (unlocked_units.has(config.name)) {
-            friendlies.push_back(campaign_->get_effective_friendly_unit_config(config));
+        if (std::ranges::find(unlocked_units, to_std_string(config.name)) != unlocked_units.end()) {
+            UnitConfig effective_config = config;
+            apply_progression_unit_stats(effective_config, campaign_->get_effective_friendly_unit_stats(to_progression_unit_stats(config)));
+            friendlies.push_back(effective_config);
         }
     }
 
@@ -192,19 +198,13 @@ bool MatchDirector::finalize_selected_upgrade() {
         return false;
     }
 
-    bool claim_succeeded = false;
-    if (reward.source == "first_clear") {
-        claim_succeeded = campaign_->claim_level_upgrade(to_godot_string(reward.level_id), to_godot_string(reward.selected_upgrade->id));
-    } else if (reward.source == "rescue") {
-        claim_succeeded = campaign_->claim_rescue_draft(to_godot_string(reward.level_id), to_godot_string(reward.selected_upgrade->id));
-    }
+    const bool claim_succeeded = campaign_->claim_upgrade({
+        .source = progression_reward_source_from_id(reward.source),
+        .level_id = reward.level_id,
+        .upgrade_id = reward.selected_upgrade->id,
+    });
 
-    if (!claim_succeeded) {
-        return false;
-    }
-
-    campaign_->save();
-    return true;
+    return claim_succeeded;
 }
 
 MatchUpdate MatchDirector::finish_match(bool victory) {
@@ -216,22 +216,13 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
     spawn_scheduler_.stop();
     const int level_score = match_session_.calculate_level_score(victory);
 
-    campaign_->add_score(level_score);
-    const MatchRewardOptions reward = build_reward_options(victory);
-    if (victory) {
-        campaign_->mark_level_completed(level_id_, level_score);
-    }
-
-    const int new_total = campaign_->get_total_score();
-    campaign_->save();
-
-    const PackedStringArray new_unlocks = ProgressionPresentation::describe_new_unlocks(*campaign_, victory, level_id_);
-    const String next_level_id = determine_next_level_id(victory);
+    const ProgressionMatchResult progression_result = campaign_->complete_level(to_std_string(level_id_), level_score, victory);
+    const std::vector<std::string> new_unlocks = campaign_->build_new_unlock_descriptions(progression_result.new_unlock_level_ids);
     pending_match_end_ = MatchEnded{
         .victory = victory,
-        .summary_model =
-            match_session_.build_end_game_summary(victory, new_total, to_std_string(level_id_), to_std_string(next_level_id), to_std_strings(new_unlocks)),
-        .reward_options = reward,
+        .summary_model = match_session_.build_end_game_summary(victory, progression_result.new_total_score, to_std_string(level_id_),
+                                                               progression_result.next_level_id, new_unlocks),
+        .reward_options = build_reward_options(progression_result.reward_draft),
         .owned_upgrades = to_match_upgrade_options(campaign_->build_owned_upgrade_cards()),
     };
 
@@ -252,49 +243,20 @@ MatchUpdate MatchDirector::make_hearts_update() const {
     return update_result;
 }
 
-MatchRewardOptions MatchDirector::build_reward_options(bool victory) const {
+MatchRewardOptions MatchDirector::build_reward_options(const ProgressionRewardDraft &draft) const {
     MatchRewardOptions reward;
-    if (campaign_ == nullptr) {
+    if (campaign_ == nullptr || !draft.has_reward()) {
         return reward;
     }
 
-    const String frontier_level_id = campaign_->get_frontier_level_id();
-    if (victory && campaign_->can_claim_level_upgrade(level_id_)) {
-        reward.available_upgrades = to_match_upgrade_options(campaign_->build_upgrade_draft_for_level(level_id_));
-        if (!reward.available_upgrades.empty()) {
-            reward.source = "first_clear";
-            reward.level_id = to_std_string(level_id_);
-        }
-    } else if (!victory && !frontier_level_id.is_empty() && campaign_->can_claim_rescue_draft(frontier_level_id)) {
-        reward.available_upgrades = to_match_upgrade_options(campaign_->build_rescue_draft_for_level(frontier_level_id));
-        if (!reward.available_upgrades.empty()) {
-            reward.source = "rescue";
-            reward.level_id = to_std_string(frontier_level_id);
-        }
-    }
-
-    if (!reward.source.empty() && !reward.level_id.empty()) {
-        reward.title = to_std_string(ProgressionPresentation::format_reward_title(to_godot_string(reward.source), to_godot_string(reward.level_id)));
-        reward.subtitle = to_std_string(ProgressionPresentation::format_reward_subtitle(to_godot_string(reward.source), to_godot_string(reward.level_id)));
-    }
+    const ProgressionRewardViewModel view_model = campaign_->build_reward_view_model(draft);
+    reward.source = view_model.source;
+    reward.level_id = view_model.level_id;
+    reward.title = view_model.title;
+    reward.subtitle = view_model.subtitle;
+    reward.available_upgrades = to_match_upgrade_options(view_model.available_upgrades);
 
     return reward;
-}
-
-String MatchDirector::determine_next_level_id(bool victory) const {
-    if (!victory || campaign_ == nullptr) {
-        return {};
-    }
-
-    const auto &level_data = campaign_->get_level_unlock_data();
-    for (size_t index = 0; index < level_data.size(); ++index) {
-        if (level_data[index].level_id == level_id_ && index + 1 < level_data.size()) {
-            const String candidate = level_data[index + 1].level_id;
-            return campaign_->is_level_unlocked(candidate) ? candidate : String();
-        }
-    }
-
-    return {};
 }
 
 } // namespace defn

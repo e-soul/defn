@@ -98,7 +98,7 @@ void GameManager::_ready() {
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
     auto *progression = CampaignService::get_singleton();
-    String level_id = progression->get_current_level_id();
+    String level_id = progression->get_current_level_id_godot();
     const String level_path = DataPaths::level_definition(level_id);
 
     // Load unit data from JSON

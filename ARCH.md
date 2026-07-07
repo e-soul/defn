@@ -236,7 +236,7 @@ Target combat flow:
 
 ## Module 3: Progression and Rewards
 
-Progression should split the current `CampaignService` responsibilities into rules, use cases, repositories, presenters, and a Godot facade.
+Progression is split across rules, use cases, repositories, presenters, and a Godot facade. `CampaignService` remains the script-facing singleton and composition root, while campaign behavior is coordinated through progression use cases and ports.
 
 ```mermaid
 flowchart TB
@@ -282,16 +282,16 @@ flowchart TB
     ProgressionPresenter --> ProgressionDomain
 ```
 
-Target responsibilities:
+Responsibilities:
 
-- `PlayerProfile` remains a plain save model.
-- Upgrade eligibility, level unlocks, effective unit stats, and rescue draft thresholds move into deterministic progression rules.
+- `PlayerProfile` is a plain save model.
+- Upgrade eligibility, level unlocks, effective unit stats, and rescue draft thresholds live in deterministic progression rules.
 - Draft selection accepts an injected `RandomSource` so tests can use seeded or scripted randomness.
-- Persistence becomes a `ProfileRepository` port implemented by the JSON save adapter.
-- `CampaignService` remains available to Godot as a singleton, but it delegates to progression use cases rather than owning all rules directly.
-- Presentation functions such as reward titles, subtitles, upgrade cards, owned-upgrade summaries, and level-select rows should be pure presenters over progression outputs.
+- Persistence flows through a `ProfileRepository` port implemented by the JSON save adapter.
+- `CampaignService` remains available to Godot as a singleton, but it delegates mutations and campaign orchestration to progression use cases rather than owning all rules directly.
+- Presentation functions such as reward titles, subtitles, upgrade cards, owned-upgrade summaries, and level-select rows are pure presenters over progression outputs.
 
-This is the highest-value split because it removes the current mix of singleton, file I/O, random selection, rule calculation, and presentation building from one class.
+This split keeps singleton access, file I/O, random selection, rule calculation, and presentation shaping separated so progression behavior remains testable without Godot.
 
 ## Module 4: Content and Data Loading
 

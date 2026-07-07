@@ -1,10 +1,13 @@
 #ifndef UPGRADE_CATALOG_H
 #define UPGRADE_CATALOG_H
 
+#include "progression_ports.h"
+
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <optional>
 #include <vector>
 
 namespace defn {
@@ -45,7 +48,7 @@ struct UpgradeCardDefinition {
 
 bool try_parse_upgrade_effect_type(const String &value, UpgradeEffectType &out_type);
 
-class UpgradeCatalog {
+class UpgradeCatalog : public UpgradeCatalogPort {
   public:
     bool load(const String &path);
     bool load_from_data(const Dictionary &data);
@@ -55,6 +58,12 @@ class UpgradeCatalog {
     int get_draft_size() const { return draft_size_; }
     bool should_reserve_unit_slot() const { return reserve_unit_slot_; }
     const UpgradeCardDefinition *find_card(const String &card_id) const;
+    [[nodiscard]] std::vector<std::string> get_base_unit_ids() const override;
+    [[nodiscard]] std::vector<ProgressionUpgradeCard> get_progression_upgrade_cards() const override;
+    [[nodiscard]] std::vector<UpgradeDraftCard> get_upgrade_draft_cards() const override;
+    [[nodiscard]] UpgradeDraftConfig get_upgrade_draft_config() const override;
+    [[nodiscard]] std::optional<ProgressionUpgradePresentation> find_upgrade_presentation(const std::string &upgrade_id) const override;
+    [[nodiscard]] std::vector<ProgressionUpgradePresentation> get_upgrade_presentations() const override;
 
   private:
     int draft_size_ = 3;

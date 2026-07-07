@@ -10,6 +10,47 @@
 
 namespace defn {
 
+namespace {
+
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+ProgressionUpgradeEffectType to_progression_effect_type(UpgradeEffectType type) {
+    switch (type) {
+    case UpgradeEffectType::STARTING_ENERGY_DELTA:
+        return ProgressionUpgradeEffectType::STARTING_ENERGY_DELTA;
+    case UpgradeEffectType::ENERGY_REGEN_DELTA:
+        return ProgressionUpgradeEffectType::ENERGY_REGEN_DELTA;
+    case UpgradeEffectType::BOUNTY_MULTIPLIER_DELTA:
+        return ProgressionUpgradeEffectType::BOUNTY_MULTIPLIER_DELTA;
+    case UpgradeEffectType::BASE_INTEGRITY_DELTA:
+        return ProgressionUpgradeEffectType::BASE_INTEGRITY_DELTA;
+    case UpgradeEffectType::UNIT_HP_DELTA:
+        return ProgressionUpgradeEffectType::UNIT_HP_DELTA;
+    case UpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA:
+        return ProgressionUpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA;
+    case UpgradeEffectType::UNIT_MOVE_SPEED_DELTA:
+        return ProgressionUpgradeEffectType::UNIT_MOVE_SPEED_DELTA;
+    case UpgradeEffectType::UNIT_UNLOCK:
+        return ProgressionUpgradeEffectType::UNIT_UNLOCK;
+    }
+
+    return ProgressionUpgradeEffectType::STARTING_ENERGY_DELTA;
+}
+
+ProgressionUpgradePresentation to_progression_upgrade_presentation(const UpgradeCardDefinition &card) {
+    return {
+        .id = to_std_string(card.id),
+        .name = to_std_string(card.name),
+        .description = to_std_string(card.description),
+        .emoji = to_std_string(card.emoji),
+        .category = to_std_string(card.category),
+    };
+}
+
+} // namespace
+
 bool try_parse_upgrade_effect_type(const String &value, UpgradeEffectType &out_type) {
     const String normalized = value.to_lower();
     if (normalized == "starting_energy_delta") {
@@ -130,6 +171,72 @@ const UpgradeCardDefinition *UpgradeCatalog::find_card(const String &card_id) co
         }
     }
     return nullptr;
+}
+
+std::vector<std::string> UpgradeCatalog::get_base_unit_ids() const {
+    std::vector<std::string> result;
+    result.reserve(base_units_.size());
+    for (const auto &unit_id : base_units_) {
+        result.push_back(to_std_string(unit_id));
+    }
+    return result;
+}
+
+std::vector<ProgressionUpgradeCard> UpgradeCatalog::get_progression_upgrade_cards() const {
+    std::vector<ProgressionUpgradeCard> result;
+    result.reserve(cards_.size());
+    for (const auto &card : cards_) {
+        ProgressionUpgradeCard progression_card;
+        progression_card.id = to_std_string(card.id);
+        progression_card.max_picks = card.max_picks;
+        progression_card.effects.reserve(card.effects.size());
+        for (const auto &effect : card.effects) {
+            progression_card.effects.push_back({
+                .type = to_progression_effect_type(effect.type),
+                .value = static_cast<float>(effect.value),
+                .unit_id = to_std_string(effect.unit_id),
+            });
+        }
+        result.push_back(progression_card);
+    }
+    return result;
+}
+
+std::vector<UpgradeDraftCard> UpgradeCatalog::get_upgrade_draft_cards() const {
+    std::vector<UpgradeDraftCard> result;
+    result.reserve(cards_.size());
+    for (const auto &card : cards_) {
+        UpgradeDraftCard draft_card;
+        draft_card.id = to_std_string(card.id);
+        draft_card.minimum_completed_levels = card.minimum_completed_levels;
+        draft_card.weight = card.weight;
+        draft_card.max_picks = card.max_picks;
+        draft_card.grants_unit_unlock = card.grants_unit_unlock();
+        draft_card.prerequisites.reserve(card.prerequisites.size());
+        for (const auto &prerequisite : card.prerequisites) {
+            draft_card.prerequisites.push_back(to_std_string(prerequisite));
+        }
+        result.push_back(draft_card);
+    }
+    return result;
+}
+
+UpgradeDraftConfig UpgradeCatalog::get_upgrade_draft_config() const { return {.draft_size = draft_size_, .reserve_unit_slot = reserve_unit_slot_}; }
+
+std::optional<ProgressionUpgradePresentation> UpgradeCatalog::find_upgrade_presentation(const std::string &upgrade_id) const {
+    if (const UpgradeCardDefinition *card = find_card(to_godot_string(upgrade_id)); card != nullptr) {
+        return to_progression_upgrade_presentation(*card);
+    }
+    return std::nullopt;
+}
+
+std::vector<ProgressionUpgradePresentation> UpgradeCatalog::get_upgrade_presentations() const {
+    std::vector<ProgressionUpgradePresentation> result;
+    result.reserve(cards_.size());
+    for (const auto &card : cards_) {
+        result.push_back(to_progression_upgrade_presentation(card));
+    }
+    return result;
 }
 
 } // namespace defn

@@ -364,7 +364,7 @@ DEFN_TEST(progression_save_repository_round_trips_player_profile) {
     DEFN_CHECK_EQ(loaded->completed_levels.count("level_02"), static_cast<size_t>(1));
     DEFN_CHECK_EQ(loaded->best_level_scores.at("level_01"), 350);
     DEFN_CHECK_EQ(loaded->owned_upgrade_counts.at("quick_reload"), 2);
-    DEFN_CHECK_EQ(loaded->claimed_level_upgrades.at("level_01"), String("quick_reload"));
+    DEFN_CHECK_EQ(loaded->claimed_level_upgrades.at("level_01"), std::string("quick_reload"));
     DEFN_CHECK_EQ(loaded->claimed_rescue_drafts.at("level_02"), 1);
 
     remove_test_file(path);

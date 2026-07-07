@@ -91,7 +91,9 @@ std::string get_claimed_upgrade_for_level(const ProgressionProfile &profile, con
     return {};
 }
 
-bool can_claim_level_upgrade(const ProgressionProfile &profile, const std::string &level_id) { return get_claimed_upgrade_for_level(profile, level_id).empty(); }
+bool can_claim_level_upgrade(const ProgressionProfile &profile, const std::string &level_id) {
+    return !level_id.empty() && is_level_completed(profile, level_id) && get_claimed_upgrade_for_level(profile, level_id).empty();
+}
 
 int get_highest_level_score(const ProgressionProfile &profile, const std::string &level_id) {
     if (const auto found = profile.best_level_scores.find(level_id); found != profile.best_level_scores.end()) {

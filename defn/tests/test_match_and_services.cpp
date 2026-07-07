@@ -68,8 +68,8 @@ Dictionary make_unit_data() {
     return units_root;
 }
 
-bool contains_string(const std::vector<String> &values, const String &candidate) {
-    return std::ranges::any_of(values, [&candidate](const String &value) { return value == candidate; });
+bool contains_string(const std::vector<std::string> &values, const std::string &candidate) {
+    return std::ranges::any_of(values, [&candidate](const std::string &value) { return value == candidate; });
 }
 
 UnitDataLoader make_unit_loader() {
@@ -93,41 +93,41 @@ class FakeGridService final : public GridQueryService {
 class FakeProgressionService final : public ProgressionService {
   public:
     int total_score = 0;
-    PackedStringArray unlocked_units;
-    std::vector<LevelUnlock> level_unlocks;
-    std::vector<String> completed_levels;
-    std::vector<std::pair<String, int>> best_scores;
-    String frontier_level_id = "level_01";
-    String current_level_id = "level_01";
+    std::vector<std::string> unlocked_units;
+    std::vector<ProgressionLevelUnlock> level_unlocks;
+    std::vector<std::string> completed_levels;
+    std::vector<std::pair<std::string, int>> best_scores;
+    std::string frontier_level_id = "level_01";
+    std::string current_level_id = "level_01";
     int starting_energy_bonus = 0;
     int energy_regen = 1;
-    real_t bounty_multiplier = 1.0F;
+    float bounty_multiplier = 1.0F;
     int base_integrity_bonus = 0;
     bool allow_level_upgrade = true;
     bool allow_rescue_draft = false;
     bool save_called = false;
     bool level_claimed = false;
     bool rescue_claimed = false;
-    std::vector<UpgradeCardViewModel> level_draft;
-    std::vector<UpgradeCardViewModel> rescue_draft;
-    std::vector<UpgradeCardViewModel> owned_upgrades;
+    std::vector<ProgressionUpgradeCardViewModel> level_draft;
+    std::vector<ProgressionUpgradeCardViewModel> rescue_draft;
+    std::vector<ProgressionUpgradeCardViewModel> owned_upgrades;
 
     [[nodiscard]] int get_total_score() const override { return total_score; }
-    [[nodiscard]] PackedStringArray get_unlocked_units() const override { return unlocked_units; }
-    [[nodiscard]] bool is_level_completed(const String &level_id) const override { return contains_string(completed_levels, level_id); }
-    [[nodiscard]] bool is_level_unlocked(const String &level_id) const override {
+    [[nodiscard]] std::vector<std::string> get_unlocked_units() const override { return unlocked_units; }
+    [[nodiscard]] bool is_level_completed(const std::string &level_id) const override { return contains_string(completed_levels, level_id); }
+    [[nodiscard]] bool is_level_unlocked(const std::string &level_id) const override {
         for (const auto &unlock : level_unlocks) {
             if (unlock.level_id != level_id) {
                 continue;
             }
-            return unlock.requires_completed.is_empty() || is_level_completed(unlock.requires_completed);
+            return unlock.requires_completed.empty() || is_level_completed(unlock.requires_completed);
         }
         return false;
     }
-    [[nodiscard]] bool can_claim_level_upgrade(const String & /*level_id*/) const override { return allow_level_upgrade; }
-    [[nodiscard]] bool can_claim_rescue_draft(const String & /*level_id*/) const override { return allow_rescue_draft; }
-    [[nodiscard]] String get_frontier_level_id() const override { return frontier_level_id; }
-    [[nodiscard]] int get_highest_level_score(const String &level_id) const override {
+    [[nodiscard]] bool can_claim_level_upgrade(const std::string & /*level_id*/) const override { return allow_level_upgrade; }
+    [[nodiscard]] bool can_claim_rescue_draft(const std::string & /*level_id*/) const override { return allow_rescue_draft; }
+    [[nodiscard]] std::string get_frontier_level_id() const override { return frontier_level_id; }
+    [[nodiscard]] int get_highest_level_score(const std::string &level_id) const override {
         for (const auto &[candidate, score] : best_scores) {
             if (candidate == level_id) {
                 return score;
@@ -135,40 +135,91 @@ class FakeProgressionService final : public ProgressionService {
         }
         return 0;
     }
-    [[nodiscard]] UnitConfig get_effective_friendly_unit_config(const UnitConfig &base_config) const override { return base_config; }
+    [[nodiscard]] std::string get_current_level_id() const override { return current_level_id; }
+    [[nodiscard]] std::vector<ProgressionLevelUnlock> get_level_unlock_data() const override { return level_unlocks; }
+    [[nodiscard]] ProgressionUnitStats get_effective_friendly_unit_stats(const ProgressionUnitStats &base_stats) const override { return base_stats; }
     [[nodiscard]] int get_effective_starting_energy(int base) const override { return base + starting_energy_bonus; }
     [[nodiscard]] int get_effective_energy_regen() const override { return energy_regen; }
-    [[nodiscard]] real_t get_effective_bounty_multiplier() const override { return bounty_multiplier; }
+    [[nodiscard]] float get_effective_bounty_multiplier() const override { return bounty_multiplier; }
     [[nodiscard]] int get_effective_base_integrity(int base) const override { return base + base_integrity_bonus; }
-    [[nodiscard]] std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level(const String & /*level_id*/) const override { return level_draft; }
-    [[nodiscard]] std::vector<UpgradeCardViewModel> build_rescue_draft_for_level(const String & /*level_id*/) const override { return rescue_draft; }
-    [[nodiscard]] std::vector<UpgradeCardViewModel> build_owned_upgrade_cards() const override { return owned_upgrades; }
-    [[nodiscard]] String get_current_level_id() const override { return current_level_id; }
-    [[nodiscard]] const std::vector<LevelUnlock> &get_level_unlock_data() const override { return level_unlocks; }
-
-    void add_score(int amount) override { total_score += amount; }
-    void mark_level_completed(const String &level_id, int level_score) override {
-        if (!contains_string(completed_levels, level_id)) {
+    bool select_level(const std::string &level_id) override {
+        if (!is_level_unlocked(level_id)) {
+            return false;
+        }
+        current_level_id = level_id;
+        return true;
+    }
+    [[nodiscard]] ProgressionMatchResult complete_level(const std::string &level_id, int level_score, bool victory) override {
+        total_score += level_score;
+        if (victory && !contains_string(completed_levels, level_id)) {
             completed_levels.push_back(level_id);
         }
 
-        for (auto &[candidate, score] : best_scores) {
-            if (candidate == level_id) {
-                score = std::max(score, level_score);
-                return;
+        if (victory) {
+            bool updated_score = false;
+            for (auto &[candidate, score] : best_scores) {
+                if (candidate == level_id) {
+                    score = std::max(score, level_score);
+                    updated_score = true;
+                    break;
+                }
+            }
+            if (!updated_score) {
+                best_scores.emplace_back(level_id, level_score);
             }
         }
-        best_scores.emplace_back(level_id, level_score);
+        save_called = true;
+
+        ProgressionRewardDraft reward;
+        if (victory && allow_level_upgrade && !level_draft.empty()) {
+            reward.source = ProgressionRewardSource::FIRST_CLEAR;
+            reward.level_id = level_id;
+            for (const auto &card : level_draft) {
+                reward.upgrade_ids.push_back(card.id);
+            }
+        } else if (!victory && allow_rescue_draft && !rescue_draft.empty()) {
+            reward.source = ProgressionRewardSource::RESCUE;
+            reward.level_id = frontier_level_id;
+            for (const auto &card : rescue_draft) {
+                reward.upgrade_ids.push_back(card.id);
+            }
+        }
+
+        return {
+            .new_total_score = total_score,
+            .new_unlock_level_ids = victory ? std::vector<std::string>{"level_02"} : std::vector<std::string>{},
+            .next_level_id = victory ? std::string("level_02") : std::string(),
+            .reward_draft = reward,
+        };
     }
-    bool claim_level_upgrade(const String & /*level_id*/, const String & /*upgrade_id*/) override {
-        level_claimed = true;
+    bool claim_upgrade(const ProgressionRewardClaim &claim) override {
+        if (claim.source == ProgressionRewardSource::FIRST_CLEAR) {
+            level_claimed = true;
+        } else if (claim.source == ProgressionRewardSource::RESCUE) {
+            rescue_claimed = true;
+        } else {
+            return false;
+        }
+        save_called = true;
         return true;
     }
-    bool claim_rescue_draft(const String & /*level_id*/, const String & /*upgrade_id*/) override {
-        rescue_claimed = true;
-        return true;
+    [[nodiscard]] std::vector<std::string> build_new_unlock_descriptions(const std::vector<std::string> &level_ids) const override {
+        std::vector<std::string> result;
+        result.reserve(level_ids.size());
+        for (const auto &level_id : level_ids) {
+            result.push_back("NEW UNLOCK: " + level_id + "!");
+        }
+        return result;
     }
-    void save() override { save_called = true; }
+    [[nodiscard]] ProgressionRewardViewModel build_reward_view_model(const ProgressionRewardDraft &draft) const override {
+        ProgressionRewardViewModel result;
+        result.source = to_progression_reward_source_id(draft.source);
+        result.level_id = draft.level_id;
+        result.title = result.source;
+        result.available_upgrades = draft.source == ProgressionRewardSource::RESCUE ? rescue_draft : level_draft;
+        return result;
+    }
+    [[nodiscard]] std::vector<ProgressionUpgradeCardViewModel> build_owned_upgrade_cards() const override { return owned_upgrades; }
 };
 
 LevelDefinition make_empty_level() {
@@ -336,8 +387,8 @@ DEFN_TEST(match_director_filters_available_friendlies_by_unlocks_and_base_unit) 
     UnitDataLoader unit_loader = make_unit_loader();
     FakeGridService grid;
     FakeProgressionService progression;
-    progression.unlocked_units.push_back("base");
-    progression.unlocked_units.push_back("operator");
+    progression.unlocked_units.emplace_back("base");
+    progression.unlocked_units.emplace_back("operator");
 
     MatchDirector director;
     DEFN_CHECK(director.configure(&progression, &unit_loader, &grid));
@@ -383,7 +434,7 @@ DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
     FakeGridService grid;
     FakeProgressionService progression;
     progression.current_level_id = "level_01";
-    progression.unlocked_units.push_back("operator");
+    progression.unlocked_units.emplace_back("operator");
     progression.level_unlocks = {{.level_id = "level_01"}, {.level_id = "level_02", .requires_completed = "level_01"}};
     progression.level_draft.push_back({.id = "upgrade_a", .name = "Upgrade A"});
 
@@ -399,7 +450,7 @@ DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
     DEFN_CHECK_EQ(update.match_ended->reward_options.available_upgrades.size(), static_cast<size_t>(1));
     DEFN_CHECK(update.match_ended->summary_model.next_level_id == "level_02");
     DEFN_CHECK(progression.save_called);
-    DEFN_CHECK(contains_string(progression.completed_levels, String("level_01")));
+    DEFN_CHECK(contains_string(progression.completed_levels, std::string("level_01")));
 
     progression.save_called = false;
     const bool reward_finalization_behaved = !director.select_upgrade("") && !director.select_upgrade("missing") && !director.finalize_selected_upgrade() &&

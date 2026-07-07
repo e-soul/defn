@@ -34,6 +34,18 @@ DEFN_TEST(progression_rules_unlock_levels_and_find_frontier) {
     DEFN_CHECK_EQ(get_frontier_level_id(profile, unlocks), std::string("level_02"));
 }
 
+DEFN_TEST(progression_rules_allow_level_upgrade_only_after_completion) {
+    ProgressionProfile profile;
+
+    DEFN_CHECK(!can_claim_level_upgrade(profile, "level_01"));
+
+    profile.completed_levels.insert("level_01");
+    DEFN_CHECK(can_claim_level_upgrade(profile, "level_01"));
+
+    profile.claimed_level_upgrades["level_01"] = "hp";
+    DEFN_CHECK(!can_claim_level_upgrade(profile, "level_01"));
+}
+
 DEFN_TEST(progression_rules_rescue_drafts_follow_frontier_thresholds) {
     const std::vector<ProgressionLevelUnlock> unlocks{
         {.level_id = "level_01"},

@@ -290,7 +290,9 @@ void add_menu_button(MenuManager *manager, VBoxContainer *button_container, cons
         button->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
     }
 
-    button->connect("pressed", callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target)));
+    button->connect(
+        "pressed",
+        callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target)));
     button_container->add_child(button);
 }
 
@@ -447,12 +449,14 @@ void MenuManager::show_level_select() {
     auto *title = memnew(Label);
     std::vector<LevelSelectRowViewModel> levels;
     auto *progression = CampaignService::get_singleton();
-    const auto &level_data = progression->get_level_unlock_data();
+    const auto level_data = progression->get_level_unlock_data();
     levels.reserve(level_data.size());
     for (const auto &level : level_data) {
         levels.push_back({
-            .level_id = to_std_string(level.level_id),
-            .label = to_std_string(ProgressionPresentation::format_level_button_label(*progression, level)),
+            .level_id = level.level_id,
+            .label = ProgressionPresentation::format_level_button_label(level, progression->is_level_unlocked(level.level_id),
+                                                                        progression->is_level_completed(level.level_id),
+                                                                        progression->get_highest_level_score(level.level_id)),
             .unlocked = progression->is_level_unlocked(level.level_id),
         });
     }
@@ -509,7 +513,7 @@ void MenuManager::show_progression() {
     owned_panel_options.min_size = get_progression_screen_size(this);
     owned_panel_options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
     owned_panel_options.grid_columns = 4;
-    button_container_->add_child(OwnedUpgradesPanel::build(progression->build_owned_upgrade_cards(), owned_panel_options));
+    button_container_->add_child(OwnedUpgradesPanel::build(progression->build_owned_upgrade_cards_godot(), owned_panel_options));
 
     add_menu_button(this, button_container_, view_model.back_button, button_style, 160.0F);
 }

@@ -54,8 +54,7 @@ class MatchDirector {
     MatchUpdate finish_match(bool victory);
     MatchUpdate make_resource_update() const;
     MatchUpdate make_hearts_update() const;
-    MatchRewardOptions build_reward_options(bool victory) const;
-    String determine_next_level_id(bool victory) const;
+    MatchRewardOptions build_reward_options(const ProgressionRewardDraft &draft) const;
 
     ProgressionService *campaign_ = nullptr;
     const UnitCatalog *unit_catalog_ = nullptr;

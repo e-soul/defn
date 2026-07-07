@@ -1,12 +1,26 @@
 #include "progression_save_repository.h"
 
 #include "variant_tools.h"
+
+#include <algorithm>
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/variant/variant.hpp>
 
 namespace defn {
+
+namespace {
+
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+} // namespace
+
+std::optional<PlayerProfile> ProgressionSaveRepository::load_profile() const { return load(path_); }
+
+bool ProgressionSaveRepository::save_profile(const PlayerProfile &profile) const { return save(path_, profile); }
 
 std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path) {
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::READ);
@@ -30,7 +44,7 @@ std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path)
 
     Array completed = data.get("levels_completed", Array());
     for (const auto &level_var : completed) {
-        save_data.completed_levels.insert(String(level_var));
+        save_data.completed_levels.insert(to_std_string(String(level_var)));
     }
 
     Dictionary highest = data.get("best_level_scores", Dictionary());
@@ -38,14 +52,14 @@ std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path)
     for (const auto &key_var : keys) {
         const String key = key_var;
         const int score = VariantTools::as_int(highest[key]);
-        save_data.best_level_scores[key] = score;
+        save_data.best_level_scores[to_std_string(key)] = score;
     }
 
     Dictionary owned_upgrades = data.get("owned_upgrade_counts", Dictionary());
     Array owned_upgrade_ids = owned_upgrades.keys();
     for (const Variant &upgrade_var : owned_upgrade_ids) {
         const String upgrade_id = upgrade_var;
-        save_data.owned_upgrade_counts[upgrade_id] = std::max(0, VariantTools::as_int(owned_upgrades[upgrade_id]));
+        save_data.owned_upgrade_counts[to_std_string(upgrade_id)] = std::max(0, VariantTools::as_int(owned_upgrades[upgrade_id]));
     }
 
     Dictionary claimed = data.get("claimed_level_upgrades", Dictionary());
@@ -53,7 +67,7 @@ std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path)
     for (const Variant &level_var : claimed_levels) {
         const String level_id = level_var;
         const String upgrade_id = String(claimed[level_id]);
-        save_data.claimed_level_upgrades[level_id] = upgrade_id;
+        save_data.claimed_level_upgrades[to_std_string(level_id)] = to_std_string(upgrade_id);
     }
 
     Dictionary rescue_claimed = data.get("rescue_drafts_claimed", Dictionary());
@@ -61,7 +75,7 @@ std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path)
     for (const Variant &level_var : rescue_levels) {
         const String level_id = level_var;
         const int claimed_count = VariantTools::as_int(rescue_claimed[level_id]);
-        save_data.claimed_rescue_drafts[level_id] = std::max(0, claimed_count);
+        save_data.claimed_rescue_drafts[to_std_string(level_id)] = std::max(0, claimed_count);
     }
 
     return save_data;
@@ -73,31 +87,31 @@ bool ProgressionSaveRepository::save(const String &path, const PlayerProfile &sa
 
     Array completed;
     for (const auto &level_id : save_data.completed_levels) {
-        completed.push_back(level_id);
+        completed.push_back(to_godot_string(level_id));
     }
     data["levels_completed"] = completed;
 
     Dictionary best_level_scores;
     for (const auto &[level_id, score] : save_data.best_level_scores) {
-        best_level_scores[level_id] = score;
+        best_level_scores[to_godot_string(level_id)] = score;
     }
     data["best_level_scores"] = best_level_scores;
 
     Dictionary owned_upgrade_counts;
     for (const auto &[upgrade_id, count] : save_data.owned_upgrade_counts) {
-        owned_upgrade_counts[upgrade_id] = count;
+        owned_upgrade_counts[to_godot_string(upgrade_id)] = count;
     }
     data["owned_upgrade_counts"] = owned_upgrade_counts;
 
     Dictionary claimed_level_upgrades;
     for (const auto &[level_id, upgrade_id] : save_data.claimed_level_upgrades) {
-        claimed_level_upgrades[level_id] = upgrade_id;
+        claimed_level_upgrades[to_godot_string(level_id)] = to_godot_string(upgrade_id);
     }
     data["claimed_level_upgrades"] = claimed_level_upgrades;
 
     Dictionary rescue_drafts_claimed;
     for (const auto &[level_id, claimed_count] : save_data.claimed_rescue_drafts) {
-        rescue_drafts_claimed[level_id] = claimed_count;
+        rescue_drafts_claimed[to_godot_string(level_id)] = claimed_count;
     }
     data["rescue_drafts_claimed"] = rescue_drafts_claimed;
 

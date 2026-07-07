@@ -9,6 +9,12 @@
 
 namespace defn {
 
+namespace {
+
+std::string to_std_string(const String &value) { return value.utf8().get_data(); }
+
+} // namespace
+
 bool ProgressionCatalog::load(const String &path) {
     const auto data = JsonFileLoader::load_dictionary(path, "ProgressionCatalog");
     if (!data) {
@@ -47,6 +53,19 @@ bool ProgressionCatalog::load_from_data(const Dictionary &data) {
     }
 
     return true;
+}
+
+std::vector<ProgressionLevelUnlock> ProgressionCatalog::get_progression_level_unlocks() const {
+    std::vector<ProgressionLevelUnlock> result;
+    result.reserve(level_unlocks_.size());
+    for (const auto &unlock : level_unlocks_) {
+        result.push_back({
+            .level_id = to_std_string(unlock.level_id),
+            .requires_completed = to_std_string(unlock.requires_completed),
+            .rescue_thresholds = unlock.rescue_thresholds,
+        });
+    }
+    return result;
 }
 
 } // namespace defn

@@ -1,8 +1,8 @@
 #ifndef PROGRESSION_RULES_H
 #define PROGRESSION_RULES_H
 
-#include <map>
-#include <set>
+#include "player_profile.h"
+
 #include <string>
 #include <vector>
 
@@ -23,15 +23,6 @@ struct ProgressionLevelUnlock {
     std::string level_id;
     std::string requires_completed;
     std::vector<int> rescue_thresholds;
-};
-
-struct ProgressionProfile {
-    int total_score = 0;
-    std::set<std::string> completed_levels;
-    std::map<std::string, int> best_level_scores;
-    std::map<std::string, int> owned_upgrade_counts;
-    std::map<std::string, std::string> claimed_level_upgrades;
-    std::map<std::string, int> claimed_rescue_drafts;
 };
 
 struct ProgressionUpgradeEffect {
@@ -64,8 +55,7 @@ struct CampaignModifiers {
 
 [[nodiscard]] const ProgressionLevelUnlock *find_level_unlock(const std::vector<ProgressionLevelUnlock> &level_unlocks, const std::string &level_id);
 [[nodiscard]] bool is_level_completed(const ProgressionProfile &profile, const std::string &level_id);
-[[nodiscard]] bool is_level_unlocked(const ProgressionProfile &profile, const std::vector<ProgressionLevelUnlock> &level_unlocks,
-                                     const std::string &level_id);
+[[nodiscard]] bool is_level_unlocked(const ProgressionProfile &profile, const std::vector<ProgressionLevelUnlock> &level_unlocks, const std::string &level_id);
 [[nodiscard]] std::vector<std::string> get_unlocked_levels(const ProgressionProfile &profile, const std::vector<ProgressionLevelUnlock> &level_unlocks);
 [[nodiscard]] std::string get_frontier_level_id(const ProgressionProfile &profile, const std::vector<ProgressionLevelUnlock> &level_unlocks);
 [[nodiscard]] std::string get_claimed_upgrade_for_level(const ProgressionProfile &profile, const std::string &level_id);
