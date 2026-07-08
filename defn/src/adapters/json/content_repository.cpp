@@ -24,22 +24,22 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
 
     content.menu_data = MenuDataLoader::load(paths_.menu_path);
     if (!content.menu_data.has_value()) {
-        content.load_issues.push_back("failed to load menu_data.json");
+        content.load_issues.emplace_back("failed to load menu_data.json");
     }
 
     content.progression_loaded = content.progression_catalog.load(paths_.progression_path);
     if (!content.progression_loaded) {
-        content.load_issues.push_back("failed to load progression.json");
+        content.load_issues.emplace_back("failed to load progression.json");
     }
 
     content.upgrades_loaded = content.upgrade_catalog.load(paths_.upgrades_path);
     if (!content.upgrades_loaded) {
-        content.load_issues.push_back("failed to load upgrades.json");
+        content.load_issues.emplace_back("failed to load upgrades.json");
     }
 
     content.units_loaded = content.unit_data.load(paths_.unit_path, paths_.unit_globals_path);
     if (!content.units_loaded) {
-        content.load_issues.push_back("failed to load unit_data.json or unit_globals.json");
+        content.load_issues.emplace_back("failed to load unit_data.json or unit_globals.json");
     }
 
     if (content.progression_loaded) {

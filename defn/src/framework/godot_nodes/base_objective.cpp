@@ -249,7 +249,7 @@ String BaseObjective::resolve_animation_frame_path(const AnimConfig &animation, 
         return {};
     }
 
-    const String path_template = to_godot_string(animation.path_template);
+    String path_template = to_godot_string(animation.path_template);
     if (path_template.contains("%")) {
         return vformat(path_template, frame_index);
     }

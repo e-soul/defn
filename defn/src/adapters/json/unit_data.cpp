@@ -24,7 +24,7 @@ ContentColor parse_color(const Array &arr, const ContentColor &fallback) {
         const auto green = VariantTools::as_float(arr[1]);
         const auto blue = VariantTools::as_float(arr[2]);
         const auto alpha = arr.size() >= 4 ? VariantTools::as_float(arr[3]) : DEFAULT_ALPHA;
-        return {red, green, blue, alpha};
+        return {.r = red, .g = green, .b = blue, .a = alpha};
     }
     return fallback;
 }
@@ -32,7 +32,7 @@ ContentColor parse_color(const Array &arr, const ContentColor &fallback) {
 ContentVector2 parse_vector2(const Variant &value, const ContentVector2 &fallback) {
     Array arr = value;
     if (arr.size() >= 2) {
-        return {VariantTools::as_float(arr[0]), VariantTools::as_float(arr[1])};
+        return {.x = VariantTools::as_float(arr[0]), .y = VariantTools::as_float(arr[1])};
     }
     return fallback;
 }
@@ -137,7 +137,7 @@ void apply_unit_colors(const Dictionary &unit_dict, const GlobalUnitConfig &glob
     const ContentColor default_ranged_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
 
     config.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
-    config.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), {DEFAULT_HEALTH_BAR_OFFSET_X, DEFAULT_HEALTH_BAR_OFFSET_Y});
+    config.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), {.x = DEFAULT_HEALTH_BAR_OFFSET_X, .y = DEFAULT_HEALTH_BAR_OFFSET_Y});
     config.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
     config.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
 }
@@ -151,7 +151,7 @@ void apply_muzzle_flash(const Dictionary &unit_dict, UnitConfig &config) {
     config.muzzle.path_template = to_std_string(String(muzzle_flash_dict.get("path_template", "")));
     Array offset = muzzle_flash_dict.get("offset", Array());
     if (offset.size() >= 2) {
-        config.muzzle.offset = {VariantTools::as_float(offset[0]), VariantTools::as_float(offset[1])};
+        config.muzzle.offset = {.x = VariantTools::as_float(offset[0]), .y = VariantTools::as_float(offset[1])};
     }
     config.muzzle.flip_h = VariantTools::as_bool(muzzle_flash_dict.get("flip_h", false));
 }

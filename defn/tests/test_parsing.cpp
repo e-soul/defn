@@ -223,6 +223,67 @@ void write_text_file(const String &path, const String &text) {
     file->close();
 }
 
+struct ContentRepositoryFixture {
+    const String menu_path = "user://defn_content_repo_menu.json";
+    const String progression_path = "user://defn_content_repo_progression.json";
+    const String upgrades_path = "user://defn_content_repo_upgrades.json";
+    const String unit_path = "user://defn_content_repo_units.json";
+    const String unit_globals_path = "user://defn_content_repo_unit_globals.json";
+    const String levels_directory = "user://defn_content_repo_levels";
+    const String level_path = levels_directory + String("/level_01.json");
+
+    ~ContentRepositoryFixture() { cleanup(); }
+
+    [[nodiscard]] JsonContentPaths content_paths() const {
+        return {
+            .menu_path = menu_path,
+            .progression_path = progression_path,
+            .upgrades_path = upgrades_path,
+            .unit_path = unit_path,
+            .unit_globals_path = unit_globals_path,
+            .levels_directory = levels_directory,
+        };
+    }
+
+    void cleanup() const {
+        remove_test_file(menu_path);
+        remove_test_file(progression_path);
+        remove_test_file(upgrades_path);
+        remove_test_file(unit_path);
+        remove_test_file(unit_globals_path);
+        remove_test_file(level_path);
+        remove_test_directory(levels_directory);
+    }
+
+    void write_content_files() const {
+        cleanup();
+        DEFN_REQUIRE(DirAccess::make_dir_absolute(levels_directory) == OK);
+        write_text_file(
+            menu_path,
+            R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
+        write_text_file(progression_path, R"({"level_unlocks":[{"level_id":"level_01"}]})");
+        write_text_file(
+            upgrades_path,
+            R"({"base_units":["operator"],"cards":[{"id":"unlock_operator","name":"Unlock Operator","description":"Deploy the operator.","effects":[{"type":"unit_unlock","unit_id":"operator"}]}]})");
+        write_text_file(
+            unit_globals_path,
+            R"({"gameplay_rules":{"viewport_width":1280,"viewport_height":720},"health_bar_color":{"friendly":[0.1,0.8,0.1,1.0],"hostile":[0.9,0.2,0.2,1.0]}})");
+        write_text_file(
+            unit_path,
+            R"({"units":{"operator":{"side":"friendly","hp":120,"cost":25,"ranged_damage":14},"jackal":{"side":"hostile","hp":75,"bounty":6,"ranged_damage":0}}})");
+        write_text_file(
+            level_path,
+            R"({"level_id":1,"name":"Factory","starting_core_resource":150,"base_integrity":4,"waves":[{"wave_number":1,"spawns":[{"time":0.5,"type":"jackal"}]}]})");
+    }
+};
+
+const LevelDefinition &require_level_definition(const LoadedLevelValidationInput &loaded_level) {
+    if (!loaded_level.definition.has_value()) {
+        tests::fail(__FILE__, __LINE__, "require failed: loaded level definition");
+    }
+    return loaded_level.definition.value();
+}
+
 } // namespace
 
 DEFN_TEST(upgrade_effect_type_parser_recognizes_known_values) {
@@ -404,48 +465,10 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
 }
 
 DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {
-    const String menu_path = "user://defn_content_repo_menu.json";
-    const String progression_path = "user://defn_content_repo_progression.json";
-    const String upgrades_path = "user://defn_content_repo_upgrades.json";
-    const String unit_path = "user://defn_content_repo_units.json";
-    const String unit_globals_path = "user://defn_content_repo_unit_globals.json";
-    const String levels_directory = "user://defn_content_repo_levels";
-    const String level_path = levels_directory + String("/level_01.json");
+    const ContentRepositoryFixture fixture;
+    fixture.write_content_files();
 
-    remove_test_file(menu_path);
-    remove_test_file(progression_path);
-    remove_test_file(upgrades_path);
-    remove_test_file(unit_path);
-    remove_test_file(unit_globals_path);
-    remove_test_file(level_path);
-    remove_test_directory(levels_directory);
-
-    DEFN_REQUIRE(DirAccess::make_dir_absolute(levels_directory) == OK);
-    write_text_file(
-        menu_path,
-        R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
-    write_text_file(progression_path, R"({"level_unlocks":[{"level_id":"level_01"}]})");
-    write_text_file(
-        upgrades_path,
-        R"({"base_units":["operator"],"cards":[{"id":"unlock_operator","name":"Unlock Operator","description":"Deploy the operator.","effects":[{"type":"unit_unlock","unit_id":"operator"}]}]})");
-    write_text_file(
-        unit_globals_path,
-        R"({"gameplay_rules":{"viewport_width":1280,"viewport_height":720},"health_bar_color":{"friendly":[0.1,0.8,0.1,1.0],"hostile":[0.9,0.2,0.2,1.0]}})");
-    write_text_file(
-        unit_path,
-        R"({"units":{"operator":{"side":"friendly","hp":120,"cost":25,"ranged_damage":14},"jackal":{"side":"hostile","hp":75,"bounty":6,"ranged_damage":0}}})");
-    write_text_file(
-        level_path,
-        R"({"level_id":1,"name":"Factory","starting_core_resource":150,"base_integrity":4,"waves":[{"wave_number":1,"spawns":[{"time":0.5,"type":"jackal"}]}]})");
-
-    const JsonContentRepository repository({
-        .menu_path = menu_path,
-        .progression_path = progression_path,
-        .upgrades_path = upgrades_path,
-        .unit_path = unit_path,
-        .unit_globals_path = unit_globals_path,
-        .levels_directory = levels_directory,
-    });
+    const JsonContentRepository repository(fixture.content_paths());
 
     const JsonLoadedContent loaded = repository.load_for_validation();
     DEFN_CHECK(loaded.load_issues.empty());
@@ -454,20 +477,12 @@ DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {
     DEFN_CHECK(loaded.upgrades_loaded);
     DEFN_CHECK(loaded.units_loaded);
     DEFN_REQUIRE(loaded.levels.size() == 1);
-    DEFN_REQUIRE(loaded.levels[0].definition.has_value());
-    DEFN_CHECK_EQ(loaded.levels[0].definition->waves[0].spawns[0].type, std::string("jackal"));
+    const LevelDefinition &level_definition = require_level_definition(loaded.levels[0]);
+    DEFN_CHECK_EQ(level_definition.waves[0].spawns[0].type, std::string("jackal"));
 
     const ContentValidationReport report =
         ContentValidator::validate_loaded_content(loaded.menu_data, &loaded.progression_catalog, &loaded.upgrade_catalog, &loaded.unit_data, loaded.levels);
     DEFN_CHECK(report.is_valid());
-
-    remove_test_file(menu_path);
-    remove_test_file(progression_path);
-    remove_test_file(upgrades_path);
-    remove_test_file(unit_path);
-    remove_test_file(unit_globals_path);
-    remove_test_file(level_path);
-    remove_test_directory(levels_directory);
 }
 
 DEFN_TEST(json_file_loader_reads_dictionary_and_rejects_bad_inputs) {
