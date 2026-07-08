@@ -9,7 +9,7 @@
 
 # Defn
 
-A simple belt-scroller tug-of-war 2.5D game. See the [Game Design Document](GDD.md) for details.
+A simple belt-scroller tug-of-war 2.5D game. For more details see the [Game Design Document](GDD.md) or the [Target Architecture](ARCH.md).
 
 Powered by ![The Godot Engine](https://img.shields.io/badge/Godot-white?logo=godotengine) and ![The C++ Programming Language](https://img.shields.io/badge/C++-blue?logo=cplusplus)
 
