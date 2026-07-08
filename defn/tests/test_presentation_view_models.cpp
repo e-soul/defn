@@ -1,6 +1,7 @@
 #include "test_harness.h"
 
 #include "deploy_card_view_model.h"
+#include "hud_presenter.h"
 #include "menu_view_model.h"
 #include "score_screen_view_model.h"
 
@@ -62,6 +63,29 @@ DEFN_TEST(deploy_card_view_model_preserves_zero_padded_frame_templates) {
     });
 
     DEFN_CHECK_EQ(view_model.portrait_path, std::string("res://Shoot__000.png"));
+}
+
+DEFN_TEST(hud_presenter_formats_match_state_and_deploy_card_affordability) {
+    const HudModel model = HudPresenter::build({
+        .energy = 42,
+        .current_wave = 2,
+        .total_waves = 5,
+        .hearts = 3,
+        .score = 125,
+        .level_number = 4,
+        .level_name = "Factory",
+        .deploy_cards = {{.unit_id = "operator", .title = "Operator", .cost = 25}, {.unit_id = "tank", .title = "Tank", .cost = 75}},
+    });
+
+    DEFN_CHECK_EQ(model.energy_text, std::string("\u26A1 Energy: 42"));
+    DEFN_CHECK_EQ(model.score_text, std::string("Score: 125"));
+    DEFN_CHECK_EQ(model.wave_text, std::string("WAVE 2 / 5"));
+    DEFN_CHECK_EQ(model.level_text, std::string("LEVEL 4 - Factory"));
+    DEFN_CHECK(model.level_visible);
+    DEFN_CHECK_EQ(model.visible_hearts, 3);
+    DEFN_REQUIRE(model.deploy_cards.size() == static_cast<size_t>(2));
+    DEFN_CHECK(model.deploy_cards[0].enabled);
+    DEFN_CHECK(!model.deploy_cards[1].enabled);
 }
 
 DEFN_TEST(menu_view_model_maps_actions_to_typed_intents_and_disabled_entries) {

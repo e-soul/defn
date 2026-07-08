@@ -1,20 +1,16 @@
 #ifndef MENU_VIEW_MODEL_H
 #define MENU_VIEW_MODEL_H
 
+#include "menu_intents.h"
+
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace defn {
 
-enum class MenuIntentType { None, GotoMenu, ShowLevelSelect, ShowProgression, StartGame, Quit, Resume, MainMenu };
 enum class MenuScreenType { Buttons, Options };
 enum class MenuSettingViewKind { Section, DisplayMode, Resolution, Vsync, BusVolume, Unknown };
-
-struct MenuIntent {
-    MenuIntentType type = MenuIntentType::None;
-    std::string target;
-};
 
 struct MenuActionPresentationInput {
     std::string id;

@@ -1,10 +1,9 @@
-#ifndef SCORE_SCREEN_PRESENTER_H
-#define SCORE_SCREEN_PRESENTER_H
+#ifndef SCORE_SCREEN_VIEW_H
+#define SCORE_SCREEN_VIEW_H
 
 #include "score_screen_models.h"
 
 #include <godot_cpp/classes/color_rect.hpp>
-#include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/variant/callable.hpp>
@@ -20,16 +19,16 @@ struct ScoreScreenActions {
     Callable on_select_upgrade;
 };
 
-struct ScoreScreenView {
+struct ScoreScreenViewNodes {
     ColorRect *overlay = nullptr;
     PanelContainer *panel = nullptr;
 };
 
-class ScoreScreenPresenter {
+class ScoreScreenView {
   public:
-    ScoreScreenPresenter() = delete;
+    ScoreScreenView() = delete;
 
-    static ScoreScreenView show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions);
+    static ScoreScreenViewNodes show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions);
 };
 
 } // namespace defn

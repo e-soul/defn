@@ -1,6 +1,7 @@
 #ifndef HUD_H
 #define HUD_H
 
+#include "hud_presenter.h"
 #include "score_screen_models.h"
 #include "unit_data.h"
 #include <godot_cpp/classes/button.hpp>
@@ -18,8 +19,7 @@ namespace defn {
 using namespace godot;
 
 struct DeployCardUI {
-    String unit_type;
-    int cost = 0;
+  std::string unit_type;
     Button *button = nullptr;
 };
 
@@ -45,6 +45,9 @@ class HUD : public CanvasLayer {
 
   private:
     void build_ui();
+    void render(const HudModel &model);
+    void render_deploy_cards(const std::vector<HudDeployCardModel> &cards);
+    void clear_deploy_cards();
     void ensure_heart_icons(int count);
     void on_card_pressed(const String &unit_type);
     void on_next_level_pressed(const String &level_id);
@@ -60,6 +63,7 @@ class HUD : public CanvasLayer {
     std::vector<Label *> heart_icons;
     HBoxContainer *card_container = nullptr;
     std::vector<DeployCardUI> deploy_cards;
+    HudPresentationInput hud_input_{.energy = 100, .current_wave = 1, .total_waves = 3, .hearts = 3, .score = 0};
 
     // Score screen
     ColorRect *score_screen_overlay = nullptr;

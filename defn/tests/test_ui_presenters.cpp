@@ -10,7 +10,7 @@
 #include "menu_manager.h"
 #include "pause_menu.h"
 #include "projectile_attack.h"
-#include "score_screen_presenter.h"
+#include "score_screen_view.h"
 #include "unit.h"
 #include "unit_factory.h"
 #include "upgrade_card_presenter.h"
@@ -152,7 +152,7 @@ bool selected_upgrade_button_matches(Button *button) {
 
 bool fallback_upgrade_button_matches(Button *button) { return button != nullptr && !button->is_disabled() && has_all_labels(button, {"?", "Upgrade"}); }
 
-bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenView &view) {
+bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenViewNodes &view) {
     return view.overlay != nullptr && view.panel != nullptr && parent->get_child_count() == 1 && nearly_equal(view.overlay->get_color().a, 0.7);
 }
 
@@ -366,15 +366,15 @@ DEFN_TEST(score_screen_presenter_builds_victory_screen_with_rewards_and_disabled
     model.level_score = 230;
     model.new_total_score = 900;
     model.next_level_id = "level_02";
-    model.new_unlocks.push_back("NEW UNLOCK: Level 02!");
+    model.new_unlocks.emplace_back("NEW UNLOCK: Level 02!");
     model.reward.title = "FIRST CLEAR UPGRADE: Level 01";
     model.reward.subtitle = "Level 01 cleared for the first time.";
     model.reward.available_upgrades.push_back({.id = "rapid_reload", .name = "Rapid Reload", .description = "Shoot more often.", .emoji = "+"});
     model.owned_upgrades.push_back({.id = "owned", .name = "Owned Upgrade", .description = "Already claimed.", .emoji = "*", .owned_count = 1});
 
     const Callable action = make_valid_callable(parent);
-    const ScoreScreenView view =
-        ScoreScreenPresenter::show(parent, model, {.on_next_level = action, .on_retry = action, .on_main_menu = action, .on_select_upgrade = action});
+    const ScoreScreenViewNodes view =
+        ScoreScreenView::show(parent, model, {.on_next_level = action, .on_retry = action, .on_main_menu = action, .on_select_upgrade = action});
 
     DEFN_CHECK(score_screen_view_matches_victory_layout(parent, view));
     DEFN_CHECK(score_screen_has_victory_content(view.overlay));
@@ -384,7 +384,7 @@ DEFN_TEST(score_screen_presenter_builds_victory_screen_with_rewards_and_disabled
 }
 
 DEFN_TEST(score_screen_presenter_handles_null_parent_and_defeat_without_next_level) {
-    DEFN_CHECK(ScoreScreenPresenter::show(nullptr, {}, {}).overlay == nullptr);
+    DEFN_CHECK(ScoreScreenView::show(nullptr, {}, {}).overlay == nullptr);
 
     auto *parent = memnew(Node);
     ScoreScreenModel model;
@@ -396,7 +396,7 @@ DEFN_TEST(score_screen_presenter_handles_null_parent_and_defeat_without_next_lev
     model.level_score = 10;
     model.new_total_score = 20;
 
-    const ScoreScreenView view = ScoreScreenPresenter::show(parent, model, {});
+    const ScoreScreenViewNodes view = ScoreScreenView::show(parent, model, {});
 
     DEFN_REQUIRE(view.overlay != nullptr);
     DEFN_CHECK(has_label_text(view.overlay, "DEFEAT"));

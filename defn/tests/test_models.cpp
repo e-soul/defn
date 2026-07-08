@@ -23,7 +23,7 @@ DEFN_TEST(score_screen_reward_find_upgrade_returns_expected_card) {
 
     const UpgradeCardViewModel *upgrade = reward.find_upgrade("beta");
     DEFN_REQUIRE(upgrade != nullptr);
-    DEFN_CHECK_EQ(upgrade->name, String("Beta"));
+    DEFN_CHECK_EQ(upgrade->name, std::string("Beta"));
     DEFN_CHECK(reward.find_upgrade("gamma") == nullptr);
 }
 

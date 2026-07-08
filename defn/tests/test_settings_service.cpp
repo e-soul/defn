@@ -45,16 +45,17 @@ DEFN_TEST(settings_service_saves_and_loads_video_and_existing_audio_settings) {
     remove_test_file(path);
 
     SettingsState state;
-    state.display_mode = DisplayServer::WINDOW_MODE_WINDOWED;
-    state.resolution = Vector2i(1024, 576);
+    state.display_mode = static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED);
+    state.resolution = {.width = 1024, .height = 576};
     state.vsync_enabled = false;
     state.bus_volumes.push_back({.bus_name = "Master", .volume_percent = 250.0});
 
     DEFN_REQUIRE(SettingsService::save(state, path));
 
     const SettingsState loaded = SettingsService::load_or_default(path);
-    DEFN_CHECK_EQ(loaded.display_mode, DisplayServer::WINDOW_MODE_WINDOWED);
-    DEFN_CHECK_EQ(loaded.resolution, Vector2i(1024, 576));
+    DEFN_CHECK_EQ(loaded.display_mode, static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED));
+    DEFN_CHECK_EQ(loaded.resolution.width, 1024);
+    DEFN_CHECK_EQ(loaded.resolution.height, 576);
     DEFN_CHECK(!loaded.vsync_enabled);
     DEFN_CHECK_EQ(SettingsService::get_bus_volume_percent(loaded, "Master"), 100.0);
 
@@ -66,8 +67,8 @@ DEFN_TEST(settings_service_load_or_default_tolerates_missing_file) {
     remove_test_file(path);
 
     const SettingsState state = SettingsService::load_or_default(path);
-    DEFN_CHECK(state.resolution.x >= 0);
-    DEFN_CHECK(state.resolution.y >= 0);
+    DEFN_CHECK(state.resolution.width >= 0);
+    DEFN_CHECK(state.resolution.height >= 0);
     DEFN_CHECK_EQ(SettingsService::get_bus_volume_percent(state, "Missing", 33.0), 33.0);
 }
 

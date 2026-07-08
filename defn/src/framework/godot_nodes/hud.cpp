@@ -1,13 +1,35 @@
 #include "hud.h"
 #include "deploy_card_presenter.h"
-#include "score_screen_presenter.h"
+#include "score_screen_view.h"
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <cctype>
 #include <utility>
 
 namespace defn {
+
+namespace {
+
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
+DeployCardPresentationInput to_deploy_card_input(const UnitConfig &config) {
+    DeployCardPresentationInput input;
+    input.unit_id = config.name;
+    input.title = config.name;
+    if (!input.title.empty()) {
+        input.title[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(input.title[0])));
+    }
+    input.cost = config.cost;
+    input.animation_path_templates.reserve(config.animations.size());
+    for (const auto &[name, animation] : config.animations) {
+        input.animation_path_templates.emplace_back(name, animation.path_template);
+    }
+    return input;
+}
+
+} // namespace
 
 HUD::HUD() = default;
 
@@ -92,33 +114,90 @@ void HUD::build_ui() {
     card_container->set_offset(Side::SIDE_BOTTOM, -10.0);
     card_container->add_theme_constant_override("separation", 12);
     add_child(card_container);
+
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
+    hud_input_.deploy_cards.clear();
+    hud_input_.deploy_cards.reserve(units.size());
     for (const auto &cfg : units) {
-        const String unit_type = String(cfg.name.c_str());
-        auto *btn = DeployCardPresenter::create(cfg, callable_mp(this, &HUD::on_card_pressed).bind(unit_type));
-        card_container->add_child(btn);
-        deploy_cards.push_back({.unit_type = unit_type, .cost = cfg.cost, .button = btn});
+        hud_input_.deploy_cards.push_back(to_deploy_card_input(cfg));
     }
+
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::set_level(int level_number, const String &level_name) {
-    if (level_label == nullptr) {
+    hud_input_.level_number = level_number;
+    hud_input_.level_name = level_name.utf8().get_data();
+    render(HudPresenter::build(hud_input_));
+}
+
+void HUD::render(const HudModel &model) {
+    if (core_resource_label != nullptr) {
+        core_resource_label->set_text(to_godot_string(model.energy_text));
+    }
+    if (score_label != nullptr) {
+        score_label->set_text(to_godot_string(model.score_text));
+    }
+    if (wave_label != nullptr) {
+        wave_label->set_text(to_godot_string(model.wave_text));
+    }
+    if (level_label != nullptr) {
+        level_label->set_text(to_godot_string(model.level_text));
+        level_label->set_visible(model.level_visible);
+    }
+
+    ensure_heart_icons(model.visible_hearts);
+    for (int i = 0; std::cmp_less(i, heart_icons.size()); ++i) {
+        heart_icons[i]->set_visible(i < model.visible_hearts);
+    }
+
+    render_deploy_cards(model.deploy_cards);
+}
+
+void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
+    if (card_container == nullptr) {
         return;
     }
 
-    String label_text;
-    if (level_number > 0 && !level_name.is_empty()) {
-        label_text = vformat("LEVEL %d - %s", level_number, level_name);
-    } else if (level_number > 0) {
-        label_text = vformat("LEVEL %d", level_number);
-    } else {
-        label_text = level_name;
+    bool needs_rebuild = deploy_cards.size() != cards.size();
+    for (size_t index = 0; !needs_rebuild && index < cards.size(); ++index) {
+        needs_rebuild = deploy_cards[index].unit_type != cards[index].card.unit_id;
     }
 
-    level_label->set_text(label_text);
-    level_label->set_visible(!label_text.is_empty());
+    if (needs_rebuild) {
+        clear_deploy_cards();
+        deploy_cards.reserve(cards.size());
+        for (const auto &card_model : cards) {
+            auto *button = DeployCardPresenter::create(card_model.card,
+                                                       callable_mp(this, &HUD::on_card_pressed).bind(to_godot_string(card_model.card.unit_id)));
+            card_container->add_child(button);
+            deploy_cards.push_back({.unit_type = card_model.card.unit_id, .button = button});
+        }
+    }
+
+    for (size_t index = 0; index < cards.size(); ++index) {
+        Button *button = deploy_cards[index].button;
+        if (button == nullptr) {
+            continue;
+        }
+        const bool enabled = cards[index].enabled;
+        button->set_disabled(!enabled);
+        button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+    }
+}
+
+void HUD::clear_deploy_cards() {
+    if (card_container != nullptr) {
+        while (card_container->get_child_count() > 0) {
+            Node *child = card_container->get_child(0);
+            card_container->remove_child(child);
+            child->queue_free();
+        }
+    }
+    deploy_cards.clear();
 }
 
 void HUD::ensure_heart_icons(int count) {
@@ -139,38 +218,29 @@ void HUD::ensure_heart_icons(int count) {
 void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_requested", unit_type); }
 
 void HUD::update_core_resource(int value) {
-    if (core_resource_label) {
-        core_resource_label->set_text(vformat(String::utf8("\u26A1 Energy: %d"), value));
-    }
+    hud_input_.energy = value;
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::update_wave(int current, int total) {
-    if (wave_label) {
-        wave_label->set_text(vformat("WAVE %d / %d", current, total));
-    }
+    hud_input_.current_wave = current;
+    hud_input_.total_waves = total;
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::update_hearts(int integrity) {
-    ensure_heart_icons(integrity);
-    for (int i = 0; std::cmp_less(i, heart_icons.size()); ++i) {
-        heart_icons[i]->set_visible(i < integrity);
-    }
+    hud_input_.hearts = integrity;
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::update_card_affordability(int energy) {
-    for (auto &card : deploy_cards) {
-        bool can_afford = energy >= card.cost;
-        if (card.button) {
-            card.button->set_disabled(!can_afford);
-            card.button->set_modulate(can_afford ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
-        }
-    }
+    hud_input_.energy = energy;
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::update_score(int score) {
-    if (score_label) {
-        score_label->set_text(vformat("Score: %d", score));
-    }
+    hud_input_.score = score;
+    render(HudPresenter::build(hud_input_));
 }
 
 void HUD::show_score_screen(const ScoreScreenModel &summary) {
@@ -178,13 +248,14 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
         score_screen_overlay->queue_free();
     }
 
-    const ScoreScreenView view = ScoreScreenPresenter::show(this, summary,
-                                                            {
-                                                                .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(summary.next_level_id),
-                                                                .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(summary.current_level_id),
-                                                                .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
-                                                                .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
-                                                            });
+    const ScoreScreenViewNodes view = ScoreScreenView::show(
+        this, summary,
+        {
+            .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(String(summary.next_level_id.c_str())),
+            .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(String(summary.current_level_id.c_str())),
+            .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
+            .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
+        });
 
     score_screen_overlay = view.overlay;
     score_screen_panel = view.panel;

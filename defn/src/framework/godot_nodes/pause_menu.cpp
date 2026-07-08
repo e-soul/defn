@@ -1,5 +1,6 @@
 #include "pause_menu.h"
 #include "data_paths.h"
+#include "menu_flow_use_case.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
 #include "scene_navigator.h"
@@ -122,7 +123,10 @@ void PauseMenu::on_resume() { set_paused(false); }
 
 void PauseMenu::on_main_menu() {
     set_paused(false);
-    SceneNavigator::go_to_main_menu(get_tree());
+    const MenuFlowResult result = MenuFlowUseCase::request_main_menu();
+    if (result.navigation.has_value()) {
+        SceneNavigator::navigate(get_tree(), *result.navigation);
+    }
 }
 
 } // namespace defn

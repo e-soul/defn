@@ -1,7 +1,5 @@
 #include "scene_navigator.h"
 
-#include "progression_manager.h"
-
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -28,10 +26,7 @@ void change_scene(SceneTree *tree, const String &scene_path) {
 
 void SceneNavigator::go_to_main_menu(SceneTree *tree) { change_scene(tree, MENU_SCENE_PATH); }
 
-void SceneNavigator::go_to_level(SceneTree *tree, const String &level_id) {
-    if (auto *progression = CampaignService::get_singleton()) {
-        progression->set_current_level_id_godot(level_id);
-    }
+void SceneNavigator::go_to_level(SceneTree *tree, const String & /*level_id*/) {
     change_scene(tree, GAME_SCENE_PATH);
 }
 

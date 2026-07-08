@@ -45,9 +45,7 @@ Ref<StyleBoxFlat> make_card_style(const Color &background_color, const Color &bo
 
 } // namespace
 
-Button *DeployCardPresenter::create(const UnitConfig &config, const Callable &pressed_action) {
-    const DeployCardViewModel view_model = build_deploy_card_view_model(to_presentation_input(config));
-
+Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const Callable &pressed_action) {
     auto *button = memnew(Button);
     button->set_custom_minimum_size(Vector2(190, 110));
     button->set_focus_mode(Control::FOCUS_NONE);
@@ -116,6 +114,10 @@ Button *DeployCardPresenter::create(const UnitConfig &config, const Callable &pr
     }
 
     return button;
+}
+
+Button *DeployCardPresenter::create(const UnitConfig &config, const Callable &pressed_action) {
+    return create(build_deploy_card_view_model(to_presentation_input(config)), pressed_action);
 }
 
 } // namespace defn

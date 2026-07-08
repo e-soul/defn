@@ -17,6 +17,8 @@ constexpr real_t UPGRADE_CARD_CONTENT_MARGIN = 18.0;
 constexpr real_t UPGRADE_CARD_TEXT_WIDTH = UPGRADE_CARD_WIDTH - (UPGRADE_CARD_CONTENT_MARGIN * 2.0);
 constexpr real_t UPGRADE_CARD_TITLE_MIN_HEIGHT = 44.0;
 
+String to_godot_string(const std::string &value) { return {value.c_str()}; }
+
 Ref<StyleBoxFlat> make_card_style(const Color &background_color, const Color &border_color) {
     Ref<StyleBoxFlat> style;
     style.instantiate();
@@ -64,7 +66,7 @@ Button *UpgradeCardPresenter::create(const UpgradeCardViewModel &upgrade_card, b
     content_margin->add_child(content);
 
     auto *emoji_label = memnew(Label);
-    emoji_label->set_text(upgrade_card.emoji.is_empty() ? String("?") : upgrade_card.emoji);
+    emoji_label->set_text(upgrade_card.emoji.empty() ? String("?") : to_godot_string(upgrade_card.emoji));
     emoji_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     emoji_label->add_theme_font_size_override("font_size", 34);
     emoji_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
@@ -81,7 +83,7 @@ Button *UpgradeCardPresenter::create(const UpgradeCardViewModel &upgrade_card, b
     }
 
     auto *name_label = memnew(Label);
-    name_label->set_text(upgrade_card.name.is_empty() ? String("Upgrade") : upgrade_card.name);
+    name_label->set_text(upgrade_card.name.empty() ? String("Upgrade") : to_godot_string(upgrade_card.name));
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     name_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
     name_label->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
@@ -92,7 +94,7 @@ Button *UpgradeCardPresenter::create(const UpgradeCardViewModel &upgrade_card, b
     content->add_child(name_label);
 
     auto *description_label = memnew(Label);
-    description_label->set_text(upgrade_card.description);
+    description_label->set_text(to_godot_string(upgrade_card.description));
     description_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     description_label->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
     description_label->set_custom_minimum_size(Vector2(UPGRADE_CARD_TEXT_WIDTH, 0));

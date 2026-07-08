@@ -337,7 +337,7 @@ flowchart TB
 
 ## Module 5: Presentation, UI, and Scene Flow
 
-UI nodes should render view models and emit user intents. Navigation decisions should come from use cases; actual `SceneTree` calls stay in Godot adapters.
+Godot UI nodes are humble adapters: they render pure view models into controls and translate user input/signals into application intents. Presentation shaping, settings changes, and menu/post-match navigation decisions live in presenters and use cases; only Godot adapters touch `SceneTree`, display/audio APIs, and concrete engine services.
 
 ```mermaid
 flowchart TB
@@ -377,18 +377,6 @@ flowchart TB
     HUD --> GodotControls
     MenuManager --> GodotControls
 ```
-
-Target responsibilities:
-
-- `HUD` renders a `HudModel` and emits `DeployRequested`, `UpgradeSelected`, `NextLevelRequested`, `RetryRequested`, and `MainMenuRequested` intents.
-- `MenuManager` renders a `MenuScreenModel` and emits menu intents rather than deciding all actions itself.
-- `SceneNavigator` implements a navigation port. Use cases decide desired destinations; only the adapter calls `change_scene_to_file`, `quit`, or equivalent Godot APIs.
-- Settings logic should be a use case over a `SettingsStore` and Godot-backed settings adapters for display, resolution, vsync, and bus volume.
-
-`ScoreScreenPresenter` currently creates Godot UI. The target split is:
-
-- pure `ScoreScreenPresenter`: build text, button states, reward card view models;
-- Godot `ScoreScreenView`: create controls and connect callbacks.
 
 ## Module 6: Godot Entity Construction
 

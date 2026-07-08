@@ -9,6 +9,7 @@
 #include "hud.h"
 #include "level_loader.h"
 #include "match_director.h"
+#include "menu_flow_use_case.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
 #include "scene_navigator.h"
@@ -35,11 +36,11 @@ String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 UpgradeCardViewModel to_upgrade_card_view_model(const MatchUpgradeOption &option) {
     return {
-        .id = to_godot_string(option.id),
-        .name = to_godot_string(option.name),
-        .description = to_godot_string(option.description),
-        .emoji = to_godot_string(option.emoji),
-        .category = to_godot_string(option.category),
+        .id = option.id,
+        .name = option.name,
+        .description = option.description,
+        .emoji = option.emoji,
+        .category = option.category,
         .owned_count = option.owned_count,
     };
 }
@@ -55,10 +56,10 @@ std::vector<UpgradeCardViewModel> to_upgrade_card_view_models(const std::vector<
 
 ScoreScreenRewardModel to_score_screen_reward_model(const MatchRewardOptions &options) {
     ScoreScreenRewardModel reward;
-    reward.source = to_godot_string(options.source);
-    reward.level_id = to_godot_string(options.level_id);
-    reward.title = to_godot_string(options.title);
-    reward.subtitle = to_godot_string(options.subtitle);
+    reward.source = options.source;
+    reward.level_id = options.level_id;
+    reward.title = options.title;
+    reward.subtitle = options.subtitle;
     reward.available_upgrades = to_upgrade_card_view_models(options.available_upgrades);
     if (options.selected_upgrade.has_value()) {
         reward.selected_upgrade = to_upgrade_card_view_model(*options.selected_upgrade);
@@ -78,14 +79,22 @@ ScoreScreenModel to_score_screen_model(const MatchEnded &match_end) {
     model.completion_bonus = summary.completion_bonus;
     model.level_score = summary.level_score;
     model.new_total_score = summary.new_total_score;
-    model.current_level_id = to_godot_string(summary.current_level_id);
-    model.next_level_id = to_godot_string(summary.next_level_id);
+    model.current_level_id = summary.current_level_id;
+    model.next_level_id = summary.next_level_id;
     for (const auto &new_unlock : summary.new_unlocks) {
-        model.new_unlocks.push_back(to_godot_string(new_unlock));
+        model.new_unlocks.push_back(new_unlock);
     }
     model.reward = to_score_screen_reward_model(match_end.reward_options);
     model.owned_upgrades = to_upgrade_card_view_models(match_end.owned_upgrades);
     return model;
+}
+
+MenuFlowUseCase make_menu_flow_use_case() { return MenuFlowUseCase(CampaignService::get_singleton()); }
+
+void navigate_if_requested(SceneTree *tree, const MenuFlowResult &result) {
+    if (result.navigation.has_value()) {
+        SceneNavigator::navigate(tree, *result.navigation);
+    }
 }
 
 } // namespace
@@ -414,8 +423,13 @@ void GameManager::on_score_screen_next_level(const String &level_id) {
         return;
     }
 
+    const MenuFlowResult result = make_menu_flow_use_case().select_level(to_std_string(level_id));
+    if (!result.navigation.has_value()) {
+        return;
+    }
+
     match_director_.clear_pending_match_end();
-    SceneNavigator::go_to_level(get_tree(), level_id);
+    navigate_if_requested(get_tree(), result);
 }
 
 void GameManager::on_score_screen_retry(const String &level_id) {
@@ -423,8 +437,13 @@ void GameManager::on_score_screen_retry(const String &level_id) {
         return;
     }
 
+    const MenuFlowResult result = make_menu_flow_use_case().select_level(to_std_string(level_id));
+    if (!result.navigation.has_value()) {
+        return;
+    }
+
     match_director_.clear_pending_match_end();
-    SceneNavigator::go_to_level(get_tree(), level_id);
+    navigate_if_requested(get_tree(), result);
 }
 
 void GameManager::on_score_screen_main_menu() {
@@ -433,7 +452,7 @@ void GameManager::on_score_screen_main_menu() {
     }
 
     match_director_.clear_pending_match_end();
-    SceneNavigator::go_to_main_menu(get_tree());
+    navigate_if_requested(get_tree(), MenuFlowUseCase::request_main_menu());
 }
 
 void GameManager::on_score_screen_upgrade_selected(const String &upgrade_id) {

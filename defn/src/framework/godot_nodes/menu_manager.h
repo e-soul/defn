@@ -1,6 +1,7 @@
 #ifndef MENU_MANAGER_H
 #define MENU_MANAGER_H
 
+#include "menu_flow_use_case.h"
 #include "menu_view_model.h"
 #include "menu_models.h"
 #include "settings_service.h"
@@ -45,6 +46,7 @@ class MenuManager : public Node2D {
     void show_level_select();
     void show_progression();
     void handle_menu_intent(const MenuIntent &intent);
+    void apply_menu_flow_result(const MenuFlowResult &result);
     void clear_buttons();
     void build_options_ui(const MenuScreenViewModel &view_model);
 

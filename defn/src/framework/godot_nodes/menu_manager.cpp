@@ -134,18 +134,6 @@ MenuIntent to_menu_intent(int intent_type, const String &target) {
     };
 }
 
-SceneNavigationRequest to_navigation_request(const MenuIntent &intent) {
-    switch (intent.type) {
-    case MenuIntentType::StartGame:
-        return {.destination = SceneNavigationDestination::CurrentLevel};
-    case MenuIntentType::Quit:
-        return {.destination = SceneNavigationDestination::Quit};
-    case MenuIntentType::MainMenu:
-    default:
-        return {.destination = SceneNavigationDestination::MainMenu};
-    }
-}
-
 Vector2 get_progression_screen_size(Node *parent) {
     if (parent == nullptr || parent->get_viewport() == nullptr) {
         return make_size(800, 360);
@@ -449,15 +437,25 @@ void MenuManager::show_menu(const String &menu_name) {
 
 void MenuManager::on_button_pressed(int intent_type, const String &target) { handle_menu_intent(to_menu_intent(intent_type, target)); }
 
-void MenuManager::handle_menu_intent(const MenuIntent &intent) {
-    if (intent.type == MenuIntentType::GotoMenu) {
-        show_menu(to_godot_string(intent.target));
-    } else if (intent.type == MenuIntentType::ShowLevelSelect) {
+void MenuManager::handle_menu_intent(const MenuIntent &intent) { apply_menu_flow_result(MenuFlowUseCase::handle(intent)); }
+
+void MenuManager::apply_menu_flow_result(const MenuFlowResult &result) {
+    switch (result.view) {
+    case MenuFlowView::Menu:
+        show_menu(to_godot_string(result.menu_name));
+        break;
+    case MenuFlowView::LevelSelect:
         show_level_select();
-    } else if (intent.type == MenuIntentType::ShowProgression) {
+        break;
+    case MenuFlowView::Progression:
         show_progression();
-    } else if (intent.type == MenuIntentType::StartGame || intent.type == MenuIntentType::Quit || intent.type == MenuIntentType::MainMenu) {
-        SceneNavigator::navigate(get_tree(), to_navigation_request(intent));
+        break;
+    case MenuFlowView::None:
+        break;
+    }
+
+    if (result.navigation.has_value()) {
+        SceneNavigator::navigate(get_tree(), *result.navigation);
     }
 }
 
@@ -512,7 +510,7 @@ void MenuManager::show_level_select() {
 }
 
 void MenuManager::on_level_selected(const String &level_id) {
-    SceneNavigator::navigate(get_tree(), {.destination = SceneNavigationDestination::Level, .level_id = to_std_string(level_id)});
+    apply_menu_flow_result(MenuFlowUseCase(CampaignService::get_singleton()).select_level(to_std_string(level_id)));
 }
 
 void MenuManager::show_progression() {
@@ -547,8 +545,8 @@ void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
 
     button_container_->add_theme_constant_override("separation", options_layout.row_separation);
 
-    const auto current_mode = settings_state_.display_mode;
-    const Vector2i current_size = settings_state_.resolution;
+    const auto current_mode = static_cast<DisplayServer::WindowMode>(settings_state_.display_mode);
+    const Vector2i current_size(settings_state_.resolution.width, settings_state_.resolution.height);
     const bool vsync_on = settings_state_.vsync_enabled;
 
     for (const auto &setting : view_model.settings) {
@@ -582,7 +580,7 @@ void MenuManager::on_display_mode_changed(int index) {
 
     SettingsService::set_display_mode(settings_state_, display_mode_values_[index]);
 
-    const bool windowed = settings_state_.display_mode == DisplayServer::WINDOW_MODE_WINDOWED;
+    const bool windowed = settings_state_.display_mode == static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED);
     if (resolution_dropdown_) {
         apply_disabled_style(resolution_dropdown_, windowed);
     }

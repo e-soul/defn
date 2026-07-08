@@ -44,11 +44,11 @@ void apply_progression_unit_stats(UnitConfig &config, const ProgressionUnitStats
 
 UpgradeCardViewModel to_godot_upgrade_card(const ProgressionUpgradeCardViewModel &card) {
     return {
-        .id = to_godot_string(card.id),
-        .name = to_godot_string(card.name),
-        .description = to_godot_string(card.description),
-        .emoji = to_godot_string(card.emoji),
-        .category = to_godot_string(card.category),
+        .id = card.id,
+        .name = card.name,
+        .description = card.description,
+        .emoji = card.emoji,
+        .category = card.category,
         .owned_count = card.owned_count,
     };
 }

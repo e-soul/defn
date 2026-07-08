@@ -1,4 +1,4 @@
-#include "score_screen_presenter.h"
+#include "score_screen_view.h"
 
 #include "owned_upgrades_panel.h"
 #include "score_screen_view_model.h"
@@ -15,7 +15,6 @@
 #include <godot_cpp/classes/viewport.hpp>
 
 #include <algorithm>
-#include <string>
 
 namespace defn {
 
@@ -42,32 +41,7 @@ real_t get_score_screen_width(Node *parent) {
     return std::min(std::max(target_width, std::min(SCORE_SCREEN_MIN_WIDTH, max_width)), max_width);
 }
 
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
 String to_godot_string(const std::string &value) { return {value.c_str()}; }
-
-ScoreScreenPresentationInput to_presentation_input(const ScoreScreenModel &model) {
-    ScoreScreenPresentationInput input;
-    input.victory = model.victory;
-    input.enemies_killed = model.enemies_killed;
-    input.kill_score = model.kill_score;
-    input.hearts_remaining = model.hearts_remaining;
-    input.hearts_total = model.hearts_total;
-    input.integrity_bonus = model.integrity_bonus;
-    input.completion_bonus = model.completion_bonus;
-    input.level_score = model.level_score;
-    input.new_total_score = model.new_total_score;
-    input.next_level_id = to_std_string(model.next_level_id);
-    input.reward_available = !model.reward.available_upgrades.empty();
-    input.reward_requires_selection = model.reward.requires_selection();
-    input.reward_title = to_std_string(model.reward.title);
-    input.reward_subtitle = to_std_string(model.reward.subtitle);
-    for (const auto &new_unlock : model.new_unlocks) {
-        input.new_unlocks.push_back(to_std_string(String(new_unlock)));
-    }
-    input.owned_upgrades_visible = !model.owned_upgrades.empty();
-    return input;
-}
 
 Button *make_action_button(const String &text) {
     auto *button = memnew(Button);
@@ -143,7 +117,7 @@ void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel 
         return;
     }
 
-    const String selected_upgrade_id = reward.selected_upgrade.has_value() ? reward.selected_upgrade->id : String();
+    const std::string selected_upgrade_id = reward.selected_upgrade.has_value() ? reward.selected_upgrade->id : std::string();
 
     add_spacer(content, 12);
 
@@ -192,12 +166,11 @@ void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel 
     selection_row->add_child(card_row);
 
     for (const auto &card : reward.available_upgrades) {
-        const String card_id = card.id;
-        const bool selected = !selected_upgrade_id.is_empty() && card_id == selected_upgrade_id;
+        const bool selected = !selected_upgrade_id.empty() && card.id == selected_upgrade_id;
 
         Callable pressed_action;
-        if (on_select_upgrade.is_valid() && !card_id.is_empty()) {
-            pressed_action = on_select_upgrade.bind(card_id);
+        if (on_select_upgrade.is_valid() && !card.id.empty()) {
+            pressed_action = on_select_upgrade.bind(to_godot_string(card.id));
         }
 
         auto *card_button = UpgradeCardPresenter::create(card, selected, false, pressed_action);
@@ -243,14 +216,14 @@ void add_owned_upgrades_section(VBoxContainer *content, const std::vector<Upgrad
 
 } // namespace
 
-ScoreScreenView ScoreScreenPresenter::show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions) {
+ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions) {
     if (parent == nullptr) {
         return {};
     }
 
-    const ScoreScreenViewModel presentation = build_score_screen_view_model(to_presentation_input(model));
+    const ScoreScreenViewModel presentation = ScoreScreenPresenter::build(model);
 
-    ScoreScreenView view;
+    ScoreScreenViewNodes view;
 
     view.overlay = memnew(ColorRect);
     view.overlay->set_anchors_preset(Control::PRESET_FULL_RECT);

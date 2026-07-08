@@ -1,6 +1,8 @@
 #ifndef SCORE_SCREEN_VIEW_MODEL_H
 #define SCORE_SCREEN_VIEW_MODEL_H
 
+#include "score_screen_models.h"
+
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,6 +44,13 @@ struct ScoreScreenViewModel {
 };
 
 [[nodiscard]] ScoreScreenViewModel build_score_screen_view_model(const ScoreScreenPresentationInput &input);
+
+class ScoreScreenPresenter {
+    public:
+        ScoreScreenPresenter() = delete;
+
+        [[nodiscard]] static ScoreScreenViewModel build(const ScoreScreenModel &model);
+};
 
 } // namespace defn
 
