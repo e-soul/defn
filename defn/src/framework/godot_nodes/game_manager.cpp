@@ -1,6 +1,7 @@
 #include "game_manager.h"
 
 #include "base_objective.h"
+#include "base_objective_factory.h"
 #include "bounty_energy_effect.h"
 #include "collision_layers.h"
 #include "data_paths.h"
@@ -227,12 +228,10 @@ void GameManager::setup_base_objective() {
 
     const std::optional<UnitConfig> base_visual_config = unit_data_.get_unit("base");
 
-    base_objective = memnew(BaseObjective);
-    base_objective->set_name("BaseObjective");
+    base_objective = BaseObjectiveFactory::create(match_director_.get_base_max_health(), get_base_objective_position(), base_visual_config);
     base_objective->connect("durability_changed", callable_mp(this, &GameManager::on_base_durability_changed));
     base_objective->connect("objective_destroyed", callable_mp(this, &GameManager::on_base_destroyed));
     entity_container->add_child(base_objective);
-    base_objective->configure(match_director_.get_base_max_health(), get_base_objective_position(), base_visual_config);
 }
 
 Area2D *GameManager::create_scroll_trigger(const String &name, uint32_t collision_mask) {

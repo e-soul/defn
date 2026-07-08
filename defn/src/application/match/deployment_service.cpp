@@ -1,5 +1,7 @@
 #include "deployment_service.h"
 
+#include "unit_runtime_config_resolver.h"
+
 namespace defn {
 
 namespace {
@@ -43,18 +45,19 @@ std::optional<UnitConfig> resolve_friendly_config(const ProgressionService *prog
 } // namespace
 
 void DeploymentService::configure(MatchSession *match_session, const UnitCatalog *unit_catalog, const ProgressionService *progression,
-                                  const GridQueryService *grid) {
+                                  const GridQueryService *grid, RandomSource *random) {
     match_session_ = match_session;
     unit_catalog_ = unit_catalog;
     progression_ = progression;
     grid_ = grid;
+    random_ = random;
 }
 
 DeploymentResult DeploymentService::deploy_friendly(const std::string &unit_id) {
     DeploymentResult result;
     result.unit_id = unit_id;
 
-    if (match_session_ == nullptr || unit_catalog_ == nullptr || progression_ == nullptr) {
+    if (match_session_ == nullptr || unit_catalog_ == nullptr || progression_ == nullptr || random_ == nullptr) {
         result.failure_reason = DeploymentFailureReason::MISSING_DEPENDENCY;
         return result;
     }
@@ -97,6 +100,7 @@ DeploymentResult DeploymentService::deploy_friendly(const std::string &unit_id) 
         .side = MatchUnitSide::Friendly,
         .position = {.x = spawn_x_pos, .y = spawn_y_pos},
         .runtime_profile = UnitRuntimeProfile::from_unit_config(*config),
+        .resolved_runtime_config = resolve_unit_runtime_config(to_runtime_range_config(*config), *random_),
     };
     return result;
 }

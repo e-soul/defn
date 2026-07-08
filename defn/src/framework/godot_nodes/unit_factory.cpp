@@ -10,7 +10,6 @@
 #include "movement_component.h"
 #include "sound_controller.h"
 #include "unit.h"
-#include "unit_runtime_config_resolver.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 namespace defn {
@@ -123,24 +122,12 @@ CombatComponent *create_combat_component(Unit *unit, HealthComponent *health, An
     return combat;
 }
 
-RuntimeRangeConfig make_runtime_range_config(const UnitConfig &config) {
-    return {
-        .melee_attack_range = static_cast<float>(config.melee_attack_range),
-        .melee_attack_range_variation_min = static_cast<float>(config.melee_attack_range_variation.min),
-        .melee_attack_range_variation_max = static_cast<float>(config.melee_attack_range_variation.max),
-        .ranged_attack_range = static_cast<float>(config.ranged_attack_range),
-        .ranged_attack_range_variation_min = static_cast<float>(config.ranged_attack_range_variation.min),
-        .ranged_attack_range_variation_max = static_cast<float>(config.ranged_attack_range_variation.max),
-    };
-}
-
 } // namespace
 
-Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, const UnitRuntimeProfile &profile) {
+Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, const UnitRuntimeProfile &profile,
+                          const ResolvedUnitRuntimeConfig &resolved_config) {
     auto *unit = memnew(Unit);
     unit->set_unit_config(config);
-    StdRandomSource random;
-    const ResolvedUnitRuntimeConfig resolved_config = resolve_unit_runtime_config(make_runtime_range_config(config), random);
     unit->set_resolved_attack_ranges(resolved_config.melee_attack_range, resolved_config.ranged_attack_range);
     unit->set_runtime_profile(profile);
     unit->set_position(position);
@@ -148,7 +135,8 @@ Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, con
 }
 
 Unit *UnitFactory::materialize(const SpawnUnitIntent &intent, const UnitConfig &config) {
-    return create(config, Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile);
+    return create(config, Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile,
+                  intent.resolved_runtime_config);
 }
 
 void UnitFactory::initialize(Unit *unit) {

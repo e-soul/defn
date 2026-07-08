@@ -13,7 +13,6 @@ using namespace godot;
 
 UnitSide parse_unit_side(const Dictionary &unit_dict);
 SplashTargetRoundingMode parse_splash_target_rounding_mode(const Variant &value, SplashTargetRoundingMode fallback);
-ProjectileDamageConfig to_projectile_damage_config(const ProjectileAttackConfig &config);
 
 class UnitDataLoader : public UnitCatalog {
   public:

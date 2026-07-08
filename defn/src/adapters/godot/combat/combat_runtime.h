@@ -2,10 +2,10 @@
 #define COMBAT_RUNTIME_H
 
 #include "combat_attack_executor.h"
-#include "combat_use_cases.h"
 #include "combat_logic.h"
 #include "combat_types.h"
-#include "unit_data.h"
+#include "combat_use_cases.h"
+#include "unit_definition.h"
 
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/core/math.hpp>

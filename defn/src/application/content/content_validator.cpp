@@ -2,13 +2,15 @@
 
 #include "menu_models.h"
 #include "progression_catalog.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 #include "upgrade_catalog.h"
 
 #include <algorithm>
 #include <array>
 #include <optional>
 #include <vector>
+
+#include <godot_cpp/variant/variant.hpp>
 
 namespace defn {
 

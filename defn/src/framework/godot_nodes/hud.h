@@ -3,7 +3,7 @@
 
 #include "hud_presenter.h"
 #include "score_screen_models.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
@@ -19,7 +19,7 @@ namespace defn {
 using namespace godot;
 
 struct DeployCardUI {
-  std::string unit_type;
+    std::string unit_type;
     Button *button = nullptr;
 };
 

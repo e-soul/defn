@@ -4,7 +4,7 @@
 #include "attack_target.h"
 #include "attack_target_resolver.h"
 #include "battle_entity.h"
-#include "projectile_attack.h"
+#include "projectile_factory.h"
 
 namespace defn {
 
@@ -44,8 +44,8 @@ void apply_effect(const CombatCommand &command, const std::optional<ProjectileAt
 
 } // namespace
 
-void CombatAttackExecutor::spawn_pending_projectile(const std::optional<ProjectileAttackConfig> &projectile_config, BattleEntity *unit, AnimationController *animation,
-                                                    PendingProjectileSpawn &pending_projectile) {
+void CombatAttackExecutor::spawn_pending_projectile(const std::optional<ProjectileAttackConfig> &projectile_config, BattleEntity *unit,
+                                                    AnimationController *animation, PendingProjectileSpawn &pending_projectile) {
     if (!pending_projectile.active) {
         return;
     }
@@ -54,7 +54,6 @@ void CombatAttackExecutor::spawn_pending_projectile(const std::optional<Projecti
         return;
     }
 
-    auto *projectile = memnew(ProjectileAttack);
     Node *projectile_parent = unit != nullptr ? unit->get_parent() : nullptr;
     if (projectile_parent == nullptr) {
         projectile_parent = unit;
@@ -69,16 +68,15 @@ void CombatAttackExecutor::spawn_pending_projectile(const std::optional<Projecti
             launch_position = unit->get_target_global_position();
         }
 
-        projectile_parent->add_child(projectile);
-        projectile->configure(*projectile_config, pending_projectile.shooter_side, to_godot_color(pending_projectile.flash_color), launch_position,
-                              pending_projectile.target_global_position, direct_target, pending_projectile.fallback_damage);
+        ProjectileFactory::create(projectile_parent, *projectile_config, pending_projectile.shooter_side, to_godot_color(pending_projectile.flash_color),
+                                  launch_position, pending_projectile.target_global_position, direct_target, pending_projectile.fallback_damage);
     }
 
     pending_projectile = {};
 }
 
-void CombatAttackExecutor::apply_command(const CombatCommand &command, const std::optional<ProjectileAttackConfig> &projectile_config,
-                                         UnitSide shooter_side, AnimationController *animation, PendingProjectileSpawn &pending_projectile) {
+void CombatAttackExecutor::apply_command(const CombatCommand &command, const std::optional<ProjectileAttackConfig> &projectile_config, UnitSide shooter_side,
+                                         AnimationController *animation, PendingProjectileSpawn &pending_projectile) {
     if (command.type == CombatCommandType::DEAL_DAMAGE) {
         if (AttackTarget *target = resolve_entity_id(command.target_id); target != nullptr) {
             target->take_damage(command.damage);

@@ -4,6 +4,7 @@
 #include "match_director.h"
 #include "match_session.h"
 #include "runtime_service_interfaces.h"
+#include "scripted_random_source.h"
 #include "spawn_scheduler.h"
 #include "unit_data.h"
 
@@ -77,6 +78,13 @@ UnitDataLoader make_unit_loader() {
     const bool loaded = loader.load_from_data(make_unit_data(), make_global_data());
     DEFN_REQUIRE(loaded);
     return loader;
+}
+
+void push_range_resolution_values(tests::ScriptedRandomSource &random, int unit_count, float melee_multiplier = 1.0F, float ranged_multiplier = 1.0F) {
+    for (int index = 0; index < unit_count; ++index) {
+        random.push_real(melee_multiplier);
+        random.push_real(ranged_multiplier);
+    }
 }
 
 class FakeGridService final : public GridQueryService {
@@ -261,13 +269,17 @@ DEFN_TEST(deployment_service_returns_spawn_request_and_spends_energy) {
     FakeGridService grid;
     MatchSession session;
     session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
+    tests::ScriptedRandomSource random;
+    push_range_resolution_values(random, 1, 0.75F, 1.25F);
 
     DeploymentService service;
-    service.configure(&session, &unit_loader, &progression, &grid);
+    service.configure(&session, &unit_loader, &progression, &grid, &random);
 
     const DeploymentResult result = service.deploy_friendly("operator");
+    const auto base_config = unit_loader.get_unit("operator");
     DEFN_REQUIRE(result.succeeded);
     DEFN_REQUIRE(result.spawn_intent.has_value());
+    DEFN_REQUIRE(base_config.has_value());
     DEFN_CHECK_EQ(result.unit_cost, 25);
     DEFN_CHECK_EQ(result.remaining_energy, 15);
     DEFN_CHECK(result.spawn_intent->unit_id == "operator");
@@ -275,12 +287,16 @@ DEFN_TEST(deployment_service_returns_spawn_request_and_spends_energy) {
     DEFN_CHECK_CLOSE(result.spawn_intent->position.x, 64.0, 0.001);
     DEFN_CHECK_CLOSE(result.spawn_intent->position.y, 240.0, 0.001);
     DEFN_CHECK(result.spawn_intent->runtime_profile.enable_combat);
+    DEFN_CHECK_CLOSE(result.spawn_intent->resolved_runtime_config.melee_attack_range, base_config->melee_attack_range * 0.75F, 0.001);
+    DEFN_CHECK_CLOSE(result.spawn_intent->resolved_runtime_config.ranged_attack_range, base_config->ranged_attack_range * 1.25F, 0.001);
 }
 
 DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
     UnitDataLoader unit_loader = make_unit_loader();
     FakeProgressionService progression;
     FakeGridService grid;
+    tests::ScriptedRandomSource random;
+    push_range_resolution_values(random, 1);
 
     DeploymentService missing_dependencies;
     DEFN_CHECK_EQ(missing_dependencies.deploy_friendly("operator").failure_reason, DeploymentFailureReason::MISSING_DEPENDENCY);
@@ -289,7 +305,7 @@ DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
     ended_session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
     ended_session.finish_game();
     DeploymentService game_over_service;
-    game_over_service.configure(&ended_session, &unit_loader, &progression, &grid);
+    game_over_service.configure(&ended_session, &unit_loader, &progression, &grid, &random);
     const DeploymentResult game_over = game_over_service.deploy_friendly("operator");
     DEFN_CHECK_EQ(game_over.failure_reason, DeploymentFailureReason::GAME_OVER);
     DEFN_CHECK_EQ(game_over.remaining_energy, 40);
@@ -297,7 +313,7 @@ DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
     MatchSession session;
     session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
     DeploymentService service;
-    service.configure(&session, &unit_loader, &progression, &grid);
+    service.configure(&session, &unit_loader, &progression, &grid, &random);
 
     DEFN_CHECK_EQ(service.deploy_friendly("base").failure_reason, DeploymentFailureReason::UNKNOWN_UNIT);
     DEFN_CHECK_EQ(service.deploy_friendly("jackal").failure_reason, DeploymentFailureReason::UNKNOWN_UNIT);
@@ -306,7 +322,7 @@ DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
     MatchSession low_energy_session;
     low_energy_session.start({.starting_core_resource = 10, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
     DeploymentService low_energy_service;
-    low_energy_service.configure(&low_energy_session, &unit_loader, &progression, &grid);
+    low_energy_service.configure(&low_energy_session, &unit_loader, &progression, &grid, &random);
     const DeploymentResult insufficient = low_energy_service.deploy_friendly("operator");
     DEFN_CHECK_EQ(insufficient.failure_reason, DeploymentFailureReason::INSUFFICIENT_ENERGY);
     DEFN_CHECK_EQ(insufficient.unit_cost, 25);
@@ -315,7 +331,7 @@ DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
     MatchSession missing_grid_session;
     missing_grid_session.start({.starting_core_resource = 40, .initial_integrity = 3, .bounty_multiplier = 1.0F, .energy_regen_rate = 1});
     DeploymentService missing_grid_service;
-    missing_grid_service.configure(&missing_grid_session, &unit_loader, &progression, nullptr);
+    missing_grid_service.configure(&missing_grid_session, &unit_loader, &progression, nullptr, &random);
     const DeploymentResult missing_grid = missing_grid_service.deploy_friendly("operator");
     DEFN_CHECK_EQ(missing_grid.failure_reason, DeploymentFailureReason::MISSING_GRID);
     DEFN_CHECK_EQ(missing_grid.remaining_energy, 40);
@@ -324,9 +340,11 @@ DEFN_TEST(deployment_service_reports_failure_reasons_without_spending_energy) {
 DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
     UnitDataLoader unit_loader = make_unit_loader();
     FakeGridService grid;
+    tests::ScriptedRandomSource random;
+    push_range_resolution_values(random, 2, 0.5F, 1.5F);
 
     SpawnScheduler scheduler;
-    scheduler.configure(&unit_loader, &grid);
+    scheduler.configure(&unit_loader, &grid, &random);
 
     LevelDefinition level = make_empty_level();
     level.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.5, .type = "jackal"}}});
@@ -340,6 +358,8 @@ DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
     DEFN_CHECK(first_update.spawn_unit_intents[0].side == MatchUnitSide::Hostile);
     DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].position.x, 896.0, 0.001);
     DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].position.y, 240.0, 0.001);
+    DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].resolved_runtime_config.melee_attack_range, 64.0, 0.001);
+    DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].resolved_runtime_config.ranged_attack_range, 576.0, 0.001);
     DEFN_REQUIRE(first_update.wave_changed.has_value());
     DEFN_CHECK_EQ(first_update.wave_changed->current_wave, 1);
     DEFN_CHECK_EQ(first_update.wave_changed->total_waves, 2);
@@ -355,6 +375,8 @@ DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
 DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     UnitDataLoader unit_loader = make_unit_loader();
     FakeGridService grid;
+    tests::ScriptedRandomSource random;
+    push_range_resolution_values(random, 1);
 
     LevelDefinition level = make_empty_level();
     level.level_id = 4;
@@ -374,7 +396,7 @@ DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     DEFN_CHECK(unconfigured_update.all_spawns_completed);
 
     SpawnScheduler scheduler;
-    scheduler.configure(&unit_loader, &grid);
+    scheduler.configure(&unit_loader, &grid, &random);
     scheduler.load_level_definition(level);
     scheduler.start();
     const SpawnSchedulerUpdate update = scheduler.update(0.1);

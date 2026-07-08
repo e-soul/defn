@@ -4,7 +4,7 @@
 #include "level_definition.h"
 #include "menu_models.h"
 #include "progression_catalog.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 #include "upgrade_catalog.h"
 
 #include <godot_cpp/variant/string.hpp>

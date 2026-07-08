@@ -2,7 +2,7 @@
 #define UNIT_H
 
 #include "battle_entity.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 #include "unit_runtime_profile.h"
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -23,7 +23,7 @@ class SoundController;
 class UnitFactory;
 
 class Unit : public BattleEntity {
-  GDCLASS(Unit, BattleEntity)
+    GDCLASS(Unit, BattleEntity)
 
   public:
     Unit();

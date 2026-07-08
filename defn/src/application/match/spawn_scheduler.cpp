@@ -1,6 +1,7 @@
 #include "spawn_scheduler.h"
 
-#include "unit_data.h"
+#include "unit_definition.h"
+#include "unit_runtime_config_resolver.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -35,9 +36,10 @@ void SpawnScheduler::load_level_definition(const LevelDefinition &level_definiti
     timeline_.load(to_spawn_timeline_definition(level_definition));
 }
 
-void SpawnScheduler::configure(const UnitCatalog *unit_catalog, const GridQueryService *grid) {
+void SpawnScheduler::configure(const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random) {
     unit_catalog_ = unit_catalog;
     grid_ = grid;
+    random_ = random;
 }
 
 void SpawnScheduler::start() { timeline_.start(); }
@@ -53,7 +55,7 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
     update.all_spawns_completed = timeline_update.all_spawns_completed;
 
     for (const auto &spawn : timeline_update.due_spawns) {
-        if (unit_catalog_ == nullptr || grid_ == nullptr) {
+        if (unit_catalog_ == nullptr || grid_ == nullptr || random_ == nullptr) {
             continue;
         }
 
@@ -69,6 +71,7 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
             .side = to_match_unit_side(config->side),
             .position = {.x = spawn_x_pos, .y = spawn_y_pos},
             .runtime_profile = UnitRuntimeProfile::from_unit_config(*config),
+            .resolved_runtime_config = resolve_unit_runtime_config(to_runtime_range_config(*config), *random_),
         });
     }
 

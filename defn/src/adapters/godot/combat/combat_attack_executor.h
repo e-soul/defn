@@ -2,7 +2,7 @@
 #define COMBAT_ATTACK_EXECUTOR_H
 
 #include "combat_use_cases.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 
 #include <godot_cpp/variant/vector2.hpp>
 
@@ -16,12 +16,12 @@ class AnimationController;
 class BattleEntity;
 
 struct PendingProjectileSpawn {
-  bool active = false;
-  EntityId target_id{};
-  UnitSide shooter_side = UnitSide::FRIENDLY;
-  Vector2 target_global_position;
-  int fallback_damage = 0;
-  CombatColor flash_color;
+    bool active = false;
+    EntityId target_id{};
+    UnitSide shooter_side = UnitSide::FRIENDLY;
+    Vector2 target_global_position;
+    int fallback_damage = 0;
+    CombatColor flash_color;
 };
 
 class CombatAttackExecutor {
@@ -29,7 +29,7 @@ class CombatAttackExecutor {
     static void spawn_pending_projectile(const std::optional<ProjectileAttackConfig> &projectile_config, BattleEntity *unit, AnimationController *animation,
                                          PendingProjectileSpawn &pending_projectile);
     static void apply_command(const CombatCommand &command, const std::optional<ProjectileAttackConfig> &projectile_config, UnitSide shooter_side,
-                  AnimationController *animation, PendingProjectileSpawn &pending_projectile);
+                              AnimationController *animation, PendingProjectileSpawn &pending_projectile);
 };
 
 } // namespace defn

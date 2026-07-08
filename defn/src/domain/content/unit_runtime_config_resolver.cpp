@@ -2,10 +2,22 @@
 
 namespace defn {
 
+RuntimeRangeConfig to_runtime_range_config(const UnitConfig &config) {
+    return {
+        .melee_attack_range = config.melee_attack_range,
+        .melee_attack_range_variation_min = config.melee_attack_range_variation.min,
+        .melee_attack_range_variation_max = config.melee_attack_range_variation.max,
+        .ranged_attack_range = config.ranged_attack_range,
+        .ranged_attack_range_variation_min = config.ranged_attack_range_variation.min,
+        .ranged_attack_range_variation_max = config.ranged_attack_range_variation.max,
+    };
+}
+
 ResolvedUnitRuntimeConfig resolve_unit_runtime_config(const RuntimeRangeConfig &config, RandomSource &random) {
     return {
         .melee_attack_range = config.melee_attack_range * random.range_real(config.melee_attack_range_variation_min, config.melee_attack_range_variation_max),
-        .ranged_attack_range = config.ranged_attack_range * random.range_real(config.ranged_attack_range_variation_min, config.ranged_attack_range_variation_max),
+        .ranged_attack_range =
+            config.ranged_attack_range * random.range_real(config.ranged_attack_range_variation_min, config.ranged_attack_range_variation_max),
     };
 }
 

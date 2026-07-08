@@ -47,11 +47,12 @@ std::vector<MatchUpgradeOption> to_match_upgrade_options(const std::vector<Progr
 
 } // namespace
 
-bool MatchDirector::configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid) {
+bool MatchDirector::configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random) {
     campaign_ = campaign;
     unit_catalog_ = unit_catalog;
     grid_ = grid;
-    spawn_scheduler_.configure(unit_catalog_, grid_);
+    random_ = random != nullptr ? random : &default_random_;
+    spawn_scheduler_.configure(unit_catalog_, grid_, random_);
     return campaign_ != nullptr && unit_catalog_ != nullptr && grid_ != nullptr;
 }
 
@@ -74,7 +75,7 @@ void MatchDirector::begin_match() {
 
     match_session_.start(match_config);
     pending_match_end_.reset();
-    deployment_service_.configure(&match_session_, unit_catalog_, campaign_, grid_);
+    deployment_service_.configure(&match_session_, unit_catalog_, campaign_, grid_, random_);
     spawn_scheduler_.start();
 }
 

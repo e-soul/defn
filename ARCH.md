@@ -380,7 +380,7 @@ flowchart TB
 
 ## Module 6: Godot Entity Construction
 
-Entity construction should stay outside the inner rules. The domain says what should exist; Godot factories decide how to create nodes.
+Entity construction stays outside the inner rules. Application outputs describe what should exist through intents, commands, runtime profiles, and resolved runtime configs; Godot factories decide how to call `memnew`, attach child nodes, configure components, and connect signals. `Unit`, `BaseObjective`, and `BattleEntity` remain humble Godot adapters for local setup, snapshots, signals, and command application, while inner rules interact through values, IDs, snapshots, commands, and intents rather than Godot node pointers.
 
 ```mermaid
 flowchart TB
@@ -416,14 +416,6 @@ flowchart TB
     BaseObjective --> BattleEntity
     BattleEntity --> Components
 ```
-
-Target guidelines:
-
-- `UnitFactory` remains a Godot adapter because it calls `memnew`, attaches child nodes, and connects signals.
-- Runtime profiles are useful and should remain value objects passed into factories.
-- `Unit` should expose snapshots and apply commands, not decide rules beyond local setup.
-- Randomized range variation should move out of `Unit::set_unit_config` and into a seeded domain/application step that produces a resolved runtime config. The node should receive the resolved values.
-- `BattleEntity` can stay as a shared Godot adapter base, but inner rules should interact with entity IDs or snapshots rather than requiring `BattleEntity *`.
 
 ## Ports and Boundaries
 

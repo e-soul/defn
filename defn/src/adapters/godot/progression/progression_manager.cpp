@@ -3,7 +3,7 @@
 #include "content_startup_validator.h"
 #include "data_paths.h"
 #include "progression_presentation.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/memory.hpp>

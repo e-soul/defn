@@ -2,7 +2,7 @@
 #define BASE_OBJECTIVE_H
 
 #include "battle_entity.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>

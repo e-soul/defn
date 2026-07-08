@@ -58,6 +58,18 @@ struct ProjectileAttackConfig {
     AnimConfig explosion_animation;
 };
 
+inline ProjectileDamageConfig to_projectile_damage_config(const ProjectileAttackConfig &config) {
+    return {
+        .splash_radius = config.splash_radius,
+        .affected_fraction = config.affected_fraction,
+        .min_affected_targets = config.min_affected_targets,
+        .affected_target_rounding = config.affected_target_rounding,
+        .include_direct_target = config.include_direct_target,
+        .impact_damage = config.impact_damage,
+        .splash_damage = config.splash_damage,
+    };
+}
+
 struct GlobalUnitConfig {
     GameplayRules gameplay_rules;
     GlobalShootSfxConfig shoot_sfx;

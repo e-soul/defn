@@ -268,18 +268,6 @@ SplashTargetRoundingMode parse_splash_target_rounding_mode(const Variant &value,
     return parse_splash_target_rounding_mode_impl(value, fallback);
 }
 
-ProjectileDamageConfig to_projectile_damage_config(const ProjectileAttackConfig &config) {
-    return {
-        .splash_radius = static_cast<float>(config.splash_radius),
-        .affected_fraction = static_cast<float>(config.affected_fraction),
-        .min_affected_targets = config.min_affected_targets,
-        .affected_target_rounding = config.affected_target_rounding,
-        .include_direct_target = config.include_direct_target,
-        .impact_damage = config.impact_damage,
-        .splash_damage = config.splash_damage,
-    };
-}
-
 bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
     const auto global_data = JsonFileLoader::load_dictionary(global_path, "UnitDataLoader");
     if (!global_data) {

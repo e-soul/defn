@@ -5,8 +5,8 @@
 #include <godot_cpp/godot.hpp>
 
 #include "animation_controller.h"
-#include "battle_entity.h"
 #include "base_objective.h"
+#include "battle_entity.h"
 #include "combat_component.h"
 #include "detection_component.h"
 #include "game_manager.h"
@@ -22,7 +22,6 @@
 #include "projectile_attack.h"
 #include "sound_controller.h"
 #include "unit.h"
-#include "wave_manager.h"
 
 #ifdef DEFN_HOSTED_TESTS_ENABLED
 #include "defn_hosted_test_runner.h"
@@ -51,7 +50,6 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::CombatComponent>();
     ClassDB::register_class<defn::ProjectileAttack>();
     ClassDB::register_class<defn::Unit>();
-    ClassDB::register_class<defn::WaveManager>();
     ClassDB::register_class<defn::GameManager>();
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();

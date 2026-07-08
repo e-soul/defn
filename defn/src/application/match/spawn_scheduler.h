@@ -3,6 +3,7 @@
 
 #include "level_definition.h"
 #include "match_outputs.h"
+#include "random_source.h"
 #include "runtime_service_interfaces.h"
 #include "spawn_timeline.h"
 
@@ -26,7 +27,7 @@ struct SpawnSchedulerUpdate {
 class SpawnScheduler {
   public:
     void load_level_definition(const LevelDefinition &level_definition);
-    void configure(const UnitCatalog *unit_catalog, const GridQueryService *grid);
+    void configure(const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random);
     void start();
     void stop();
     SpawnSchedulerUpdate update(double delta);
@@ -45,6 +46,7 @@ class SpawnScheduler {
     SpawnTimeline timeline_;
     const UnitCatalog *unit_catalog_ = nullptr;
     const GridQueryService *grid_ = nullptr;
+    RandomSource *random_ = nullptr;
 };
 
 } // namespace defn

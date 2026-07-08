@@ -4,8 +4,9 @@
 #include "match_outputs.h"
 #include "match_session.h"
 #include "progression_service.h"
+#include "random_source.h"
 #include "runtime_service_interfaces.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 
 #include <optional>
 #include <string>
@@ -32,7 +33,8 @@ struct DeploymentResult {
 
 class DeploymentService {
   public:
-    void configure(MatchSession *match_session, const UnitCatalog *unit_catalog, const ProgressionService *progression, const GridQueryService *grid);
+    void configure(MatchSession *match_session, const UnitCatalog *unit_catalog, const ProgressionService *progression, const GridQueryService *grid,
+                   RandomSource *random);
     DeploymentResult deploy_friendly(const std::string &unit_id);
 
   private:
@@ -40,6 +42,7 @@ class DeploymentService {
     const UnitCatalog *unit_catalog_ = nullptr;
     const ProgressionService *progression_ = nullptr;
     const GridQueryService *grid_ = nullptr;
+    RandomSource *random_ = nullptr;
 };
 
 } // namespace defn

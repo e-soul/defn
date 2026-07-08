@@ -2,6 +2,7 @@
 #define MATCH_OUTPUTS_H
 
 #include "match_summary.h"
+#include "unit_runtime_config_resolver.h"
 #include "unit_runtime_profile.h"
 
 #include <optional>
@@ -22,6 +23,7 @@ struct SpawnUnitIntent {
     MatchUnitSide side = MatchUnitSide::Hostile;
     MatchPosition position;
     UnitRuntimeProfile runtime_profile;
+    ResolvedUnitRuntimeConfig resolved_runtime_config;
 };
 
 struct ResourceChanged {

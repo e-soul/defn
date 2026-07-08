@@ -2,7 +2,7 @@
 #define PROJECTILE_ATTACK_H
 
 #include "attack_target.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 
 #include <godot_cpp/classes/animated_sprite2d.hpp>
 #include <godot_cpp/classes/audio_stream_player2d.hpp>
@@ -42,7 +42,7 @@ class ProjectileAttack : public Node2D {
     void try_finish();
 
     ProjectileAttackConfig config_{};
-  UnitSide shooter_side_ = UnitSide::FRIENDLY;
+    UnitSide shooter_side_ = UnitSide::FRIENDLY;
     Color flash_color_{};
     AnimatedSprite2D *sprite_ = nullptr;
     AudioStreamPlayer2D *explosion_player_ = nullptr;

@@ -5,9 +5,10 @@
 #include "match_outputs.h"
 #include "match_session.h"
 #include "progression_service.h"
+#include "random_source.h"
 #include "runtime_service_interfaces.h"
 #include "spawn_scheduler.h"
-#include "unit_data.h"
+#include "unit_definition.h"
 
 #include <godot_cpp/variant/string.hpp>
 
@@ -25,7 +26,7 @@ struct EnemyDefeatedReport {
 
 class MatchDirector {
   public:
-    bool configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid);
+    bool configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random = nullptr);
     void load_level_definition(const LevelDefinition &level_definition, const String &level_id);
     void begin_match();
     MatchUpdate update(double delta);
@@ -63,6 +64,8 @@ class MatchDirector {
     MatchSession match_session_;
     DeploymentService deployment_service_;
     SpawnScheduler spawn_scheduler_;
+    StdRandomSource default_random_;
+    RandomSource *random_ = &default_random_;
     std::optional<MatchEnded> pending_match_end_;
 };
 

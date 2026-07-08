@@ -2,6 +2,7 @@
 
 #include "attack_target_resolver.h"
 #include "base_objective.h"
+#include "base_objective_factory.h"
 #include "camera_scroll_controller.h"
 #include "deploy_card_presenter.h"
 #include "game_background_builder.h"
@@ -10,11 +11,11 @@
 #include "menu_manager.h"
 #include "pause_menu.h"
 #include "projectile_attack.h"
+#include "projectile_factory.h"
 #include "score_screen_view.h"
 #include "unit.h"
 #include "unit_factory.h"
 #include "upgrade_card_presenter.h"
-#include "wave_manager.h"
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
@@ -236,18 +237,6 @@ bool pause_menu_overlay_visible(PauseMenu *pause_menu, bool expected_visible) {
     return !overlays.empty() && overlays.front()->is_visible() == expected_visible;
 }
 
-bool wave_manager_has_unloaded_defaults(WaveManager *wave_manager) {
-    return wave_manager->get_total_waves() == 0 && wave_manager->get_starting_core_resource() == 100 && wave_manager->get_base_integrity() == 3 &&
-           wave_manager->all_waves_spawned();
-}
-
-bool wave_manager_has_level_one_data(WaveManager *wave_manager) {
-    return wave_manager->get_total_waves() == 3 && wave_manager->get_starting_core_resource() == 44 && wave_manager->get_base_integrity() == 3 &&
-           wave_manager->get_background_path() == String("res://assets/backgrounds/middle_east_ruin_tiling.png") && !wave_manager->all_waves_spawned();
-}
-
-bool wave_manager_waits_before_first_spawn(WaveManager *wave_manager) { return wave_manager->get_current_wave() == 0 && !wave_manager->all_waves_spawned(); }
-
 GameplayRules make_camera_test_rules() {
     GameplayRules rules;
     rules.viewport_width = 1000.0F;
@@ -295,9 +284,8 @@ UnitConfig make_objective_visual_config(UnitSide side) {
 }
 
 BaseObjective *add_test_objective(Node *parent, UnitSide side, int max_hp, const Vector2 &target_position) {
-    auto *objective = memnew(BaseObjective);
+    auto *objective = BaseObjectiveFactory::create(max_hp, target_position, make_objective_visual_config(side));
     parent->add_child(objective);
-    objective->configure(max_hp, target_position, make_objective_visual_config(side));
     return objective;
 }
 
@@ -450,7 +438,11 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
     passive_config.health_bar_offset = {.x = 0.0F, .y = -20.0F};
 
     UnitRuntimeProfile passive_profile = UnitRuntimeProfile::passive_static();
-    auto *passive_unit = UnitFactory::create(passive_config, Vector2(12.0, 34.0), passive_profile);
+    const ResolvedUnitRuntimeConfig passive_resolved_config{
+        .melee_attack_range = passive_config.melee_attack_range,
+        .ranged_attack_range = passive_config.ranged_attack_range,
+    };
+    auto *passive_unit = UnitFactory::create(passive_config, Vector2(12.0, 34.0), passive_profile, passive_resolved_config);
     DEFN_REQUIRE(passive_unit != nullptr);
     DEFN_CHECK_EQ(passive_unit->get_unit_config().name, std::string("operator"));
     DEFN_CHECK_CLOSE(passive_unit->get_position().x, 12.0, 0.001);
@@ -476,6 +468,7 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
         .side = MatchUnitSide::Hostile,
         .position = {.x = 80.0, .y = 90.0},
         .runtime_profile = combat_profile,
+        .resolved_runtime_config = {.melee_attack_range = combat_config.melee_attack_range, .ranged_attack_range = combat_config.ranged_attack_range},
     };
     auto *combat_unit = UnitFactory::materialize(request, combat_config);
     DEFN_REQUIRE(combat_unit != nullptr);
@@ -509,8 +502,7 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
 }
 
 DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
-    auto *objective = memnew(BaseObjective);
-    objective->configure(250, Vector2(300.0, 180.0));
+    auto *objective = BaseObjectiveFactory::create(250, Vector2(300.0, 180.0));
 
     DEFN_CHECK_EQ(objective->get_current_hp(), 250);
     DEFN_CHECK_EQ(objective->get_max_hp(), 250);
@@ -531,8 +523,7 @@ DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
     tower_config.animations.push_back({"idle", {.path_template = "res://assets/tower.png", .frame_count = 1, .loop = true}});
     tower_config.animations.push_back({"death", {.path_template = "res://assets/tower_destroyed.png", .frame_count = 1, .loop = false}});
 
-    auto *armed_objective = memnew(BaseObjective);
-    armed_objective->configure(300, Vector2(500.0, 220.0), tower_config);
+    auto *armed_objective = BaseObjectiveFactory::create(300, Vector2(500.0, 220.0), tower_config);
     DEFN_CHECK(base_objective_has_attack_stack(armed_objective));
 
     armed_objective->flash_damage(Color(1.0, 0.0, 0.0));
@@ -567,28 +558,6 @@ DEFN_TEST(pause_menu_builds_buttons_and_toggles_tree_pause) {
 
     root->remove_child(pause_menu);
     memdelete(pause_menu);
-}
-
-DEFN_TEST(wave_manager_loads_level_and_tracks_pre_spawn_state) {
-    auto *wave_manager = memnew(WaveManager);
-
-    DEFN_CHECK(wave_manager_has_unloaded_defaults(wave_manager));
-
-    wave_manager->_process(10.0);
-    DEFN_CHECK_EQ(wave_manager->get_current_wave(), 0);
-
-    wave_manager->load_level("res://data/levels/level_01.json");
-    DEFN_CHECK(wave_manager_has_level_one_data(wave_manager));
-
-    wave_manager->start();
-    wave_manager->_process(5.5);
-    DEFN_CHECK(wave_manager_waits_before_first_spawn(wave_manager));
-
-    wave_manager->stop();
-    wave_manager->_process(100.0);
-    DEFN_CHECK(wave_manager_waits_before_first_spawn(wave_manager));
-
-    memdelete(wave_manager);
 }
 
 DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
@@ -639,8 +608,7 @@ DEFN_TEST(attack_target_resolver_maps_battle_entities_and_rejects_plain_nodes) {
     auto *plain_node = memnew(Node2D);
     DEFN_CHECK(resolve_attack_target(plain_node) == nullptr);
 
-    auto *objective = memnew(BaseObjective);
-    objective->configure(100, Vector2(10.0, 20.0));
+    auto *objective = BaseObjectiveFactory::create(100, Vector2(10.0, 20.0));
     DEFN_CHECK(resolve_attack_target(objective) == static_cast<AttackTarget *>(objective));
     DEFN_CHECK(resolve_attack_target(objective->get_target_object_id()) == static_cast<AttackTarget *>(objective));
 
@@ -665,9 +633,8 @@ DEFN_TEST(projectile_attack_applies_direct_and_splash_damage_to_hostile_targets)
     config.projectile_animation.frame_count = 0;
     config.explosion_animation.frame_count = 0;
 
-    auto *projectile = memnew(ProjectileAttack);
-    parent->add_child(projectile);
-    projectile->configure(config, UnitSide::FRIENDLY, Color(1.0, 0.2, 0.1), Vector2(0.0, 0.0), direct_target->get_target_global_position(), direct_target, 25);
+    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, Color(1.0, 0.2, 0.1), Vector2(0.0, 0.0),
+                                                 direct_target->get_target_global_position(), direct_target, 25);
     projectile->_process(0.1);
 
     DEFN_CHECK_EQ(direct_target->get_current_hp(), 60);

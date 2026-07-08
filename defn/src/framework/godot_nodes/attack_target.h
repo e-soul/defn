@@ -1,7 +1,7 @@
 #ifndef ATTACK_TARGET_H
 #define ATTACK_TARGET_H
 
-#include "unit_data.h"
+#include "unit_side.h"
 
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/core/object_id.hpp>
