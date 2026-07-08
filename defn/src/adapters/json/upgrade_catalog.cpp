@@ -1,5 +1,6 @@
 #include "upgrade_catalog.h"
 
+#include "godot_string.h"
 #include "json_file_loader.h"
 #include "variant_tools.h"
 
@@ -11,10 +12,6 @@
 namespace defn {
 
 namespace {
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 ProgressionUpgradeEffectType to_progression_effect_type(UpgradeEffectType type) {
     switch (type) {

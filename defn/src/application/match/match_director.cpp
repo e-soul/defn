@@ -1,12 +1,12 @@
 #include "match_director.h"
 
+#include "godot_string.h"
+
 #include <algorithm>
 
 namespace defn {
 
 namespace {
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
 
 ProgressionUnitStats to_progression_unit_stats(const UnitConfig &config) {
     return {

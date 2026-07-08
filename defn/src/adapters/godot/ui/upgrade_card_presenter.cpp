@@ -1,5 +1,7 @@
 #include "upgrade_card_presenter.h"
 
+#include "godot_string.h"
+
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/margin_container.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
@@ -16,8 +18,6 @@ constexpr real_t UPGRADE_CARD_HEIGHT = 220.0;
 constexpr real_t UPGRADE_CARD_CONTENT_MARGIN = 18.0;
 constexpr real_t UPGRADE_CARD_TEXT_WIDTH = UPGRADE_CARD_WIDTH - (UPGRADE_CARD_CONTENT_MARGIN * 2.0);
 constexpr real_t UPGRADE_CARD_TITLE_MIN_HEIGHT = 44.0;
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 Ref<StyleBoxFlat> make_card_style(const Color &background_color, const Color &border_color) {
     Ref<StyleBoxFlat> style;

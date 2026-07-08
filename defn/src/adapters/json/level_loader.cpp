@@ -1,15 +1,10 @@
 #include "level_loader.h"
 
+#include "godot_string.h"
 #include "json_file_loader.h"
 #include "variant_tools.h"
 
 namespace defn {
-
-namespace {
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-} // namespace
 
 std::optional<LevelDefinition> LevelLoader::load(const String &path) {
     const auto data = JsonFileLoader::load_dictionary(path, "LevelLoader");

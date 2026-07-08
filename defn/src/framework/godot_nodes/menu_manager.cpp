@@ -1,5 +1,6 @@
 #include "menu_manager.h"
 #include "data_paths.h"
+#include "godot_string.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
 #include "owned_upgrades_panel.h"
@@ -31,10 +32,6 @@ namespace {
 
 constexpr real_t PROGRESSION_SCREEN_WIDTH_RATIO = 0.58;
 constexpr real_t PROGRESSION_SCREEN_HEIGHT_RATIO = 0.6;
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 MenuSettingViewKind to_setting_view_kind(MenuSettingKind kind) {
     switch (kind) {

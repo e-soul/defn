@@ -1,6 +1,7 @@
 #include "deploy_card_presenter.h"
 
 #include "deploy_card_view_model.h"
+#include "godot_string.h"
 
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
@@ -15,8 +16,6 @@
 namespace defn {
 
 namespace {
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 DeployCardPresentationInput to_presentation_input(const UnitConfig &config) {
     DeployCardPresentationInput input;

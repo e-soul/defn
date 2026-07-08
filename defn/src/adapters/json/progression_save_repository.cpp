@@ -1,5 +1,6 @@
 #include "progression_save_repository.h"
 
+#include "godot_string.h"
 #include "variant_tools.h"
 
 #include <algorithm>
@@ -9,14 +10,6 @@
 #include <godot_cpp/variant/variant.hpp>
 
 namespace defn {
-
-namespace {
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
-
-} // namespace
 
 std::optional<PlayerProfile> ProgressionSaveRepository::load_profile() const { return load(path_); }
 

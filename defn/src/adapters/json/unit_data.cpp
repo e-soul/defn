@@ -1,4 +1,5 @@
 #include "unit_data.h"
+#include "godot_string.h"
 #include "json_file_loader.h"
 #include "variant_tools.h"
 
@@ -15,8 +16,6 @@ constexpr float DEFAULT_HEALTH_BAR_OFFSET_X = 0.0F;
 constexpr float DEFAULT_HEALTH_BAR_OFFSET_Y = -241.0F;
 constexpr float LEGACY_MOVE_SPEED_SCALE = 128.0F;
 constexpr float FRACTION_PERCENT_SCALE = 100.0F;
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
 
 ContentColor parse_color(const Array &arr, const ContentColor &fallback) {
     if (arr.size() >= 3) {
@@ -50,7 +49,7 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
 
 AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig &fallback) {
     AnimConfig animation = fallback;
-    animation.path_template = to_std_string(String(animation_dict.get("path_template", String(animation.path_template.c_str()))));
+    animation.path_template = to_std_string(String(animation_dict.get("path_template", to_godot_string(animation.path_template))));
     animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
     animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
@@ -169,7 +168,7 @@ void apply_shoot_sfx(const Dictionary &unit_dict, const GlobalUnitConfig &global
 
 ShootSfxConfig parse_shoot_sfx_config(const Dictionary &shoot_sfx_dict, const ShootSfxConfig &fallback) {
     ShootSfxConfig config = fallback;
-    config.path = to_std_string(String(shoot_sfx_dict.get("path", String(config.path.c_str()))));
+    config.path = to_std_string(String(shoot_sfx_dict.get("path", to_godot_string(config.path))));
     config.volume_linear = VariantTools::as_float(shoot_sfx_dict.get("volume_linear", config.volume_linear));
     config.pitch_scale = VariantTools::as_float(shoot_sfx_dict.get("pitch_scale", config.pitch_scale));
     config.pitch_variance = VariantTools::as_float(shoot_sfx_dict.get("pitch_variance", config.pitch_variance));

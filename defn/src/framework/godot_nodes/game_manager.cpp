@@ -6,6 +6,7 @@
 #include "collision_layers.h"
 #include "data_paths.h"
 #include "game_background_builder.h"
+#include "godot_string.h"
 #include "grid_manager.h"
 #include "hud.h"
 #include "level_loader.h"
@@ -30,10 +31,6 @@ namespace defn {
 namespace {
 
 constexpr real_t HALF = 2.0F;
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 UpgradeCardViewModel to_upgrade_card_view_model(const MatchUpgradeOption &option) {
     return {

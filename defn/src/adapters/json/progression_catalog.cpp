@@ -1,5 +1,6 @@
 #include "progression_catalog.h"
 
+#include "godot_string.h"
 #include "json_file_loader.h"
 #include "variant_tools.h"
 #include <algorithm>
@@ -8,12 +9,6 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
-
-namespace {
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-} // namespace
 
 bool ProgressionCatalog::load(const String &path) {
     const auto data = JsonFileLoader::load_dictionary(path, "ProgressionCatalog");

@@ -1,5 +1,7 @@
 #include "animation_controller.h"
 
+#include "godot_string.h"
+
 #include <algorithm>
 
 #include <godot_cpp/classes/callback_tweener.hpp>
@@ -13,8 +15,6 @@
 namespace defn {
 
 namespace {
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 Vector2 to_godot_vector(const ContentVector2 &vector) { return {vector.x, vector.y}; }
 

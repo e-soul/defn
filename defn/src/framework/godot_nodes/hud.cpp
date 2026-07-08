@@ -1,5 +1,6 @@
 #include "hud.h"
 #include "deploy_card_presenter.h"
+#include "godot_string.h"
 #include "score_screen_view.h"
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -11,8 +12,6 @@
 namespace defn {
 
 namespace {
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 DeployCardPresentationInput to_deploy_card_input(const UnitConfig &config) {
     DeployCardPresentationInput input;
@@ -251,8 +250,8 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
     const ScoreScreenViewNodes view = ScoreScreenView::show(
         this, summary,
         {
-            .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(String(summary.next_level_id.c_str())),
-            .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(String(summary.current_level_id.c_str())),
+            .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(to_godot_string(summary.next_level_id)),
+            .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
             .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
             .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
         });

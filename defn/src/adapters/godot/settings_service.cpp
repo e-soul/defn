@@ -1,5 +1,6 @@
 #include "settings_service.h"
 
+#include "godot_string.h"
 #include "settings_use_case.h"
 #include "variant_tools.h"
 
@@ -15,10 +16,6 @@ namespace defn {
 namespace {
 
 int32_t to_int32(int64_t value) { return static_cast<int32_t>(value); }
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 SettingsResolution to_settings_resolution(const Vector2i &value) { return {.width = value.x, .height = value.y}; }
 

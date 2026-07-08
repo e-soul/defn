@@ -1,5 +1,6 @@
 #include "menu_data_loader.h"
 
+#include "godot_string.h"
 #include "json_file_loader.h"
 #include "variant_tools.h"
 
@@ -12,8 +13,6 @@ namespace defn {
 namespace {
 
 constexpr float DEFAULT_ALPHA = 1.0F;
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
 
 ContentColor parse_content_color(const Array &arr, const ContentColor &fallback) {
     if (arr.size() >= 3) {

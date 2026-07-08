@@ -1,5 +1,6 @@
 #include "content_validator.h"
 
+#include "godot_string.h"
 #include "menu_models.h"
 #include "progression_catalog.h"
 #include "unit_definition.h"
@@ -19,10 +20,6 @@ namespace {
 bool contains_string(const std::vector<String> &values, const String &candidate) {
     return std::ranges::any_of(values, [&candidate](const String &value) { return value == candidate; });
 }
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 void push_issue(std::vector<String> &issues, const String &message) { issues.push_back(message); }
 

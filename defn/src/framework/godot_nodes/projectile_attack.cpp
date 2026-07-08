@@ -1,6 +1,7 @@
 #include "projectile_attack.h"
 
 #include "attack_target_resolver.h"
+#include "godot_string.h"
 #include "projectile_rules.h"
 
 #include <algorithm>
@@ -99,7 +100,7 @@ Ref<SpriteFrames> ProjectileAttack::build_frames(const AnimConfig &animation) {
 
     if (!animation.path_template.empty()) {
         for (int frame_index = 0; frame_index < animation.frame_count; ++frame_index) {
-            const String path = vformat(String(animation.path_template.c_str()), frame_index);
+            const String path = vformat(to_godot_string(animation.path_template), frame_index);
             Ref<Texture2D> texture = loader->load(path);
             if (texture.is_valid()) {
                 frames->add_frame(PLAYBACK_ANIMATION, texture);
@@ -174,7 +175,7 @@ void ProjectileAttack::play_explosion_sfx() {
 
     ensure_explosion_audio_player();
     auto *loader = ResourceLoader::get_singleton();
-    Ref<AudioStream> stream = loader->load(String(config_.explosion_sfx->path.c_str()));
+    Ref<AudioStream> stream = loader->load(to_godot_string(config_.explosion_sfx->path));
     if (!stream.is_valid()) {
         explosion_sfx_finished_ = true;
         try_finish();

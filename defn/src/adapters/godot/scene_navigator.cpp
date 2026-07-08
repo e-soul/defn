@@ -1,5 +1,7 @@
 #include "scene_navigator.h"
 
+#include "godot_string.h"
+
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -8,8 +10,6 @@ namespace {
 
 constexpr auto MENU_SCENE_PATH = "res://scenes/menu.tscn";
 constexpr auto GAME_SCENE_PATH = "res://scenes/game.tscn";
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 void change_scene(SceneTree *tree, const String &scene_path) {
     if (tree == nullptr) {

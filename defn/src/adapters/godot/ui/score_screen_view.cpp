@@ -1,5 +1,6 @@
 #include "score_screen_view.h"
 
+#include "godot_string.h"
 #include "owned_upgrades_panel.h"
 #include "score_screen_view_model.h"
 #include "upgrade_card_presenter.h"
@@ -40,8 +41,6 @@ real_t get_score_screen_width(Node *parent) {
     const real_t target_width = viewport_width * SCORE_SCREEN_WIDTH_RATIO;
     return std::min(std::max(target_width, std::min(SCORE_SCREEN_MIN_WIDTH, max_width)), max_width);
 }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 Button *make_action_button(const String &text) {
     auto *button = memnew(Button);

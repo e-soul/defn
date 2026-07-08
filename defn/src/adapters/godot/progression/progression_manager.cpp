@@ -2,6 +2,7 @@
 
 #include "content_startup_validator.h"
 #include "data_paths.h"
+#include "godot_string.h"
 #include "progression_presentation.h"
 #include "unit_definition.h"
 
@@ -12,10 +13,6 @@
 namespace defn {
 
 namespace {
-
-std::string to_std_string(const String &value) { return value.utf8().get_data(); }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 PackedStringArray to_packed_string_array(const std::vector<std::string> &values) {
     PackedStringArray result;

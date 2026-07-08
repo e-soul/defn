@@ -2,6 +2,7 @@
 #define SPAWN_SCHEDULER_H
 
 #include "level_definition.h"
+#include "godot_string.h"
 #include "match_outputs.h"
 #include "random_source.h"
 #include "runtime_service_interfaces.h"
@@ -36,10 +37,10 @@ class SpawnScheduler {
     bool all_waves_spawned() const { return timeline_.all_spawns_spawned(); }
     int get_total_waves() const { return level_definition_ ? static_cast<int>(level_definition_->waves.size()) : 0; }
     int get_level_number() const { return level_definition_ ? level_definition_->level_id : 0; }
-    String get_level_name() const { return level_definition_ ? String(level_definition_->name.c_str()) : String(); }
+    String get_level_name() const { return level_definition_ ? to_godot_string(level_definition_->name) : String(); }
     int get_starting_core_resource() const { return level_definition_ ? level_definition_->starting_core_resource : 100; }
     int get_base_integrity() const { return level_definition_ ? level_definition_->base_integrity : 3; }
-    String get_background_path() const { return level_definition_ ? String(level_definition_->background_path.c_str()) : String(); }
+    String get_background_path() const { return level_definition_ ? to_godot_string(level_definition_->background_path) : String(); }
 
   private:
     std::optional<LevelDefinition> level_definition_;

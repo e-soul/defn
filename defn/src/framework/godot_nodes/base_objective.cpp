@@ -4,6 +4,7 @@
 #include "collision_layers.h"
 #include "combat_component.h"
 #include "detection_component.h"
+#include "godot_string.h"
 #include "health_component.h"
 #include "hitbox_component.h"
 #include "sound_controller.h"
@@ -35,8 +36,6 @@ CombatColor to_combat_color(const ContentColor &color) {
         .a = color.a,
     };
 }
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 const Color OBJECTIVE_FILL_COLOR = Color(0.82, 0.11, 0.08);
 const Color OBJECTIVE_OUTLINE_COLOR = Color(0.32, 0.03, 0.03);

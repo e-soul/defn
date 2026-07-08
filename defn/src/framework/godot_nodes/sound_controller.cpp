@@ -1,4 +1,5 @@
 #include "sound_controller.h"
+#include "godot_string.h"
 #include <algorithm>
 #include <cmath>
 #include <godot_cpp/classes/audio_stream.hpp>
@@ -8,8 +9,6 @@
 namespace defn {
 
 namespace {
-
-String to_godot_string(const std::string &value) { return {value.c_str()}; }
 
 float linear_to_db(float linear) {
     const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
