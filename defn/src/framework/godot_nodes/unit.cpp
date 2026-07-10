@@ -1,5 +1,6 @@
 #include "unit.h"
 #include "animation_controller.h"
+#include "combat_component.h"
 #include "health_component.h"
 #include "movement_component.h"
 #include "unit_factory.h"
@@ -40,6 +41,23 @@ void Unit::_ready() {
 void Unit::flash_damage(const Color &color) {
     if (animation) {
         animation->flash_damage(color);
+    }
+}
+
+void Unit::freeze_for_match_result(const StringName &animation_name) {
+    if (is_dead() || is_queued_for_deletion()) {
+        return;
+    }
+
+    if (movement != nullptr) {
+        movement->stop();
+    }
+    if (combat != nullptr) {
+        combat->set_enabled(false);
+    }
+    if (animation != nullptr) {
+        animation->hide_muzzle_flash();
+        animation->play_named_animation(animation_name);
     }
 }
 

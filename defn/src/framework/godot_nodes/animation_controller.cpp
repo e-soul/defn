@@ -152,6 +152,26 @@ void AnimationController::hold_anim_state(AnimState state) {
     sprite->stop();
 }
 
+bool AnimationController::play_named_animation(const StringName &animation_name, bool restart) {
+    if (sprite == nullptr) {
+        return false;
+    }
+
+    Ref<SpriteFrames> frames = sprite->get_sprite_frames();
+    if (!frames.is_valid() || !frames->has_animation(animation_name) || frames->get_frame_count(animation_name) <= 0) {
+        return false;
+    }
+
+    shoot_effect_pending = false;
+    shoot_effect_ready = false;
+    hide_muzzle_flash();
+    sprite->play(animation_name);
+    if (restart) {
+        sprite->set_frame_and_progress(0, 0.0);
+    }
+    return true;
+}
+
 void AnimationController::play_attack_animation() {
     set_anim_state(AnimState::ATTACK);
     if (!sprite) {

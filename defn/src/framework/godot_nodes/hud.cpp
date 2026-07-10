@@ -2,11 +2,11 @@
 #include "deploy_card_presenter.h"
 #include "godot_string.h"
 #include "score_screen_view.h"
+#include <cctype>
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
-#include <cctype>
 #include <utility>
 
 namespace defn {
@@ -27,6 +27,8 @@ DeployCardPresentationInput to_deploy_card_input(const UnitConfig &config) {
     }
     return input;
 }
+
+Color to_godot_color(const ContentColor &color) { return {color.r, color.g, color.b, color.a}; }
 
 } // namespace
 
@@ -170,8 +172,8 @@ void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
         clear_deploy_cards();
         deploy_cards.reserve(cards.size());
         for (const auto &card_model : cards) {
-            auto *button = DeployCardPresenter::create(card_model.card,
-                                                       callable_mp(this, &HUD::on_card_pressed).bind(to_godot_string(card_model.card.unit_id)));
+            auto *button =
+                DeployCardPresenter::create(card_model.card, callable_mp(this, &HUD::on_card_pressed).bind(to_godot_string(card_model.card.unit_id)));
             card_container->add_child(button);
             deploy_cards.push_back({.unit_type = card_model.card.unit_id, .button = button});
         }
@@ -242,19 +244,64 @@ void HUD::update_score(int score) {
     render(HudPresenter::build(hud_input_));
 }
 
+void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {
+    hide_match_result_banner();
+
+    match_result_overlay = memnew(ColorRect);
+    match_result_overlay->set_name("MatchResultBannerOverlay");
+    match_result_overlay->set_anchors_preset(Control::PRESET_FULL_RECT);
+    match_result_overlay->set_offset(SIDE_LEFT, 0.0);
+    match_result_overlay->set_offset(SIDE_RIGHT, 0.0);
+    match_result_overlay->set_offset(SIDE_TOP, 0.0);
+    match_result_overlay->set_offset(SIDE_BOTTOM, 0.0);
+    match_result_overlay->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+    match_result_overlay->set_color(model.victory ? Color(0.03, 0.12, 0.08, 0.42) : Color(0.18, 0.0, 0.0, 0.48));
+    add_child(match_result_overlay);
+
+    match_result_label = memnew(Label);
+    match_result_label->set_name("MatchResultBannerLabel");
+    match_result_label->set_anchors_preset(Control::PRESET_FULL_RECT);
+    match_result_label->set_offset(SIDE_LEFT, 0.0);
+    match_result_label->set_offset(SIDE_RIGHT, 0.0);
+    match_result_label->set_offset(SIDE_TOP, 0.0);
+    match_result_label->set_offset(SIDE_BOTTOM, 0.0);
+    match_result_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+    match_result_label->set_text(to_godot_string(model.label));
+    match_result_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+    match_result_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
+    match_result_label->add_theme_font_size_override("font_size", 74);
+    match_result_label->add_theme_color_override("font_color", to_godot_color(model.label_color));
+    match_result_label->add_theme_color_override("font_outline_color", to_godot_color(model.label_outline_color));
+    match_result_label->add_theme_constant_override("outline_size", 6);
+    match_result_overlay->add_child(match_result_label);
+}
+
+void HUD::hide_match_result_banner() {
+    if (match_result_overlay != nullptr && !match_result_overlay->is_queued_for_deletion()) {
+        if (match_result_overlay->get_parent() == this) {
+            remove_child(match_result_overlay);
+        }
+        match_result_overlay->queue_free();
+    }
+    match_result_overlay = nullptr;
+    match_result_label = nullptr;
+}
+
 void HUD::show_score_screen(const ScoreScreenModel &summary) {
+    hide_match_result_banner();
+
     if (score_screen_overlay != nullptr && !score_screen_overlay->is_queued_for_deletion()) {
         score_screen_overlay->queue_free();
     }
 
-    const ScoreScreenViewNodes view = ScoreScreenView::show(
-        this, summary,
-        {
-            .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(to_godot_string(summary.next_level_id)),
-            .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
-            .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
-            .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
-        });
+    const ScoreScreenViewNodes view =
+        ScoreScreenView::show(this, summary,
+                              {
+                                  .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(to_godot_string(summary.next_level_id)),
+                                  .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
+                                  .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
+                                  .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
+                              });
 
     score_screen_overlay = view.overlay;
     score_screen_panel = view.panel;

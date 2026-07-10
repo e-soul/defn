@@ -22,6 +22,7 @@ class AnimationController : public Node {
     AnimState get_anim_state() const { return anim_state; }
     void set_anim_state(AnimState state);
     void hold_anim_state(AnimState state);
+    bool play_named_animation(const StringName &animation_name, bool restart = true);
     void play_attack_animation();
     void play_shoot_animation(bool show_muzzle_flash = true, int effect_frame = 0);
     bool consume_shoot_effect_triggered();

@@ -19,9 +19,13 @@
 #include "unit.h"
 #include "unit_factory.h"
 #include <algorithm>
+#include <cmath>
 #include <godot_cpp/classes/area2d.hpp>
+#include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/audio_stream_player.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
 #include <godot_cpp/classes/rectangle_shape2d.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -31,6 +35,11 @@ namespace defn {
 namespace {
 
 constexpr real_t HALF = 2.0F;
+
+float linear_to_db(float linear) {
+    const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
+    return 20.0F * std::log10(clamped_linear);
+}
 
 UpgradeCardViewModel to_upgrade_card_view_model(const MatchUpgradeOption &option) {
     return {
@@ -167,6 +176,8 @@ void GameManager::_ready() {
     core_resource_timer->connect("timeout", callable_mp(this, &GameManager::on_core_resource_tick));
     add_child(core_resource_timer);
     core_resource_timer->start();
+    setup_match_result_cutscene_timer();
+    setup_match_result_reveal_timer();
 
     // Pause menu (ESC to toggle)
     auto *pause_menu = memnew(PauseMenu);
@@ -355,6 +366,30 @@ void GameManager::refresh_resource_ui(int energy) {
     hud->update_card_affordability(energy);
 }
 
+void GameManager::setup_match_result_cutscene_timer() {
+    if (match_result_cutscene_timer_ != nullptr) {
+        return;
+    }
+
+    match_result_cutscene_timer_ = memnew(Timer);
+    match_result_cutscene_timer_->set_name("MatchResultCutsceneTimer");
+    match_result_cutscene_timer_->set_one_shot(true);
+    match_result_cutscene_timer_->connect("timeout", callable_mp(this, &GameManager::finish_match_result_cutscene));
+    add_child(match_result_cutscene_timer_);
+}
+
+void GameManager::setup_match_result_reveal_timer() {
+    if (match_result_reveal_timer_ != nullptr) {
+        return;
+    }
+
+    match_result_reveal_timer_ = memnew(Timer);
+    match_result_reveal_timer_->set_name("MatchResultRevealTimer");
+    match_result_reveal_timer_->set_one_shot(true);
+    match_result_reveal_timer_->connect("timeout", callable_mp(this, &GameManager::reveal_match_result_cutscene));
+    add_child(match_result_reveal_timer_);
+}
+
 void GameManager::apply_match_update(const MatchUpdate &update) {
     for (const SpawnUnitIntent &intent : update.spawn_unit_intents) {
         Unit *unit = materialize_spawn_intent(intent);
@@ -378,14 +413,123 @@ void GameManager::apply_match_update(const MatchUpdate &update) {
         if (update.score_changed.has_value()) {
             hud->update_score(update.score_changed->kill_score);
         }
-        if (update.match_ended.has_value()) {
-            hud->show_score_screen(to_score_screen_model(*update.match_ended));
-        }
+    }
+
+    if (update.match_ended.has_value()) {
+        start_match_result_cutscene(*update.match_ended);
     }
 
     if (update.match_ended.has_value() && core_resource_timer != nullptr) {
         core_resource_timer->stop();
     }
+}
+
+void GameManager::start_match_result_cutscene(const MatchEnded &match_end) {
+    if (match_result_cutscene_active_) {
+        return;
+    }
+
+    pending_score_screen_model_ = to_score_screen_model(match_end);
+    const MatchResultCutsceneModel cutscene_model = MatchResultCutscenePresenter::build(match_end.victory);
+    pending_match_result_cutscene_model_ = cutscene_model;
+    match_result_cutscene_active_ = true;
+
+    if (core_resource_timer != nullptr) {
+        core_resource_timer->stop();
+    }
+
+    if (cutscene_model.shake_base) {
+        play_cutscene_sfx(cutscene_model.base_destroyed_sfx_path);
+        if (base_objective != nullptr && !base_objective->is_queued_for_deletion()) {
+            base_objective->play_destroyed_shake();
+        }
+    }
+
+    freeze_match_result_units(cutscene_model.celebrant_side, cutscene_model.pre_reveal_animation_name);
+
+    if (cutscene_model.reveal_delay_seconds > 0.0) {
+        setup_match_result_reveal_timer();
+        match_result_reveal_timer_->set_wait_time(cutscene_model.reveal_delay_seconds);
+        match_result_reveal_timer_->start();
+        return;
+    }
+
+    reveal_match_result_cutscene();
+}
+
+void GameManager::reveal_match_result_cutscene() {
+    if (!pending_match_result_cutscene_model_.has_value()) {
+        return;
+    }
+
+    const MatchResultCutsceneModel &cutscene_model = *pending_match_result_cutscene_model_;
+    freeze_match_result_units(cutscene_model.celebrant_side, cutscene_model.reveal_animation_name);
+    play_cutscene_sfx(cutscene_model.primary_sfx_path);
+    if (hud != nullptr) {
+        hud->show_match_result_banner(cutscene_model);
+    }
+
+    setup_match_result_cutscene_timer();
+    match_result_cutscene_timer_->set_wait_time(cutscene_model.duration_seconds);
+    match_result_cutscene_timer_->start();
+}
+
+void GameManager::finish_match_result_cutscene() {
+    if (!pending_score_screen_model_.has_value()) {
+        match_result_cutscene_active_ = false;
+        pending_match_result_cutscene_model_.reset();
+        return;
+    }
+
+    match_result_cutscene_active_ = false;
+    pending_match_result_cutscene_model_.reset();
+    if (hud != nullptr) {
+        hud->hide_match_result_banner();
+        hud->show_score_screen(*pending_score_screen_model_);
+    }
+    pending_score_screen_model_.reset();
+}
+
+void GameManager::freeze_match_result_units(MatchResultCelebrantSide side, const std::string &animation_name) {
+    if (entity_container == nullptr || animation_name.empty()) {
+        return;
+    }
+
+    const StringName animation = StringName(to_godot_string(animation_name));
+    const UnitSide unit_side = side == MatchResultCelebrantSide::Friendly ? UnitSide::FRIENDLY : UnitSide::HOSTILE;
+    const int child_count = entity_container->get_child_count();
+    for (int child_index = 0; child_index < child_count; ++child_index) {
+        auto *unit = Object::cast_to<Unit>(entity_container->get_child(child_index));
+        if (unit != nullptr && unit->get_side() == unit_side) {
+            unit->freeze_for_match_result(animation);
+        }
+    }
+}
+
+void GameManager::play_cutscene_sfx(const std::string &path, float volume_linear) {
+    if (path.empty()) {
+        return;
+    }
+
+    auto *loader = ResourceLoader::get_singleton();
+    if (loader == nullptr) {
+        return;
+    }
+
+    Ref<AudioStream> stream = loader->load(to_godot_string(path));
+    if (!stream.is_valid()) {
+        UtilityFunctions::printerr("GameManager: Failed to load cutscene SFX: ", to_godot_string(path));
+        return;
+    }
+
+    auto *player = memnew(AudioStreamPlayer);
+    player->set_name("MatchResultSfxPlayer");
+    player->set_stream(stream);
+    player->set_volume_db(linear_to_db(volume_linear));
+    Node *player_node = player;
+    player->connect("finished", callable_mp(player_node, &Node::queue_free));
+    add_child(player);
+    player->play();
 }
 
 void GameManager::on_enemy_died(Node *unit) {
@@ -405,14 +549,17 @@ void GameManager::on_friendly_died(Node * /*unit*/) {
 
 void GameManager::on_base_durability_changed(int current_hp, int /*max_hp*/) { apply_match_update(match_director_.handle_base_durability_changed(current_hp)); }
 
-void GameManager::on_base_destroyed() {
-    base_objective = nullptr;
-    apply_match_update(match_director_.handle_base_destroyed());
-}
+void GameManager::on_base_destroyed() { apply_match_update(match_director_.handle_base_destroyed()); }
 
 void GameManager::on_core_resource_tick() { apply_match_update(match_director_.handle_core_resource_tick()); }
 
-void GameManager::on_deploy_requested(const String &unit_type) { apply_match_update(match_director_.handle_deploy_request(to_std_string(unit_type))); }
+void GameManager::on_deploy_requested(const String &unit_type) {
+    if (match_result_cutscene_active_ || match_director_.is_game_over()) {
+        return;
+    }
+
+    apply_match_update(match_director_.handle_deploy_request(to_std_string(unit_type)));
+}
 
 void GameManager::on_score_screen_next_level(const String &level_id) {
     if (!match_director_.finalize_selected_upgrade()) {

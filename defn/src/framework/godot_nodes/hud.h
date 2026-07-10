@@ -2,6 +2,7 @@
 #define HUD_H
 
 #include "hud_presenter.h"
+#include "match_result_cutscene_view_model.h"
 #include "score_screen_models.h"
 #include "unit_definition.h"
 #include <godot_cpp/classes/button.hpp>
@@ -38,6 +39,8 @@ class HUD : public CanvasLayer {
     void update_hearts(int integrity);
     void update_card_affordability(int energy);
     void update_score(int score);
+    void show_match_result_banner(const MatchResultCutsceneModel &model);
+    void hide_match_result_banner();
     void show_score_screen(const ScoreScreenModel &summary);
 
   protected:
@@ -66,6 +69,8 @@ class HUD : public CanvasLayer {
     HudPresentationInput hud_input_{.energy = 100, .current_wave = 1, .total_waves = 3, .hearts = 3, .score = 0};
 
     // Score screen
+    ColorRect *match_result_overlay = nullptr;
+    Label *match_result_label = nullptr;
     ColorRect *score_screen_overlay = nullptr;
     PanelContainer *score_screen_panel = nullptr;
 };

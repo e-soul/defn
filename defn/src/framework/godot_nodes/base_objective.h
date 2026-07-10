@@ -30,6 +30,7 @@ class BaseObjective : public BattleEntity {
 
     void configure(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
     void flash_damage(const Color &color) override;
+    void play_destroyed_shake();
 
     void _draw() override;
     void _process(double delta) override;
@@ -49,6 +50,7 @@ class BaseObjective : public BattleEntity {
     void update_visual_state();
     void on_health_changed(int current_hp, int max_hp);
     void on_destroyed();
+    void on_destroyed_shake_finished();
 
     AnimationController *animation_ = nullptr;
     CombatComponent *combat_ = nullptr;
@@ -59,6 +61,7 @@ class BaseObjective : public BattleEntity {
     std::optional<UnitConfig> visual_config_;
     Color flash_color_ = Color(1.0, 1.0, 1.0);
     real_t flash_time_remaining_ = 0.0F;
+    bool destroyed_shake_active_ = false;
 };
 
 } // namespace defn

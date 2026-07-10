@@ -11,8 +11,11 @@
 
 #include <algorithm>
 
+#include <godot_cpp/classes/callback_tweener.hpp>
+#include <godot_cpp/classes/property_tweener.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
+#include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -24,6 +27,8 @@ constexpr real_t OBJECTIVE_RADIUS = 96.0F;
 constexpr real_t OBJECTIVE_CORE_RADIUS = 32.0F;
 constexpr real_t OBJECTIVE_OUTLINE_RADIUS = 108.0F;
 constexpr real_t DAMAGE_FLASH_DURATION_SECONDS = 0.12F;
+constexpr real_t DESTROYED_SHAKE_OFFSET = 8.0F;
+constexpr double DESTROYED_SHAKE_STEP_SECONDS = 0.05;
 
 constexpr auto OBJECTIVE_IDLE_ANIMATION = "idle";
 constexpr auto OBJECTIVE_DEATH_ANIMATION = "death";
@@ -150,6 +155,28 @@ void BaseObjective::flash_damage(const Color &color) {
     flash_time_remaining_ = DAMAGE_FLASH_DURATION_SECONDS;
     set_process(true);
     update_visual_state();
+}
+
+void BaseObjective::play_destroyed_shake() {
+    if (is_queued_for_deletion() || destroyed_shake_active_) {
+        return;
+    }
+
+    auto *shake_node = sprite_ != nullptr ? static_cast<Node2D *>(sprite_) : static_cast<Node2D *>(this);
+    const Vector2 original_position = shake_node->get_position();
+
+    Ref<Tween> tween = create_tween();
+    if (!tween.is_valid()) {
+        return;
+    }
+
+    destroyed_shake_active_ = true;
+    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(-DESTROYED_SHAKE_OFFSET, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(DESTROYED_SHAKE_OFFSET, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(-DESTROYED_SHAKE_OFFSET * 0.5F, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(DESTROYED_SHAKE_OFFSET * 0.5F, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position, DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_callback(callable_mp(this, &BaseObjective::on_destroyed_shake_finished));
 }
 
 void BaseObjective::_draw() {
@@ -331,5 +358,7 @@ void BaseObjective::on_destroyed() {
 
     emit_signal("objective_destroyed");
 }
+
+void BaseObjective::on_destroyed_shake_finished() { destroyed_shake_active_ = false; }
 
 } // namespace defn

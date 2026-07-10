@@ -3,6 +3,8 @@
 
 #include "camera_scroll_controller.h"
 #include "match_director.h"
+#include "match_result_cutscene_view_model.h"
+#include "score_screen_models.h"
 #include "unit_data.h"
 #include <cstdint>
 #include <godot_cpp/classes/area2d.hpp>
@@ -13,6 +15,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace defn {
@@ -51,6 +54,13 @@ class GameManager : public Node2D {
     void add_enemy_unit(Unit *unit);
     void refresh_resource_ui(int energy);
     void apply_match_update(const MatchUpdate &update);
+    void setup_match_result_cutscene_timer();
+    void setup_match_result_reveal_timer();
+    void start_match_result_cutscene(const MatchEnded &match_end);
+    void reveal_match_result_cutscene();
+    void finish_match_result_cutscene();
+    void freeze_match_result_units(MatchResultCelebrantSide side, const std::string &animation_name);
+    void play_cutscene_sfx(const std::string &path, float volume_linear = 1.0F);
 
     // Signal callbacks
     void on_scroll_triggered(Area2D *area, bool move_left);
@@ -71,6 +81,8 @@ class GameManager : public Node2D {
     HUD *hud = nullptr;
     Node2D *entity_container = nullptr;
     Timer *core_resource_timer = nullptr;
+    Timer *match_result_cutscene_timer_ = nullptr;
+    Timer *match_result_reveal_timer_ = nullptr;
     Camera2D *camera = nullptr;
     BaseObjective *base_objective = nullptr;
     Area2D *left_scroll_trigger = nullptr;
@@ -82,6 +94,9 @@ class GameManager : public Node2D {
     // Unit data
     UnitDataLoader unit_data_;
     MatchDirector match_director_;
+    bool match_result_cutscene_active_ = false;
+    std::optional<ScoreScreenModel> pending_score_screen_model_;
+    std::optional<MatchResultCutsceneModel> pending_match_result_cutscene_model_;
 };
 
 } // namespace defn

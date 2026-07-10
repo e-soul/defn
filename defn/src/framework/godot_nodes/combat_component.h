@@ -28,12 +28,14 @@ class CombatComponent : public Node {
 
     bool is_engaged() const { return runtime_.is_engaged(); }
     AttackMode get_attack_mode() const { return runtime_.get_attack_mode(); }
+    void set_enabled(bool enabled);
 
   protected:
     static void _bind_methods();
 
   private:
     CombatRuntime runtime_;
+    bool enabled_ = true;
 };
 
 } // namespace defn

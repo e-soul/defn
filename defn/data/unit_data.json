@@ -67,6 +67,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
           "frame_count": 10,
@@ -90,6 +96,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -120,6 +132,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
           "frame_count": 10,
@@ -143,6 +161,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -173,6 +197,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
           "frame_count": 10,
@@ -196,6 +226,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -226,6 +262,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
           "frame_count": 10,
@@ -249,6 +291,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -279,6 +327,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
           "frame_count": 10,
@@ -302,6 +356,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -362,6 +422,12 @@
         }
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
           "frame_count": 10,
@@ -385,6 +451,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -415,6 +487,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
           "frame_count": 10,
@@ -438,6 +516,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     },
@@ -468,6 +552,12 @@
         "pitch_scale": 1.0
       },
       "animations": {
+        "idle": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
           "frame_count": 10,
@@ -491,6 +581,12 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     }

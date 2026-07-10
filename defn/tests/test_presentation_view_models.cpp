@@ -2,10 +2,47 @@
 
 #include "deploy_card_view_model.h"
 #include "hud_presenter.h"
+#include "match_result_cutscene_view_model.h"
 #include "menu_view_model.h"
 #include "score_screen_view_model.h"
 
 namespace defn {
+
+DEFN_TEST(match_result_cutscene_view_model_builds_victory_interlude) {
+    const MatchResultCutsceneModel view_model = MatchResultCutscenePresenter::build(true);
+
+    DEFN_CHECK(view_model.victory);
+    DEFN_CHECK_EQ(view_model.label, std::string("AREA SECURED"));
+    DEFN_CHECK_CLOSE(view_model.label_color.r, 0.2F, 0.001F);
+    DEFN_CHECK_CLOSE(view_model.label_color.g, 1.0F, 0.001F);
+    DEFN_CHECK_CLOSE(view_model.label_color.b, 0.3F, 0.001F);
+    DEFN_CHECK_EQ(view_model.primary_sfx_path, std::string("res://assets/sfx/area_secured_sting.wav"));
+    DEFN_CHECK_EQ(view_model.base_destroyed_sfx_path, std::string());
+    DEFN_CHECK_EQ(view_model.celebrant_side, MatchResultCelebrantSide::Friendly);
+    DEFN_CHECK(!view_model.shake_base);
+    DEFN_CHECK_CLOSE(view_model.duration_seconds, 4.0, 0.001);
+    DEFN_CHECK_CLOSE(view_model.reveal_delay_seconds, 0.0, 0.001);
+    DEFN_CHECK_EQ(view_model.pre_reveal_animation_name, std::string());
+    DEFN_CHECK_EQ(view_model.reveal_animation_name, std::string("happy"));
+}
+
+DEFN_TEST(match_result_cutscene_view_model_builds_defeat_interlude) {
+    const MatchResultCutsceneModel view_model = MatchResultCutscenePresenter::build(false);
+
+    DEFN_CHECK(!view_model.victory);
+    DEFN_CHECK_EQ(view_model.label, std::string("DEFEAT"));
+    DEFN_CHECK_CLOSE(view_model.label_color.r, 1.0F, 0.001F);
+    DEFN_CHECK_CLOSE(view_model.label_color.g, 0.2F, 0.001F);
+    DEFN_CHECK_CLOSE(view_model.label_color.b, 0.2F, 0.001F);
+    DEFN_CHECK_EQ(view_model.primary_sfx_path, std::string("res://assets/sfx/defeat_sting.wav"));
+    DEFN_CHECK_EQ(view_model.base_destroyed_sfx_path, std::string("res://assets/sfx/base_destroyed_collapse.wav"));
+    DEFN_CHECK_EQ(view_model.celebrant_side, MatchResultCelebrantSide::Hostile);
+    DEFN_CHECK(view_model.shake_base);
+    DEFN_CHECK_CLOSE(view_model.duration_seconds, 4.0, 0.001);
+    DEFN_CHECK_CLOSE(view_model.reveal_delay_seconds, 1.5, 0.001);
+    DEFN_CHECK_EQ(view_model.pre_reveal_animation_name, std::string("idle"));
+    DEFN_CHECK_EQ(view_model.reveal_animation_name, std::string("happy"));
+}
 
 DEFN_TEST(score_screen_view_model_formats_victory_stats_and_buttons) {
     const ScoreScreenViewModel view_model = build_score_screen_view_model({

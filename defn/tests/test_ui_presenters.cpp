@@ -8,6 +8,7 @@
 #include "game_background_builder.h"
 #include "grid_manager.h"
 #include "hud.h"
+#include "match_result_cutscene_view_model.h"
 #include "menu_manager.h"
 #include "pause_menu.h"
 #include "projectile_attack.h"
@@ -73,6 +74,12 @@ bool has_label_text(Node *root, const String &text) {
     return std::ranges::any_of(labels, [&text](const Label *label) { return label->get_text() == text; });
 }
 
+Label *find_label_by_text(Node *root, const String &text) {
+    const std::vector<Label *> labels = collect_labels(root);
+    const auto iter = std::ranges::find_if(labels, [&text](const Label *label) { return label->get_text() == text; });
+    return iter == labels.end() ? nullptr : *iter;
+}
+
 bool has_label_containing(Node *root, const String &needle) {
     const std::vector<Label *> labels = collect_labels(root);
     return std::ranges::any_of(labels, [&needle](const Label *label) { return label->get_text().contains(needle); });
@@ -136,6 +143,15 @@ bool has_all_named_nodes(Node *root, std::initializer_list<const char *> names) 
 }
 
 bool nearly_equal(double left, double right) { return std::abs(left - right) <= 0.001; }
+
+bool color_matches(const Color &actual, const Color &expected) {
+    return nearly_equal(actual.r, expected.r) && nearly_equal(actual.g, expected.g) && nearly_equal(actual.b, expected.b) && nearly_equal(actual.a, expected.a);
+}
+
+bool label_font_color_matches(Node *root, const String &text, const Color &expected_color) {
+    Label *label = find_label_by_text(root, text);
+    return label != nullptr && label->has_theme_color_override("font_color") && color_matches(label->get_theme_color("font_color"), expected_color);
+}
 
 bool button_minimum_size_is(Button *button, double width, double height) {
     if (button == nullptr) {
@@ -426,6 +442,23 @@ DEFN_TEST(hud_builds_and_updates_core_labels_cards_and_score_screen) {
     summary.hearts_total = 3;
     hud->show_score_screen(summary);
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
+
+    memdelete(hud);
+}
+
+DEFN_TEST(hud_shows_and_hides_match_result_banner) {
+    auto *hud = memnew(HUD);
+    hud->_ready();
+
+    hud->show_match_result_banner(MatchResultCutscenePresenter::build(true));
+    DEFN_CHECK(has_label_text(hud, "AREA SECURED"));
+    DEFN_CHECK(label_font_color_matches(hud, "AREA SECURED", Color(0.2, 1.0, 0.3, 1.0)));
+    hud->hide_match_result_banner();
+    DEFN_CHECK(!has_label_text(hud, "AREA SECURED"));
+
+    hud->show_match_result_banner(MatchResultCutscenePresenter::build(false));
+    DEFN_CHECK(has_label_text(hud, "DEFEAT"));
+    DEFN_CHECK(label_font_color_matches(hud, "DEFEAT", Color(1.0, 0.2, 0.2, 1.0)));
 
     memdelete(hud);
 }
