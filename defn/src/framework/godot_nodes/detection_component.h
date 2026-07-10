@@ -16,7 +16,7 @@ class DetectionComponent : public Node {
   public:
     void configure(Node *owner_node, uint32_t sensor_mask, real_t ranged_range, real_t scale_x);
     Area2D *get_detection_area() const { return detection_area; }
-    void set_local_position(const Vector2 &position);
+    void set_local_position(const godot::Vector2 &position);
 
   protected:
     static void _bind_methods();

@@ -28,7 +28,7 @@ Color parse_color(const Array &arr, const Color &fallback) {
     return fallback;
 }
 
-ContentVector2 parse_vector2(const Variant &value, const ContentVector2 &fallback) {
+Vector2 parse_vector2(const Variant &value, const Vector2 &fallback) {
     Array arr = value;
     if (arr.size() >= 2) {
         return {.x = VariantTools::as_float(arr[0]), .y = VariantTools::as_float(arr[1])};

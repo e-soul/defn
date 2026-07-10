@@ -2,6 +2,7 @@
 
 #include "attack_target_resolver.h"
 #include "battle_entity.h"
+#include "godot_vector.h"
 
 #include <algorithm>
 #include <vector>
@@ -14,8 +15,6 @@ EntityId entity_id_for(const AttackTarget &target) { return {.value = static_cas
 
 AttackTarget *resolve_entity_id(EntityId entity_id) { return entity_id.is_valid() ? resolve_attack_target(ObjectID(entity_id.value)) : nullptr; }
 
-CombatPoint to_combat_point(const Vector2 &position) { return {.x = static_cast<float>(position.x), .y = static_cast<float>(position.y)}; }
-
 } // namespace
 
 CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Area2D *detection_area, const CombatConfig &config, EntityId current_target_id) {
@@ -23,7 +22,7 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
         return {};
     }
 
-    const CombatPoint origin = to_combat_point(unit->get_target_global_position());
+    const Vector2 origin = to_vector(unit->get_target_global_position());
     std::vector<CombatTargetSnapshot> snapshots;
     const TypedArray<Area2D> overlapping = detection_area->get_overlapping_areas();
     snapshots.reserve(overlapping.size());
@@ -42,7 +41,7 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
             .id = entity_id_for(*target),
             .side = target->get_side(),
             .dead = target->is_dead(),
-            .position = to_combat_point(target->get_target_global_position()),
+            .position = to_vector(target->get_target_global_position()),
         });
     }
 
@@ -55,7 +54,7 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
                 .id = current_target_id,
                 .side = current_target->get_side(),
                 .dead = current_target->is_dead(),
-                .position = to_combat_point(current_target->get_target_global_position()),
+                .position = to_vector(current_target->get_target_global_position()),
             });
         }
     }

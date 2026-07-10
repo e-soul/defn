@@ -31,7 +31,7 @@ void HitboxComponent::configure(Node *owner_node, uint32_t hitbox_layer, real_t 
     }
 }
 
-void HitboxComponent::set_local_position(const Vector2 &position) {
+void HitboxComponent::set_local_position(const godot::Vector2 &position) {
     if (hitbox_ != nullptr) {
         hitbox_->set_position(position);
     }

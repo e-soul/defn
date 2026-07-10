@@ -16,11 +16,6 @@ struct EntityId {
     bool operator==(const EntityId &other) const { return value == other.value; }
 };
 
-struct CombatPoint {
-    float x = 0.0F;
-    float y = 0.0F;
-};
-
 enum class AttackMode { NONE, MELEE, RANGED };
 
 enum class SplashTargetRoundingMode { FLOOR, NEAREST, CEIL };

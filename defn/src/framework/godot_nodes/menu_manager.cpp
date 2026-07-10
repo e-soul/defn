@@ -131,12 +131,12 @@ MenuIntent to_menu_intent(int intent_type, const String &target) {
     };
 }
 
-Vector2 get_progression_screen_size(Node *parent) {
+godot::Vector2 get_progression_screen_size(Node *parent) {
     if (parent == nullptr || parent->get_viewport() == nullptr) {
         return make_size(800, 360);
     }
 
-    const Vector2 viewport_size = parent->get_viewport()->get_visible_rect().size;
+    const godot::Vector2 viewport_size = parent->get_viewport()->get_visible_rect().size;
     if (viewport_size.x <= 0.0 || viewport_size.y <= 0.0) {
         return make_size(800, 360);
     }
@@ -288,7 +288,7 @@ void add_menu_button(MenuManager *manager, VBoxContainer *button_container, cons
                      real_t width_override = 0.0F) {
     auto *button = memnew(Button);
     button->set_text(to_godot_string(button_model.label));
-    const Vector2 minimum_size = width_override > 0.0F ? Vector2(width_override, button_style.minimum_size.y) : button_style.minimum_size;
+    const godot::Vector2 minimum_size = width_override > 0.0F ? godot::Vector2(width_override, button_style.minimum_size.y) : button_style.minimum_size;
     button->set_custom_minimum_size(minimum_size);
     button->set_focus_mode(Control::FOCUS_NONE);
     apply_button_theme(button, button_style, button_style.font_size);

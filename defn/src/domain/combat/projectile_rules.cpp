@@ -7,7 +7,7 @@ namespace defn {
 
 namespace {
 
-float distance_squared(const CombatPoint &left, const CombatPoint &right) {
+float distance_squared(const Vector2 &left, const Vector2 &right) {
     const float delta_x = left.x - right.x;
     const float delta_y = left.y - right.y;
     return (delta_x * delta_x) + (delta_y * delta_y);
@@ -79,7 +79,7 @@ std::vector<ProjectileDamageCommand> resolve_projectile_impact(const ProjectileI
         candidates.push_back({
             .target_id = target.id,
             .damage = is_direct_target ? resolve_projectile_impact_damage(input.config, input.fallback_damage)
-                                      : resolve_projectile_splash_damage(input.config, input.fallback_damage),
+                                       : resolve_projectile_splash_damage(input.config, input.fallback_damage),
         });
     }
 

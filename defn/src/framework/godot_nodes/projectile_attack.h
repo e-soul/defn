@@ -19,8 +19,8 @@ class ProjectileAttack : public Node2D {
     GDCLASS(ProjectileAttack, Node2D)
 
   public:
-    void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color, const Vector2 &start_global_position,
-                   const Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
+    void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color, const godot::Vector2 &start_global_position,
+                   const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
 
     void _process(double delta) override;
 
@@ -46,10 +46,10 @@ class ProjectileAttack : public Node2D {
     godot::Color flash_color_{};
     AnimatedSprite2D *sprite_ = nullptr;
     AudioStreamPlayer2D *explosion_player_ = nullptr;
-    Vector2 target_global_position_{};
-    Vector2 travel_direction_{};
-    Vector2 flight_scale_ = Vector2(1.0, 1.0);
-    Vector2 explosion_scale_ = Vector2(1.0, 1.0);
+    godot::Vector2 target_global_position_{};
+    godot::Vector2 travel_direction_{};
+    godot::Vector2 flight_scale_ = godot::Vector2(1.0, 1.0);
+    godot::Vector2 explosion_scale_ = godot::Vector2(1.0, 1.0);
     real_t total_travel_distance_ = 0.0F;
     real_t travelled_distance_ = 0.0F;
     int fallback_damage_ = 0;

@@ -6,12 +6,12 @@ namespace defn {
 
 void HealthBarWidget::_bind_methods() {}
 
-void HealthBarWidget::configure(HealthComponent *health, const godot::Color &fill_color, const Vector2 &offset) {
+void HealthBarWidget::configure(HealthComponent *health, const godot::Color &fill_color, const godot::Vector2 &offset) {
     setup_bar(health->get_max_hp(), fill_color, offset);
     health->connect("health_changed", callable_mp(this, &HealthBarWidget::on_health_changed));
 }
 
-void HealthBarWidget::setup_bar(int max_hp, const godot::Color &fill_color, const Vector2 &offset) {
+void HealthBarWidget::setup_bar(int max_hp, const godot::Color &fill_color, const godot::Vector2 &offset) {
     constexpr real_t bar_width = 170;
     constexpr real_t bar_height = 10;
 

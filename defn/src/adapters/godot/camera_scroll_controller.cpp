@@ -25,16 +25,16 @@ real_t CameraScrollController::calculate_world_width(real_t background_display_w
 
 real_t CameraScrollController::get_trigger_height() const { return (rules_.belt_bottom_y - rules_.belt_top_y) + rules_.scroll_trigger_extra_height; }
 
-Vector2 CameraScrollController::get_camera_anchor_position() const { return {camera_target_x_, rules_.viewport_height / HALF}; }
+godot::Vector2 CameraScrollController::get_camera_anchor_position() const { return {camera_target_x_, rules_.viewport_height / HALF}; }
 
-Vector2 CameraScrollController::get_left_trigger_position() const {
+godot::Vector2 CameraScrollController::get_left_trigger_position() const {
     const real_t scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
     const real_t trigger_x = camera_target_x_ - (rules_.viewport_width / HALF) + scroll_step;
     const real_t trigger_y = (rules_.belt_top_y + rules_.belt_bottom_y) / HALF;
     return {trigger_x, trigger_y};
 }
 
-Vector2 CameraScrollController::get_right_trigger_position() const {
+godot::Vector2 CameraScrollController::get_right_trigger_position() const {
     const real_t scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
     const real_t trigger_x = camera_target_x_ + (rules_.viewport_width / HALF) - scroll_step;
     const real_t trigger_y = (rules_.belt_top_y + rules_.belt_bottom_y) / HALF;

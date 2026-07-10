@@ -27,9 +27,9 @@ class AttackTarget {
         return node != nullptr ? ObjectID(node->get_instance_id()) : ObjectID();
     }
 
-    Vector2 get_target_global_position() const {
+    godot::Vector2 get_target_global_position() const {
         const Node2D *node = get_target_node();
-        return node != nullptr ? node->get_global_position() : Vector2();
+        return node != nullptr ? node->get_global_position() : godot::Vector2();
     }
 };
 

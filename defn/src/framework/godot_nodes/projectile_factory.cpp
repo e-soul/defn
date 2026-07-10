@@ -7,8 +7,8 @@
 namespace defn {
 
 ProjectileAttack *ProjectileFactory::create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color,
-                                            const Vector2 &start_global_position, const Vector2 &target_global_position, AttackTarget *direct_target,
-                                            int fallback_damage) {
+                                            const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position,
+                                            AttackTarget *direct_target, int fallback_damage) {
     auto *projectile = memnew(ProjectileAttack);
     if (parent != nullptr) {
         parent->add_child(projectile);

@@ -21,7 +21,7 @@ void DetectionComponent::configure(Node *owner_node, uint32_t sensor_mask, real_
     owner_node->add_child(detection_area);
 }
 
-void DetectionComponent::set_local_position(const Vector2 &position) {
+void DetectionComponent::set_local_position(const godot::Vector2 &position) {
     if (detection_area != nullptr) {
         detection_area->set_position(position);
     }

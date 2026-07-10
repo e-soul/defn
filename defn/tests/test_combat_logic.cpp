@@ -1,7 +1,7 @@
 #include "test_harness.h"
 
-#include "combat_use_cases.h"
 #include "combat_logic.h"
+#include "combat_use_cases.h"
 #include "projectile_rules.h"
 
 #include <array>
@@ -45,7 +45,7 @@ DEFN_TEST(select_target_prefers_closest_melee_target) {
         {.id = melee_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 25.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{}, make_combat_config(), {}, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_combat_config(), {}, snapshots);
     DEFN_CHECK(selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::MELEE);
     DEFN_CHECK_EQ(selection.target_id, melee_target);
@@ -61,7 +61,7 @@ DEFN_TEST(select_target_keeps_current_target_when_still_in_range) {
         {.id = closer_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = 20.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{}, make_combat_config(), current_target, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_combat_config(), current_target, snapshots);
     DEFN_CHECK(selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::RANGED);
     DEFN_CHECK_EQ(selection.target_id, current_target);
@@ -81,7 +81,7 @@ DEFN_TEST(select_target_skips_invalid_same_side_dead_and_behind_targets) {
         {.id = behind_target, .side = UnitSide::HOSTILE, .dead = false, .position = {.x = -25.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{}, make_combat_config(), {}, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_combat_config(), {}, snapshots);
     DEFN_CHECK(!selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::NONE);
     DEFN_CHECK(!selection.target_id.is_valid());
@@ -96,7 +96,7 @@ DEFN_TEST(select_target_uses_hostile_forward_direction) {
         {.id = forward_target, .side = UnitSide::FRIENDLY, .dead = false, .position = {.x = 60.0F, .y = 0.0F}},
     }};
 
-    const CombatTargetSelection selection = select_target_from_snapshots(CombatPoint{.x = 100.0F, .y = 0.0F}, config, {}, snapshots);
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{.x = 100.0F, .y = 0.0F}, config, {}, snapshots);
     DEFN_CHECK(selection.engaged);
     DEFN_CHECK_EQ(selection.attack_mode, AttackMode::MELEE);
     DEFN_CHECK_EQ(selection.target_id, forward_target);

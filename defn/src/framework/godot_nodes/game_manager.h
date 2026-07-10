@@ -46,7 +46,7 @@ class GameManager : public Node2D {
     void setup_scroll_triggers();
     Area2D *create_scroll_trigger(const String &name, uint32_t collision_mask);
     void update_scroll_trigger_positions();
-    static Vector2 get_base_objective_position();
+    static godot::Vector2 get_base_objective_position();
     static bool is_valid_scroll_trigger_unit(Area2D *area, const char *required_group);
     void update_camera_scroll(double delta);
     Unit *materialize_spawn_intent(const SpawnUnitIntent &intent);

@@ -5,6 +5,7 @@
 #include "combat_component.h"
 #include "detection_component.h"
 #include "godot_color.h"
+#include "godot_vector.h"
 #include "health_bar_widget.h"
 #include "health_component.h"
 #include "hitbox_component.h"
@@ -18,8 +19,6 @@ namespace defn {
 namespace {
 
 constexpr real_t DEFAULT_HITBOX_RADIUS = 5.0F;
-
-Vector2 to_godot_vector(const ContentVector2 &vector) { return {vector.x, vector.y}; }
 
 HealthComponent *create_health_component(Unit *unit) {
     auto *health = memnew(HealthComponent);
@@ -114,7 +113,7 @@ CombatComponent *create_combat_component(Unit *unit, HealthComponent *health, An
 
 } // namespace
 
-Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, const UnitRuntimeProfile &profile,
+Unit *UnitFactory::create(const UnitConfig &config, const godot::Vector2 &position, const UnitRuntimeProfile &profile,
                           const ResolvedUnitRuntimeConfig &resolved_config) {
     auto *unit = memnew(Unit);
     unit->set_unit_config(config);
@@ -125,7 +124,7 @@ Unit *UnitFactory::create(const UnitConfig &config, const Vector2 &position, con
 }
 
 Unit *UnitFactory::materialize(const SpawnUnitIntent &intent, const UnitConfig &config) {
-    return create(config, Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile,
+    return create(config, godot::Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile,
                   intent.resolved_runtime_config);
 }
 

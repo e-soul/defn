@@ -15,7 +15,7 @@ struct CombatCommand {
     CombatPoseIntent pose = CombatPoseIntent::NONE;
     CombatEffectType effect = CombatEffectType::NONE;
     EntityId target_id;
-    CombatPoint target_position;
+    Vector2 target_position;
     int damage = 0;
     Color color;
     ProjectileDamageConfig projectile;

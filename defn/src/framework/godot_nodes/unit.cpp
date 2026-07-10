@@ -33,7 +33,7 @@ void Unit::_ready() {
     }
 
     // Scale from config
-    set_scale(Vector2(unit_config_.scale, unit_config_.scale));
+    set_scale(godot::Vector2(unit_config_.scale, unit_config_.scale));
 
     UnitFactory::initialize(this);
 }

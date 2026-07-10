@@ -158,7 +158,7 @@ bool button_minimum_size_is(Button *button, double width, double height) {
         return false;
     }
 
-    const Vector2 minimum_size = button->get_custom_minimum_size();
+    const godot::Vector2 minimum_size = button->get_custom_minimum_size();
     return nearly_equal(minimum_size.x, width) && nearly_equal(minimum_size.y, height);
 }
 
@@ -283,7 +283,7 @@ bool background_build_matches_rules(const GameBackgroundBuildResult &result, con
         return false;
     }
 
-    const Vector2 texture_size = sprite->get_texture()->get_size();
+    const godot::Vector2 texture_size = sprite->get_texture()->get_size();
     const real_t expected_scale = rules.viewport_height / texture_size.y;
     const real_t expected_width = texture_size.x * expected_scale * static_cast<real_t>(rules.world_multiplier);
     return String(result.background->get_name()) == "Background" && nearly_equal(result.world_width, expected_width) &&
@@ -299,7 +299,7 @@ UnitConfig make_objective_visual_config(UnitSide side) {
     return config;
 }
 
-BaseObjective *add_test_objective(Node *parent, UnitSide side, int max_hp, const Vector2 &target_position) {
+BaseObjective *add_test_objective(Node *parent, UnitSide side, int max_hp, const godot::Vector2 &target_position) {
     auto *objective = BaseObjectiveFactory::create(max_hp, target_position, make_objective_visual_config(side));
     parent->add_child(objective);
     return objective;
@@ -475,7 +475,7 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
         .melee_attack_range = passive_config.melee_attack_range,
         .ranged_attack_range = passive_config.ranged_attack_range,
     };
-    auto *passive_unit = UnitFactory::create(passive_config, Vector2(12.0, 34.0), passive_profile, passive_resolved_config);
+    auto *passive_unit = UnitFactory::create(passive_config, godot::Vector2(12.0, 34.0), passive_profile, passive_resolved_config);
     DEFN_REQUIRE(passive_unit != nullptr);
     DEFN_CHECK_EQ(passive_unit->get_unit_config().name, std::string("operator"));
     DEFN_CHECK_CLOSE(passive_unit->get_position().x, 12.0, 0.001);
@@ -535,7 +535,7 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
 }
 
 DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
-    auto *objective = BaseObjectiveFactory::create(250, Vector2(300.0, 180.0));
+    auto *objective = BaseObjectiveFactory::create(250, godot::Vector2(300.0, 180.0));
 
     DEFN_CHECK_EQ(objective->get_current_hp(), 250);
     DEFN_CHECK_EQ(objective->get_max_hp(), 250);
@@ -556,7 +556,7 @@ DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
     tower_config.animations.push_back({"idle", {.path_template = "res://assets/tower.png", .frame_count = 1, .loop = true}});
     tower_config.animations.push_back({"death", {.path_template = "res://assets/tower_destroyed.png", .frame_count = 1, .loop = false}});
 
-    auto *armed_objective = BaseObjectiveFactory::create(300, Vector2(500.0, 220.0), tower_config);
+    auto *armed_objective = BaseObjectiveFactory::create(300, godot::Vector2(500.0, 220.0), tower_config);
     DEFN_CHECK(base_objective_has_attack_stack(armed_objective));
 
     armed_objective->flash_damage(godot::Color(1.0, 0.0, 0.0));
@@ -604,7 +604,7 @@ DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
 
     auto *camera = memnew(Camera2D);
     auto *grid = memnew(GridManager);
-    camera->set_position(Vector2(500.0, 300.0));
+    camera->set_position(godot::Vector2(500.0, 300.0));
     controller.update_camera(camera, grid, 0.1);
     DEFN_CHECK_CLOSE(camera->get_position().x, 575.0, 0.001);
     DEFN_CHECK_CLOSE(grid->get_camera_x(), 575.0, 0.001);
@@ -641,7 +641,7 @@ DEFN_TEST(attack_target_resolver_maps_battle_entities_and_rejects_plain_nodes) {
     auto *plain_node = memnew(Node2D);
     DEFN_CHECK(resolve_attack_target(plain_node) == nullptr);
 
-    auto *objective = BaseObjectiveFactory::create(100, Vector2(10.0, 20.0));
+    auto *objective = BaseObjectiveFactory::create(100, godot::Vector2(10.0, 20.0));
     DEFN_CHECK(resolve_attack_target(objective) == static_cast<AttackTarget *>(objective));
     DEFN_CHECK(resolve_attack_target(objective->get_target_object_id()) == static_cast<AttackTarget *>(objective));
 
@@ -651,10 +651,10 @@ DEFN_TEST(attack_target_resolver_maps_battle_entities_and_rejects_plain_nodes) {
 
 DEFN_TEST(projectile_attack_applies_direct_and_splash_damage_to_hostile_targets) {
     auto *parent = memnew(Node2D);
-    auto *direct_target = add_test_objective(parent, UnitSide::HOSTILE, 100, Vector2(100.0, 0.0));
-    auto *splash_target = add_test_objective(parent, UnitSide::HOSTILE, 100, Vector2(130.0, 0.0));
-    auto *far_target = add_test_objective(parent, UnitSide::HOSTILE, 100, Vector2(260.0, 0.0));
-    auto *friendly_target = add_test_objective(parent, UnitSide::FRIENDLY, 100, Vector2(120.0, 0.0));
+    auto *direct_target = add_test_objective(parent, UnitSide::HOSTILE, 100, godot::Vector2(100.0, 0.0));
+    auto *splash_target = add_test_objective(parent, UnitSide::HOSTILE, 100, godot::Vector2(130.0, 0.0));
+    auto *far_target = add_test_objective(parent, UnitSide::HOSTILE, 100, godot::Vector2(260.0, 0.0));
+    auto *friendly_target = add_test_objective(parent, UnitSide::FRIENDLY, 100, godot::Vector2(120.0, 0.0));
 
     ProjectileAttackConfig config;
     config.speed_pixels_per_second = 0.0F;
@@ -666,7 +666,7 @@ DEFN_TEST(projectile_attack_applies_direct_and_splash_damage_to_hostile_targets)
     config.projectile_animation.frame_count = 0;
     config.explosion_animation.frame_count = 0;
 
-    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, godot::Color(1.0, 0.2, 0.1), Vector2(0.0, 0.0),
+    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, godot::Color(1.0, 0.2, 0.1), godot::Vector2(0.0, 0.0),
                                                  direct_target->get_target_global_position(), direct_target, 25);
     projectile->_process(0.1);
 

@@ -5,13 +5,12 @@
 #include "attack_target_resolver.h"
 #include "battle_entity.h"
 #include "godot_color.h"
+#include "godot_vector.h"
 #include "projectile_factory.h"
 
 namespace defn {
 
 namespace {
-
-Vector2 to_godot_vector(const CombatPoint &point) { return {point.x, point.y}; }
 
 AttackTarget *resolve_entity_id(EntityId entity_id) { return entity_id.is_valid() ? resolve_attack_target(ObjectID(entity_id.value)) : nullptr; }
 
@@ -60,7 +59,7 @@ void CombatAttackExecutor::spawn_pending_projectile(const std::optional<Projecti
 
     if (projectile_parent != nullptr && projectile_config.has_value()) {
         AttackTarget *direct_target = resolve_entity_id(pending_projectile.target_id);
-        Vector2 launch_position;
+        godot::Vector2 launch_position;
         if (animation != nullptr) {
             launch_position = animation->get_muzzle_global_position();
         } else if (unit != nullptr) {

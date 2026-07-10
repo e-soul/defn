@@ -26,9 +26,7 @@ void change_scene(SceneTree *tree, const String &scene_path) {
 
 void SceneNavigator::go_to_main_menu(SceneTree *tree) { change_scene(tree, MENU_SCENE_PATH); }
 
-void SceneNavigator::go_to_level(SceneTree *tree, const String & /*level_id*/) {
-    change_scene(tree, GAME_SCENE_PATH);
-}
+void SceneNavigator::go_to_level(SceneTree *tree, const String & /*level_id*/) { change_scene(tree, GAME_SCENE_PATH); }
 
 void SceneNavigator::go_to_current_level(SceneTree *tree) { change_scene(tree, GAME_SCENE_PATH); }
 

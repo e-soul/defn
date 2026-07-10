@@ -25,7 +25,7 @@ class OwnedUpgradesPanel {
     };
 
     struct Options {
-        Vector2 min_size;
+        godot::Vector2 min_size;
         Layout layout = Layout::HorizontalStrip;
         int grid_columns = 4;
         int card_separation = 12;

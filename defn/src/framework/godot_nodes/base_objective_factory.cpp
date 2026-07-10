@@ -6,7 +6,7 @@
 
 namespace defn {
 
-BaseObjective *BaseObjectiveFactory::create(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config) {
+BaseObjective *BaseObjectiveFactory::create(int max_hp, const godot::Vector2 &position, const std::optional<UnitConfig> &visual_config) {
     auto *objective = memnew(BaseObjective);
     objective->set_name("BaseObjective");
     objective->configure(max_hp, position, visual_config);

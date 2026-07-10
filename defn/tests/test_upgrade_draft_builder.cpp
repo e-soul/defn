@@ -1,7 +1,7 @@
 #include "test_harness.h"
 
-#include "upgrade_draft_builder.h"
 #include "scripted_random_source.h"
+#include "upgrade_draft_builder.h"
 
 namespace defn {
 

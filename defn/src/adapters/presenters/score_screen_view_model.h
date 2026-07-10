@@ -46,10 +46,10 @@ struct ScoreScreenViewModel {
 [[nodiscard]] ScoreScreenViewModel build_score_screen_view_model(const ScoreScreenPresentationInput &input);
 
 class ScoreScreenPresenter {
-    public:
-        ScoreScreenPresenter() = delete;
+  public:
+    ScoreScreenPresenter() = delete;
 
-        [[nodiscard]] static ScoreScreenViewModel build(const ScoreScreenModel &model);
+    [[nodiscard]] static ScoreScreenViewModel build(const ScoreScreenModel &model);
 };
 
 } // namespace defn

@@ -5,7 +5,7 @@
 
 namespace defn {
 
-float get_forward_distance(UnitSide side, const CombatPoint &origin, const CombatPoint &target_position) {
+float get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &target_position) {
     if (side == UnitSide::FRIENDLY) {
         return target_position.x - origin.x;
     }
@@ -27,7 +27,7 @@ AttackMode classify_target_by_distance(const CombatConfig &config, float distanc
     return AttackMode::NONE;
 }
 
-CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, const CombatConfig &config, EntityId current_target_id,
+CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
                                                    std::span<const CombatTargetSnapshot> targets) {
     if (current_target_id.is_valid()) {
         for (const CombatTargetSnapshot &snapshot : targets) {
@@ -50,8 +50,8 @@ CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, co
 
     EntityId best_melee_target_id;
     EntityId best_ranged_target_id;
-    CombatPoint best_melee_target_position;
-    CombatPoint best_ranged_target_position;
+    Vector2 best_melee_target_position;
+    Vector2 best_ranged_target_position;
     float closest_melee_distance = std::numeric_limits<float>::max();
     float closest_ranged_distance = std::numeric_limits<float>::max();
 

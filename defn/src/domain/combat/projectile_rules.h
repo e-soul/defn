@@ -12,7 +12,7 @@ struct ProjectileTargetSnapshot {
     EntityId id;
     UnitSide side = UnitSide::FRIENDLY;
     bool dead = false;
-    CombatPoint position;
+    Vector2 position;
 };
 
 struct ProjectileDamageCommand {
@@ -23,7 +23,7 @@ struct ProjectileDamageCommand {
 struct ProjectileImpactInput {
     ProjectileDamageConfig config;
     UnitSide shooter_side = UnitSide::FRIENDLY;
-    CombatPoint impact_position;
+    Vector2 impact_position;
     EntityId direct_target_id;
     int fallback_damage = 0;
     std::span<const ProjectileTargetSnapshot> targets;

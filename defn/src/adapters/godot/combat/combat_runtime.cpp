@@ -45,7 +45,9 @@ void CombatRuntime::update(double delta) {
 
 void CombatRuntime::update_target() { selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id); }
 
-void CombatRuntime::try_spawn_pending_projectile() { CombatAttackExecutor::spawn_pending_projectile(projectile_attack_, unit_, animation_, pending_projectile_); }
+void CombatRuntime::try_spawn_pending_projectile() {
+    CombatAttackExecutor::spawn_pending_projectile(projectile_attack_, unit_, animation_, pending_projectile_);
+}
 
 void CombatRuntime::apply_commands(const AdvanceCombatOutput &output, double delta) {
     state_ = output.state;

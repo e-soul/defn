@@ -71,8 +71,7 @@ void spawn_primary_bolt(Node2D *parent, const Vector2 &world_position) {
     tween->set_trans(Tween::TRANS_BACK);
     tween->set_ease(Tween::EASE_OUT);
     tween->tween_property(bolt, NodePath("position"), target_position, PRIMARY_BOLT_LIFETIME_SECONDS);
-    tween->parallel()->tween_property(bolt, NodePath("scale"), Vector2(PRIMARY_BOLT_END_SCALE, PRIMARY_BOLT_END_SCALE),
-                                      PRIMARY_BOLT_LIFETIME_SECONDS);
+    tween->parallel()->tween_property(bolt, NodePath("scale"), Vector2(PRIMARY_BOLT_END_SCALE, PRIMARY_BOLT_END_SCALE), PRIMARY_BOLT_LIFETIME_SECONDS);
     tween->parallel()->tween_property(bolt, NodePath("modulate"), Color(1.0F, 1.0F, 1.0F, 0.0F), PRIMARY_BOLT_LIFETIME_SECONDS);
     Node *bolt_node = bolt;
     tween->chain()->tween_callback(callable_mp(bolt_node, &Node::queue_free));
@@ -88,13 +87,11 @@ void spawn_mote(Node2D *parent, const Vector2 &world_position, const Ref<RandomN
     mote->set_z_index(VFX_Z_INDEX + 1);
     parent->add_child(mote);
 
-    const Vector2 spawn_offset(rng->randf_range(-MOTE_SPAWN_VARIANCE, MOTE_SPAWN_VARIANCE),
-                               rng->randf_range(-MOTE_SPAWN_VARIANCE, MOTE_SPAWN_VARIANCE));
+    const Vector2 spawn_offset(rng->randf_range(-MOTE_SPAWN_VARIANCE, MOTE_SPAWN_VARIANCE), rng->randf_range(-MOTE_SPAWN_VARIANCE, MOTE_SPAWN_VARIANCE));
     mote->set_global_position(world_position + spawn_offset);
 
-    const Vector2 target_position = mote->get_position() +
-                                    Vector2(rng->randf_range(-MOTE_HORIZONTAL_VARIANCE, MOTE_HORIZONTAL_VARIANCE),
-                                            -rng->randf_range(MOTE_VERTICAL_MIN, MOTE_VERTICAL_MAX));
+    const Vector2 target_position = mote->get_position() + Vector2(rng->randf_range(-MOTE_HORIZONTAL_VARIANCE, MOTE_HORIZONTAL_VARIANCE),
+                                                                   -rng->randf_range(MOTE_VERTICAL_MIN, MOTE_VERTICAL_MAX));
     const double lifetime = rng->randf_range(MOTE_LIFETIME_MIN_SECONDS, MOTE_LIFETIME_MAX_SECONDS);
 
     Ref<Tween> tween = mote->create_tween();

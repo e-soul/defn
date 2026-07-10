@@ -20,9 +20,9 @@ class CameraScrollController {
     real_t calculate_world_width(real_t background_display_width) const;
     real_t get_world_width() const { return world_width_; }
     real_t get_trigger_height() const;
-    Vector2 get_camera_anchor_position() const;
-    Vector2 get_left_trigger_position() const;
-    Vector2 get_right_trigger_position() const;
+    godot::Vector2 get_camera_anchor_position() const;
+    godot::Vector2 get_left_trigger_position() const;
+    godot::Vector2 get_right_trigger_position() const;
 
     void update_camera(Camera2D *camera, GridManager *grid, double delta) const;
     bool advance_target();

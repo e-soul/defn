@@ -19,7 +19,7 @@ struct PendingProjectileSpawn {
     bool active = false;
     EntityId target_id{};
     UnitSide shooter_side = UnitSide::FRIENDLY;
-    Vector2 target_global_position;
+    godot::Vector2 target_global_position;
     int fallback_damage = 0;
     Color flash_color;
 };

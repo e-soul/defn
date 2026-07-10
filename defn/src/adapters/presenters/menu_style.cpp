@@ -11,7 +11,7 @@ constexpr real_t DEFAULT_ALPHA = 1.0F;
 
 } // namespace
 
-Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
+godot::Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
 
 godot::Color parse_color_array(const Array &arr, const godot::Color &fallback) {
     if (arr.size() >= 3) {

@@ -16,7 +16,7 @@ class HitboxComponent : public Node {
   public:
     void configure(Node *owner_node, uint32_t hitbox_layer, real_t radius);
     Area2D *get_hitbox() const { return hitbox_; }
-    void set_local_position(const Vector2 &position);
+    void set_local_position(const godot::Vector2 &position);
     void disable();
 
   protected:

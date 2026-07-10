@@ -2,8 +2,8 @@
 #include "data_paths.h"
 #include "godot_color.h"
 #include "godot_string.h"
-#include "menu_flow_use_case.h"
 #include "menu_data_loader.h"
+#include "menu_flow_use_case.h"
 #include "menu_style.h"
 #include "scene_navigator.h"
 #include <godot_cpp/classes/button.hpp>

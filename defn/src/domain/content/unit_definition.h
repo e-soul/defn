@@ -21,7 +21,7 @@ struct AnimConfig {
 
 struct MuzzleConfig {
     std::string path_template;
-    ContentVector2 offset;
+    Vector2 offset;
     bool flip_h = false;
 };
 
@@ -101,7 +101,7 @@ struct UnitConfig {
     float scale = 0.27F;
     bool sprite_flip_h = false;
     Color health_bar_color = {0.0F, 1.0F, 0.0F, 0.9F};
-    ContentVector2 health_bar_offset = {0.0F, -241.0F};
+    Vector2 health_bar_offset = {0.0F, -241.0F};
     Color melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
     Color ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
     MuzzleConfig muzzle;

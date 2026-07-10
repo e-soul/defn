@@ -11,14 +11,14 @@ struct CombatTargetSnapshot {
     EntityId id;
     UnitSide side = UnitSide::FRIENDLY;
     bool dead = false;
-    CombatPoint position;
+    Vector2 position;
 };
 
 struct CombatTargetSelection {
     bool engaged = false;
     AttackMode attack_mode = AttackMode::NONE;
     EntityId target_id;
-    CombatPoint target_position;
+    Vector2 target_position;
 };
 
 enum class CombatMovementIntent { NONE, MOVE, STOP };
@@ -53,9 +53,9 @@ struct CombatLogicStep {
     CombatLogicIntent intent;
 };
 
-float get_forward_distance(UnitSide side, const CombatPoint &origin, const CombatPoint &target_position);
+float get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &target_position);
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance);
-CombatTargetSelection select_target_from_snapshots(const CombatPoint &origin, const CombatConfig &config, EntityId current_target_id,
+CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
                                                    std::span<const CombatTargetSnapshot> targets);
 CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLogicInput &input);
 

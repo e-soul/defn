@@ -10,7 +10,7 @@ struct Color {
     float a = 1.0F;
 };
 
-struct ContentVector2 {
+struct Vector2 {
     float x = 0.0F;
     float y = 0.0F;
 };

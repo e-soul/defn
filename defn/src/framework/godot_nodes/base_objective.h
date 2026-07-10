@@ -28,7 +28,7 @@ class BaseObjective : public BattleEntity {
   public:
     BaseObjective();
 
-    void configure(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
+    void configure(int max_hp, const godot::Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
     void flash_damage(const godot::Color &color) override;
     void play_destroyed_shake();
 
@@ -46,7 +46,7 @@ class BaseObjective : public BattleEntity {
     bool set_sprite_animation(const String &animation_name);
     const AnimConfig *find_animation_config(const String &animation_name) const;
     static String resolve_animation_frame_path(const AnimConfig &animation, int frame_index);
-    Vector2 get_local_anchor_position() const;
+    godot::Vector2 get_local_anchor_position() const;
     void update_visual_state();
     void on_health_changed(int current_hp, int max_hp);
     void on_destroyed();

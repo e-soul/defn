@@ -2,6 +2,7 @@
 
 #include "attack_target_resolver.h"
 #include "godot_string.h"
+#include "godot_vector.h"
 #include "projectile_rules.h"
 
 #include <algorithm>
@@ -23,8 +24,6 @@ constexpr auto PLAYBACK_ANIMATION = "play";
 
 EntityId entity_id_for(const AttackTarget &target) { return {.value = static_cast<uint64_t>(target.get_target_object_id())}; }
 
-CombatPoint to_combat_point(const Vector2 &position) { return {.x = static_cast<float>(position.x), .y = static_cast<float>(position.y)}; }
-
 float linear_to_db(float linear) {
     const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
     return 20.0F * std::log10(clamped_linear);
@@ -34,8 +33,9 @@ float linear_to_db(float linear) {
 
 void ProjectileAttack::_bind_methods() {}
 
-void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color, const Vector2 &start_global_position,
-                                 const Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage) {
+void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color,
+                                 const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position, AttackTarget *direct_target,
+                                 int fallback_damage) {
     config_ = config;
     shooter_side_ = shooter_side;
     flash_color_ = flash_color;
@@ -44,16 +44,16 @@ void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide 
     direct_target_id_ = direct_target != nullptr ? direct_target->get_target_object_id() : ObjectID();
     const real_t projectile_scale = MAX(config_.projectile_scale_multiplier, 0.01F);
     const real_t explosion_scale = MAX(config_.explosion_scale_multiplier, 0.01F);
-    flight_scale_ = Vector2(projectile_scale, projectile_scale);
-    explosion_scale_ = Vector2(explosion_scale, explosion_scale);
+    flight_scale_ = godot::Vector2(projectile_scale, projectile_scale);
+    explosion_scale_ = godot::Vector2(explosion_scale, explosion_scale);
     exploding_ = false;
     explosion_animation_finished_ = false;
     explosion_sfx_finished_ = !config_.explosion_sfx.has_value() || config_.explosion_sfx->path.empty();
     travelled_distance_ = 0.0F;
 
-    const Vector2 travel = target_global_position_ - start_global_position;
+    const godot::Vector2 travel = target_global_position_ - start_global_position;
     total_travel_distance_ = travel.length();
-    travel_direction_ = total_travel_distance_ > 0.0F ? travel / total_travel_distance_ : Vector2();
+    travel_direction_ = total_travel_distance_ > 0.0F ? travel / total_travel_distance_ : godot::Vector2();
 
     ensure_sprite();
     set_global_position(start_global_position);
@@ -214,7 +214,7 @@ void ProjectileAttack::apply_splash_damage() {
             .id = entity_id_for(*direct_target),
             .side = direct_target->get_side(),
             .dead = direct_target->is_dead(),
-            .position = to_combat_point(direct_target->get_target_global_position()),
+            .position = to_vector(direct_target->get_target_global_position()),
         });
     }
 
@@ -238,7 +238,7 @@ void ProjectileAttack::apply_splash_damage() {
                 .id = target_id,
                 .side = target->get_side(),
                 .dead = target->is_dead(),
-                .position = to_combat_point(target->get_target_global_position()),
+                .position = to_vector(target->get_target_global_position()),
             });
         }
     }
@@ -246,7 +246,7 @@ void ProjectileAttack::apply_splash_damage() {
     const std::vector<ProjectileDamageCommand> commands = resolve_projectile_impact({
         .config = to_projectile_damage_config(config_),
         .shooter_side = shooter_side_,
-        .impact_position = to_combat_point(target_global_position_),
+        .impact_position = to_vector(target_global_position_),
         .direct_target_id = direct_target != nullptr ? entity_id_for(*direct_target) : EntityId{},
         .fallback_damage = fallback_damage_,
         .targets = snapshots,

@@ -17,7 +17,7 @@ class BaseObjectiveFactory {
   public:
     BaseObjectiveFactory() = delete;
 
-    static BaseObjective *create(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
+    static BaseObjective *create(int max_hp, const godot::Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
 };
 
 } // namespace defn

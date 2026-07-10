@@ -28,7 +28,7 @@ class AnimationController : public Node {
     bool consume_shoot_effect_triggered();
 
     void flash_damage(const godot::Color &color);
-    Vector2 get_muzzle_global_position() const;
+    godot::Vector2 get_muzzle_global_position() const;
     void play_muzzle_flash();
     void hide_muzzle_flash();
 
@@ -51,7 +51,7 @@ class AnimationController : public Node {
     AnimatedSprite2D *muzzle_flash = nullptr;
     Node2D *owner_node = nullptr;
     AnimState anim_state = AnimState::WALK;
-    Vector2 muzzle_offset = Vector2();
+    godot::Vector2 muzzle_offset = godot::Vector2();
     bool shoot_effect_pending = false;
     bool shoot_effect_ready = false;
     bool show_muzzle_flash_on_shoot_effect = true;

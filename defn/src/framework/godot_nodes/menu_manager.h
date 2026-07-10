@@ -2,8 +2,8 @@
 #define MENU_MANAGER_H
 
 #include "menu_flow_use_case.h"
-#include "menu_view_model.h"
 #include "menu_models.h"
+#include "menu_view_model.h"
 #include "settings_service.h"
 
 #include <godot_cpp/classes/button.hpp>

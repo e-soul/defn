@@ -16,7 +16,7 @@ using namespace godot;
 
 struct ButtonStyle {
     int font_size = 32;
-    Vector2 minimum_size;
+    godot::Vector2 minimum_size;
     int separation = 16;
     MenuStyleBoxData normal_style_data;
     MenuStyleBoxData hover_style_data;
@@ -28,8 +28,8 @@ struct ButtonStyle {
 
 struct OptionsLayout {
     int label_font_size = 24;
-    Vector2 label_minimum_size;
-    Vector2 control_minimum_size;
+    godot::Vector2 label_minimum_size;
+    godot::Vector2 control_minimum_size;
     int row_separation = 12;
     int section_font_size = 28;
     int value_font_size = 20;
@@ -38,7 +38,7 @@ struct OptionsLayout {
     godot::Color value_color;
 };
 
-Vector2 make_size(int width, int height);
+godot::Vector2 make_size(int width, int height);
 godot::Color parse_color_array(const Array &arr, const godot::Color &fallback = godot::Color(1, 1, 1, 1));
 Ref<StyleBoxFlat> make_style(const MenuStyleBoxData &style_data);
 ButtonStyle build_button_style(const MenuStyleData &style_data);

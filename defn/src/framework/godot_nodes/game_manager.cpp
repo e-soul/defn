@@ -254,7 +254,7 @@ Area2D *GameManager::create_scroll_trigger(const String &name, uint32_t collisio
     Ref<RectangleShape2D> rect;
     rect.instantiate();
     // Tall vertical strip covering well beyond the belt area
-    rect->set_size(Vector2(20.0, camera_scroll_controller_.get_trigger_height()));
+    rect->set_size(godot::Vector2(20.0, camera_scroll_controller_.get_trigger_height()));
     shape_node->set_shape(rect);
     trigger->add_child(shape_node);
 
@@ -282,7 +282,7 @@ void GameManager::update_scroll_trigger_positions() {
     }
 }
 
-Vector2 GameManager::get_base_objective_position() {
+godot::Vector2 GameManager::get_base_objective_position() {
     auto *grid = GridManager::get_singleton();
     if (grid == nullptr) {
         return {};
@@ -534,7 +534,7 @@ void GameManager::play_cutscene_sfx(const std::string &path, float volume_linear
 
 void GameManager::on_enemy_died(Node *unit) {
     auto *hostile = Object::cast_to<Unit>(unit);
-    const Vector2 death_position = hostile != nullptr ? hostile->get_global_position() : Vector2();
+    const godot::Vector2 death_position = hostile != nullptr ? hostile->get_global_position() : godot::Vector2();
     const MatchUpdate update =
         hostile != nullptr && !hostile->is_queued_for_deletion() ? match_director_.handle_enemy_defeated({.bounty = hostile->get_bounty()}) : MatchUpdate{};
     if (entity_container != nullptr && update.score_changed.has_value() && update.score_changed->bounty_awarded > 0) {

@@ -1,6 +1,7 @@
 #include "animation_controller.h"
 
 #include "godot_string.h"
+#include "godot_vector.h"
 
 #include <algorithm>
 
@@ -13,12 +14,6 @@
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 namespace defn {
-
-namespace {
-
-Vector2 to_godot_vector(const ContentVector2 &vector) { return {vector.x, vector.y}; }
-
-} // namespace
 
 void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
@@ -228,7 +223,7 @@ void AnimationController::flash_damage(const godot::Color &color) {
     }
 }
 
-Vector2 AnimationController::get_muzzle_global_position() const {
+godot::Vector2 AnimationController::get_muzzle_global_position() const {
     if (muzzle_flash != nullptr) {
         return muzzle_flash->get_global_position();
     }

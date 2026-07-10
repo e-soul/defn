@@ -46,7 +46,7 @@ Ref<StyleBoxFlat> make_card_style(const godot::Color &background_color, const go
 
 Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const Callable &pressed_action) {
     auto *button = memnew(Button);
-    button->set_custom_minimum_size(Vector2(190, 110));
+    button->set_custom_minimum_size(godot::Vector2(190, 110));
     button->set_focus_mode(Control::FOCUS_NONE);
     button->add_theme_stylebox_override("normal", make_card_style(godot::Color(0.12, 0.12, 0.18, 0.9), godot::Color(0.4, 0.4, 0.5)));
     button->add_theme_stylebox_override("hover", make_card_style(godot::Color(0.18, 0.18, 0.28, 0.95), godot::Color(0.6, 0.6, 0.8)));
@@ -65,7 +65,7 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
     button->add_child(content);
 
     auto *portrait = memnew(TextureRect);
-    portrait->set_custom_minimum_size(Vector2(80, 80));
+    portrait->set_custom_minimum_size(godot::Vector2(80, 80));
     portrait->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
     portrait->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_CENTERED);
     portrait->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);

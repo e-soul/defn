@@ -69,7 +69,7 @@ void BaseObjective::_bind_methods() {
     ADD_SIGNAL(MethodInfo("objective_destroyed"));
 }
 
-void BaseObjective::configure(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config) {
+void BaseObjective::configure(int max_hp, const godot::Vector2 &position, const std::optional<UnitConfig> &visual_config) {
     visual_config_ = visual_config;
     if (visual_config_.has_value()) {
         set_side(visual_config_->side);
@@ -80,7 +80,7 @@ void BaseObjective::configure(int max_hp, const Vector2 &position, const std::op
     ensure_hitbox();
     ensure_attack_components();
 
-    const Vector2 local_anchor = get_local_anchor_position();
+    const godot::Vector2 local_anchor = get_local_anchor_position();
     set_position(position - local_anchor);
     target_anchor->set_position(local_anchor);
     if (HitboxComponent *hitbox = get_hitbox_component()) {
@@ -154,7 +154,7 @@ void BaseObjective::play_destroyed_shake() {
     }
 
     auto *shake_node = sprite_ != nullptr ? static_cast<Node2D *>(sprite_) : static_cast<Node2D *>(this);
-    const Vector2 original_position = shake_node->get_position();
+    const godot::Vector2 original_position = shake_node->get_position();
 
     Ref<Tween> tween = create_tween();
     if (!tween.is_valid()) {
@@ -162,10 +162,12 @@ void BaseObjective::play_destroyed_shake() {
     }
 
     destroyed_shake_active_ = true;
-    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(-DESTROYED_SHAKE_OFFSET, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
-    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(DESTROYED_SHAKE_OFFSET, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
-    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(-DESTROYED_SHAKE_OFFSET * 0.5F, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
-    tween->tween_property(shake_node, NodePath("position"), original_position + Vector2(DESTROYED_SHAKE_OFFSET * 0.5F, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + godot::Vector2(-DESTROYED_SHAKE_OFFSET, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + godot::Vector2(DESTROYED_SHAKE_OFFSET, 0.0F), DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + godot::Vector2(-DESTROYED_SHAKE_OFFSET * 0.5F, 0.0F),
+                          DESTROYED_SHAKE_STEP_SECONDS);
+    tween->tween_property(shake_node, NodePath("position"), original_position + godot::Vector2(DESTROYED_SHAKE_OFFSET * 0.5F, 0.0F),
+                          DESTROYED_SHAKE_STEP_SECONDS);
     tween->tween_property(shake_node, NodePath("position"), original_position, DESTROYED_SHAKE_STEP_SECONDS);
     tween->tween_callback(callable_mp(this, &BaseObjective::on_destroyed_shake_finished));
 }
@@ -177,7 +179,7 @@ void BaseObjective::_draw() {
 
     const bool flashing = flash_time_remaining_ > 0.0F;
     const godot::Color fill_color = flashing ? OBJECTIVE_FILL_COLOR.lerp(flash_color_, 0.55F) : OBJECTIVE_FILL_COLOR;
-    const Vector2 draw_origin = get_local_anchor_position();
+    const godot::Vector2 draw_origin = get_local_anchor_position();
 
     draw_circle(draw_origin, OBJECTIVE_OUTLINE_RADIUS, OBJECTIVE_OUTLINE_COLOR);
     draw_circle(draw_origin, OBJECTIVE_RADIUS, fill_color);
@@ -207,7 +209,7 @@ void BaseObjective::ensure_sprite() {
         return;
     }
 
-    sprite_->set_position(Vector2());
+    sprite_->set_position(godot::Vector2());
 }
 
 bool BaseObjective::set_sprite_animation(const String &animation_name) {
@@ -242,7 +244,7 @@ bool BaseObjective::set_sprite_animation(const String &animation_name) {
     sprite_->set_texture(sprite_texture_);
     sprite_->set_flip_h(visual_config_.has_value() && visual_config_->sprite_flip_h);
     const real_t sprite_scale = visual_config_.has_value() ? visual_config_->scale : 1.0F;
-    sprite_->set_scale(Vector2(sprite_scale, sprite_scale));
+    sprite_->set_scale(godot::Vector2(sprite_scale, sprite_scale));
 
     return true;
 }
@@ -299,12 +301,12 @@ void BaseObjective::ensure_hitbox() {
     set_hitbox_component(hitbox);
 }
 
-Vector2 BaseObjective::get_local_anchor_position() const {
+godot::Vector2 BaseObjective::get_local_anchor_position() const {
     if (sprite_texture_.is_valid()) {
-        const Vector2 texture_size = sprite_texture_->get_size();
+        const godot::Vector2 texture_size = sprite_texture_->get_size();
         if (texture_size.x > 0.0F && texture_size.y > 0.0F) {
             const real_t scale_factor = visual_config_.has_value() ? visual_config_->scale : 1.0F;
-            const Vector2 display_size = texture_size * scale_factor;
+            const godot::Vector2 display_size = texture_size * scale_factor;
             return {
                 display_size.x * 0.5F,
                 std::max(display_size.y - (OBJECTIVE_RADIUS * 0.5F), OBJECTIVE_RADIUS),
@@ -342,7 +344,7 @@ void BaseObjective::on_destroyed() {
 
     if (set_sprite_animation(OBJECTIVE_DEATH_ANIMATION) && sprite_ != nullptr) {
         const Node2D *target_anchor = get_target_anchor();
-        const Vector2 anchor_position = target_anchor != nullptr ? target_anchor->get_position() : Vector2();
+        const godot::Vector2 anchor_position = target_anchor != nullptr ? target_anchor->get_position() : godot::Vector2();
         sprite_->set_position(anchor_position - get_local_anchor_position());
         sprite_->set_modulate(godot::Color(1.0, 1.0, 1.0));
     }
