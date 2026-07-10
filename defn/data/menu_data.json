@@ -1,5 +1,5 @@
 {
-    "background": "res://assets/backgrounds/menu_background.jpg",
+    "background": "res://assets/backgrounds/menu_background.png",
     "menus": {
         "main_menu": {
             "entries": [

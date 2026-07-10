@@ -384,6 +384,7 @@ void MenuManager::setup_background() {
     background_->set_texture(tex);
     background_->set_anchors_preset(Control::PRESET_FULL_RECT);
     background_->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_COVERED);
+    background_->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
     background_->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
     ui_layer_->add_child(background_);
 

@@ -235,6 +235,18 @@ bool menu_manager_shows_progression(MenuManager *menu_manager) {
     return has_all_labels(menu_manager, {"YOUR UPGRADES"}) && has_all_buttons(menu_manager, {"Back"});
 }
 
+bool menu_manager_background_covers_viewport(MenuManager *menu_manager) {
+    std::vector<TextureRect *> texture_rects;
+    collect_nodes(menu_manager, texture_rects);
+    if (texture_rects.empty()) {
+        return false;
+    }
+
+    TextureRect *background = texture_rects.front();
+    return background->get_stretch_mode() == TextureRect::STRETCH_KEEP_ASPECT_COVERED &&
+           background->get_expand_mode() == TextureRect::EXPAND_IGNORE_SIZE;
+}
+
 bool base_objective_has_basic_stack(BaseObjective *objective) {
     return !objective->is_dead() && objective->get_hitbox() != nullptr &&
            has_all_named_nodes(objective, {"TargetAnchor", "HealthComponent", "HitboxComponent"}) && !has_node_named(objective, "CombatComponent");
@@ -518,6 +530,7 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     menu_manager->_ready();
 
     DEFN_CHECK(menu_manager_shows_main_menu(menu_manager));
+    DEFN_CHECK(menu_manager_background_covers_viewport(menu_manager));
 
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "game_menu");
     DEFN_CHECK(menu_manager_shows_game_menu(menu_manager));
