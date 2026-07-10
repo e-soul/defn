@@ -221,7 +221,7 @@ bool AnimationController::consume_shoot_effect_triggered() {
     return true;
 }
 
-void AnimationController::flash_damage(const Color &color) {
+void AnimationController::flash_damage(const godot::Color &color) {
     if (sprite) {
         sprite->set_modulate(color);
         flash_timer = 0.1;
@@ -307,7 +307,7 @@ void AnimationController::start_death_fade() {
         return;
     }
     Ref<Tween> tween = parent->create_tween();
-    tween->tween_property(parent, NodePath("modulate"), Color(1, 1, 1, 0), 0.5);
+    tween->tween_property(parent, NodePath("modulate"), godot::Color(1, 1, 1, 0), 0.5);
     tween->tween_callback(callable_mp(parent, &Node::queue_free));
 }
 

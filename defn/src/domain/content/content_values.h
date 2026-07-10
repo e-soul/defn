@@ -3,7 +3,7 @@
 
 namespace defn {
 
-struct ContentColor {
+struct Color {
     float r = 1.0F;
     float g = 1.0F;
     float b = 1.0F;

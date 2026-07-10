@@ -75,12 +75,12 @@ struct GlobalUnitConfig {
     GlobalShootSfxConfig shoot_sfx;
     RangeVariationConfig melee_attack_range_variation;
     RangeVariationConfig ranged_attack_range_variation;
-    ContentColor friendly_health_bar_color = {0.0F, 1.0F, 0.0F, 0.9F};
-    ContentColor hostile_health_bar_color = {1.0F, 0.0F, 0.0F, 0.9F};
-    ContentColor friendly_melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
-    ContentColor hostile_melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
-    ContentColor friendly_ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
-    ContentColor hostile_ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color friendly_health_bar_color = {0.0F, 1.0F, 0.0F, 0.9F};
+    Color hostile_health_bar_color = {1.0F, 0.0F, 0.0F, 0.9F};
+    Color friendly_melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color hostile_melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color friendly_ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color hostile_ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
 };
 
 struct UnitConfig {
@@ -100,10 +100,10 @@ struct UnitConfig {
     int bounty = 0;
     float scale = 0.27F;
     bool sprite_flip_h = false;
-    ContentColor health_bar_color = {0.0F, 1.0F, 0.0F, 0.9F};
+    Color health_bar_color = {0.0F, 1.0F, 0.0F, 0.9F};
     ContentVector2 health_bar_offset = {0.0F, -241.0F};
-    ContentColor melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
-    ContentColor ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color ranged_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
     MuzzleConfig muzzle;
     ShootSfxConfig shoot_sfx;
     std::optional<ProjectileAttackConfig> projectile_attack;

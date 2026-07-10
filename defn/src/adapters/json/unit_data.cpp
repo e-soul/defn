@@ -17,7 +17,7 @@ constexpr float DEFAULT_HEALTH_BAR_OFFSET_Y = -241.0F;
 constexpr float LEGACY_MOVE_SPEED_SCALE = 128.0F;
 constexpr float FRACTION_PERCENT_SCALE = 100.0F;
 
-ContentColor parse_color(const Array &arr, const ContentColor &fallback) {
+Color parse_color(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
         const auto red = VariantTools::as_float(arr[0]);
         const auto green = VariantTools::as_float(arr[1]);
@@ -131,9 +131,9 @@ UnitSide parse_unit_side_impl(const Dictionary &unit_dict) {
 }
 
 void apply_unit_colors(const Dictionary &unit_dict, const GlobalUnitConfig &globals, UnitConfig &config) {
-    const ContentColor default_health_bar_color = config.side == UnitSide::HOSTILE ? globals.hostile_health_bar_color : globals.friendly_health_bar_color;
-    const ContentColor default_melee_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_melee_flash_color : globals.friendly_melee_flash_color;
-    const ContentColor default_ranged_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
+    const Color default_health_bar_color = config.side == UnitSide::HOSTILE ? globals.hostile_health_bar_color : globals.friendly_health_bar_color;
+    const Color default_melee_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_melee_flash_color : globals.friendly_melee_flash_color;
+    const Color default_ranged_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
 
     config.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
     config.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), {.x = DEFAULT_HEALTH_BAR_OFFSET_X, .y = DEFAULT_HEALTH_BAR_OFFSET_Y});

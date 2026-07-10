@@ -14,11 +14,11 @@ enum class MenuSettingKind { SECTION, DISPLAY_MODE, RESOLUTION, VSYNC, BUS_VOLUM
 enum class MenuActionType { NONE, GOTO_MENU, LEVEL_SELECT, PROGRESSION, START_GAME, QUIT, RESUME, MAIN_MENU };
 
 struct MenuStyleBoxData {
-    ContentColor bg_color = {1.0F, 1.0F, 1.0F, 1.0F};
-    ContentColor border_color = {0.4F, 0.4F, 0.5F, 1.0F};
+    Color bg_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color border_color = {0.4F, 0.4F, 0.5F, 1.0F};
     int border_width = 2;
     int corner_radius = 8;
-    ContentColor font_color = {0.9F, 0.9F, 0.95F, 1.0F};
+    Color font_color = {0.9F, 0.9F, 0.95F, 1.0F};
 };
 
 struct MenuOptionsStyleData {
@@ -29,9 +29,9 @@ struct MenuOptionsStyleData {
     int row_separation = 12;
     int section_font_size = 28;
     int value_font_size = 20;
-    ContentColor section_font_color = {1.0F, 0.85F, 0.3F, 1.0F};
-    ContentColor label_font_color = {0.85F, 0.85F, 0.9F, 1.0F};
-    ContentColor value_font_color = {0.7F, 0.8F, 1.0F, 1.0F};
+    Color section_font_color = {1.0F, 0.85F, 0.3F, 1.0F};
+    Color label_font_color = {0.85F, 0.85F, 0.9F, 1.0F};
+    Color value_font_color = {0.7F, 0.8F, 1.0F, 1.0F};
 };
 
 struct MenuStyleData {
@@ -84,7 +84,7 @@ struct MenuSetting {
 struct MenuDefinition {
     std::string name;
     MenuDefinitionType type = MenuDefinitionType::BUTTONS;
-    ContentColor overlay_color = {0.0F, 0.0F, 0.0F, 0.6F};
+    Color overlay_color = {0.0F, 0.0F, 0.0F, 0.6F};
     std::vector<MenuAction> entries;
     std::vector<MenuSetting> settings;
     std::optional<MenuAction> back;

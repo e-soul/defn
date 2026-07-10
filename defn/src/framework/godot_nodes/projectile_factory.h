@@ -18,7 +18,7 @@ class ProjectileFactory {
   public:
     ProjectileFactory() = delete;
 
-    static ProjectileAttack *create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, const Color &flash_color,
+    static ProjectileAttack *create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color,
                                     const Vector2 &start_global_position, const Vector2 &target_global_position, AttackTarget *direct_target,
                                     int fallback_damage);
 };

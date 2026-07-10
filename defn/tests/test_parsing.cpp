@@ -90,7 +90,7 @@ bool contains_issues(const ContentValidationReport &report, std::initializer_lis
     return std::ranges::all_of(needles, [&report](const String &needle) { return contains_issue(report, needle); });
 }
 
-void check_content_color_close(const ContentColor &actual, const ContentColor &expected) {
+void check_content_color_close(const Color &actual, const Color &expected) {
     DEFN_CHECK_CLOSE(actual.r, expected.r, 0.001F);
     DEFN_CHECK_CLOSE(actual.g, expected.g, 0.001F);
     DEFN_CHECK_CLOSE(actual.b, expected.b, 0.001F);

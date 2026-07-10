@@ -29,7 +29,7 @@ class BaseObjective : public BattleEntity {
     BaseObjective();
 
     void configure(int max_hp, const Vector2 &position, const std::optional<UnitConfig> &visual_config = std::nullopt);
-    void flash_damage(const Color &color) override;
+    void flash_damage(const godot::Color &color) override;
     void play_destroyed_shake();
 
     void _draw() override;
@@ -59,7 +59,7 @@ class BaseObjective : public BattleEntity {
     Sprite2D *sprite_ = nullptr;
     Ref<Texture2D> sprite_texture_;
     std::optional<UnitConfig> visual_config_;
-    Color flash_color_ = Color(1.0, 1.0, 1.0);
+    godot::Color flash_color_ = godot::Color(1.0, 1.0, 1.0);
     real_t flash_time_remaining_ = 0.0F;
     bool destroyed_shake_active_ = false;
 };

@@ -4,6 +4,7 @@
 #include "collision_layers.h"
 #include "combat_component.h"
 #include "detection_component.h"
+#include "godot_color.h"
 #include "health_bar_widget.h"
 #include "health_component.h"
 #include "hitbox_component.h"
@@ -18,18 +19,7 @@ namespace {
 
 constexpr real_t DEFAULT_HITBOX_RADIUS = 5.0F;
 
-Color to_godot_color(const ContentColor &color) { return {color.r, color.g, color.b, color.a}; }
-
 Vector2 to_godot_vector(const ContentVector2 &vector) { return {vector.x, vector.y}; }
-
-CombatColor to_combat_color(const ContentColor &color) {
-    return {
-        .r = color.r,
-        .g = color.g,
-        .b = color.b,
-        .a = color.a,
-    };
-}
 
 HealthComponent *create_health_component(Unit *unit) {
     auto *health = memnew(HealthComponent);
@@ -106,8 +96,8 @@ CombatComponent::Config make_combat_config(const Unit *unit) {
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? unit->get_attack_range() : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? unit->get_ranged_range() : -1.0F;
-    combat_config.melee_flash_color = to_combat_color(config.melee_flash_color);
-    combat_config.ranged_flash_color = to_combat_color(config.ranged_flash_color);
+    combat_config.melee_flash_color = config.melee_flash_color;
+    combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {
         combat_config.projectile_attack = to_projectile_damage_config(*config.projectile_attack);
     }

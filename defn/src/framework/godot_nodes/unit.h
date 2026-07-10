@@ -34,7 +34,7 @@ class Unit : public BattleEntity {
     void set_resolved_attack_ranges(real_t melee_range, real_t ranged_attack_range);
     void set_runtime_profile(const UnitRuntimeProfile &profile) { runtime_profile_ = profile; }
 
-    void flash_damage(const Color &color) override;
+    void flash_damage(const godot::Color &color) override;
 
     int get_cost() const { return unit_config_.cost; }
     int get_bounty() const { return unit_config_.bounty; }

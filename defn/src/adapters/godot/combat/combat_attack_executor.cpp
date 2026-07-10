@@ -4,13 +4,12 @@
 #include "attack_target.h"
 #include "attack_target_resolver.h"
 #include "battle_entity.h"
+#include "godot_color.h"
 #include "projectile_factory.h"
 
 namespace defn {
 
 namespace {
-
-Color to_godot_color(const CombatColor &color) { return {color.r, color.g, color.b, color.a}; }
 
 Vector2 to_godot_vector(const CombatPoint &point) { return {point.x, point.y}; }
 

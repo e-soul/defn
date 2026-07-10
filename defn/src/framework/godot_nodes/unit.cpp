@@ -38,7 +38,7 @@ void Unit::_ready() {
     UnitFactory::initialize(this);
 }
 
-void Unit::flash_damage(const Color &color) {
+void Unit::flash_damage(const godot::Color &color) {
     if (animation) {
         animation->flash_damage(color);
     }

@@ -144,11 +144,11 @@ bool has_all_named_nodes(Node *root, std::initializer_list<const char *> names) 
 
 bool nearly_equal(double left, double right) { return std::abs(left - right) <= 0.001; }
 
-bool color_matches(const Color &actual, const Color &expected) {
+bool color_matches(const godot::Color &actual, const godot::Color &expected) {
     return nearly_equal(actual.r, expected.r) && nearly_equal(actual.g, expected.g) && nearly_equal(actual.b, expected.b) && nearly_equal(actual.a, expected.a);
 }
 
-bool label_font_color_matches(Node *root, const String &text, const Color &expected_color) {
+bool label_font_color_matches(Node *root, const String &text, const godot::Color &expected_color) {
     Label *label = find_label_by_text(root, text);
     return label != nullptr && label->has_theme_color_override("font_color") && color_matches(label->get_theme_color("font_color"), expected_color);
 }
@@ -452,13 +452,13 @@ DEFN_TEST(hud_shows_and_hides_match_result_banner) {
 
     hud->show_match_result_banner(MatchResultCutscenePresenter::build(true));
     DEFN_CHECK(has_label_text(hud, "AREA SECURED"));
-    DEFN_CHECK(label_font_color_matches(hud, "AREA SECURED", Color(0.2, 1.0, 0.3, 1.0)));
+    DEFN_CHECK(label_font_color_matches(hud, "AREA SECURED", godot::Color(0.2, 1.0, 0.3, 1.0)));
     hud->hide_match_result_banner();
     DEFN_CHECK(!has_label_text(hud, "AREA SECURED"));
 
     hud->show_match_result_banner(MatchResultCutscenePresenter::build(false));
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
-    DEFN_CHECK(label_font_color_matches(hud, "DEFEAT", Color(1.0, 0.2, 0.2, 1.0)));
+    DEFN_CHECK(label_font_color_matches(hud, "DEFEAT", godot::Color(1.0, 0.2, 0.2, 1.0)));
 
     memdelete(hud);
 }
@@ -559,7 +559,7 @@ DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
     auto *armed_objective = BaseObjectiveFactory::create(300, Vector2(500.0, 220.0), tower_config);
     DEFN_CHECK(base_objective_has_attack_stack(armed_objective));
 
-    armed_objective->flash_damage(Color(1.0, 0.0, 0.0));
+    armed_objective->flash_damage(godot::Color(1.0, 0.0, 0.0));
     armed_objective->_process(1.0);
 
     memdelete(objective);
@@ -666,7 +666,7 @@ DEFN_TEST(projectile_attack_applies_direct_and_splash_damage_to_hostile_targets)
     config.projectile_animation.frame_count = 0;
     config.explosion_animation.frame_count = 0;
 
-    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, Color(1.0, 0.2, 0.1), Vector2(0.0, 0.0),
+    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, godot::Color(1.0, 0.2, 0.1), Vector2(0.0, 0.0),
                                                  direct_target->get_target_global_position(), direct_target, 25);
     projectile->_process(0.1);
 

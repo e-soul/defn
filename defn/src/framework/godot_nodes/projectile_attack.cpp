@@ -34,7 +34,7 @@ float linear_to_db(float linear) {
 
 void ProjectileAttack::_bind_methods() {}
 
-void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const Color &flash_color, const Vector2 &start_global_position,
+void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color, const Vector2 &start_global_position,
                                  const Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage) {
     config_ = config;
     shooter_side_ = shooter_side;

@@ -21,9 +21,9 @@ struct ButtonStyle {
     MenuStyleBoxData normal_style_data;
     MenuStyleBoxData hover_style_data;
     MenuStyleBoxData pressed_style_data;
-    Color normal_font;
-    Color hover_font;
-    Color pressed_font;
+    godot::Color normal_font;
+    godot::Color hover_font;
+    godot::Color pressed_font;
 };
 
 struct OptionsLayout {
@@ -33,14 +33,13 @@ struct OptionsLayout {
     int row_separation = 12;
     int section_font_size = 28;
     int value_font_size = 20;
-    Color section_color;
-    Color label_color;
-    Color value_color;
+    godot::Color section_color;
+    godot::Color label_color;
+    godot::Color value_color;
 };
 
 Vector2 make_size(int width, int height);
-Color parse_color_array(const Array &arr, const Color &fallback = Color(1, 1, 1, 1));
-Color to_godot_color(const ContentColor &color);
+godot::Color parse_color_array(const Array &arr, const godot::Color &fallback = godot::Color(1, 1, 1, 1));
 Ref<StyleBoxFlat> make_style(const MenuStyleBoxData &style_data);
 ButtonStyle build_button_style(const MenuStyleData &style_data);
 OptionsLayout build_options_layout(const MenuOptionsStyleData &options_style);

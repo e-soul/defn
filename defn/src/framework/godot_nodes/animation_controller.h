@@ -27,7 +27,7 @@ class AnimationController : public Node {
     void play_shoot_animation(bool show_muzzle_flash = true, int effect_frame = 0);
     bool consume_shoot_effect_triggered();
 
-    void flash_damage(const Color &color);
+    void flash_damage(const godot::Color &color);
     Vector2 get_muzzle_global_position() const;
     void play_muzzle_flash();
     void hide_muzzle_flash();
@@ -58,7 +58,7 @@ class AnimationController : public Node {
     int shoot_effect_frame = 0;
 
     double flash_timer = 0.0;
-    Color original_modulate = Color(1, 1, 1, 1);
+    godot::Color original_modulate = godot::Color(1, 1, 1, 1);
 };
 
 } // namespace defn

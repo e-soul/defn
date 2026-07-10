@@ -18,7 +18,7 @@ class AttackTarget {
     [[nodiscard]] virtual bool is_dead() const = 0;
     [[nodiscard]] virtual UnitSide get_side() const = 0;
     virtual void take_damage(int amount) = 0;
-    virtual void flash_damage(const Color &color) = 0;
+    virtual void flash_damage(const godot::Color &color) = 0;
     [[nodiscard]] virtual Node2D *get_target_node() = 0;
     [[nodiscard]] virtual const Node2D *get_target_node() const = 0;
 

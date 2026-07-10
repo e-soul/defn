@@ -1,5 +1,6 @@
 #include "menu_style.h"
 
+#include "godot_color.h"
 #include "variant_tools.h"
 
 namespace defn {
@@ -12,9 +13,7 @@ constexpr real_t DEFAULT_ALPHA = 1.0F;
 
 Vector2 make_size(int width, int height) { return {static_cast<real_t>(width), static_cast<real_t>(height)}; }
 
-Color to_godot_color(const ContentColor &color) { return {color.r, color.g, color.b, color.a}; }
-
-Color parse_color_array(const Array &arr, const Color &fallback) {
+godot::Color parse_color_array(const Array &arr, const godot::Color &fallback) {
     if (arr.size() >= 3) {
         const auto red = VariantTools::as_real(arr[0]);
         const auto green = VariantTools::as_real(arr[1]);
@@ -85,7 +84,7 @@ void apply_disabled_style(BaseButton *button, bool enabled) {
     }
 
     button->set_disabled(!enabled);
-    button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+    button->set_modulate(enabled ? godot::Color(1, 1, 1, 1) : godot::Color(0.5, 0.5, 0.5, 0.7));
 }
 
 } // namespace defn

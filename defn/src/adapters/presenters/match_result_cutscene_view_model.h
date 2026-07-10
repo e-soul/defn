@@ -12,8 +12,8 @@ enum class MatchResultCelebrantSide { Friendly, Hostile };
 struct MatchResultCutsceneModel {
     bool victory = false;
     std::string label;
-    ContentColor label_color = {1.0F, 1.0F, 1.0F, 1.0F};
-    ContentColor label_outline_color = {0.0F, 0.0F, 0.0F, 1.0F};
+    Color label_color = {1.0F, 1.0F, 1.0F, 1.0F};
+    Color label_outline_color = {0.0F, 0.0F, 0.0F, 1.0F};
     std::string primary_sfx_path;
     std::string base_destroyed_sfx_path;
     MatchResultCelebrantSide celebrant_side = MatchResultCelebrantSide::Friendly;

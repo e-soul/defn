@@ -21,7 +21,7 @@ struct PendingProjectileSpawn {
     UnitSide shooter_side = UnitSide::FRIENDLY;
     Vector2 target_global_position;
     int fallback_damage = 0;
-    CombatColor flash_color;
+    Color flash_color;
 };
 
 class CombatAttackExecutor {

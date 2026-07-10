@@ -19,7 +19,7 @@ class ProjectileAttack : public Node2D {
     GDCLASS(ProjectileAttack, Node2D)
 
   public:
-    void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const Color &flash_color, const Vector2 &start_global_position,
+    void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color, const Vector2 &start_global_position,
                    const Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
 
     void _process(double delta) override;
@@ -43,7 +43,7 @@ class ProjectileAttack : public Node2D {
 
     ProjectileAttackConfig config_{};
     UnitSide shooter_side_ = UnitSide::FRIENDLY;
-    Color flash_color_{};
+    godot::Color flash_color_{};
     AnimatedSprite2D *sprite_ = nullptr;
     AudioStreamPlayer2D *explosion_player_ = nullptr;
     Vector2 target_global_position_{};

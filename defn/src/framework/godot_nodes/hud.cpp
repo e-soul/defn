@@ -1,5 +1,6 @@
 #include "hud.h"
 #include "deploy_card_presenter.h"
+#include "godot_color.h"
 #include "godot_string.h"
 #include "score_screen_view.h"
 #include <cctype>
@@ -27,8 +28,6 @@ DeployCardPresentationInput to_deploy_card_input(const UnitConfig &config) {
     }
     return input;
 }
-
-Color to_godot_color(const ContentColor &color) { return {color.r, color.g, color.b, color.a}; }
 
 } // namespace
 
@@ -62,7 +61,7 @@ void HUD::build_ui() {
     core_resource_label->set_text(String::utf8("\u26A1 Energy: 100"));
     core_resource_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     core_resource_label->add_theme_font_size_override("font_size", 28);
-    core_resource_label->add_theme_color_override("font_color", Color(0.05, 0.2, 0.55));
+    core_resource_label->add_theme_color_override("font_color", godot::Color(0.05, 0.2, 0.55));
     top_bar->add_child(core_resource_label);
 
     // Score label
@@ -71,7 +70,7 @@ void HUD::build_ui() {
     score_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     score_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     score_label->add_theme_font_size_override("font_size", 24);
-    score_label->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    score_label->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
     top_bar->add_child(score_label);
 
     // Wave label (center)
@@ -80,7 +79,7 @@ void HUD::build_ui() {
     wave_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     wave_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     wave_label->add_theme_font_size_override("font_size", 28);
-    wave_label->add_theme_color_override("font_color", Color(1, 1, 1));
+    wave_label->add_theme_color_override("font_color", godot::Color(1, 1, 1));
     top_bar->add_child(wave_label);
 
     // Hearts container (right)
@@ -98,7 +97,7 @@ void HUD::build_ui() {
     level_label->set_offset(Side::SIDE_BOTTOM, 78.0);
     level_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     level_label->add_theme_font_size_override("font_size", 20);
-    level_label->add_theme_color_override("font_color", Color(0.95, 0.95, 0.95));
+    level_label->add_theme_color_override("font_color", godot::Color(0.95, 0.95, 0.95));
     level_label->set_text("LEVEL");
     add_child(level_label);
 
@@ -186,7 +185,7 @@ void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
         }
         const bool enabled = cards[index].enabled;
         button->set_disabled(!enabled);
-        button->set_modulate(enabled ? Color(1, 1, 1, 1) : Color(0.5, 0.5, 0.5, 0.7));
+        button->set_modulate(enabled ? godot::Color(1, 1, 1, 1) : godot::Color(0.5, 0.5, 0.5, 0.7));
     }
 }
 
@@ -210,7 +209,7 @@ void HUD::ensure_heart_icons(int count) {
         auto *heart = memnew(Label);
         heart->set_text(String::utf8("\u2665"));
         heart->add_theme_font_size_override("font_size", 32);
-        heart->add_theme_color_override("font_color", Color(0.9, 0.15, 0.15));
+        heart->add_theme_color_override("font_color", godot::Color(0.9, 0.15, 0.15));
         hearts_container->add_child(heart);
         heart_icons.push_back(heart);
     }
@@ -255,7 +254,7 @@ void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {
     match_result_overlay->set_offset(SIDE_TOP, 0.0);
     match_result_overlay->set_offset(SIDE_BOTTOM, 0.0);
     match_result_overlay->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    match_result_overlay->set_color(model.victory ? Color(0.03, 0.12, 0.08, 0.42) : Color(0.18, 0.0, 0.0, 0.48));
+    match_result_overlay->set_color(model.victory ? godot::Color(0.03, 0.12, 0.08, 0.42) : godot::Color(0.18, 0.0, 0.0, 0.48));
     add_child(match_result_overlay);
 
     match_result_label = memnew(Label);

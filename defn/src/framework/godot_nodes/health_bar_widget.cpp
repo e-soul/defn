@@ -6,12 +6,12 @@ namespace defn {
 
 void HealthBarWidget::_bind_methods() {}
 
-void HealthBarWidget::configure(HealthComponent *health, const Color &fill_color, const Vector2 &offset) {
+void HealthBarWidget::configure(HealthComponent *health, const godot::Color &fill_color, const Vector2 &offset) {
     setup_bar(health->get_max_hp(), fill_color, offset);
     health->connect("health_changed", callable_mp(this, &HealthBarWidget::on_health_changed));
 }
 
-void HealthBarWidget::setup_bar(int max_hp, const Color &fill_color, const Vector2 &offset) {
+void HealthBarWidget::setup_bar(int max_hp, const godot::Color &fill_color, const Vector2 &offset) {
     constexpr real_t bar_width = 170;
     constexpr real_t bar_height = 10;
 
@@ -25,7 +25,7 @@ void HealthBarWidget::setup_bar(int max_hp, const Color &fill_color, const Vecto
     bar->set_visible(false);
 
     bg_style.instantiate();
-    bg_style->set_bg_color(Color(0.3, 0.3, 0.3, 0.8));
+    bg_style->set_bg_color(godot::Color(0.3, 0.3, 0.3, 0.8));
     bg_style->set_corner_radius_all(0);
     bg_style->set_border_width_all(0);
     bg_style->set_content_margin_all(0);

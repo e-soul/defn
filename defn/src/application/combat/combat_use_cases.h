@@ -17,7 +17,7 @@ struct CombatCommand {
     EntityId target_id;
     CombatPoint target_position;
     int damage = 0;
-    CombatColor color;
+    Color color;
     ProjectileDamageConfig projectile;
 };
 

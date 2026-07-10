@@ -32,7 +32,7 @@ DeployCardPresentationInput to_presentation_input(const UnitConfig &config) {
     return input;
 }
 
-Ref<StyleBoxFlat> make_card_style(const Color &background_color, const Color &border_color) {
+Ref<StyleBoxFlat> make_card_style(const godot::Color &background_color, const godot::Color &border_color) {
     Ref<StyleBoxFlat> style;
     style.instantiate();
     style->set_bg_color(background_color);
@@ -48,10 +48,10 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
     auto *button = memnew(Button);
     button->set_custom_minimum_size(Vector2(190, 110));
     button->set_focus_mode(Control::FOCUS_NONE);
-    button->add_theme_stylebox_override("normal", make_card_style(Color(0.12, 0.12, 0.18, 0.9), Color(0.4, 0.4, 0.5)));
-    button->add_theme_stylebox_override("hover", make_card_style(Color(0.18, 0.18, 0.28, 0.95), Color(0.6, 0.6, 0.8)));
-    button->add_theme_stylebox_override("pressed", make_card_style(Color(0.08, 0.08, 0.14, 0.95), Color(0.5, 0.5, 0.7)));
-    button->add_theme_stylebox_override("disabled", make_card_style(Color(0.08, 0.08, 0.1, 0.7), Color(0.25, 0.25, 0.3)));
+    button->add_theme_stylebox_override("normal", make_card_style(godot::Color(0.12, 0.12, 0.18, 0.9), godot::Color(0.4, 0.4, 0.5)));
+    button->add_theme_stylebox_override("hover", make_card_style(godot::Color(0.18, 0.18, 0.28, 0.95), godot::Color(0.6, 0.6, 0.8)));
+    button->add_theme_stylebox_override("pressed", make_card_style(godot::Color(0.08, 0.08, 0.14, 0.95), godot::Color(0.5, 0.5, 0.7)));
+    button->add_theme_stylebox_override("disabled", make_card_style(godot::Color(0.08, 0.08, 0.1, 0.7), godot::Color(0.25, 0.25, 0.3)));
 
     auto *content = memnew(HBoxContainer);
     content->set_anchors_preset(Control::PRESET_FULL_RECT);
@@ -95,7 +95,7 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_LEFT);
     name_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     name_label->add_theme_font_size_override("font_size", 14);
-    name_label->add_theme_color_override("font_color", Color(0.9, 0.9, 0.95));
+    name_label->add_theme_color_override("font_color", godot::Color(0.9, 0.9, 0.95));
     name_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
     text_column->add_child(name_label);
 
@@ -104,7 +104,7 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
     cost_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_LEFT);
     cost_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     cost_label->add_theme_font_size_override("font_size", 13);
-    cost_label->add_theme_color_override("font_color", Color(0.3, 0.7, 1.0));
+    cost_label->add_theme_color_override("font_color", godot::Color(0.3, 0.7, 1.0));
     cost_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
     text_column->add_child(cost_label);
 

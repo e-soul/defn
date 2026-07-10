@@ -295,7 +295,7 @@ void add_menu_button(MenuManager *manager, VBoxContainer *button_container, cons
 
     if (!button_model.enabled) {
         button->set_disabled(true);
-        button->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
+        button->set_modulate(godot::Color(0.5, 0.5, 0.5, 0.7));
     }
 
     button->connect(
@@ -341,7 +341,7 @@ void MenuManager::_ready() {
     total_score_label_->set_offset(Side::SIDE_LEFT, -300.0);
     total_score_label_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     total_score_label_->add_theme_font_size_override("font_size", 24);
-    total_score_label_->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    total_score_label_->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
     ui_layer_->add_child(total_score_label_);
 
     // Center container spanning the full viewport
@@ -483,7 +483,7 @@ void MenuManager::show_level_select() {
     title->set_text(to_godot_string(view_model.title));
     title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     title->add_theme_font_size_override("font_size", 36);
-    title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    title->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
     button_container_->add_child(title);
 
     for (const auto &level : view_model.levels) {
@@ -495,7 +495,7 @@ void MenuManager::show_level_select() {
 
         if (!level.unlocked) {
             btn->set_disabled(true);
-            btn->set_modulate(Color(0.5, 0.5, 0.5, 0.7));
+            btn->set_modulate(godot::Color(0.5, 0.5, 0.5, 0.7));
         } else {
             btn->connect("pressed", callable_mp(this, &MenuManager::on_level_selected).bind(to_godot_string(level.level_id)));
         }
@@ -523,7 +523,7 @@ void MenuManager::show_progression() {
     title->set_text(to_godot_string(view_model.title));
     title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     title->add_theme_font_size_override("font_size", 36);
-    title->add_theme_color_override("font_color", Color(1.0, 0.85, 0.3));
+    title->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
     button_container_->add_child(title);
 
     auto *progression = CampaignService::get_singleton();

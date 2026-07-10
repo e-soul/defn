@@ -20,7 +20,7 @@ void append_movement_commands(const CombatLogicIntent &intent, std::vector<Comba
     }
 }
 
-void append_damage_commands(EntityId target_id, int damage, CombatColor color, std::vector<CombatCommand> &commands) {
+void append_damage_commands(EntityId target_id, int damage, Color color, std::vector<CombatCommand> &commands) {
     commands.push_back({.type = CombatCommandType::DEAL_DAMAGE, .target_id = target_id, .damage = damage});
     commands.push_back({.type = CombatCommandType::PLAY_EFFECT, .effect = CombatEffectType::DAMAGE_FLASH, .target_id = target_id, .color = color});
 }

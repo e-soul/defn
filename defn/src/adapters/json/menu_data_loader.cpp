@@ -14,7 +14,7 @@ namespace {
 
 constexpr float DEFAULT_ALPHA = 1.0F;
 
-ContentColor parse_content_color(const Array &arr, const ContentColor &fallback) {
+Color parse_content_color(const Array &arr, const Color &fallback) {
     if (arr.size() >= 3) {
         return {
             .r = VariantTools::as_float(arr[0]),

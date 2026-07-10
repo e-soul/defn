@@ -33,18 +33,9 @@ constexpr double DESTROYED_SHAKE_STEP_SECONDS = 0.05;
 constexpr auto OBJECTIVE_IDLE_ANIMATION = "idle";
 constexpr auto OBJECTIVE_DEATH_ANIMATION = "death";
 
-CombatColor to_combat_color(const ContentColor &color) {
-    return {
-        .r = color.r,
-        .g = color.g,
-        .b = color.b,
-        .a = color.a,
-    };
-}
-
-const Color OBJECTIVE_FILL_COLOR = Color(0.82, 0.11, 0.08);
-const Color OBJECTIVE_OUTLINE_COLOR = Color(0.32, 0.03, 0.03);
-const Color OBJECTIVE_CORE_COLOR = Color(1.0, 0.38, 0.36, 0.9);
+const godot::Color OBJECTIVE_FILL_COLOR = godot::Color(0.82, 0.11, 0.08);
+const godot::Color OBJECTIVE_OUTLINE_COLOR = godot::Color(0.32, 0.03, 0.03);
+const godot::Color OBJECTIVE_CORE_COLOR = godot::Color(1.0, 0.38, 0.36, 0.9);
 
 bool objective_can_attack(const std::optional<UnitConfig> &config) {
     return config.has_value() && (config->melee_damage > 0 || config->ranged_damage > 0 || config->projectile_attack.has_value());
@@ -61,8 +52,8 @@ CombatComponent::Config make_combat_config(const UnitConfig &config) {
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? config.melee_attack_range : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? config.ranged_attack_range : -1.0F;
-    combat_config.melee_flash_color = to_combat_color(config.melee_flash_color);
-    combat_config.ranged_flash_color = to_combat_color(config.ranged_flash_color);
+    combat_config.melee_flash_color = config.melee_flash_color;
+    combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {
         combat_config.projectile_attack = to_projectile_damage_config(*config.projectile_attack);
     }
@@ -146,7 +137,7 @@ void BaseObjective::ensure_attack_components() {
     }
 }
 
-void BaseObjective::flash_damage(const Color &color) {
+void BaseObjective::flash_damage(const godot::Color &color) {
     if (is_dead()) {
         return;
     }
@@ -185,7 +176,7 @@ void BaseObjective::_draw() {
     }
 
     const bool flashing = flash_time_remaining_ > 0.0F;
-    const Color fill_color = flashing ? OBJECTIVE_FILL_COLOR.lerp(flash_color_, 0.55F) : OBJECTIVE_FILL_COLOR;
+    const godot::Color fill_color = flashing ? OBJECTIVE_FILL_COLOR.lerp(flash_color_, 0.55F) : OBJECTIVE_FILL_COLOR;
     const Vector2 draw_origin = get_local_anchor_position();
 
     draw_circle(draw_origin, OBJECTIVE_OUTLINE_RADIUS, OBJECTIVE_OUTLINE_COLOR);
@@ -327,7 +318,7 @@ Vector2 BaseObjective::get_local_anchor_position() const {
 void BaseObjective::update_visual_state() {
     if (sprite_ != nullptr) {
         const bool flashing = flash_time_remaining_ > 0.0F;
-        const Color tint = flashing ? Color(1.0, 1.0, 1.0).lerp(flash_color_, 0.35F) : Color(1.0, 1.0, 1.0);
+        const godot::Color tint = flashing ? godot::Color(1.0, 1.0, 1.0).lerp(flash_color_, 0.35F) : godot::Color(1.0, 1.0, 1.0);
         sprite_->set_modulate(tint);
         return;
     }
@@ -353,7 +344,7 @@ void BaseObjective::on_destroyed() {
         const Node2D *target_anchor = get_target_anchor();
         const Vector2 anchor_position = target_anchor != nullptr ? target_anchor->get_position() : Vector2();
         sprite_->set_position(anchor_position - get_local_anchor_position());
-        sprite_->set_modulate(Color(1.0, 1.0, 1.0));
+        sprite_->set_modulate(godot::Color(1.0, 1.0, 1.0));
     }
 
     emit_signal("objective_destroyed");
