@@ -2,6 +2,7 @@
 
 #include "progression_use_cases.h"
 #include "scripted_random_source.h"
+#include "unit_definition.h"
 
 #include <optional>
 
@@ -47,6 +48,22 @@ class FakeUpgradeCatalog final : public UpgradeCatalogPort {
         return ProgressionUpgradePresentation{.id = upgrade_id, .name = upgrade_id};
     }
     [[nodiscard]] std::vector<ProgressionUpgradePresentation> get_upgrade_presentations() const override { return {}; }
+};
+
+class FakeUnitCatalog final : public UnitCatalog {
+  public:
+    std::vector<UnitConfig> units;
+
+    [[nodiscard]] std::optional<UnitConfig> get_unit(const std::string &name) const override {
+        const auto found = std::ranges::find(units, name, &UnitConfig::name);
+        return found == units.end() ? std::nullopt : std::optional<UnitConfig>(*found);
+    }
+
+    [[nodiscard]] std::vector<UnitConfig> get_friendly_units() const override {
+        std::vector<UnitConfig> result;
+        std::ranges::copy_if(units, std::back_inserter(result), [](const auto &unit) { return unit.side == UnitSide::FRIENDLY; });
+        return result;
+    }
 };
 
 } // namespace
@@ -193,6 +210,53 @@ DEFN_TEST(progression_campaign_use_cases_build_available_roster_from_base_and_un
     DEFN_REQUIRE(roster.size() == static_cast<size_t>(2));
     DEFN_CHECK_EQ(roster[0], std::string("guard"));
     DEFN_CHECK_EQ(roster[1], std::string("operator"));
+}
+
+DEFN_TEST(progression_campaign_use_cases_builds_ordered_overview_with_effective_values_and_sources) {
+    FakeProfileRepository profile_repository;
+    FakeProgressionCatalog progression_catalog;
+    FakeUpgradeCatalog upgrade_catalog;
+    upgrade_catalog.base_units = {"breacher"};
+    upgrade_catalog.progression_cards = {
+        {.id = "plating", .max_picks = 2, .effects = {{.type = ProgressionUpgradeEffectType::UNIT_HP_DELTA, .value = 25.0F, .unit_id = "breacher"}}},
+        {.id = "unlock_marksman", .effects = {{.type = ProgressionUpgradeEffectType::UNIT_UNLOCK, .unit_id = "marksman"}}},
+        {.id = "integrity", .effects = {{.type = ProgressionUpgradeEffectType::BASE_INTEGRITY_DELTA, .value = 2.0F}}},
+        {.id = "energy",
+         .effects = {{.type = ProgressionUpgradeEffectType::STARTING_ENERGY_DELTA, .value = 35.0F},
+                     {.type = ProgressionUpgradeEffectType::ENERGY_REGEN_DELTA, .value = 1.0F},
+                     {.type = ProgressionUpgradeEffectType::BOUNTY_MULTIPLIER_DELTA, .value = 0.5F}}}};
+    FakeUnitCatalog units;
+    units.units = {{.name = "base",
+                    .description = "Friendly base.",
+                    .hp = 300,
+                    .ranged_damage = 12,
+                    .ranged_attack_period_seconds = 1.0,
+                    .animations = {{"idle", {.path_template = "res://base.png"}}}},
+                   {.name = "breacher", .description = "Anchor.", .hp = 400, .ranged_damage = 8, .move_speed_pixels_per_second = 58.0F, .cost = 20},
+                   {.name = "marksman", .hp = 200, .ranged_damage = 14, .move_speed_pixels_per_second = 64.0F, .cost = 30},
+                   {.name = "hostile", .side = UnitSide::HOSTILE}};
+    tests::ScriptedRandomSource random;
+    ProgressionCampaignUseCases use_cases(profile_repository, progression_catalog, upgrade_catalog, random);
+    PlayerProfile profile;
+    profile.owned_upgrade_counts = {{"plating", 2}, {"integrity", 1}, {"energy", 1}};
+
+    const auto overview = use_cases.build_progression_overview(profile, units);
+
+    DEFN_REQUIRE(overview.entities.size() == static_cast<size_t>(4));
+    DEFN_CHECK_EQ(overview.entities[0].id, std::string("base"));
+    DEFN_CHECK_EQ(overview.entities[1].id, std::string("breacher"));
+    DEFN_CHECK_EQ(overview.entities[2].id, std::string("marksman"));
+    DEFN_CHECK_EQ(overview.entities[3].id, std::string("operations"));
+    DEFN_CHECK(overview.entities[1].unlocked);
+    DEFN_CHECK(!overview.entities[2].unlocked);
+    DEFN_CHECK_EQ(overview.entities[1].stats[0].effective_value, 450.0);
+    DEFN_REQUIRE(overview.entities[1].contributing_upgrades.size() == static_cast<size_t>(1));
+    DEFN_CHECK_EQ(overview.entities[1].contributing_upgrades[0].owned_count, 2);
+    DEFN_CHECK(overview.entities[0].stats[3].contribution_only);
+    DEFN_CHECK_EQ(overview.entities[0].stats[3].contribution, 2.0);
+    DEFN_CHECK(overview.entities[3].stats[0].contribution_only);
+    DEFN_CHECK_EQ(overview.entities[3].stats[0].contribution, 35.0);
+    DEFN_CHECK_CLOSE(overview.entities[3].stats[2].contribution, 0.5, 0.0001);
 }
 
 } // namespace defn

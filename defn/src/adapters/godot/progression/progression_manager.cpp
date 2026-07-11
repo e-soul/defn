@@ -104,6 +104,7 @@ void CampaignService::initialize() {
     ContentStartupValidator::report_startup_validation();
     catalog_.load(DataPaths::PROGRESSION_DATA);
     upgrade_catalog_.load(DataPaths::UPGRADES_DATA);
+    unit_catalog_.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
     load_save();
 }
 
@@ -259,6 +260,8 @@ std::vector<ProgressionUpgradeCardViewModel> CampaignService::build_owned_upgrad
     }
     return result;
 }
+
+ProgressionOverviewSnapshot CampaignService::build_progression_overview() const { return use_cases_.build_progression_overview(save_data_, unit_catalog_); }
 
 std::vector<UpgradeCardViewModel> CampaignService::build_owned_upgrade_cards_godot() const { return to_godot_upgrade_cards(build_owned_upgrade_cards()); }
 

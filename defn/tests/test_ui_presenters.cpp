@@ -11,6 +11,7 @@
 #include "match_result_cutscene_view_model.h"
 #include "menu_manager.h"
 #include "pause_menu.h"
+#include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "projectile_factory.h"
 #include "score_screen_view.h"
@@ -232,7 +233,7 @@ bool menu_manager_shows_level_select(MenuManager *menu_manager) {
 }
 
 bool menu_manager_shows_progression(MenuManager *menu_manager) {
-    return has_all_labels(menu_manager, {"YOUR UPGRADES"}) && has_all_buttons(menu_manager, {"Back"});
+    return has_all_labels(menu_manager, {"COMMAND ROSTER"}) && has_all_buttons(menu_manager, {"All Owned Upgrades", "Back"});
 }
 
 bool menu_manager_background_covers_viewport(MenuManager *menu_manager) {
@@ -243,8 +244,7 @@ bool menu_manager_background_covers_viewport(MenuManager *menu_manager) {
     }
 
     TextureRect *background = texture_rects.front();
-    return background->get_stretch_mode() == TextureRect::STRETCH_KEEP_ASPECT_COVERED &&
-           background->get_expand_mode() == TextureRect::EXPAND_IGNORE_SIZE;
+    return background->get_stretch_mode() == TextureRect::STRETCH_KEEP_ASPECT_COVERED && background->get_expand_mode() == TextureRect::EXPAND_IGNORE_SIZE;
 }
 
 bool base_objective_has_basic_stack(BaseObjective *objective) {
@@ -545,6 +545,31 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     DEFN_CHECK(menu_manager_shows_progression(menu_manager));
 
     memdelete(menu_manager);
+}
+
+DEFN_TEST(progression_stats_screen_view_switches_dossiers_and_preserves_selection_across_owned_grid) {
+    auto *view = memnew(ProgressionStatsScreenView);
+    ProgressionOverviewSnapshot snapshot{
+        .entities = {{.id = "base", .kind = ProgressionEntityKind::BASE, .unlocked = true},
+                     {.id = "breacher", .kind = ProgressionEntityKind::UNIT, .unlocked = true, .stats = {{.id = "health", .effective_value = 400.0}}},
+                     {.id = "marksman", .kind = ProgressionEntityKind::UNIT, .unlocked = false},
+                     {.id = "operations", .kind = ProgressionEntityKind::OPERATIONS, .unlocked = true}}};
+    view->configure(std::move(snapshot), {}, {});
+
+    DEFN_CHECK(has_label_text(view, "Breacher"));
+    DEFN_CHECK(view->find_child("EntityPortraitFallback", true, false) != nullptr);
+    DEFN_REQUIRE(find_button_by_text(view, "Marksman [Locked]") != nullptr);
+    DEFN_CHECK(find_button_by_text(view, "Marksman [Locked]")->is_disabled());
+
+    view->select_entity("base");
+    DEFN_CHECK(has_label_text(view, "Base"));
+    view->show_owned_upgrades();
+    DEFN_CHECK(has_label_text(view, "ALL OWNED UPGRADES"));
+    DEFN_CHECK(has_label_containing(view, "No upgrades yet"));
+    view->show_dossier();
+    DEFN_CHECK(has_label_text(view, "Base"));
+
+    memdelete(view);
 }
 
 DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {

@@ -8,6 +8,7 @@
 #include "progression_use_cases.h"
 #include "random_source.h"
 #include "score_screen_models.h"
+#include "unit_data.h"
 #include "upgrade_catalog.h"
 
 #include <godot_cpp/classes/object.hpp>
@@ -58,6 +59,7 @@ class CampaignService : public Object, public ProgressionService {
     [[nodiscard]] std::vector<std::string> build_new_unlock_descriptions(const std::vector<std::string> &level_ids) const override;
     [[nodiscard]] ProgressionRewardViewModel build_reward_view_model(const ProgressionRewardDraft &draft) const override;
     [[nodiscard]] std::vector<ProgressionUpgradeCardViewModel> build_owned_upgrade_cards() const override;
+    [[nodiscard]] ProgressionOverviewSnapshot build_progression_overview() const override;
 
     // Godot-facing wrappers and adapter conveniences
     [[nodiscard]] PackedStringArray get_unlocked_units_godot() const;
@@ -103,6 +105,7 @@ class CampaignService : public Object, public ProgressionService {
 
     ProgressionCatalog catalog_;
     UpgradeCatalog upgrade_catalog_;
+    UnitDataLoader unit_catalog_;
     ProgressionSaveRepository save_repository_;
     StdRandomSource random_;
     ProgressionCampaignUseCases use_cases_;

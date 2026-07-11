@@ -3,9 +3,9 @@
 #include "godot_string.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
-#include "owned_upgrades_panel.h"
 #include "progression_manager.h"
 #include "progression_presentation.h"
+#include "progression_stats_screen_view.h"
 #include "scene_navigator.h"
 #include "settings_service.h"
 #include "variant_tools.h"
@@ -515,26 +515,14 @@ void MenuManager::show_progression() {
     clear_buttons();
     current_menu_ = "progression";
 
-    const ButtonStyle button_style = build_button_style(menu_data_.style);
-    button_container_->add_theme_constant_override("separation", button_style.separation);
-
     const ProgressionScreenViewModel view_model = build_progression_screen_view_model();
-
-    auto *title = memnew(Label);
-    title->set_text(to_godot_string(view_model.title));
-    title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    title->add_theme_font_size_override("font_size", 36);
-    title->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
-    button_container_->add_child(title);
-
     auto *progression = CampaignService::get_singleton();
-    OwnedUpgradesPanel::Options owned_panel_options;
-    owned_panel_options.min_size = get_progression_screen_size(this);
-    owned_panel_options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
-    owned_panel_options.grid_columns = 4;
-    button_container_->add_child(OwnedUpgradesPanel::build(progression->build_owned_upgrade_cards_godot(), owned_panel_options));
-
-    add_menu_button(this, button_container_, view_model.back_button, button_style, 160.0F);
+    auto *screen = memnew(ProgressionStatsScreenView);
+    screen->set_custom_minimum_size(get_progression_screen_size(this));
+    const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed)
+                                     .bind(static_cast<int>(view_model.back_button.intent.type), to_godot_string(view_model.back_button.intent.target));
+    screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action);
+    button_container_->add_child(screen);
 }
 
 void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {

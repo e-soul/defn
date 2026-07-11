@@ -230,6 +230,7 @@ void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
 UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, const GlobalUnitConfig &globals) {
     UnitConfig config;
     config.name = to_std_string(key);
+    config.description = to_std_string(String(unit_dict.get("description", "")));
     config.side = parse_unit_side_impl(unit_dict);
     config.hp = VariantTools::as_int(unit_dict.get("hp", 100));
     config.melee_damage = VariantTools::as_int(unit_dict.get("melee_damage", 15));

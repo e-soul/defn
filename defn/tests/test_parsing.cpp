@@ -60,11 +60,17 @@ Dictionary make_unit_data() {
     Dictionary units;
 
     Dictionary friendly;
+    friendly["description"] = "Mobile support specialist.";
     friendly["side"] = "friendly";
     friendly["hp"] = 120;
     friendly["cost"] = 25;
     friendly["ranged_damage"] = 14;
     friendly["move_speed_pixels_per_second"] = 72.0;
+    Dictionary idle_animation;
+    idle_animation["path_template"] = "res://operator_idle_%03d.png";
+    Dictionary animations;
+    animations["idle"] = idle_animation;
+    friendly["animations"] = animations;
     Dictionary projectile_attack;
     projectile_attack["speed_pixels_per_second"] = 180.0;
     projectile_attack["affected_target_rounding"] = "ceil";
@@ -461,6 +467,11 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_CHECK_EQ(loader.get_globals().gameplay_rules.viewport_width, static_cast<real_t>(1280.0F));
     DEFN_CHECK_EQ(loader.get_friendly_units().size(), static_cast<size_t>(1));
     DEFN_CHECK_EQ(friendly->name, std::string("operator"));
+    DEFN_CHECK_EQ(friendly->description, std::string("Mobile support specialist."));
+    DEFN_REQUIRE(friendly->animations.size() == static_cast<size_t>(1));
+    DEFN_CHECK_EQ(friendly->animations[0].second.path_template, std::string("res://operator_idle_%03d.png"));
+    DEFN_REQUIRE(loader.get_unit("jackal").has_value());
+    DEFN_CHECK_EQ(loader.get_unit("jackal")->description, std::string());
     check_content_color_close(friendly->health_bar_color, {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F});
 }
 

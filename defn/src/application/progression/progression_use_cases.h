@@ -11,6 +11,8 @@
 
 namespace defn {
 
+class UnitCatalog;
+
 class ProgressionUseCases {
   public:
     ProgressionUseCases() = delete;
@@ -39,6 +41,7 @@ class ProgressionCampaignUseCases {
     [[nodiscard]] ProgressionRewardDraft build_reward_draft(const PlayerProfile &profile, const std::string &level_id, bool victory);
     bool claim_upgrade(PlayerProfile &profile, const ProgressionRewardClaim &claim) const;
     [[nodiscard]] std::vector<std::string> build_available_roster(const PlayerProfile &profile) const;
+    [[nodiscard]] ProgressionOverviewSnapshot build_progression_overview(const PlayerProfile &profile, const UnitCatalog &unit_catalog) const;
 
   private:
     [[nodiscard]] std::vector<std::string> build_upgrade_ids(const PlayerProfile &profile);

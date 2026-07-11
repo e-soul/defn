@@ -85,6 +85,7 @@ struct GlobalUnitConfig {
 
 struct UnitConfig {
     std::string name;
+    std::string description;
     UnitSide side = UnitSide::FRIENDLY;
     int hp = 100;
     int melee_damage = 15;

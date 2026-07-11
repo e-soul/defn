@@ -41,6 +41,7 @@ class ProgressionService {
     [[nodiscard]] virtual std::vector<std::string> build_new_unlock_descriptions(const std::vector<std::string> &level_ids) const = 0;
     [[nodiscard]] virtual ProgressionRewardViewModel build_reward_view_model(const ProgressionRewardDraft &draft) const = 0;
     [[nodiscard]] virtual std::vector<ProgressionUpgradeCardViewModel> build_owned_upgrade_cards() const = 0;
+    [[nodiscard]] virtual ProgressionOverviewSnapshot build_progression_overview() const { return {}; }
 };
 
 } // namespace defn

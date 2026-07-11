@@ -81,6 +81,40 @@ struct ProgressionMatchResult {
     ProgressionRewardDraft reward_draft;
 };
 
+enum class ProgressionEntityKind {
+    BASE,
+    UNIT,
+    OPERATIONS,
+};
+
+struct ProgressionStatValue {
+    std::string id;
+    double base_value = 0.0;
+    double effective_value = 0.0;
+    double contribution = 0.0;
+    bool contribution_only = false;
+};
+
+struct ProgressionUpgradeSource {
+    ProgressionUpgradePresentation presentation;
+    int owned_count = 0;
+};
+
+struct ProgressionEntitySnapshot {
+    std::string id;
+    ProgressionEntityKind kind = ProgressionEntityKind::UNIT;
+    bool unlocked = false;
+    std::string description;
+    std::string portrait_path_template;
+    std::string unlock_upgrade_name;
+    std::vector<ProgressionStatValue> stats;
+    std::vector<ProgressionUpgradeSource> contributing_upgrades;
+};
+
+struct ProgressionOverviewSnapshot {
+    std::vector<ProgressionEntitySnapshot> entities;
+};
+
 } // namespace defn
 
 #endif
