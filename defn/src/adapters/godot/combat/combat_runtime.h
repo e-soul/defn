@@ -5,6 +5,7 @@
 #include "combat_logic.h"
 #include "combat_types.h"
 #include "combat_use_cases.h"
+#include "field_promotion.h"
 #include "unit_definition.h"
 
 #include <godot_cpp/classes/area2d.hpp>
@@ -27,6 +28,8 @@ class CombatRuntime {
 
     bool is_engaged() const { return state_.engaged; }
     AttackMode get_attack_mode() const { return state_.attack_mode; }
+    void apply_field_promotion(const FieldPromotionRules &rules);
+    [[nodiscard]] const CombatConfig &get_config() const { return config_; }
 
   private:
     void update_target();

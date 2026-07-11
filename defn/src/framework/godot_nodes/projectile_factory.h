@@ -4,6 +4,7 @@
 #include "unit_definition.h"
 
 #include <godot_cpp/classes/node.hpp>
+#include <godot_cpp/core/object_id.hpp>
 #include <godot_cpp/variant/color.hpp>
 #include <godot_cpp/variant/vector2.hpp>
 
@@ -18,9 +19,9 @@ class ProjectileFactory {
   public:
     ProjectileFactory() = delete;
 
-    static ProjectileAttack *create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color,
-                                    const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position, AttackTarget *direct_target,
-                                    int fallback_damage);
+    static ProjectileAttack *create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, godot::ObjectID source_id,
+                                    const godot::Color &flash_color, const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position,
+                                    AttackTarget *direct_target, int fallback_damage);
 };
 
 } // namespace defn

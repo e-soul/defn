@@ -354,7 +354,7 @@ Unit *GameManager::materialize_spawn_intent(const SpawnUnitIntent &intent) {
         }
     }
 
-    return UnitFactory::materialize(intent, *config);
+    return UnitFactory::materialize(intent, *config, unit_data_.get_globals().field_promotion);
 }
 
 void GameManager::refresh_resource_ui(int energy) {

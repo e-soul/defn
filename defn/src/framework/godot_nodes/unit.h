@@ -2,6 +2,7 @@
 #define UNIT_H
 
 #include "battle_entity.h"
+#include "field_promotion_runtime.h"
 #include "unit_definition.h"
 #include "unit_runtime_profile.h"
 #include <godot_cpp/classes/node2d.hpp>
@@ -21,6 +22,7 @@ class DetectionComponent;
 class HitboxComponent;
 class MovementComponent;
 class SoundController;
+class FieldPromotionView;
 class UnitFactory;
 
 class Unit : public BattleEntity {
@@ -33,6 +35,7 @@ class Unit : public BattleEntity {
     void set_unit_config(const UnitConfig &cfg);
     void set_resolved_attack_ranges(real_t melee_range, real_t ranged_attack_range);
     void set_runtime_profile(const UnitRuntimeProfile &profile) { runtime_profile_ = profile; }
+    void configure_field_promotion(const FieldPromotionRules &rules);
 
     void flash_damage(const godot::Color &color) override;
 
@@ -43,6 +46,10 @@ class Unit : public BattleEntity {
     real_t get_attack_range() const { return attack_range; }
     real_t get_ranged_range() const { return ranged_range; }
     MovementComponent *get_movement_component() const override { return movement; }
+    [[nodiscard]] int resolve_outgoing_damage(int base_damage) const { return field_promotion_.outgoing_damage(base_damage); }
+    void record_effective_damage_dealt(int effective_damage);
+    [[nodiscard]] bool is_field_promoted() const { return field_promotion_.is_promoted(); }
+    [[nodiscard]] int get_promotion_damage_progress() const { return field_promotion_.get_effective_damage_dealt(); }
 
     void freeze_for_match_result(const StringName &animation_name);
 
@@ -71,6 +78,8 @@ class Unit : public BattleEntity {
     DetectionComponent *detection = nullptr;
     MovementComponent *movement = nullptr;
     SoundController *sound = nullptr;
+    FieldPromotionView *field_promotion_view = nullptr;
+    FieldPromotionRuntime field_promotion_{};
 };
 
 } // namespace defn

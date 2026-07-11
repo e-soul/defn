@@ -43,6 +43,11 @@ void CombatRuntime::update(double delta) {
     apply_commands(advance_combat(config_, input), delta);
 }
 
+void CombatRuntime::apply_field_promotion(const FieldPromotionRules &rules) {
+    config_.melee_attack_period_seconds = apply_promoted_attack_period(config_.melee_attack_period_seconds, rules);
+    config_.ranged_attack_period_seconds = apply_promoted_attack_period(config_.ranged_attack_period_seconds, rules);
+}
+
 void CombatRuntime::update_target() { selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id); }
 
 void CombatRuntime::try_spawn_pending_projectile() {
@@ -101,7 +106,7 @@ void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
     case CombatCommandType::DEAL_DAMAGE:
     case CombatCommandType::SPAWN_PROJECTILE:
     case CombatCommandType::PLAY_EFFECT:
-        CombatAttackExecutor::apply_command(command, projectile_attack_, config_.side, animation_, pending_projectile_);
+        CombatAttackExecutor::apply_command(command, projectile_attack_, unit_, config_.side, animation_, pending_projectile_);
         break;
     }
 }

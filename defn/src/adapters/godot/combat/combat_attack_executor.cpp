@@ -4,6 +4,7 @@
 #include "attack_target.h"
 #include "attack_target_resolver.h"
 #include "battle_entity.h"
+#include "damage_dispatcher.h"
 #include "godot_color.h"
 #include "godot_vector.h"
 #include "projectile_factory.h"
@@ -66,18 +67,20 @@ void CombatAttackExecutor::spawn_pending_projectile(const std::optional<Projecti
             launch_position = unit->get_target_global_position();
         }
 
-        ProjectileFactory::create(projectile_parent, *projectile_config, pending_projectile.shooter_side, to_godot_color(pending_projectile.flash_color),
-                                  launch_position, pending_projectile.target_global_position, direct_target, pending_projectile.fallback_damage);
+        ProjectileFactory::create(projectile_parent, *projectile_config, pending_projectile.shooter_side, pending_projectile.source_id,
+                                  to_godot_color(pending_projectile.flash_color), launch_position, pending_projectile.target_global_position, direct_target,
+                                  pending_projectile.fallback_damage);
     }
 
     pending_projectile = {};
 }
 
-void CombatAttackExecutor::apply_command(const CombatCommand &command, const std::optional<ProjectileAttackConfig> &projectile_config, UnitSide shooter_side,
-                                         AnimationController *animation, PendingProjectileSpawn &pending_projectile) {
+void CombatAttackExecutor::apply_command(const CombatCommand &command, const std::optional<ProjectileAttackConfig> &projectile_config, BattleEntity *source,
+                                         UnitSide shooter_side, AnimationController *animation, PendingProjectileSpawn &pending_projectile) {
     if (command.type == CombatCommandType::DEAL_DAMAGE) {
         if (AttackTarget *target = resolve_entity_id(command.target_id); target != nullptr) {
-            target->take_damage(command.damage);
+            const ObjectID source_id = source != nullptr ? ObjectID(source->get_instance_id()) : ObjectID();
+            (void)DamageDispatcher::apply(source_id, target, command.damage);
         }
         return;
     }
@@ -87,6 +90,7 @@ void CombatAttackExecutor::apply_command(const CombatCommand &command, const std
             .active = true,
             .target_id = command.target_id,
             .shooter_side = shooter_side,
+            .source_id = source != nullptr ? ObjectID(source->get_instance_id()) : ObjectID(),
             .target_global_position = to_godot_vector(command.target_position),
             .fallback_damage = command.damage,
             .flash_color = command.color,

@@ -19,8 +19,8 @@ class ProjectileAttack : public Node2D {
     GDCLASS(ProjectileAttack, Node2D)
 
   public:
-    void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color, const godot::Vector2 &start_global_position,
-                   const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
+    void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, godot::ObjectID source_id, const godot::Color &flash_color,
+                   const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
 
     void _process(double delta) override;
 
@@ -54,6 +54,7 @@ class ProjectileAttack : public Node2D {
     real_t travelled_distance_ = 0.0F;
     int fallback_damage_ = 0;
     ObjectID direct_target_id_{};
+    ObjectID source_id_{};
     bool exploding_ = false;
     bool explosion_animation_finished_ = false;
     bool explosion_sfx_finished_ = true;

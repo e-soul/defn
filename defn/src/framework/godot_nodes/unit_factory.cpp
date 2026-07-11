@@ -4,6 +4,7 @@
 #include "collision_layers.h"
 #include "combat_component.h"
 #include "detection_component.h"
+#include "field_promotion_view.h"
 #include "godot_color.h"
 #include "godot_vector.h"
 #include "health_bar_widget.h"
@@ -114,18 +115,19 @@ CombatComponent *create_combat_component(Unit *unit, HealthComponent *health, An
 } // namespace
 
 Unit *UnitFactory::create(const UnitConfig &config, const godot::Vector2 &position, const UnitRuntimeProfile &profile,
-                          const ResolvedUnitRuntimeConfig &resolved_config) {
+                          const ResolvedUnitRuntimeConfig &resolved_config, const FieldPromotionRules &promotion_rules) {
     auto *unit = memnew(Unit);
     unit->set_unit_config(config);
     unit->set_resolved_attack_ranges(resolved_config.melee_attack_range, resolved_config.ranged_attack_range);
     unit->set_runtime_profile(profile);
+    unit->configure_field_promotion(promotion_rules);
     unit->set_position(position);
     return unit;
 }
 
-Unit *UnitFactory::materialize(const SpawnUnitIntent &intent, const UnitConfig &config) {
+Unit *UnitFactory::materialize(const SpawnUnitIntent &intent, const UnitConfig &config, const FieldPromotionRules &promotion_rules) {
     return create(config, godot::Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile,
-                  intent.resolved_runtime_config);
+                  intent.resolved_runtime_config, promotion_rules);
 }
 
 void UnitFactory::initialize(Unit *unit) {
@@ -144,6 +146,12 @@ void UnitFactory::initialize(Unit *unit) {
         unit->health_bar_widget = create_health_bar_widget(unit, unit->health);
     }
     unit->animation = create_animation_controller(unit);
+    if (unit->get_side() == UnitSide::FRIENDLY && profile.enable_combat) {
+        unit->field_promotion_view = memnew(FieldPromotionView);
+        unit->field_promotion_view->set_name("FieldPromotionView");
+        unit->add_child(unit->field_promotion_view);
+        unit->field_promotion_view->configure(unit->animation, unit->health_bar_widget);
+    }
     if (profile.enable_sound) {
         unit->sound = create_sound_controller(unit, unit->animation);
     }

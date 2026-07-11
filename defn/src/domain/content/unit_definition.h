@@ -3,6 +3,7 @@
 
 #include "combat_types.h"
 #include "content_values.h"
+#include "field_promotion.h"
 #include "gameplay_rules.h"
 
 #include <optional>
@@ -72,6 +73,7 @@ inline ProjectileDamageConfig to_projectile_damage_config(const ProjectileAttack
 
 struct GlobalUnitConfig {
     GameplayRules gameplay_rules;
+    FieldPromotionRules field_promotion;
     GlobalShootSfxConfig shoot_sfx;
     RangeVariationConfig melee_attack_range_variation;
     RangeVariationConfig ranged_attack_range_variation;

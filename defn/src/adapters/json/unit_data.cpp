@@ -78,6 +78,15 @@ float normalize_fraction(float value) {
 }
 
 void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
+    if (global_data.has("field_promotion")) {
+        const Dictionary promotion = global_data["field_promotion"];
+        globals.field_promotion.damage_threshold = VariantTools::as_int(promotion.get("damage_threshold", globals.field_promotion.damage_threshold));
+        globals.field_promotion.damage_multiplier = VariantTools::as_double(promotion.get("damage_multiplier", globals.field_promotion.damage_multiplier));
+        globals.field_promotion.attack_period_multiplier =
+            VariantTools::as_double(promotion.get("attack_period_multiplier", globals.field_promotion.attack_period_multiplier));
+        globals.field_promotion.health_multiplier = VariantTools::as_double(promotion.get("health_multiplier", globals.field_promotion.health_multiplier));
+    }
+
     if (global_data.has("gameplay_rules")) {
         const Dictionary gameplay_rules = global_data["gameplay_rules"];
         globals.gameplay_rules.viewport_width = VariantTools::as_real(gameplay_rules.get("viewport_width", globals.gameplay_rules.viewport_width));

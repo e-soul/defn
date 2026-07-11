@@ -25,4 +25,6 @@ void CombatComponent::set_enabled(bool enabled) {
     set_process(enabled);
 }
 
+void CombatComponent::apply_field_promotion(const FieldPromotionRules &rules) { runtime_.apply_field_promotion(rules); }
+
 } // namespace defn

@@ -19,7 +19,7 @@ class BattleEntity : public Node2D, public AttackTarget {
     GDCLASS(BattleEntity, Node2D)
 
   public:
-    void take_damage(int amount) override;
+    [[nodiscard]] int take_damage(int amount) override;
     [[nodiscard]] bool is_dead() const override;
     [[nodiscard]] UnitSide get_side() const override { return side_; }
     [[nodiscard]] Node2D *get_target_node() override { return target_anchor_ != nullptr ? target_anchor_ : this; }

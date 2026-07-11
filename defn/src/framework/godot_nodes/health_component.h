@@ -13,7 +13,8 @@ class HealthComponent : public Node {
 
   public:
     void configure(int max_hp);
-    void take_damage(int amount);
+    void set_max_hp_and_heal(int new_max_hp);
+    [[nodiscard]] int take_damage(int amount);
     bool is_dead() const { return current_hp <= 0; }
     int get_current_hp() const { return current_hp; }
     int get_max_hp() const { return max_hp; }

@@ -93,4 +93,21 @@ DEFN_TEST(content_validator_reports_plain_cross_reference_errors) {
     DEFN_CHECK(contains_issue(report, "non-hostile spawn type 'operator'"));
 }
 
+DEFN_TEST(content_validator_rejects_invalid_field_promotion_rules) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    input.field_promotion_rules = {
+        .damage_threshold = 0,
+        .damage_multiplier = 0.9,
+        .attack_period_multiplier = 1.1,
+        .health_multiplier = 0.9,
+    };
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(contains_issue(report, "damage_threshold"));
+    DEFN_CHECK(contains_issue(report, "damage_multiplier"));
+    DEFN_CHECK(contains_issue(report, "attack_period_multiplier"));
+    DEFN_CHECK(contains_issue(report, "health_multiplier"));
+}
+
 } // namespace defn

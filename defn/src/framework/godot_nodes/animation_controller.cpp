@@ -235,6 +235,22 @@ godot::Vector2 AnimationController::get_muzzle_global_position() const {
     return {};
 }
 
+godot::Rect2 AnimationController::get_sprite_local_bounds() const {
+    if (sprite == nullptr) {
+        return {};
+    }
+    const godot::Ref<godot::SpriteFrames> frames = sprite->get_sprite_frames();
+    if (!frames.is_valid() || !frames->has_animation(sprite->get_animation()) || frames->get_frame_count(sprite->get_animation()) <= 0) {
+        return {};
+    }
+    const godot::Ref<godot::Texture2D> texture = frames->get_frame_texture(sprite->get_animation(), sprite->get_frame());
+    if (!texture.is_valid()) {
+        return {};
+    }
+    const godot::Vector2 size = texture->get_size();
+    return {-size * 0.5F, size};
+}
+
 void AnimationController::play_muzzle_flash() {
     if (muzzle_flash) {
         muzzle_flash->set_visible(true);

@@ -119,6 +119,22 @@ void validate_levels(const ProgressionCatalogValidationData &catalog, const Unit
 ContentValidationReport ContentValidator::validate_loaded_content(const ContentValidationInput &input) {
     ContentValidationReport report;
 
+    if (input.field_promotion_rules.has_value()) {
+        const FieldPromotionRules &rules = *input.field_promotion_rules;
+        if (rules.damage_threshold <= 0) {
+            push_issue(report.issues, "field promotion damage_threshold must be positive");
+        }
+        if (rules.damage_multiplier < 1.0) {
+            push_issue(report.issues, "field promotion damage_multiplier must be at least 1.0");
+        }
+        if (rules.attack_period_multiplier <= 0.0 || rules.attack_period_multiplier > 1.0) {
+            push_issue(report.issues, "field promotion attack_period_multiplier must be in (0, 1]");
+        }
+        if (rules.health_multiplier < 1.0) {
+            push_issue(report.issues, "field promotion health_multiplier must be at least 1.0");
+        }
+    }
+
     if (input.menu_data.has_value()) {
         validate_menu_content(*input.menu_data, report.issues);
     }

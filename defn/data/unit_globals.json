@@ -11,6 +11,12 @@
     "scroll_trigger_extra_height": 400.0,
     "camera_scroll_step_factor": 0.25
   },
+  "field_promotion": {
+    "damage_threshold": 500,
+    "damage_multiplier": 1.10,
+    "attack_period_multiplier": 0.90,
+    "health_multiplier": 1.10
+  },
   "attack_range_variation": {
     "melee": [0.95, 1.05],
     "ranged": [0.95, 1.05]

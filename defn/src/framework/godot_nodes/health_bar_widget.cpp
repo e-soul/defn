@@ -11,6 +11,10 @@ void HealthBarWidget::configure(HealthComponent *health, const godot::Color &fil
     health->connect("health_changed", callable_mp(this, &HealthBarWidget::on_health_changed));
 }
 
+godot::Rect2 HealthBarWidget::get_bar_rect() const {
+    return bar != nullptr ? godot::Rect2(bar->get_position(), bar->get_custom_minimum_size()) : godot::Rect2();
+}
+
 void HealthBarWidget::setup_bar(int max_hp, const godot::Color &fill_color, const godot::Vector2 &offset) {
     constexpr real_t bar_width = 170;
     constexpr real_t bar_height = 10;

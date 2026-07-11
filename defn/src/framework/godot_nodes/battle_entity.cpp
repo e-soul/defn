@@ -7,10 +7,11 @@ namespace defn {
 
 void BattleEntity::_bind_methods() {}
 
-void BattleEntity::take_damage(int amount) {
+int BattleEntity::take_damage(int amount) {
     if (health_component_ != nullptr) {
-        health_component_->take_damage(amount);
+        return health_component_->take_damage(amount);
     }
+    return 0;
 }
 
 bool BattleEntity::is_dead() const { return health_component_ == nullptr || health_component_->is_dead(); }

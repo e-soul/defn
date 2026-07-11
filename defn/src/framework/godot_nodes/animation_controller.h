@@ -29,6 +29,7 @@ class AnimationController : public Node {
 
     void flash_damage(const godot::Color &color);
     godot::Vector2 get_muzzle_global_position() const;
+    [[nodiscard]] godot::Rect2 get_sprite_local_bounds() const;
     void play_muzzle_flash();
     void hide_muzzle_flash();
 

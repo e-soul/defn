@@ -3,6 +3,7 @@
 
 #include "combat_runtime.h"
 #include "combat_types.h"
+#include "field_promotion.h"
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -29,6 +30,8 @@ class CombatComponent : public Node {
     bool is_engaged() const { return runtime_.is_engaged(); }
     AttackMode get_attack_mode() const { return runtime_.get_attack_mode(); }
     void set_enabled(bool enabled);
+    void apply_field_promotion(const FieldPromotionRules &rules);
+    [[nodiscard]] const CombatConfig &get_runtime_config() const { return runtime_.get_config(); }
 
   protected:
     static void _bind_methods();

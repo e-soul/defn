@@ -9,6 +9,8 @@
 #include "battle_entity.h"
 #include "combat_component.h"
 #include "detection_component.h"
+#include "field_promotion_effect.h"
+#include "field_promotion_view.h"
 #include "game_manager.h"
 #include "grid_manager.h"
 #include "health_bar_widget.h"
@@ -50,6 +52,8 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::DetectionComponent>();
     ClassDB::register_class<defn::CombatComponent>();
     ClassDB::register_class<defn::ProjectileAttack>();
+    ClassDB::register_internal_class<defn::FieldPromotionView>();
+    ClassDB::register_internal_class<defn::vfx::FieldPromotionEffect>();
     ClassDB::register_class<defn::Unit>();
     ClassDB::register_class<defn::GameManager>();
     ClassDB::register_class<defn::HUD>();

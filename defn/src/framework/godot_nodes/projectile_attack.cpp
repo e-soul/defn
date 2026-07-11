@@ -1,6 +1,7 @@
 #include "projectile_attack.h"
 
 #include "attack_target_resolver.h"
+#include "damage_dispatcher.h"
 #include "godot_string.h"
 #include "godot_vector.h"
 #include "projectile_rules.h"
@@ -33,11 +34,12 @@ float linear_to_db(float linear) {
 
 void ProjectileAttack::_bind_methods() {}
 
-void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, const godot::Color &flash_color,
+void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide shooter_side, godot::ObjectID source_id, const godot::Color &flash_color,
                                  const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position, AttackTarget *direct_target,
                                  int fallback_damage) {
     config_ = config;
     shooter_side_ = shooter_side;
+    source_id_ = source_id;
     flash_color_ = flash_color;
     target_global_position_ = target_global_position;
     fallback_damage_ = fallback_damage;
@@ -258,7 +260,7 @@ void ProjectileAttack::apply_splash_damage() {
             continue;
         }
 
-        victim->take_damage(command.damage);
+        (void)DamageDispatcher::apply(source_id_, victim, command.damage);
         victim->flash_damage(flash_color_);
     }
 }

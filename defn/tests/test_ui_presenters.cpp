@@ -4,9 +4,11 @@
 #include "base_objective.h"
 #include "base_objective_factory.h"
 #include "camera_scroll_controller.h"
+#include "combat_component.h"
 #include "deploy_card_presenter.h"
 #include "game_background_builder.h"
 #include "grid_manager.h"
+#include "health_component.h"
 #include "hud.h"
 #include "match_result_cutscene_view_model.h"
 #include "menu_manager.h"
@@ -19,6 +21,7 @@
 #include "unit_factory.h"
 #include "upgrade_card_presenter.h"
 
+#include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
@@ -27,6 +30,7 @@
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/parallax2d.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/style_box.hpp>
@@ -556,6 +560,61 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
     memdelete(combat_unit);
 }
 
+DEFN_TEST(health_component_reports_effective_damage_and_caps_overkill) {
+    auto *health = memnew(HealthComponent);
+    health->configure(20);
+    DEFN_CHECK_EQ(health->take_damage(-5), 0);
+    DEFN_CHECK_EQ(health->take_damage(7), 7);
+    health->set_max_hp_and_heal(30);
+    DEFN_CHECK_EQ(health->get_current_hp(), 30);
+    DEFN_CHECK_EQ(health->get_max_hp(), 30);
+    DEFN_CHECK_EQ(health->take_damage(10), 10);
+    DEFN_CHECK_EQ(health->take_damage(100), 20);
+    DEFN_CHECK_EQ(health->take_damage(1), 0);
+    memdelete(health);
+}
+
+DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
+    UnitConfig config = make_presenter_unit_config("operator", 20);
+    config.side = UnitSide::FRIENDLY;
+    config.melee_damage = 10;
+    config.melee_attack_period_seconds = 1.0;
+    config.ranged_damage = 8;
+    config.ranged_attack_period_seconds = 2.0;
+    UnitRuntimeProfile profile = UnitRuntimeProfile::combatant();
+    profile.enable_sound = false;
+    const ResolvedUnitRuntimeConfig resolved{
+        .melee_attack_range = config.melee_attack_range,
+        .ranged_attack_range = config.ranged_attack_range,
+    };
+    auto *unit = UnitFactory::create(config, {}, profile, resolved, {});
+    UnitFactory::initialize(unit);
+    auto *health = godot::Object::cast_to<HealthComponent>(unit->get_node_or_null("HealthComponent"));
+    DEFN_REQUIRE(health != nullptr);
+    DEFN_CHECK_EQ(health->take_damage(60), 60);
+
+    unit->record_effective_damage_dealt(500);
+    DEFN_CHECK(unit->is_field_promoted());
+    DEFN_CHECK_EQ(health->get_max_hp(), 132);
+    DEFN_CHECK_EQ(health->get_current_hp(), 132);
+    DEFN_CHECK_EQ(unit->resolve_outgoing_damage(10), 11);
+    auto *insignia = godot::Object::cast_to<godot::Label>(unit->get_node_or_null("FieldPromotionView/FieldPromotionInsignia"));
+    DEFN_REQUIRE(insignia != nullptr);
+    DEFN_CHECK_CLOSE(insignia->get_position().x + (insignia->get_combined_minimum_size().x * 0.5F), config.health_bar_offset.x + 85.0F, 0.001);
+    auto *combat = godot::Object::cast_to<CombatComponent>(unit->get_node_or_null("CombatComponent"));
+    DEFN_REQUIRE(combat != nullptr);
+    DEFN_CHECK_CLOSE(combat->get_runtime_config().melee_attack_period_seconds, 0.9, 0.000001);
+    DEFN_CHECK_CLOSE(combat->get_runtime_config().ranged_attack_period_seconds, 1.8, 0.000001);
+    unit->record_effective_damage_dealt(500);
+    DEFN_CHECK_CLOSE(combat->get_runtime_config().melee_attack_period_seconds, 0.9, 0.000001);
+    memdelete(unit);
+}
+
+DEFN_TEST(field_promotion_audio_resource_loads) {
+    const godot::Ref<godot::AudioStream> stream = godot::ResourceLoader::get_singleton()->load("res://assets/sfx/field_promotion.wav");
+    DEFN_CHECK(stream.is_valid());
+}
+
 DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     auto *menu_manager = memnew(MenuManager);
     menu_manager->_ready();
@@ -607,9 +666,9 @@ DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
     DEFN_CHECK_EQ(objective->get_max_hp(), 250);
     DEFN_CHECK(base_objective_has_basic_stack(objective));
 
-    objective->take_damage(40);
+    (void)objective->take_damage(40);
     DEFN_CHECK_EQ(objective->get_current_hp(), 210);
-    objective->take_damage(500);
+    (void)objective->take_damage(500);
     DEFN_CHECK(objective->is_dead());
     DEFN_CHECK_EQ(objective->get_current_hp(), 0);
 
@@ -732,7 +791,7 @@ DEFN_TEST(projectile_attack_applies_direct_and_splash_damage_to_hostile_targets)
     config.projectile_animation.frame_count = 0;
     config.explosion_animation.frame_count = 0;
 
-    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, godot::Color(1.0, 0.2, 0.1), godot::Vector2(0.0, 0.0),
+    auto *projectile = ProjectileFactory::create(parent, config, UnitSide::FRIENDLY, godot::ObjectID(), godot::Color(1.0, 0.2, 0.1), godot::Vector2(0.0, 0.0),
                                                  direct_target->get_target_global_position(), direct_target, 25);
     projectile->_process(0.1);
 

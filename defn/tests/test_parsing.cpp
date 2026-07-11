@@ -42,6 +42,13 @@ Dictionary make_global_data() {
     gameplay_rules["friendly_world_margin"] = 128.0;
     global_data["gameplay_rules"] = gameplay_rules;
 
+    Dictionary field_promotion;
+    field_promotion["damage_threshold"] = 320;
+    field_promotion["damage_multiplier"] = 1.25;
+    field_promotion["attack_period_multiplier"] = 0.8;
+    field_promotion["health_multiplier"] = 1.2;
+    global_data["field_promotion"] = field_promotion;
+
     Dictionary health_colors;
     health_colors["friendly"] = make_array({0.1, 0.8, 0.1, 1.0});
     health_colors["hostile"] = make_array({0.9, 0.2, 0.2, 1.0});
@@ -465,6 +472,10 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_CHECK_EQ(friendly->side, UnitSide::FRIENDLY);
     DEFN_CHECK_EQ(friendly->projectile_attack->affected_target_rounding, SplashTargetRoundingMode::CEIL);
     DEFN_CHECK_EQ(loader.get_globals().gameplay_rules.viewport_width, static_cast<real_t>(1280.0F));
+    DEFN_CHECK_EQ(loader.get_globals().field_promotion.damage_threshold, 320);
+    DEFN_CHECK_CLOSE(loader.get_globals().field_promotion.damage_multiplier, 1.25, 0.000001);
+    DEFN_CHECK_CLOSE(loader.get_globals().field_promotion.attack_period_multiplier, 0.8, 0.000001);
+    DEFN_CHECK_CLOSE(loader.get_globals().field_promotion.health_multiplier, 1.2, 0.000001);
     DEFN_CHECK_EQ(loader.get_friendly_units().size(), static_cast<size_t>(1));
     DEFN_CHECK_EQ(friendly->name, std::string("operator"));
     DEFN_CHECK_EQ(friendly->description, std::string("Mobile support specialist."));
@@ -474,6 +485,15 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_REQUIRE(hostile.has_value());
     DEFN_CHECK_EQ(hostile->description, std::string());
     check_content_color_close(friendly->health_bar_color, {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F});
+}
+
+DEFN_TEST(unit_data_loader_uses_default_field_promotion_rules_when_absent) {
+    UnitDataLoader loader;
+    DEFN_CHECK(loader.load_from_data(make_unit_data(), Dictionary()));
+    DEFN_CHECK_EQ(loader.get_globals().field_promotion.damage_threshold, 500);
+    DEFN_CHECK_CLOSE(loader.get_globals().field_promotion.damage_multiplier, 1.10, 0.000001);
+    DEFN_CHECK_CLOSE(loader.get_globals().field_promotion.attack_period_multiplier, 0.90, 0.000001);
+    DEFN_CHECK_CLOSE(loader.get_globals().field_promotion.health_multiplier, 1.10, 0.000001);
 }
 
 DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {

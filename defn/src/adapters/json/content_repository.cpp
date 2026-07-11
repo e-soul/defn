@@ -111,9 +111,13 @@ ContentValidationInput make_content_validation_input(const std::optional<MenuCon
 }
 
 ContentValidationInput make_content_validation_input(const JsonLoadedContent &content) {
-    return make_content_validation_input(content.menu_data, content.progression_loaded ? &content.progression_catalog : nullptr,
-                                         content.upgrades_loaded ? &content.upgrade_catalog : nullptr, content.units_loaded ? &content.unit_data : nullptr,
-                                         content.levels);
+    ContentValidationInput input = make_content_validation_input(content.menu_data, content.progression_loaded ? &content.progression_catalog : nullptr,
+                                                                 content.upgrades_loaded ? &content.upgrade_catalog : nullptr,
+                                                                 content.units_loaded ? &content.unit_data : nullptr, content.levels);
+    if (content.units_loaded) {
+        input.field_promotion_rules = content.unit_data.get_globals().field_promotion;
+    }
+    return input;
 }
 
 } // namespace defn

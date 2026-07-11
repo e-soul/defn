@@ -1,6 +1,7 @@
 #include "unit.h"
 #include "animation_controller.h"
 #include "combat_component.h"
+#include "field_promotion_view.h"
 #include "health_component.h"
 #include "movement_component.h"
 #include "unit_factory.h"
@@ -22,6 +23,26 @@ void Unit::set_unit_config(const UnitConfig &cfg) {
 void Unit::set_resolved_attack_ranges(real_t melee_range, real_t ranged_attack_range) {
     attack_range = melee_range;
     ranged_range = ranged_attack_range;
+}
+
+void Unit::configure_field_promotion(const FieldPromotionRules &rules) {
+    field_promotion_.configure(rules, unit_config_.side == UnitSide::FRIENDLY && runtime_profile_.enable_combat);
+}
+
+void Unit::record_effective_damage_dealt(int effective_damage) {
+    const FieldPromotionUpdate update = field_promotion_.record_effective_damage(effective_damage);
+    if (!update.promotion_granted) {
+        return;
+    }
+    if (combat != nullptr) {
+        combat->apply_field_promotion(field_promotion_.get_rules());
+    }
+    if (health != nullptr) {
+        health->set_max_hp_and_heal(apply_promoted_max_health(health->get_max_hp(), field_promotion_.get_rules()));
+    }
+    if (field_promotion_view != nullptr) {
+        field_promotion_view->show_promotion();
+    }
 }
 
 void Unit::_ready() {

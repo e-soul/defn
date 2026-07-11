@@ -17,6 +17,7 @@ class HealthBarWidget : public Node2D {
 
   public:
     void configure(HealthComponent *health, const godot::Color &fill_color, const godot::Vector2 &offset);
+    [[nodiscard]] godot::Rect2 get_bar_rect() const;
 
   protected:
     static void _bind_methods();

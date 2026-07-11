@@ -18,8 +18,8 @@ class UnitFactory {
     UnitFactory() = delete;
 
     static Unit *create(const UnitConfig &config, const godot::Vector2 &position, const UnitRuntimeProfile &profile,
-                        const ResolvedUnitRuntimeConfig &resolved_config);
-    static Unit *materialize(const SpawnUnitIntent &intent, const UnitConfig &config);
+                        const ResolvedUnitRuntimeConfig &resolved_config, const FieldPromotionRules &promotion_rules = {});
+    static Unit *materialize(const SpawnUnitIntent &intent, const UnitConfig &config, const FieldPromotionRules &promotion_rules = {});
     static void initialize(Unit *unit);
 };
 

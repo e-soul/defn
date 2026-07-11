@@ -46,6 +46,7 @@ struct ContentValidationInput {
     std::optional<ProgressionCatalogValidationData> progression_catalog;
     std::optional<UpgradeCatalogValidationData> upgrade_catalog;
     const UnitCatalog *unit_catalog = nullptr;
+    std::optional<FieldPromotionRules> field_promotion_rules;
     std::vector<LoadedLevelValidationInput> levels;
 };
 
