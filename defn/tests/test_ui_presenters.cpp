@@ -29,6 +29,7 @@
 #include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
+#include <godot_cpp/classes/style_box.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/core/object.hpp>
@@ -169,6 +170,15 @@ bool selected_upgrade_button_matches(Button *button) {
 }
 
 bool fallback_upgrade_button_matches(Button *button) { return button != nullptr && !button->is_disabled() && has_all_labels(button, {"?", "Upgrade"}); }
+
+bool progression_view_has_initial_entity_state(ProgressionStatsScreenView *view) {
+    Button *selected_button = find_button_by_text(view, "Breacher");
+    Button *locked_button = find_button_by_text(view, "Marksman [Locked]");
+    return has_label_text(view, "Breacher") && view->find_child("EntityPortraitFallback", true, false) != nullptr && selected_button != nullptr &&
+           selected_button->has_theme_stylebox_override("normal") && selected_button->has_theme_stylebox_override("hover") &&
+           selected_button->get_theme_stylebox("normal") == selected_button->get_theme_stylebox("hover") && locked_button != nullptr &&
+           locked_button->is_disabled();
+}
 
 bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenViewNodes &view) {
     return view.overlay != nullptr && view.panel != nullptr && parent->get_child_count() == 1 && nearly_equal(view.overlay->get_color().a, 0.7);
@@ -556,10 +566,7 @@ DEFN_TEST(progression_stats_screen_view_switches_dossiers_and_preserves_selectio
                      {.id = "operations", .kind = ProgressionEntityKind::OPERATIONS, .unlocked = true}}};
     view->configure(std::move(snapshot), {}, {});
 
-    DEFN_CHECK(has_label_text(view, "Breacher"));
-    DEFN_CHECK(view->find_child("EntityPortraitFallback", true, false) != nullptr);
-    DEFN_REQUIRE(find_button_by_text(view, "Marksman [Locked]") != nullptr);
-    DEFN_CHECK(find_button_by_text(view, "Marksman [Locked]")->is_disabled());
+    DEFN_CHECK(progression_view_has_initial_entity_state(view));
 
     view->select_entity("base");
     DEFN_CHECK(has_label_text(view, "Base"));

@@ -137,7 +137,7 @@ void ProgressionStatsScreenView::rebuild() {
         add_child(OwnedUpgradesPanel::build(owned_upgrades_, options));
         auto *actions = memnew(godot::HBoxContainer);
         actions->set_alignment(godot::BoxContainer::ALIGNMENT_CENTER);
-        auto *return_button = make_action_button("Return to Dossier");
+        auto *return_button = make_action_button("Return to Commnad Roster");
         return_button->set_name("ReturnToDossierButton");
         return_button->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::show_dossier));
         actions->add_child(return_button);
@@ -175,7 +175,9 @@ void ProgressionStatsScreenView::rebuild() {
             button->set_modulate(godot::Color(0.4, 0.4, 0.45, 0.7));
         }
         if (selector.selected) {
-            button->add_theme_stylebox_override("normal", panel_style(godot::Color(1.0, 0.75, 0.2)));
+            const auto selected_style = panel_style(godot::Color(1.0, 0.75, 0.2));
+            button->add_theme_stylebox_override("normal", selected_style);
+            button->add_theme_stylebox_override("hover", selected_style);
         }
         if (selector.unlocked) {
             button->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::select_entity).bind(to_godot_string(selector.id)));

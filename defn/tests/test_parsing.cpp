@@ -470,8 +470,9 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_CHECK_EQ(friendly->description, std::string("Mobile support specialist."));
     DEFN_REQUIRE(friendly->animations.size() == static_cast<size_t>(1));
     DEFN_CHECK_EQ(friendly->animations[0].second.path_template, std::string("res://operator_idle_%03d.png"));
-    DEFN_REQUIRE(loader.get_unit("jackal").has_value());
-    DEFN_CHECK_EQ(loader.get_unit("jackal")->description, std::string());
+    const auto hostile = loader.get_unit("jackal");
+    DEFN_REQUIRE(hostile.has_value());
+    DEFN_CHECK_EQ(hostile->description, std::string());
     check_content_color_close(friendly->health_bar_color, {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F});
 }
 
