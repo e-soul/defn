@@ -131,11 +131,11 @@ void GameManager::_ready() {
         UtilityFunctions::printerr("GameManager: Failed to load level: ", level_path);
         return;
     }
-    match_director_.load_level_definition(*loaded_level, level_id);
+    match_director_.load_level_definition(*loaded_level, to_std_string(level_id));
     match_director_.begin_match();
 
     // Setup camera and visual layers using background from level data
-    String bg_path = match_director_.get_background_path();
+    String bg_path = to_godot_string(match_director_.get_background_path());
     if (bg_path.is_empty()) {
         bg_path = DataPaths::DEFAULT_GAME_BACKGROUND;
     }
@@ -154,7 +154,7 @@ void GameManager::_ready() {
     add_child(hud);
 
     hud->set_friendly_units(match_director_.build_available_friendlies());
-    hud->set_level(match_director_.get_level_number(), match_director_.get_level_name());
+    hud->set_level(match_director_.get_level_number(), to_godot_string(match_director_.get_level_name()));
     hud->update_core_resource(match_director_.get_core_resource());
     hud->update_wave(1, match_director_.get_total_waves());
     hud->update_hearts(match_director_.get_base_integrity());

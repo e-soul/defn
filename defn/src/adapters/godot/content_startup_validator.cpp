@@ -2,6 +2,7 @@
 
 #include "content_repository.h"
 #include "content_validator.h"
+#include "godot_string.h"
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -19,11 +20,10 @@ bool ContentStartupValidator::report_startup_validation() {
     const JsonLoadedContent loaded_content = repository.load_for_validation();
 
     std::vector<String> issues = loaded_content.load_issues;
-    const ContentValidationReport report =
-        ContentValidator::validate_loaded_content(loaded_content.menu_data, loaded_content.progression_loaded ? &loaded_content.progression_catalog : nullptr,
-                                                  loaded_content.upgrades_loaded ? &loaded_content.upgrade_catalog : nullptr,
-                                                  loaded_content.units_loaded ? &loaded_content.unit_data : nullptr, loaded_content.levels);
-    issues.insert(issues.end(), report.issues.begin(), report.issues.end());
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(make_content_validation_input(loaded_content));
+    for (const std::string &issue : report.issues) {
+        issues.push_back(to_godot_string(issue));
+    }
 
     if (issues.empty()) {
         UtilityFunctions::print("ContentValidator: content validation passed");

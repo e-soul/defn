@@ -183,6 +183,7 @@ test_support_sources = [
     "src/domain/progression/upgrade_draft_builder.cpp",
     "src/application/progression/progression_use_cases.cpp",
     "src/application/settings/settings_use_case.cpp",
+    "src/application/content/content_validator.cpp",
     "src/adapters/presenters/progression_presentation.cpp",
     "src/adapters/presenters/deploy_card_view_model.cpp",
     "src/adapters/presenters/hud_presenter.cpp",
@@ -206,6 +207,7 @@ unit_test_sources = [
     "tests/test_presentation_view_models.cpp",
     "tests/test_settings_use_case.cpp",
     "tests/test_random_source.cpp",
+    "tests/test_content_validator.cpp",
 ]
 
 coverage_report_sources = list(extension_sources)

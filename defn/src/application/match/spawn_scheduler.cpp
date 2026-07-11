@@ -3,8 +3,6 @@
 #include "unit_definition.h"
 #include "unit_runtime_config_resolver.h"
 
-#include <godot_cpp/variant/utility_functions.hpp>
-
 namespace defn {
 
 namespace {

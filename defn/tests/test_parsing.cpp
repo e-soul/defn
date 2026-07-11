@@ -82,12 +82,12 @@ Dictionary make_unit_data() {
     return units_root;
 }
 
-bool contains_issue(const ContentValidationReport &report, const String &needle) {
-    return std::ranges::any_of(report.issues, [&needle](const String &issue) { return issue.contains(needle); });
+bool contains_issue(const ContentValidationReport &report, const std::string &needle) {
+    return std::ranges::any_of(report.issues, [&needle](const std::string &issue) { return issue.contains(needle); });
 }
 
-bool contains_issues(const ContentValidationReport &report, std::initializer_list<String> needles) {
-    return std::ranges::all_of(needles, [&report](const String &needle) { return contains_issue(report, needle); });
+bool contains_issues(const ContentValidationReport &report, std::initializer_list<std::string> needles) {
+    return std::ranges::all_of(needles, [&report](const std::string &needle) { return contains_issue(report, needle); });
 }
 
 void check_content_color_close(const Color &actual, const Color &expected) {
@@ -132,8 +132,8 @@ ContentValidationReport make_cross_reference_validation_report() {
     LevelDefinition level_definition;
     level_definition.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "operator"}}});
 
-    return ContentValidator::validate_loaded_content(menu_data, &progression_catalog, &upgrade_catalog, &unit_data,
-                                                     {{.level_id = "level_01", .definition = level_definition}});
+    return ContentValidator::validate_loaded_content(make_content_validation_input(menu_data, &progression_catalog, &upgrade_catalog, &unit_data,
+                                                                                   {{.level_id = "level_01", .definition = level_definition}}));
 }
 
 MenuContentData make_required_menu_data() {
@@ -480,8 +480,7 @@ DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {
     const LevelDefinition &level_definition = require_level_definition(loaded.levels[0]);
     DEFN_CHECK_EQ(level_definition.waves[0].spawns[0].type, std::string("jackal"));
 
-    const ContentValidationReport report =
-        ContentValidator::validate_loaded_content(loaded.menu_data, &loaded.progression_catalog, &loaded.upgrade_catalog, &loaded.unit_data, loaded.levels);
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(make_content_validation_input(loaded));
     DEFN_CHECK(report.is_valid());
 }
 
@@ -568,8 +567,9 @@ DEFN_TEST(content_validator_accepts_valid_loaded_content) {
     LevelDefinition level_definition;
     level_definition.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "jackal"}}});
 
-    const ContentValidationReport report = ContentValidator::validate_loaded_content(make_required_menu_data(), &progression_catalog, &upgrade_catalog,
-                                                                                     &unit_data, {{.level_id = "level_01", .definition = level_definition}});
+    const MenuContentData menu_data = make_required_menu_data();
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(make_content_validation_input(
+        menu_data, &progression_catalog, &upgrade_catalog, &unit_data, {{.level_id = "level_01", .definition = level_definition}}));
     DEFN_CHECK(report.is_valid());
 }
 
@@ -589,9 +589,9 @@ DEFN_TEST(content_validator_reports_catalog_and_level_shape_issues) {
     LevelDefinition unknown_spawn_level;
     unknown_spawn_level.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "ghost"}}});
 
-    const ContentValidationReport report = ContentValidator::validate_loaded_content(
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(make_content_validation_input(
         menu_data, &progression_catalog, &upgrade_catalog, &unit_data,
-        {{.level_id = "level_01", .definition = empty_level}, {.level_id = "level_02", .definition = unknown_spawn_level}, {.level_id = "level_03"}});
+        {{.level_id = "level_01", .definition = empty_level}, {.level_id = "level_02", .definition = unknown_spawn_level}, {.level_id = "level_03"}}));
 
     DEFN_CHECK(!report.is_valid());
     DEFN_CHECK(contains_issues(report, {"unsupported setting 'mystery'", "empty level_id", "duplicate level_id 'level_01'",

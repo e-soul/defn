@@ -113,6 +113,33 @@ Recommended directory intent:
 - `adapters/godot/`: implementations of ports backed by Godot APIs.
 - `framework/godot_nodes/`: concrete `Node`, `Node2D`, `CanvasLayer`, and GDExtension classes.
 
+## Boundary Inventory and Ownership
+
+The `domain/` and `application/` trees are engine-neutral. They must not include
+`godot_cpp`, name `godot::` types, or invoke Godot APIs. Engine values are
+converted only in `adapters/` or `framework/` code.
+
+Current boundary ownership:
+
+- `MatchDirector` and `SpawnScheduler` use `std::string`, level definitions,
+  ports, and match intents. `GameManager` converts their level labels and
+  background paths to Godot `String` values when rendering the scene.
+- `ContentValidator` consumes `ContentValidationInput`, a plain value model of
+  menu, progression, upgrade, unit, and level data, and returns
+  `std::vector<std::string>` issues. `JsonContentRepository` converts parsed
+  Godot-backed catalog values into that input; `ContentStartupValidator` owns
+  Godot logging.
+- `GameManager` is the framework composition and lifecycle entry point. It
+  delegates camera movement to `CameraScrollController`, backgrounds to
+  `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and
+  `UnitFactory`, and match decisions to `MatchDirector`.
+- `MenuManager` is the framework UI entry point. It delegates menu decisions
+  and screen models to `MenuFlowUseCase` and presenter builders, style shaping
+  to `MenuStyle`, and display/audio persistence to `SettingsService`.
+
+Keep these translations at the edge. A new engine-facing value in domain or
+application code is an architectural regression, not a convenience shortcut.
+
 
 ## Module 1: Match Runtime
 

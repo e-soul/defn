@@ -50,6 +50,10 @@ class JsonContentRepository {
 };
 
 [[nodiscard]] JsonContentPaths default_json_content_paths();
+[[nodiscard]] ContentValidationInput make_content_validation_input(const std::optional<MenuContentData> &menu_data,
+                                                                   const ProgressionCatalog *progression_catalog, const UpgradeCatalog *upgrade_catalog,
+                                                                   const UnitCatalog *unit_catalog, std::vector<LoadedLevelValidationInput> levels);
+[[nodiscard]] ContentValidationInput make_content_validation_input(const JsonLoadedContent &content);
 
 } // namespace defn
 

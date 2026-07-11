@@ -387,9 +387,9 @@ DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     SpawnScheduler unconfigured_scheduler;
     unconfigured_scheduler.load_level_definition(level);
     DEFN_CHECK_EQ(unconfigured_scheduler.get_level_number(), 4);
-    DEFN_CHECK_EQ(unconfigured_scheduler.get_level_name(), String("Skipped Spawn Test"));
+    DEFN_CHECK_EQ(unconfigured_scheduler.get_level_name(), std::string("Skipped Spawn Test"));
     DEFN_CHECK_EQ(unconfigured_scheduler.get_total_waves(), 1);
-    DEFN_CHECK_EQ(unconfigured_scheduler.get_background_path(), String("res://background.png"));
+    DEFN_CHECK_EQ(unconfigured_scheduler.get_background_path(), std::string("res://background.png"));
     unconfigured_scheduler.start();
     const SpawnSchedulerUpdate unconfigured_update = unconfigured_scheduler.update(0.1);
     DEFN_CHECK_EQ(unconfigured_update.spawn_unit_intents.size(), static_cast<size_t>(0));

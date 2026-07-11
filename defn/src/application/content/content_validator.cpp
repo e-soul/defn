@@ -1,124 +1,113 @@
 #include "content_validator.h"
 
-#include "godot_string.h"
-#include "menu_models.h"
-#include "progression_catalog.h"
-#include "unit_definition.h"
-#include "upgrade_catalog.h"
-
 #include <algorithm>
 #include <array>
-#include <optional>
-#include <vector>
-
-#include <godot_cpp/variant/variant.hpp>
 
 namespace defn {
 
 namespace {
 
-bool contains_string(const std::vector<String> &values, const String &candidate) {
-    return std::ranges::any_of(values, [&candidate](const String &value) { return value == candidate; });
+bool contains_string(const std::vector<std::string> &values, const std::string &candidate) {
+    return std::ranges::any_of(values, [&candidate](const std::string &value) { return value == candidate; });
 }
 
-void push_issue(std::vector<String> &issues, const String &message) { issues.push_back(message); }
+void push_issue(std::vector<std::string> &issues, std::string message) { issues.push_back(std::move(message)); }
 
-void validate_menu_content(const MenuContentData &menu_data, std::vector<String> &issues) {
+std::string quoted(const std::string &value) { return "'" + value + "'"; }
+
+void validate_menu_content(const MenuContentData &menu_data, std::vector<std::string> &issues) {
     static const std::array<std::string, 4> required_menus = {"main_menu", "game_menu", "options_menu", "pause_menu"};
     for (const std::string &required_menu : required_menus) {
         if (menu_data.find_menu(required_menu) == nullptr) {
-            push_issue(issues, vformat("menu_data.json missing required menu '%s'", to_godot_string(required_menu)));
+            push_issue(issues, "menu_data.json missing required menu " + quoted(required_menu));
         }
     }
 
     for (const auto &menu : menu_data.menus) {
         for (const auto &setting : menu.settings) {
             if (setting.kind == MenuSettingKind::UNKNOWN) {
-                push_issue(issues, vformat("menu '%s' has unsupported setting '%s'", to_godot_string(menu.name), to_godot_string(setting.setting_id)));
+                push_issue(issues, "menu " + quoted(menu.name) + " has unsupported setting " + quoted(setting.setting_id));
             }
         }
     }
 }
 
-void validate_progression_catalog(const ProgressionCatalog &catalog, std::vector<String> &issues) {
-    std::vector<String> level_ids;
-    level_ids.reserve(catalog.get_level_unlocks().size());
-    for (const auto &unlock : catalog.get_level_unlocks()) {
-        if (unlock.level_id.is_empty()) {
+void validate_progression_catalog(const ProgressionCatalogValidationData &catalog, std::vector<std::string> &issues) {
+    std::vector<std::string> level_ids;
+    level_ids.reserve(catalog.level_unlocks.size());
+    for (const auto &unlock : catalog.level_unlocks) {
+        if (unlock.level_id.empty()) {
             push_issue(issues, "progression.json contains a level unlock with an empty level_id");
             continue;
         }
 
         if (contains_string(level_ids, unlock.level_id)) {
-            push_issue(issues, vformat("progression.json contains duplicate level_id '%s'", unlock.level_id));
+            push_issue(issues, "progression.json contains duplicate level_id " + quoted(unlock.level_id));
         }
         level_ids.push_back(unlock.level_id);
     }
 
-    for (const auto &unlock : catalog.get_level_unlocks()) {
-        if (!unlock.requires_completed.is_empty() && !contains_string(level_ids, unlock.requires_completed)) {
-            push_issue(issues, vformat("level '%s' requires unknown prerequisite level '%s'", unlock.level_id, unlock.requires_completed));
+    for (const auto &unlock : catalog.level_unlocks) {
+        if (!unlock.requires_completed.empty() && !contains_string(level_ids, unlock.requires_completed)) {
+            push_issue(issues, "level " + quoted(unlock.level_id) + " requires unknown prerequisite level " + quoted(unlock.requires_completed));
         }
     }
 }
 
-void validate_upgrade_catalog(const UpgradeCatalog &catalog, const UnitCatalog &unit_catalog, std::vector<String> &issues) {
-    std::vector<String> card_ids;
-    card_ids.reserve(catalog.get_cards().size());
-    for (const auto &card : catalog.get_cards()) {
+void validate_upgrade_catalog(const UpgradeCatalogValidationData &catalog, const UnitCatalog &unit_catalog, std::vector<std::string> &issues) {
+    std::vector<std::string> card_ids;
+    card_ids.reserve(catalog.cards.size());
+    for (const auto &card : catalog.cards) {
         if (contains_string(card_ids, card.id)) {
-            push_issue(issues, vformat("upgrades.json contains duplicate upgrade id '%s'", card.id));
+            push_issue(issues, "upgrades.json contains duplicate upgrade id " + quoted(card.id));
         }
         card_ids.push_back(card.id);
     }
 
-    for (const auto &unit_id : catalog.get_base_units()) {
-        const auto unit = unit_catalog.get_unit(to_std_string(unit_id));
-        if (!unit.has_value()) {
-            push_issue(issues, vformat("base unit '%s' does not exist in unit_data.json", unit_id));
+    for (const auto &unit_id : catalog.base_units) {
+        if (!unit_catalog.get_unit(unit_id).has_value()) {
+            push_issue(issues, "base unit " + quoted(unit_id) + " does not exist in unit_data.json");
         }
     }
 
-    for (const auto &card : catalog.get_cards()) {
-        for (const String &prerequisite : card.prerequisites) {
+    for (const auto &card : catalog.cards) {
+        for (const std::string &prerequisite : card.prerequisites) {
             if (!contains_string(card_ids, prerequisite)) {
-                push_issue(issues, vformat("upgrade '%s' references unknown prerequisite '%s'", card.id, prerequisite));
+                push_issue(issues, "upgrade " + quoted(card.id) + " references unknown prerequisite " + quoted(prerequisite));
             }
         }
 
         for (const auto &effect : card.effects) {
-            const bool needs_unit = effect.type == UpgradeEffectType::UNIT_UNLOCK || effect.type == UpgradeEffectType::UNIT_HP_DELTA ||
-                                    effect.type == UpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA || effect.type == UpgradeEffectType::UNIT_MOVE_SPEED_DELTA;
-            if (needs_unit && !effect.unit_id.is_empty() && !unit_catalog.get_unit(to_std_string(effect.unit_id)).has_value()) {
-                push_issue(issues, vformat("upgrade '%s' references unknown unit '%s'", card.id, effect.unit_id));
+            if (effect.requires_known_unit && !effect.unit_id.empty() && !unit_catalog.get_unit(effect.unit_id).has_value()) {
+                push_issue(issues, "upgrade " + quoted(card.id) + " references unknown unit " + quoted(effect.unit_id));
             }
         }
     }
 }
 
-void validate_levels(const ProgressionCatalog &catalog, const UnitCatalog &unit_catalog, const std::vector<LoadedLevelValidationInput> &levels,
-                     std::vector<String> &issues) {
-    for (const auto &unlock : catalog.get_level_unlocks()) {
+void validate_levels(const ProgressionCatalogValidationData &catalog, const UnitCatalog &unit_catalog, const std::vector<LoadedLevelValidationInput> &levels,
+                     std::vector<std::string> &issues) {
+    for (const auto &unlock : catalog.level_unlocks) {
         const auto found_level = std::ranges::find_if(levels, [&unlock](const LoadedLevelValidationInput &level) { return level.level_id == unlock.level_id; });
         if (found_level == levels.end() || !found_level->definition.has_value()) {
-            push_issue(issues, vformat("missing or invalid level definition for '%s'", unlock.level_id));
+            push_issue(issues, "missing or invalid level definition for " + quoted(unlock.level_id));
             continue;
         }
 
         const LevelDefinition &level_definition = *found_level->definition;
         if (level_definition.waves.empty()) {
-            push_issue(issues, vformat("level '%s' has no waves", unlock.level_id));
+            push_issue(issues, "level " + quoted(unlock.level_id) + " has no waves");
         }
 
         for (const auto &wave : level_definition.waves) {
             for (const auto &spawn : wave.spawns) {
                 const auto unit = unit_catalog.get_unit(spawn.type);
                 if (!unit.has_value()) {
-                    push_issue(issues, vformat("level '%s' references unknown spawn type '%s'", unlock.level_id, to_godot_string(spawn.type)));
+                    push_issue(issues, "level " + quoted(unlock.level_id) + " references unknown spawn type " + quoted(spawn.type));
                     continue;
                 }
                 if (unit->side != UnitSide::HOSTILE) {
-                    push_issue(issues, vformat("level '%s' uses non-hostile spawn type '%s'", unlock.level_id, to_godot_string(spawn.type)));
+                    push_issue(issues, "level " + quoted(unlock.level_id) + " uses non-hostile spawn type " + quoted(spawn.type));
                 }
             }
         }
@@ -127,22 +116,20 @@ void validate_levels(const ProgressionCatalog &catalog, const UnitCatalog &unit_
 
 } // namespace
 
-ContentValidationReport ContentValidator::validate_loaded_content(const std::optional<MenuContentData> &menu_data,
-                                                                  const ProgressionCatalog *progression_catalog, const UpgradeCatalog *upgrade_catalog,
-                                                                  const UnitCatalog *unit_catalog, const std::vector<LoadedLevelValidationInput> &levels) {
+ContentValidationReport ContentValidator::validate_loaded_content(const ContentValidationInput &input) {
     ContentValidationReport report;
 
-    if (menu_data.has_value()) {
-        validate_menu_content(*menu_data, report.issues);
+    if (input.menu_data.has_value()) {
+        validate_menu_content(*input.menu_data, report.issues);
     }
-    if (progression_catalog != nullptr) {
-        validate_progression_catalog(*progression_catalog, report.issues);
+    if (input.progression_catalog.has_value()) {
+        validate_progression_catalog(*input.progression_catalog, report.issues);
     }
-    if (upgrade_catalog != nullptr && unit_catalog != nullptr) {
-        validate_upgrade_catalog(*upgrade_catalog, *unit_catalog, report.issues);
+    if (input.upgrade_catalog.has_value() && input.unit_catalog != nullptr) {
+        validate_upgrade_catalog(*input.upgrade_catalog, *input.unit_catalog, report.issues);
     }
-    if (progression_catalog != nullptr && unit_catalog != nullptr) {
-        validate_levels(*progression_catalog, *unit_catalog, levels, report.issues);
+    if (input.progression_catalog.has_value() && input.unit_catalog != nullptr) {
+        validate_levels(*input.progression_catalog, *input.unit_catalog, input.levels, report.issues);
     }
 
     return report;

@@ -1,8 +1,7 @@
 #include "match_director.h"
 
-#include "godot_string.h"
-
 #include <algorithm>
+#include <utility>
 
 namespace defn {
 
@@ -56,9 +55,9 @@ bool MatchDirector::configure(ProgressionService *campaign, const UnitCatalog *u
     return campaign_ != nullptr && unit_catalog_ != nullptr && grid_ != nullptr;
 }
 
-void MatchDirector::load_level_definition(const LevelDefinition &level_definition, const String &level_id) {
+void MatchDirector::load_level_definition(const LevelDefinition &level_definition, std::string level_id) {
     spawn_scheduler_.load_level_definition(level_definition);
-    level_id_ = level_id;
+    level_id_ = std::move(level_id);
 }
 
 void MatchDirector::begin_match() {
@@ -217,12 +216,12 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
     spawn_scheduler_.stop();
     const int level_score = match_session_.calculate_level_score(victory);
 
-    const ProgressionMatchResult progression_result = campaign_->complete_level(to_std_string(level_id_), level_score, victory);
+    const ProgressionMatchResult progression_result = campaign_->complete_level(level_id_, level_score, victory);
     const std::vector<std::string> new_unlocks = campaign_->build_new_unlock_descriptions(progression_result.new_unlock_level_ids);
     pending_match_end_ = MatchEnded{
         .victory = victory,
-        .summary_model = match_session_.build_end_game_summary(victory, progression_result.new_total_score, to_std_string(level_id_),
-                                                               progression_result.next_level_id, new_unlocks),
+        .summary_model =
+            match_session_.build_end_game_summary(victory, progression_result.new_total_score, level_id_, progression_result.next_level_id, new_unlocks),
         .reward_options = build_reward_options(progression_result.reward_draft),
         .owned_upgrades = to_match_upgrade_options(campaign_->build_owned_upgrade_cards()),
     };

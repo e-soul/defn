@@ -10,15 +10,11 @@
 #include "spawn_scheduler.h"
 #include "unit_definition.h"
 
-#include <godot_cpp/variant/string.hpp>
-
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace defn {
-
-using namespace godot;
 
 struct EnemyDefeatedReport {
     int bounty = 0;
@@ -27,7 +23,7 @@ struct EnemyDefeatedReport {
 class MatchDirector {
   public:
     bool configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random = nullptr);
-    void load_level_definition(const LevelDefinition &level_definition, const String &level_id);
+    void load_level_definition(const LevelDefinition &level_definition, std::string level_id);
     void begin_match();
     MatchUpdate update(double delta);
     MatchUpdate handle_deploy_request(const std::string &unit_id);
@@ -41,9 +37,9 @@ class MatchDirector {
     int get_base_integrity() const { return match_session_.get_base_integrity(); }
     int get_base_max_health() const { return match_session_.get_base_max_health(); }
     int get_level_number() const { return spawn_scheduler_.get_level_number(); }
-    String get_level_name() const { return spawn_scheduler_.get_level_name(); }
+    const std::string &get_level_name() const { return spawn_scheduler_.get_level_name(); }
     int get_total_waves() const { return spawn_scheduler_.get_total_waves(); }
-    String get_background_path() const { return spawn_scheduler_.get_background_path(); }
+    const std::string &get_background_path() const { return spawn_scheduler_.get_background_path(); }
     std::vector<UnitConfig> build_available_friendlies() const;
 
     const MatchEnded *get_pending_match_end() const;
@@ -60,7 +56,7 @@ class MatchDirector {
     ProgressionService *campaign_ = nullptr;
     const UnitCatalog *unit_catalog_ = nullptr;
     const GridQueryService *grid_ = nullptr;
-    String level_id_;
+    std::string level_id_;
     MatchSession match_session_;
     DeploymentService deployment_service_;
     SpawnScheduler spawn_scheduler_;
