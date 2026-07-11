@@ -32,6 +32,31 @@ godot::Ref<godot::StyleBoxFlat> panel_style(const godot::Color &border = godot::
     return style;
 }
 
+godot::Ref<godot::StyleBoxFlat> roster_button_style(const godot::Color &background, const godot::Color &border) {
+    godot::Ref<godot::StyleBoxFlat> style;
+    style.instantiate();
+    style->set_bg_color(background);
+    style->set_border_width_all(2);
+    style->set_border_color(border);
+    style->set_corner_radius_all(8);
+    style->set_content_margin_all(8.0F);
+    return style;
+}
+
+void apply_roster_button_styles(godot::Button &button, bool selected) {
+    const godot::Color normal_background = selected ? godot::Color(0.12, 0.11, 0.07, 0.98) : godot::Color(0.035, 0.075, 0.13, 0.96);
+    const godot::Color hover_background = selected ? godot::Color(0.16, 0.14, 0.07, 1.0) : godot::Color(0.055, 0.11, 0.18, 0.98);
+    const godot::Color pressed_background = selected ? godot::Color(0.19, 0.16, 0.07, 1.0) : godot::Color(0.07, 0.14, 0.22, 1.0);
+    const godot::Color border = selected ? godot::Color(1.0, 0.75, 0.2) : godot::Color(0.2, 0.34, 0.48);
+    const godot::Color focus_border = selected ? godot::Color(1.0, 0.86, 0.42) : godot::Color(0.42, 0.65, 0.84);
+
+    button.add_theme_stylebox_override("normal", roster_button_style(normal_background, border));
+    button.add_theme_stylebox_override("hover", roster_button_style(hover_background, border));
+    button.add_theme_stylebox_override("pressed", roster_button_style(pressed_background, border));
+    button.add_theme_stylebox_override("focus", roster_button_style(normal_background, focus_border));
+    button.add_theme_stylebox_override("disabled", roster_button_style(normal_background, border));
+}
+
 godot::String frame_zero_path(const std::string &path_template) {
     godot::String path = to_godot_string(path_template);
     path = path.replace("%03d", "000");
@@ -164,6 +189,7 @@ void ProgressionStatsScreenView::rebuild() {
         button->set_custom_minimum_size({150.0F, 74.0F});
         button->set_focus_mode(godot::Control::FOCUS_ALL);
         button->set_disabled(!selector.unlocked);
+        apply_roster_button_styles(*button, selector.selected);
         if (!selector.locked_message.empty()) {
             button->set_tooltip_text(to_godot_string(selector.locked_message));
         }
@@ -173,11 +199,6 @@ void ProgressionStatsScreenView::rebuild() {
         }
         if (!selector.unlocked) {
             button->set_modulate(godot::Color(0.4, 0.4, 0.45, 0.7));
-        }
-        if (selector.selected) {
-            const auto selected_style = panel_style(godot::Color(1.0, 0.75, 0.2));
-            button->add_theme_stylebox_override("normal", selected_style);
-            button->add_theme_stylebox_override("hover", selected_style);
         }
         if (selector.unlocked) {
             button->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::select_entity).bind(to_godot_string(selector.id)));

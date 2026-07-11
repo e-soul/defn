@@ -30,11 +30,13 @@
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/style_box.hpp>
+#include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/core/object.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <initializer_list>
 #include <string>
@@ -164,6 +166,26 @@ bool button_minimum_size_is(Button *button, double width, double height) {
     return nearly_equal(minimum_size.x, width) && nearly_equal(minimum_size.y, height);
 }
 
+bool roster_button_states_have_consistent_geometry(Button *button) {
+    if (button == nullptr) {
+        return false;
+    }
+
+    constexpr std::array<const char *, 5> states = {"normal", "hover", "pressed", "focus", "disabled"};
+    const Ref<StyleBoxFlat> normal = button->get_theme_stylebox(states.front());
+    if (normal.is_null()) {
+        return false;
+    }
+
+    return std::ranges::all_of(states, [button, &normal](const char *state) {
+        const Ref<StyleBoxFlat> style = button->get_theme_stylebox(state);
+        return style.is_valid() && style->get_minimum_size() == normal->get_minimum_size() &&
+               style->get_border_width(SIDE_LEFT) == normal->get_border_width(SIDE_LEFT) &&
+               style->get_corner_radius(CORNER_TOP_LEFT) == normal->get_corner_radius(CORNER_TOP_LEFT) &&
+               nearly_equal(style->get_content_margin(SIDE_LEFT), normal->get_content_margin(SIDE_LEFT));
+    });
+}
+
 bool selected_upgrade_button_matches(Button *button) {
     return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 180.0, 220.0) && button->has_theme_stylebox_override("normal") &&
            button->has_theme_stylebox_override("disabled") && has_all_labels(button, {"+", "x2", "Rapid Reload", "Shoot more often."});
@@ -175,9 +197,8 @@ bool progression_view_has_initial_entity_state(ProgressionStatsScreenView *view)
     Button *selected_button = find_button_by_text(view, "Breacher");
     Button *locked_button = find_button_by_text(view, "Marksman [Locked]");
     return has_label_text(view, "Breacher") && view->find_child("EntityPortraitFallback", true, false) != nullptr && selected_button != nullptr &&
-           selected_button->has_theme_stylebox_override("normal") && selected_button->has_theme_stylebox_override("hover") &&
-           selected_button->get_theme_stylebox("normal") == selected_button->get_theme_stylebox("hover") && locked_button != nullptr &&
-           locked_button->is_disabled();
+           button_minimum_size_is(selected_button, 150.0, 74.0) && roster_button_states_have_consistent_geometry(selected_button) && locked_button != nullptr &&
+           locked_button->is_disabled() && roster_button_states_have_consistent_geometry(locked_button);
 }
 
 bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenViewNodes &view) {
