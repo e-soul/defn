@@ -3,9 +3,7 @@
 #include "godot_color.h"
 #include "godot_string.h"
 #include "menu_data_loader.h"
-#include "menu_flow_use_case.h"
 #include "menu_style.h"
-#include "scene_navigator.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
@@ -17,7 +15,7 @@
 
 namespace defn {
 
-void PauseMenu::_bind_methods() {}
+void PauseMenu::_bind_methods() { ADD_SIGNAL(MethodInfo("main_menu_requested")); }
 
 void PauseMenu::_ready() {
     // Render on top of everything
@@ -119,10 +117,7 @@ void PauseMenu::on_resume() { set_paused(false); }
 
 void PauseMenu::on_main_menu() {
     set_paused(false);
-    const MenuFlowResult result = MenuFlowUseCase::request_main_menu();
-    if (result.navigation.has_value()) {
-        SceneNavigator::navigate(get_tree(), *result.navigation);
-    }
+    emit_signal("main_menu_requested");
 }
 
 } // namespace defn

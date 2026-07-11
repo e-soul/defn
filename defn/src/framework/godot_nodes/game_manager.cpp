@@ -183,6 +183,7 @@ void GameManager::_ready() {
     auto *pause_menu = memnew(PauseMenu);
     pause_menu->set_name("PauseMenu");
     add_child(pause_menu);
+    pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_score_screen_main_menu));
 }
 
 void GameManager::_process(double delta) {

@@ -198,13 +198,11 @@ bool MatchDirector::finalize_selected_upgrade() {
         return false;
     }
 
-    const bool claim_succeeded = campaign_->claim_upgrade({
+    return campaign_->claim_upgrade({
         .source = progression_reward_source_from_id(reward.source),
         .level_id = reward.level_id,
         .upgrade_id = reward.selected_upgrade->id,
     });
-
-    return claim_succeeded;
 }
 
 MatchUpdate MatchDirector::finish_match(bool victory) {

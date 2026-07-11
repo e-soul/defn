@@ -116,6 +116,7 @@ class FakeProgressionService final : public ProgressionService {
     bool save_called = false;
     bool level_claimed = false;
     bool rescue_claimed = false;
+    bool claim_succeeds = true;
     std::vector<ProgressionUpgradeCardViewModel> level_draft;
     std::vector<ProgressionUpgradeCardViewModel> rescue_draft;
     std::vector<ProgressionUpgradeCardViewModel> owned_upgrades;
@@ -201,6 +202,9 @@ class FakeProgressionService final : public ProgressionService {
         };
     }
     bool claim_upgrade(const ProgressionRewardClaim &claim) override {
+        if (!claim_succeeds) {
+            return false;
+        }
         if (claim.source == ProgressionRewardSource::FIRST_CLEAR) {
             level_claimed = true;
         } else if (claim.source == ProgressionRewardSource::RESCUE) {
@@ -476,9 +480,36 @@ DEFN_TEST(match_director_victory_produces_reward_and_next_level) {
 
     progression.save_called = false;
     const bool reward_finalization_behaved = !director.select_upgrade("") && !director.select_upgrade("missing") && !director.finalize_selected_upgrade() &&
-                                             director.select_upgrade("upgrade_a") && director.finalize_selected_upgrade() && progression.level_claimed &&
-                                             progression.save_called;
+                                             director.select_upgrade("upgrade_a") && !progression.save_called && director.finalize_selected_upgrade() &&
+                                             progression.level_claimed && progression.save_called;
     DEFN_CHECK(reward_finalization_behaved);
+}
+
+DEFN_TEST(match_director_keeps_selected_upgrade_pending_when_save_fails) {
+    UnitDataLoader unit_loader = make_unit_loader();
+    FakeGridService grid;
+    FakeProgressionService progression;
+    progression.current_level_id = "level_01";
+    progression.level_unlocks = {{.level_id = "level_01"}};
+    progression.level_draft.push_back({.id = "upgrade_a", .name = "Upgrade A"});
+    progression.level_draft.push_back({.id = "upgrade_b", .name = "Upgrade B"});
+    progression.claim_succeeds = false;
+
+    MatchDirector director;
+    DEFN_REQUIRE(director.configure(&progression, &unit_loader, &grid));
+    director.load_level_definition(make_empty_level(), "level_01");
+    director.begin_match();
+    const MatchUpdate update = director.update(0.0);
+    DEFN_REQUIRE(update.match_ended.has_value());
+
+    progression.save_called = false;
+    DEFN_CHECK(director.select_upgrade("upgrade_a"));
+    DEFN_CHECK(director.select_upgrade("upgrade_b"));
+    const auto &selected_upgrade = director.get_pending_match_end()->reward_options.selected_upgrade;
+    DEFN_REQUIRE(selected_upgrade.has_value());
+    DEFN_CHECK_EQ(selected_upgrade.value().id, std::string("upgrade_b"));
+    DEFN_CHECK(!progression.save_called);
+    DEFN_CHECK(!director.finalize_selected_upgrade());
 }
 
 DEFN_TEST(match_director_defeat_produces_rescue_reward) {
