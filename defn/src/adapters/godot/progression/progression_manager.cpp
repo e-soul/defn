@@ -5,6 +5,7 @@
 #include "godot_string.h"
 #include "progression_presentation.h"
 #include "unit_definition.h"
+#include "unit_progression_mapper.h"
 
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -20,23 +21,6 @@ PackedStringArray to_packed_string_array(const std::vector<std::string> &values)
         result.push_back(to_godot_string(value));
     }
     return result;
-}
-
-ProgressionUnitStats to_progression_unit_stats(const UnitConfig &config) {
-    return {
-        .unit_id = config.name,
-        .friendly = config.side == UnitSide::FRIENDLY,
-        .hp = config.hp,
-        .ranged_damage = config.ranged_damage,
-        .move_speed = static_cast<float>(config.move_speed_pixels_per_second),
-        .has_projectile_attack = config.projectile_attack.has_value(),
-    };
-}
-
-void apply_progression_unit_stats(UnitConfig &config, const ProgressionUnitStats &stats) {
-    config.hp = stats.hp;
-    config.ranged_damage = stats.ranged_damage;
-    config.move_speed_pixels_per_second = stats.move_speed;
 }
 
 UpgradeCardViewModel to_godot_upgrade_card(const ProgressionUpgradeCardViewModel &card) {
@@ -196,9 +180,7 @@ ProgressionUnitStats CampaignService::get_effective_friendly_unit_stats(const Pr
 }
 
 UnitConfig CampaignService::get_effective_friendly_unit_config(const UnitConfig &base_config) const {
-    UnitConfig effective_config = base_config;
-    apply_progression_unit_stats(effective_config, get_effective_friendly_unit_stats(to_progression_unit_stats(base_config)));
-    return effective_config;
+    return with_progression_unit_stats(base_config, get_effective_friendly_unit_stats(to_progression_unit_stats(base_config)));
 }
 
 int CampaignService::get_effective_starting_energy(int base) const {

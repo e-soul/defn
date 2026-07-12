@@ -11,26 +11,9 @@
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 
-#include <cctype>
-
 namespace defn {
 
 namespace {
-
-DeployCardPresentationInput to_presentation_input(const UnitConfig &config) {
-    DeployCardPresentationInput input;
-    input.unit_id = config.name;
-    input.title = config.name;
-    if (!input.title.empty()) {
-        input.title[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(input.title[0])));
-    }
-    input.cost = config.cost;
-    input.animation_path_templates.reserve(config.animations.size());
-    for (const auto &[name, animation] : config.animations) {
-        input.animation_path_templates.emplace_back(name, animation.path_template);
-    }
-    return input;
-}
 
 Ref<StyleBoxFlat> make_card_style(const godot::Color &background_color, const godot::Color &border_color) {
     Ref<StyleBoxFlat> style;
@@ -116,7 +99,7 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
 }
 
 Button *DeployCardPresenter::create(const UnitConfig &config, const Callable &pressed_action) {
-    return create(build_deploy_card_view_model(to_presentation_input(config)), pressed_action);
+    return create(build_deploy_card_view_model(build_deploy_card_presentation_input(config)), pressed_action);
 }
 
 } // namespace defn

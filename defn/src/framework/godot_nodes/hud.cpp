@@ -3,7 +3,6 @@
 #include "godot_color.h"
 #include "godot_string.h"
 #include "score_screen_view.h"
-#include <cctype>
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -11,25 +10,6 @@
 #include <utility>
 
 namespace defn {
-
-namespace {
-
-DeployCardPresentationInput to_deploy_card_input(const UnitConfig &config) {
-    DeployCardPresentationInput input;
-    input.unit_id = config.name;
-    input.title = config.name;
-    if (!input.title.empty()) {
-        input.title[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(input.title[0])));
-    }
-    input.cost = config.cost;
-    input.animation_path_templates.reserve(config.animations.size());
-    for (const auto &[name, animation] : config.animations) {
-        input.animation_path_templates.emplace_back(name, animation.path_template);
-    }
-    return input;
-}
-
-} // namespace
 
 HUD::HUD() = default;
 
@@ -122,7 +102,7 @@ void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
     hud_input_.deploy_cards.clear();
     hud_input_.deploy_cards.reserve(units.size());
     for (const auto &cfg : units) {
-        hud_input_.deploy_cards.push_back(to_deploy_card_input(cfg));
+        hud_input_.deploy_cards.push_back(build_deploy_card_presentation_input(cfg));
     }
 
     render(HudPresenter::build(hud_input_));

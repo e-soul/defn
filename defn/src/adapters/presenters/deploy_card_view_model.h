@@ -7,6 +7,8 @@
 
 namespace defn {
 
+struct UnitConfig;
+
 struct DeployCardPresentationInput {
     std::string unit_id;
     std::string title;
@@ -22,6 +24,7 @@ struct DeployCardViewModel {
 };
 
 [[nodiscard]] DeployCardViewModel build_deploy_card_view_model(const DeployCardPresentationInput &input);
+[[nodiscard]] DeployCardPresentationInput build_deploy_card_presentation_input(const UnitConfig &config);
 
 } // namespace defn
 

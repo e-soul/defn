@@ -5,6 +5,7 @@
 #include "match_result_cutscene_view_model.h"
 #include "menu_view_model.h"
 #include "score_screen_view_model.h"
+#include "unit_definition.h"
 
 namespace defn {
 
@@ -100,6 +101,25 @@ DEFN_TEST(deploy_card_view_model_preserves_zero_padded_frame_templates) {
     });
 
     DEFN_CHECK_EQ(view_model.portrait_path, std::string("res://Shoot__000.png"));
+}
+
+DEFN_TEST(deploy_card_presentation_input_maps_unit_config_consistently) {
+    UnitConfig config;
+    config.name = "operator";
+    config.cost = 25;
+    config.animations = {{"walk", {.path_template = "res://walk_%d.png"}}, {"shoot", {.path_template = "res://shoot_%03d.png"}}};
+
+    const DeployCardPresentationInput input = build_deploy_card_presentation_input(config);
+
+    DEFN_CHECK_EQ(input.unit_id, std::string("operator"));
+    DEFN_CHECK_EQ(input.title, std::string("Operator"));
+    DEFN_CHECK_EQ(input.cost, 25);
+    DEFN_REQUIRE(input.animation_path_templates.size() == static_cast<size_t>(2));
+    DEFN_CHECK_EQ(input.animation_path_templates[0], std::pair(std::string("walk"), std::string("res://walk_%d.png")));
+    DEFN_CHECK_EQ(input.animation_path_templates[1], std::pair(std::string("shoot"), std::string("res://shoot_%03d.png")));
+
+    config.name.clear();
+    DEFN_CHECK_EQ(build_deploy_card_presentation_input(config).title, std::string());
 }
 
 DEFN_TEST(hud_presenter_formats_match_state_and_deploy_card_affordability) {

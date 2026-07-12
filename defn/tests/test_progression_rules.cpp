@@ -1,6 +1,7 @@
 #include "test_harness.h"
 
 #include "progression_rules.h"
+#include "unit_progression_mapper.h"
 
 namespace defn {
 
@@ -139,6 +140,48 @@ DEFN_TEST(progression_rules_calculate_campaign_modifiers) {
     DEFN_CHECK_EQ(modifiers.energy_regen, 2);
     DEFN_CHECK_CLOSE(modifiers.bounty_multiplier, 1.25, 0.001);
     DEFN_CHECK_EQ(modifiers.base_integrity_delta, 2);
+}
+
+DEFN_TEST(unit_progression_mapper_converts_all_progression_fields) {
+    UnitConfig config;
+    config.name = "raider";
+    config.side = UnitSide::HOSTILE;
+    config.hp = 175;
+    config.ranged_damage = 23;
+    config.move_speed_pixels_per_second = 81.5F;
+    config.projectile_attack = ProjectileAttackConfig{};
+
+    const ProgressionUnitStats stats = to_progression_unit_stats(config);
+
+    DEFN_CHECK_EQ(stats.unit_id, std::string("raider"));
+    DEFN_CHECK(!stats.friendly);
+    DEFN_CHECK_EQ(stats.hp, 175);
+    DEFN_CHECK_EQ(stats.ranged_damage, 23);
+    DEFN_CHECK_CLOSE(stats.move_speed, 81.5, 0.001);
+    DEFN_CHECK(stats.has_projectile_attack);
+}
+
+DEFN_TEST(unit_progression_mapper_applies_stats_to_a_copy_only) {
+    UnitConfig base;
+    base.name = "operator";
+    base.hp = 100;
+    base.ranged_damage = 8;
+    base.move_speed_pixels_per_second = 64.0F;
+    base.cost = 25;
+    base.melee_damage = 17;
+
+    const UnitConfig effective = with_progression_unit_stats(
+        base, {.unit_id = "operator", .friendly = true, .hp = 140, .ranged_damage = 13, .move_speed = 72.5F, .has_projectile_attack = false});
+
+    DEFN_CHECK_EQ(effective.hp, 140);
+    DEFN_CHECK_EQ(effective.ranged_damage, 13);
+    DEFN_CHECK_CLOSE(effective.move_speed_pixels_per_second, 72.5, 0.001);
+    DEFN_CHECK_EQ(effective.name, base.name);
+    DEFN_CHECK_EQ(effective.cost, base.cost);
+    DEFN_CHECK_EQ(effective.melee_damage, base.melee_damage);
+    DEFN_CHECK_EQ(base.hp, 100);
+    DEFN_CHECK_EQ(base.ranged_damage, 8);
+    DEFN_CHECK_CLOSE(base.move_speed_pixels_per_second, 64.0, 0.001);
 }
 
 } // namespace defn
