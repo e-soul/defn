@@ -22,7 +22,7 @@ namespace defn {
 
 namespace {
 
-constexpr auto PROMOTION_SFX_PATH = "res://assets/sfx/field_promotion.wav";
+constexpr auto PROMOTION_SFX_PATH = "res://assets/sfx/field_promotion_kalimba.wav";
 constexpr int STAR_FONT_SIZE = 68;
 constexpr int STAR_OUTLINE_SIZE = 9;
 constexpr float STAR_BAR_GAP = 4.0F;

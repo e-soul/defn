@@ -1,16 +1,42 @@
 #include "field_promotion_effect.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <godot_cpp/classes/cpu_particles2d.hpp>
 #include <godot_cpp/classes/gradient.hpp>
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
 
 namespace defn::vfx {
 
 namespace {
 
-constexpr int PARTICLE_COUNT = 10;
-constexpr double PARTICLE_LIFETIME_SECONDS = 0.65;
-constexpr double EFFECT_LIFETIME_SECONDS = 0.8;
+constexpr int PARTICLE_COUNT = 28;
+constexpr int PARTICLE_TEXTURE_SIZE = 32;
+constexpr double PARTICLE_LIFETIME_SECONDS = 0.9;
+constexpr double EFFECT_LIFETIME_SECONDS = 1.05;
 constexpr int VFX_Z_INDEX = 70;
+
+godot::Ref<godot::Texture2D> get_particle_texture() {
+    static godot::Ref<godot::Texture2D> texture;
+    if (texture.is_valid()) {
+        return texture;
+    }
+
+    godot::Ref<godot::Image> image = godot::Image::create_empty(PARTICLE_TEXTURE_SIZE, PARTICLE_TEXTURE_SIZE, false, godot::Image::FORMAT_RGBA8);
+    constexpr float radius = static_cast<float>(PARTICLE_TEXTURE_SIZE) * 0.5F;
+    for (int pixel_y = 0; pixel_y < PARTICLE_TEXTURE_SIZE; ++pixel_y) {
+        for (int pixel_x = 0; pixel_x < PARTICLE_TEXTURE_SIZE; ++pixel_x) {
+            const godot::Vector2 offset(static_cast<float>(pixel_x) + 0.5F - radius, static_cast<float>(pixel_y) + 0.5F - radius);
+            const float normalized_distance = offset.length() / radius;
+            const float alpha = std::pow(std::clamp(1.0F - normalized_distance, 0.0F, 1.0F), 1.35F);
+            image->set_pixel(pixel_x, pixel_y, godot::Color(1.0F, 1.0F, 1.0F, alpha));
+        }
+    }
+    texture = godot::ImageTexture::create_from_image(image);
+    return texture;
+}
 
 godot::Ref<godot::Gradient> make_color_ramp() {
     godot::Ref<godot::Gradient> gradient;
@@ -38,14 +64,15 @@ void FieldPromotionEffect::start() {
     particles->set_amount(PARTICLE_COUNT);
     particles->set_lifetime(PARTICLE_LIFETIME_SECONDS);
     particles->set_one_shot(true);
-    particles->set_explosiveness_ratio(0.95F);
+    particles->set_explosiveness_ratio(0.92F);
     particles->set_direction(godot::Vector2(0.0F, -1.0F));
-    particles->set_spread(28.0F);
-    particles->set_param_min(godot::CPUParticles2D::PARAM_INITIAL_LINEAR_VELOCITY, 28.0F);
-    particles->set_param_max(godot::CPUParticles2D::PARAM_INITIAL_LINEAR_VELOCITY, 52.0F);
-    particles->set_gravity(godot::Vector2(0.0F, 34.0F));
-    particles->set_param_min(godot::CPUParticles2D::PARAM_SCALE, 1.5F);
-    particles->set_param_max(godot::CPUParticles2D::PARAM_SCALE, 3.5F);
+    particles->set_spread(48.0F);
+    particles->set_param_min(godot::CPUParticles2D::PARAM_INITIAL_LINEAR_VELOCITY, 60.0F);
+    particles->set_param_max(godot::CPUParticles2D::PARAM_INITIAL_LINEAR_VELOCITY, 105.0F);
+    particles->set_gravity(godot::Vector2(0.0F, 50.0F));
+    particles->set_param_min(godot::CPUParticles2D::PARAM_SCALE, 0.336F);
+    particles->set_param_max(godot::CPUParticles2D::PARAM_SCALE, 0.696F);
+    particles->set_texture(get_particle_texture());
     particles->set_color_ramp(make_color_ramp());
     particles->set_z_index(VFX_Z_INDEX);
     add_child(particles);

@@ -627,7 +627,7 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
 }
 
 DEFN_TEST(field_promotion_audio_resource_loads) {
-    const godot::Ref<godot::AudioStream> stream = godot::ResourceLoader::get_singleton()->load("res://assets/sfx/field_promotion.wav");
+    const godot::Ref<godot::AudioStream> stream = godot::ResourceLoader::get_singleton()->load("res://assets/sfx/field_promotion_kalimba.wav");
     DEFN_CHECK(stream.is_valid());
 }
 
