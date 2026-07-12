@@ -2,6 +2,7 @@
 #define PROGRESSION_STATS_PRESENTER_H
 
 #include "progression_models.h"
+#include "progression_stat_visualization.h"
 
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@ struct ProgressionStatRowViewModel {
     std::string label;
     std::string value;
     std::string detail;
+    ProgressionStatVisualViewModel visual;
 };
 
 struct ProgressionUpgradeChipViewModel {

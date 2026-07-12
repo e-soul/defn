@@ -39,7 +39,15 @@ DEFN_TEST(progression_stats_presenter_defaults_to_first_unlocked_deployable_and_
     DEFN_REQUIRE(model.stats.size() == static_cast<size_t>(4));
     DEFN_CHECK_EQ(model.stats[0].value, std::string("450"));
     DEFN_CHECK_EQ(model.stats[0].detail, std::string("400 +50"));
+    DEFN_CHECK_EQ(model.stats[0].visual.exact_detail, std::string("Health: 450 HP (base 400, +50 upgrade)"));
+    DEFN_CHECK_CLOSE(model.stats[0].visual.quantum, 100.0, 0.000001);
+    DEFN_CHECK_EQ(model.stats[0].visual.icon, ProgressionStatIcon::SHIELD);
+    DEFN_CHECK(!model.stats[0].visual.segments[3].upgrade_emphasis);
+    DEFN_CHECK(model.stats[0].visual.segments[4].upgrade_emphasis);
     DEFN_CHECK_EQ(model.stats[1].detail, std::string());
+    DEFN_CHECK_EQ(model.stats[3].label, std::string("Energy cost"));
+    DEFN_CHECK(model.stats[3].visual.exact_detail.contains("Fewer cells means a cheaper deployment"));
+    DEFN_CHECK_EQ(model.stats[3].visual.direction, ProgressionStatDirection::MORE_IS_EXPENSIVE);
     DEFN_REQUIRE(model.upgrades.size() == static_cast<size_t>(1));
     DEFN_CHECK_EQ(model.upgrades[0].label, std::string("Plating x2"));
     DEFN_CHECK_EQ(model.selectors[2].locked_message, std::string("Unlock with Sharpshooter Contract"));
@@ -54,6 +62,8 @@ DEFN_TEST(progression_stats_presenter_formats_campaign_contributions_without_tot
     DEFN_CHECK_EQ(model.stats[1].value, std::string("2/s"));
     DEFN_CHECK_EQ(model.stats[1].detail, std::string("1 +1"));
     DEFN_CHECK_EQ(model.stats[2].value, std::string("+50%"));
+    DEFN_CHECK_CLOSE(model.stats[2].visual.quantum, 10.0, 0.000001);
+    DEFN_CHECK_EQ(model.stats[2].visual.icon, ProgressionStatIcon::BOUNTY);
 }
 
 DEFN_TEST(progression_stats_presenter_rejects_locked_or_unknown_selection) {

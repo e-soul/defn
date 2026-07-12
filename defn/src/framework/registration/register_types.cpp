@@ -21,6 +21,7 @@
 #include "movement_component.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
+#include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "sound_controller.h"
@@ -59,6 +60,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
+    ClassDB::register_internal_class<defn::ProgressionStatMeter>();
     ClassDB::register_class<defn::PauseMenu>();
 #ifdef DEFN_HOSTED_TESTS_ENABLED
     ClassDB::register_class<defn::DefnHostedTestRunner>();

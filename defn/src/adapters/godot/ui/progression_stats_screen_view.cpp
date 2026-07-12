@@ -2,6 +2,7 @@
 
 #include "godot_string.h"
 #include "owned_upgrades_panel.h"
+#include "progression_stat_meter.h"
 #include "progression_stats_presenter.h"
 
 #include <godot_cpp/classes/button.hpp>
@@ -138,6 +139,8 @@ void ProgressionStatsScreenView::go_back() {
 }
 
 void ProgressionStatsScreenView::clear_content() {
+    exact_detail_label_ = nullptr;
+    active_stat_id_ = godot::String();
     while (get_child_count() > 0) {
         godot::Node *child = get_child(0);
         remove_child(child);
@@ -250,18 +253,20 @@ void ProgressionStatsScreenView::rebuild() {
     for (const auto &stat : model.stats) {
         auto *row = memnew(godot::HBoxContainer);
         auto *label = make_label(to_godot_string(stat.label), 19, godot::Color(0.72, 0.79, 0.88));
-        label->set_h_size_flags(godot::Control::SIZE_EXPAND_FILL);
+        label->set_custom_minimum_size({145.0F, 0.0F});
         row->add_child(label);
-        auto *value = make_label(to_godot_string(stat.value), 25, godot::Color(0.95, 0.97, 1.0));
-        value->set_horizontal_alignment(godot::HORIZONTAL_ALIGNMENT_RIGHT);
-        row->add_child(value);
+        auto *meter = memnew(ProgressionStatMeter);
+        meter->configure(stat.visual);
+        meter->set_h_size_flags(godot::Control::SIZE_EXPAND_FILL);
+        meter->connect("detail_state_changed", callable_mp(this, &ProgressionStatsScreenView::on_stat_detail_changed));
+        row->add_child(meter);
         stats_column->add_child(row);
-        if (!stat.detail.empty()) {
-            auto *detail = make_label(to_godot_string(stat.detail), 15, godot::Color(0.58, 0.67, 0.78));
-            detail->set_horizontal_alignment(godot::HORIZONTAL_ALIGNMENT_RIGHT);
-            stats_column->add_child(detail);
-        }
     }
+    exact_detail_label_ = make_label({}, 15, godot::Color(0.72, 0.82, 0.91));
+    exact_detail_label_->set_name("ExactStatDetail");
+    exact_detail_label_->set_custom_minimum_size({0.0F, 24.0F});
+    exact_detail_label_->set_autowrap_mode(godot::TextServer::AUTOWRAP_WORD_SMART);
+    stats_column->add_child(exact_detail_label_);
     stats_column->add_child(make_label("UPGRADE SOURCES", 17, godot::Color(1.0, 0.78, 0.3)));
     if (model.upgrades.empty()) {
         stats_column->add_child(make_label(to_godot_string(model.empty_upgrade_message), 15, godot::Color(0.65, 0.72, 0.8)));
@@ -285,6 +290,19 @@ void ProgressionStatsScreenView::rebuild() {
     back->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::go_back));
     actions->add_child(back);
     add_child(actions);
+}
+
+void ProgressionStatsScreenView::on_stat_detail_changed(const godot::String &stat_id, const godot::String &detail, bool active) {
+    if (exact_detail_label_ == nullptr) {
+        return;
+    }
+    if (active) {
+        active_stat_id_ = stat_id;
+        exact_detail_label_->set_text(detail);
+    } else if (active_stat_id_ == stat_id) {
+        active_stat_id_ = godot::String();
+        exact_detail_label_->set_text(godot::String());
+    }
 }
 
 } // namespace defn

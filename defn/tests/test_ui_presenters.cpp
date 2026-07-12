@@ -13,6 +13,7 @@
 #include "match_result_cutscene_view_model.h"
 #include "menu_manager.h"
 #include "pause_menu.h"
+#include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "projectile_factory.h"
@@ -203,6 +204,21 @@ bool progression_view_has_initial_entity_state(ProgressionStatsScreenView *view)
     return has_label_text(view, "Breacher") && view->find_child("EntityPortraitFallback", true, false) != nullptr && selected_button != nullptr &&
            button_minimum_size_is(selected_button, 150.0, 74.0) && roster_button_states_have_consistent_geometry(selected_button) && locked_button != nullptr &&
            locked_button->is_disabled() && roster_button_states_have_consistent_geometry(locked_button);
+}
+
+bool progression_stat_meter_shows_exact_detail_on_request(ProgressionStatsScreenView *view) {
+    auto *meter = Object::cast_to<ProgressionStatMeter>(view->find_child("StatMeter_health", true, false));
+    auto *exact_detail = Object::cast_to<Label>(view->find_child("ExactStatDetail", true, false));
+    if (meter == nullptr || exact_detail == nullptr) {
+        return false;
+    }
+
+    const bool initially_hidden = !has_label_text(view, "400") && exact_detail->get_text().is_empty();
+    meter->emit_signal("detail_state_changed", "health", "Health: 400 HP", true);
+    const bool shown_on_request = exact_detail->get_text() == String("Health: 400 HP");
+    meter->emit_signal("detail_state_changed", "health", "Health: 400 HP", false);
+    return meter->get_segment_count() == 5 && meter->get_focus_mode() == Control::FOCUS_ALL && initially_hidden && shown_on_request &&
+           exact_detail->get_text().is_empty();
 }
 
 bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenViewNodes &view) {
@@ -647,6 +663,7 @@ DEFN_TEST(progression_stats_screen_view_switches_dossiers_and_preserves_selectio
     view->configure(std::move(snapshot), {}, {});
 
     DEFN_CHECK(progression_view_has_initial_entity_state(view));
+    DEFN_CHECK(progression_stat_meter_shows_exact_detail_on_request(view));
 
     view->select_entity("base");
     DEFN_CHECK(has_label_text(view, "Base"));

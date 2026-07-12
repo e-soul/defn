@@ -46,7 +46,7 @@ std::string label_for_stat(const std::string &stat_id) {
         return "Mobility";
     }
     if (stat_id == "deploy_cost") {
-        return "Deploy cost";
+        return "Energy cost";
     }
     if (stat_id == "fire_rate") {
         return "Fire rate";
@@ -66,10 +66,31 @@ std::string label_for_stat(const std::string &stat_id) {
     return humanize(stat_id);
 }
 
+std::string with_detail_unit(const std::string &stat_id, const std::string &value) {
+    if (stat_id == "health") {
+        return value + " HP";
+    }
+    if (stat_id == "firepower") {
+        return value + " damage";
+    }
+    if (stat_id == "mobility") {
+        return value + " px/s";
+    }
+    if (stat_id == "deploy_cost" || stat_id == "starting_energy_bonus") {
+        return value + " energy";
+    }
+    if (stat_id == "integrity_bonus") {
+        return value + " integrity";
+    }
+    return value;
+}
+
 ProgressionStatRowViewModel present_stat(const ProgressionStatValue &stat) {
     ProgressionStatRowViewModel result{.id = stat.id, .label = label_for_stat(stat.id)};
     if (stat.contribution_only) {
         result.value = stat.id == "bounty_bonus" ? signed_number(stat.contribution * 100.0) + "%" : signed_number(stat.contribution);
+        result.visual = make_progression_stat_visual(stat.id, 0.0, stat.contribution, result.value, true);
+        result.visual.exact_detail = result.label + ": " + with_detail_unit(stat.id, result.value) + " from owned upgrades";
         return result;
     }
 
@@ -80,6 +101,14 @@ ProgressionStatRowViewModel present_stat(const ProgressionStatValue &stat) {
     const double delta = stat.effective_value - stat.base_value;
     if (std::fabs(delta) >= 0.0001) {
         result.detail = concise_number(stat.base_value) + " " + signed_number(delta);
+    }
+    result.visual = make_progression_stat_visual(stat.id, stat.base_value, stat.effective_value, result.value, false);
+    result.visual.exact_detail = result.label + ": " + with_detail_unit(stat.id, result.value);
+    if (std::fabs(delta) >= 0.0001) {
+        result.visual.exact_detail += " (base " + concise_number(stat.base_value) + ", " + signed_number(delta) + " upgrade)";
+    }
+    if (stat.id == "deploy_cost") {
+        result.visual.exact_detail += ". Fewer cells means a cheaper deployment";
     }
     return result;
 }
