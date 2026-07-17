@@ -1,0 +1,10 @@
+{
+    "volume_linear": 0.36,
+    "delay_seconds": 2.0,
+    "tracks": [
+        "res://assets/music/theme01.mp3",
+        "res://assets/music/theme02.mp3",
+        "res://assets/music/theme03.mp3",
+        "res://assets/music/theme04.mp3"
+    ]
+}

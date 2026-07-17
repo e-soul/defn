@@ -4,12 +4,14 @@
 #include "godot_string.h"
 #include "level_loader.h"
 #include "menu_data_loader.h"
+#include "music_playlist_loader.h"
 
 namespace defn {
 
 JsonContentPaths default_json_content_paths() {
     return {
         .menu_path = DataPaths::MENU_DATA,
+        .music_playlist_path = DataPaths::MUSIC_PLAYLIST_DATA,
         .progression_path = DataPaths::PROGRESSION_DATA,
         .upgrades_path = DataPaths::UPGRADES_DATA,
         .unit_path = DataPaths::UNIT_DATA,
@@ -26,6 +28,11 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
     content.menu_data = MenuDataLoader::load(paths_.menu_path);
     if (!content.menu_data.has_value()) {
         content.load_issues.emplace_back("failed to load menu_data.json");
+    }
+
+    content.music_playlist = MusicPlaylistLoader::load(paths_.music_playlist_path);
+    if (!content.music_playlist.has_value()) {
+        content.load_issues.emplace_back("failed to load music_playlist.json");
     }
 
     content.progression_loaded = content.progression_catalog.load(paths_.progression_path);

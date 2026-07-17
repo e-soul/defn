@@ -5,6 +5,7 @@
 #include <godot_cpp/godot.hpp>
 
 #include "animation_controller.h"
+#include "background_music_player.h"
 #include "base_objective.h"
 #include "battle_entity.h"
 #include "combat_component.h"
@@ -43,6 +44,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::CampaignService>();
     defn::CampaignService::register_singleton();
     GDREGISTER_ABSTRACT_CLASS(defn::BattleEntity);
+    ClassDB::register_internal_class<defn::BackgroundMusicPlayer>();
     ClassDB::register_class<defn::HealthComponent>();
     ClassDB::register_class<defn::HealthBarWidget>();
     ClassDB::register_class<defn::HitboxComponent>();

@@ -10,6 +10,7 @@ using namespace godot;
 
 inline constexpr auto LEVELS_DIRECTORY = "res://data/levels";
 inline constexpr auto MENU_DATA = "res://data/menu_data.json";
+inline constexpr auto MUSIC_PLAYLIST_DATA = "res://data/music_playlist.json";
 inline constexpr auto PROGRESSION_DATA = "res://data/progression.json";
 inline constexpr auto UPGRADES_DATA = "res://data/upgrades.json";
 inline constexpr auto UNIT_DATA = "res://data/unit_data.json";

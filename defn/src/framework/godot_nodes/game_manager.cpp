@@ -1,5 +1,6 @@
 #include "game_manager.h"
 
+#include "background_music_player.h"
 #include "base_objective.h"
 #include "base_objective_factory.h"
 #include "bounty_energy_effect.h"
@@ -12,6 +13,7 @@
 #include "level_loader.h"
 #include "match_director.h"
 #include "menu_flow_use_case.h"
+#include "music_playlist_loader.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
 #include "scene_navigator.h"
@@ -178,6 +180,14 @@ void GameManager::_ready() {
     core_resource_timer->start();
     setup_match_result_cutscene_timer();
     setup_match_result_reveal_timer();
+
+    const auto music_playlist = MusicPlaylistLoader::load(DataPaths::MUSIC_PLAYLIST_DATA);
+    if (music_playlist.has_value()) {
+        auto *background_music = memnew(BackgroundMusicPlayer);
+        background_music->set_name("BackgroundMusicPlayer");
+        background_music->configure(*music_playlist);
+        add_child(background_music);
+    }
 
     // Pause menu (ESC to toggle)
     auto *pause_menu = memnew(PauseMenu);

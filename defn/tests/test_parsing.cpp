@@ -5,6 +5,7 @@
 #include "json_file_loader.h"
 #include "level_loader.h"
 #include "menu_data_loader.h"
+#include "music_playlist_loader.h"
 #include "progression_catalog.h"
 #include "progression_save_repository.h"
 #include "unit_data.h"
@@ -238,6 +239,7 @@ void write_text_file(const String &path, const String &text) {
 
 struct ContentRepositoryFixture {
     const String menu_path = "user://defn_content_repo_menu.json";
+    const String music_playlist_path = "user://defn_content_repo_music.json";
     const String progression_path = "user://defn_content_repo_progression.json";
     const String upgrades_path = "user://defn_content_repo_upgrades.json";
     const String unit_path = "user://defn_content_repo_units.json";
@@ -250,6 +252,7 @@ struct ContentRepositoryFixture {
     [[nodiscard]] JsonContentPaths content_paths() const {
         return {
             .menu_path = menu_path,
+            .music_playlist_path = music_playlist_path,
             .progression_path = progression_path,
             .upgrades_path = upgrades_path,
             .unit_path = unit_path,
@@ -260,6 +263,7 @@ struct ContentRepositoryFixture {
 
     void cleanup() const {
         remove_test_file(menu_path);
+        remove_test_file(music_playlist_path);
         remove_test_file(progression_path);
         remove_test_file(upgrades_path);
         remove_test_file(unit_path);
@@ -274,6 +278,7 @@ struct ContentRepositoryFixture {
         write_text_file(
             menu_path,
             R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
+        write_text_file(music_playlist_path, R"({"volume_linear":0.5,"delay_seconds":2.0,"tracks":["res://theme01.mp3","res://theme02.mp3"]})");
         write_text_file(progression_path, R"({"level_unlocks":[{"level_id":"level_01"}]})");
         write_text_file(
             upgrades_path,
@@ -327,6 +332,36 @@ DEFN_TEST(menu_action_type_parser_maps_known_and_unknown_values) {
     DEFN_CHECK_EQ(parse_menu_action_type("resume"), MenuActionType::RESUME);
     DEFN_CHECK_EQ(parse_menu_action_type("main_menu"), MenuActionType::MAIN_MENU);
     DEFN_CHECK_EQ(parse_menu_action_type("mystery"), MenuActionType::NONE);
+}
+
+DEFN_TEST(music_playlist_loader_maps_tracks_volume_and_delay) {
+    Dictionary data;
+    data["volume_linear"] = 0.35;
+    data["delay_seconds"] = 1.5;
+    data["tracks"] = make_array({String("res://theme01.mp3"), String("res://theme02.mp3"), String("res://theme03.mp3")});
+
+    const auto playlist = MusicPlaylistLoader::load_from_data(data);
+    DEFN_REQUIRE(playlist.has_value());
+    DEFN_CHECK_EQ(playlist->tracks.size(), static_cast<size_t>(3));
+    DEFN_CHECK_EQ(playlist->tracks[1], std::string("res://theme02.mp3"));
+    DEFN_CHECK_CLOSE(playlist->volume_linear, 0.35, 0.000001);
+    DEFN_CHECK_CLOSE(playlist->delay_seconds, 1.5, 0.000001);
+}
+
+DEFN_TEST(music_playlist_loader_rejects_invalid_configuration) {
+    Dictionary empty_playlist;
+    empty_playlist["tracks"] = Array();
+    DEFN_CHECK(!MusicPlaylistLoader::load_from_data(empty_playlist).has_value());
+
+    Dictionary invalid_volume;
+    invalid_volume["volume_linear"] = 1.1;
+    invalid_volume["tracks"] = make_array({String("res://theme.mp3")});
+    DEFN_CHECK(!MusicPlaylistLoader::load_from_data(invalid_volume).has_value());
+
+    Dictionary invalid_delay;
+    invalid_delay["delay_seconds"] = -0.1;
+    invalid_delay["tracks"] = make_array({String("res://theme.mp3")});
+    DEFN_CHECK(!MusicPlaylistLoader::load_from_data(invalid_delay).has_value());
 }
 
 DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
@@ -505,6 +540,8 @@ DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {
     const JsonLoadedContent loaded = repository.load_for_validation();
     DEFN_CHECK(loaded.load_issues.empty());
     DEFN_CHECK(loaded.menu_data.has_value());
+    DEFN_CHECK(loaded.music_playlist.has_value());
+    DEFN_CHECK_EQ(loaded.music_playlist->tracks.size(), static_cast<size_t>(2));
     DEFN_CHECK(loaded.progression_loaded);
     DEFN_CHECK(loaded.upgrades_loaded);
     DEFN_CHECK(loaded.units_loaded);

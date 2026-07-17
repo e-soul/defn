@@ -3,6 +3,7 @@
 
 #include "content_validator.h"
 #include "menu_models.h"
+#include "music_playlist.h"
 #include "progression_catalog.h"
 #include "unit_data.h"
 #include "upgrade_catalog.h"
@@ -18,6 +19,7 @@ using namespace godot;
 
 struct JsonContentPaths {
     String menu_path;
+    String music_playlist_path;
     String progression_path;
     String upgrades_path;
     String unit_path;
@@ -27,6 +29,7 @@ struct JsonContentPaths {
 
 struct JsonLoadedContent {
     std::optional<MenuContentData> menu_data;
+    std::optional<MusicPlaylist> music_playlist;
     ProgressionCatalog progression_catalog;
     UpgradeCatalog upgrade_catalog;
     UnitDataLoader unit_data;
