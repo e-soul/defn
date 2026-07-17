@@ -113,6 +113,7 @@ extension_sources = [
     "src/adapters/godot/ui/owned_upgrades_panel.cpp",
     "src/adapters/godot/ui/progression_stats_screen_view.cpp",
     "src/adapters/godot/ui/progression_stat_meter.cpp",
+    "src/adapters/godot/ui/ui_sfx_player.cpp",
     "src/domain/match/match_session.cpp",
     "src/application/match/match_director.cpp",
     "src/framework/godot_nodes/vfx/bounty_energy_effect.cpp",

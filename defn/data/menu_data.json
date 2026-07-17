@@ -1,5 +1,19 @@
 {
     "background": "res://assets/backgrounds/menu_background.png",
+    "sfx": {
+        "hover": {
+            "path": "res://assets/sfx/ui_hover.wav",
+            "volume_linear": 0.12
+        },
+        "click": {
+            "path": "res://assets/sfx/ui_click.wav",
+            "volume_linear": 0.18
+        },
+        "deploy_card": {
+            "path": "res://assets/sfx/deploy_card_click.wav",
+            "volume_linear": 0.22
+        }
+    },
     "menus": {
         "main_menu": {
             "entries": [

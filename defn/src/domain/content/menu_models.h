@@ -57,6 +57,17 @@ struct MenuStyleData {
     MenuOptionsStyleData options;
 };
 
+struct UiSoundData {
+    std::string path;
+    float volume_linear = 0.2F;
+};
+
+struct UiSfxData {
+    UiSoundData hover;
+    UiSoundData click;
+    UiSoundData deploy_card;
+};
+
 struct MenuAction {
     std::string id;
     std::string label;
@@ -93,6 +104,7 @@ struct MenuDefinition {
 struct MenuContentData {
     std::string background;
     MenuStyleData style;
+    UiSfxData sfx;
     std::vector<MenuDefinition> menus;
 
     const MenuDefinition *find_menu(const std::string &menu_name) const {

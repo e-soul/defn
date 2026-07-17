@@ -1,4 +1,5 @@
 #include "progression_stats_screen_view.h"
+#include "ui_sfx_player.h"
 
 #include "godot_string.h"
 #include "owned_upgrades_panel.h"
@@ -97,10 +98,11 @@ void ProgressionStatsScreenView::_bind_methods() {
 }
 
 void ProgressionStatsScreenView::configure(ProgressionOverviewSnapshot snapshot, std::vector<UpgradeCardViewModel> owned_upgrades,
-                                           const godot::Callable &back_action) {
+                                           const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player) {
     snapshot_ = std::move(snapshot);
     owned_upgrades_ = std::move(owned_upgrades);
     back_action_ = back_action;
+    ui_sfx_player_ = ui_sfx_player;
     selected_entity_id_ = ProgressionStatsPresenter::default_selection(snapshot_);
     showing_all_upgrades_ = false;
     set_name("ProgressionStatsScreen");
@@ -148,6 +150,12 @@ void ProgressionStatsScreenView::clear_content() {
     }
 }
 
+void ProgressionStatsScreenView::connect_menu_sfx(godot::BaseButton *button) const {
+    if (ui_sfx_player_ != nullptr) {
+        ui_sfx_player_->connect_menu_button(button);
+    }
+}
+
 void ProgressionStatsScreenView::rebuild() {
     clear_content();
     const ProgressionStatsScreenViewModel model = ProgressionStatsPresenter::present(snapshot_, selected_entity_id_);
@@ -167,10 +175,12 @@ void ProgressionStatsScreenView::rebuild() {
         actions->set_alignment(godot::BoxContainer::ALIGNMENT_CENTER);
         auto *return_button = make_action_button("Return to Commnad Roster");
         return_button->set_name("ReturnToDossierButton");
+        connect_menu_sfx(return_button);
         return_button->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::show_dossier));
         actions->add_child(return_button);
         auto *back = make_action_button(to_godot_string(model.back_label));
         back->set_name("ProgressionBackButton");
+        connect_menu_sfx(back);
         back->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::go_back));
         actions->add_child(back);
         add_child(actions);
@@ -193,6 +203,7 @@ void ProgressionStatsScreenView::rebuild() {
         button->set_focus_mode(godot::Control::FOCUS_ALL);
         button->set_disabled(!selector.unlocked);
         apply_roster_button_styles(*button, selector.selected);
+        connect_menu_sfx(button);
         if (!selector.locked_message.empty()) {
             button->set_tooltip_text(to_godot_string(selector.locked_message));
         }
@@ -283,10 +294,12 @@ void ProgressionStatsScreenView::rebuild() {
     actions->add_theme_constant_override("separation", 16);
     auto *all_upgrades = make_action_button(to_godot_string(model.all_upgrades_label));
     all_upgrades->set_name("AllOwnedUpgradesButton");
+    connect_menu_sfx(all_upgrades);
     all_upgrades->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::show_owned_upgrades));
     actions->add_child(all_upgrades);
     auto *back = make_action_button(to_godot_string(model.back_label));
     back->set_name("ProgressionBackButton");
+    connect_menu_sfx(back);
     back->connect("pressed", callable_mp(this, &ProgressionStatsScreenView::go_back));
     actions->add_child(back);
     add_child(actions);

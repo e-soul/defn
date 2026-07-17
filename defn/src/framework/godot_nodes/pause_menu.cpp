@@ -4,6 +4,7 @@
 #include "godot_string.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
+#include "ui_sfx_player.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
@@ -59,6 +60,11 @@ void PauseMenu::build_ui() {
 
     const MenuStyleData &style = menu_data_.style;
 
+    ui_sfx_player_ = memnew(UiSfxPlayer);
+    ui_sfx_player_->set_name("UiSfxPlayer");
+    add_child(ui_sfx_player_);
+    ui_sfx_player_->configure(menu_data_.sfx);
+
     // Dark overlay
     overlay_ = memnew(ColorRect);
     overlay_->set_anchors_preset(Control::PRESET_FULL_RECT);
@@ -86,6 +92,7 @@ void PauseMenu::build_ui() {
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
+        ui_sfx_player_->connect_menu_button(btn);
 
         if (entry.action_type == MenuActionType::RESUME) {
             btn->connect("pressed", callable_mp(this, &PauseMenu::on_resume));

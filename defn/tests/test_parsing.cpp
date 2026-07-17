@@ -394,8 +394,23 @@ DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
     Dictionary menus;
     menus["main_menu"] = main_menu;
 
+    Dictionary hover_sfx;
+    hover_sfx["path"] = "res://ui_hover.wav";
+    hover_sfx["volume_linear"] = 0.12;
+    Dictionary click_sfx;
+    click_sfx["path"] = "res://ui_click.wav";
+    click_sfx["volume_linear"] = 0.18;
+    Dictionary deploy_sfx;
+    deploy_sfx["path"] = "res://deploy_card_click.wav";
+    deploy_sfx["volume_linear"] = 0.22;
+    Dictionary sfx;
+    sfx["hover"] = hover_sfx;
+    sfx["click"] = click_sfx;
+    sfx["deploy_card"] = deploy_sfx;
+
     Dictionary data;
     data["background"] = "res://background.png";
+    data["sfx"] = sfx;
     data["style"] = style;
     data["menus"] = menus;
 
@@ -411,6 +426,12 @@ DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
     DEFN_CHECK_EQ(loaded->style.normal.border_width, 4);
     DEFN_CHECK_EQ(loaded->style.normal.corner_radius, 10);
     DEFN_CHECK_EQ(loaded->style.options.label_font_size, 21);
+    DEFN_CHECK_EQ(loaded->sfx.hover.path, std::string("res://ui_hover.wav"));
+    DEFN_CHECK_CLOSE(loaded->sfx.hover.volume_linear, 0.12, 0.000001);
+    DEFN_CHECK_EQ(loaded->sfx.click.path, std::string("res://ui_click.wav"));
+    DEFN_CHECK_CLOSE(loaded->sfx.click.volume_linear, 0.18, 0.000001);
+    DEFN_CHECK_EQ(loaded->sfx.deploy_card.path, std::string("res://deploy_card_click.wav"));
+    DEFN_CHECK_CLOSE(loaded->sfx.deploy_card.volume_linear, 0.22, 0.000001);
     check_content_color_close(loaded->menus[0].overlay_color, {.r = 0.1F, .g = 0.2F, .b = 0.3F, .a = 0.4F});
     check_content_color_close(loaded->style.normal.bg_color, {.r = 0.2F, .g = 0.3F, .b = 0.4F, .a = 0.5F});
     check_content_color_close(loaded->style.normal.font_color, {.r = 0.8F, .g = 0.9F, .b = 1.0F, .a = 0.7F});

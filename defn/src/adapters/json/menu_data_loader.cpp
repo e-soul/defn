@@ -64,6 +64,21 @@ MenuStyleData parse_style_data(const Dictionary &style_dict) {
     return style;
 }
 
+UiSoundData parse_ui_sound_data(const Dictionary &sound_dict) {
+    return {
+        .path = to_std_string(String(sound_dict.get("path", ""))),
+        .volume_linear = VariantTools::as_float(sound_dict.get("volume_linear", 0.2)),
+    };
+}
+
+UiSfxData parse_ui_sfx_data(const Dictionary &sfx_dict) {
+    return {
+        .hover = parse_ui_sound_data(sfx_dict.get("hover", Dictionary())),
+        .click = parse_ui_sound_data(sfx_dict.get("click", Dictionary())),
+        .deploy_card = parse_ui_sound_data(sfx_dict.get("deploy_card", Dictionary())),
+    };
+}
+
 } // namespace
 
 MenuDefinitionType parse_menu_type(const Dictionary &menu_dict) {
@@ -185,6 +200,7 @@ std::optional<MenuContentData> MenuDataLoader::load_from_data(const Dictionary &
     MenuContentData menu_data;
     menu_data.background = to_std_string(String(data.get("background", "")));
     menu_data.style = parse_style_data(data.get("style", Dictionary()));
+    menu_data.sfx = parse_ui_sfx_data(data.get("sfx", Dictionary()));
 
     const Dictionary menus = data.get("menus", Dictionary());
     const Array menu_names = menus.keys();

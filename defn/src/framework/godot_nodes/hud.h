@@ -60,6 +60,7 @@ class HUD : public CanvasLayer {
 
     Label *core_resource_label = nullptr;
     Label *level_label = nullptr;
+    class UiSfxPlayer *ui_sfx_player_ = nullptr;
     Label *wave_label = nullptr;
     Label *score_label = nullptr;
     HBoxContainer *hearts_container = nullptr;

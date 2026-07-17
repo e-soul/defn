@@ -26,6 +26,7 @@
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "sound_controller.h"
+#include "ui_sfx_player.h"
 #include "unit.h"
 
 #ifdef DEFN_HOSTED_TESTS_ENABLED
@@ -63,6 +64,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::MenuManager>();
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
     ClassDB::register_internal_class<defn::ProgressionStatMeter>();
+    ClassDB::register_internal_class<defn::UiSfxPlayer>();
     ClassDB::register_class<defn::PauseMenu>();
 #ifdef DEFN_HOSTED_TESTS_ENABLED
     ClassDB::register_class<defn::DefnHostedTestRunner>();

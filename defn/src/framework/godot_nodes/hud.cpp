@@ -1,8 +1,11 @@
 #include "hud.h"
+#include "data_paths.h"
 #include "deploy_card_presenter.h"
 #include "godot_color.h"
 #include "godot_string.h"
+#include "menu_data_loader.h"
 #include "score_screen_view.h"
+#include "ui_sfx_player.h"
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -21,7 +24,15 @@ void HUD::_bind_methods() {
     ADD_SIGNAL(MethodInfo("score_screen_upgrade_selected", PropertyInfo(Variant::STRING, "upgrade_id")));
 }
 
-void HUD::_ready() { build_ui(); }
+void HUD::_ready() {
+    if (const auto menu_data = MenuDataLoader::load(DataPaths::MENU_DATA); menu_data.has_value()) {
+        ui_sfx_player_ = memnew(UiSfxPlayer);
+        ui_sfx_player_->set_name("UiSfxPlayer");
+        add_child(ui_sfx_player_);
+        ui_sfx_player_->configure(menu_data->sfx);
+    }
+    build_ui();
+}
 
 void HUD::build_ui() {
     // ==========================================================
@@ -151,8 +162,11 @@ void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
         clear_deploy_cards();
         deploy_cards.reserve(cards.size());
         for (const auto &card_model : cards) {
-            auto *button =
-                DeployCardPresenter::create(card_model.card, callable_mp(this, &HUD::on_card_pressed).bind(to_godot_string(card_model.card.unit_id)));
+            auto *button = DeployCardPresenter::create(card_model.card, Callable());
+            if (ui_sfx_player_ != nullptr) {
+                ui_sfx_player_->connect_deploy_card(button);
+            }
+            button->connect("pressed", callable_mp(this, &HUD::on_card_pressed).bind(to_godot_string(card_model.card.unit_id)));
             card_container->add_child(button);
             deploy_cards.push_back({.unit_type = card_model.card.unit_id, .button = button});
         }
@@ -280,7 +294,8 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
                                   .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
                                   .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
                                   .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
-                              });
+                              },
+                              ui_sfx_player_);
 
     score_screen_overlay = view.overlay;
     score_screen_panel = view.panel;

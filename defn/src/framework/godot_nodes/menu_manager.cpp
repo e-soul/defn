@@ -8,6 +8,7 @@
 #include "progression_stats_screen_view.h"
 #include "scene_navigator.h"
 #include "settings_service.h"
+#include "ui_sfx_player.h"
 #include "variant_tools.h"
 #include <cmath>
 #include <godot_cpp/classes/center_container.hpp>
@@ -195,6 +196,7 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     }
 
     option_button->select(selected_index);
+    manager->connect_menu_sfx(option_button);
     option_button->connect("item_selected", callable_mp(manager, &MenuManager::on_display_mode_changed));
     row->add_child(option_button);
     return true;
@@ -231,6 +233,7 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     apply_disabled_style(option_button, windowed);
 
     resolution_dropdown = option_button;
+    manager->connect_menu_sfx(option_button);
     option_button->connect("item_selected", callable_mp(manager, &MenuManager::on_resolution_changed));
     row->add_child(option_button);
     return true;
@@ -245,6 +248,7 @@ bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setti
     check_button->set_custom_minimum_size(options_layout.control_minimum_size);
     check_button->set_focus_mode(Control::FOCUS_NONE);
     check_button->set_pressed(vsync_on);
+    manager->connect_menu_sfx(check_button);
     check_button->connect("toggled", callable_mp(manager, &MenuManager::on_vsync_toggled));
     row->add_child(check_button);
     return true;
@@ -298,6 +302,7 @@ void add_menu_button(MenuManager *manager, VBoxContainer *button_container, cons
         button->set_modulate(godot::Color(0.5, 0.5, 0.5, 0.7));
     }
 
+    manager->connect_menu_sfx(button);
     button->connect(
         "pressed",
         callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target)));
@@ -324,6 +329,11 @@ void MenuManager::_ready() {
 
     settings_state_ = SettingsService::load_or_default();
     SettingsService::apply(settings_state_);
+
+    ui_sfx_player_ = memnew(UiSfxPlayer);
+    ui_sfx_player_->set_name("UiSfxPlayer");
+    add_child(ui_sfx_player_);
+    ui_sfx_player_->configure(menu_data_.sfx);
 
     ui_layer_ = memnew(CanvasLayer);
     ui_layer_->set_name("UILayer");
@@ -493,6 +503,7 @@ void MenuManager::show_level_select() {
         btn->set_custom_minimum_size(button_style.minimum_size);
         btn->set_focus_mode(Control::FOCUS_NONE);
         apply_button_theme(btn, button_style, button_style.font_size);
+        connect_menu_sfx(btn);
 
         if (!level.unlocked) {
             btn->set_disabled(true);
@@ -521,7 +532,7 @@ void MenuManager::show_progression() {
     screen->set_custom_minimum_size(get_progression_screen_size(this));
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed)
                                      .bind(static_cast<int>(view_model.back_button.intent.type), to_godot_string(view_model.back_button.intent.target));
-    screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action);
+    screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action, ui_sfx_player_);
     button_container_->add_child(screen);
 }
 
@@ -599,6 +610,12 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
     }
 
     SettingsService::save(settings_state_);
+}
+
+void MenuManager::connect_menu_sfx(BaseButton *button) {
+    if (ui_sfx_player_ != nullptr) {
+        ui_sfx_player_->connect_menu_button(button);
+    }
 }
 
 } // namespace defn

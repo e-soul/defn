@@ -35,6 +35,7 @@ class MenuManager : public Node2D {
     void on_resolution_changed(int index);
     void on_vsync_toggled(bool toggled);
     void on_volume_changed(double value, const String &bus_name);
+    void connect_menu_sfx(BaseButton *button);
 
   protected:
     static void _bind_methods();
@@ -58,6 +59,7 @@ class MenuManager : public Node2D {
     TextureRect *background_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
     Label *total_score_label_ = nullptr;
+    class UiSfxPlayer *ui_sfx_player_ = nullptr;
 
     // Options-menu state (reset by clear_buttons)
     OptionButton *resolution_dropdown_ = nullptr;

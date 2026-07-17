@@ -12,6 +12,8 @@ namespace defn {
 
 using namespace godot;
 
+class UiSfxPlayer;
+
 struct ScoreScreenActions {
     Callable on_next_level;
     Callable on_retry;
@@ -28,7 +30,7 @@ class ScoreScreenView {
   public:
     ScoreScreenView() = delete;
 
-    static ScoreScreenViewNodes show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions);
+    static ScoreScreenViewNodes show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions, UiSfxPlayer *ui_sfx_player = nullptr);
 };
 
 } // namespace defn
