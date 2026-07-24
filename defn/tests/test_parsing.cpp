@@ -1,5 +1,6 @@
 #include "test_harness.h"
 
+#include "campaign_map_data_loader.h"
 #include "content_repository.h"
 #include "content_validator.h"
 #include "json_file_loader.h"
@@ -238,6 +239,7 @@ void write_text_file(const String &path, const String &text) {
 }
 
 struct ContentRepositoryFixture {
+    const String campaign_map_path = "user://defn_content_repo_campaign_map.json";
     const String menu_path = "user://defn_content_repo_menu.json";
     const String music_playlist_path = "user://defn_content_repo_music.json";
     const String progression_path = "user://defn_content_repo_progression.json";
@@ -251,6 +253,7 @@ struct ContentRepositoryFixture {
 
     [[nodiscard]] JsonContentPaths content_paths() const {
         return {
+            .campaign_map_path = campaign_map_path,
             .menu_path = menu_path,
             .music_playlist_path = music_playlist_path,
             .progression_path = progression_path,
@@ -262,6 +265,7 @@ struct ContentRepositoryFixture {
     }
 
     void cleanup() const {
+        remove_test_file(campaign_map_path);
         remove_test_file(menu_path);
         remove_test_file(music_playlist_path);
         remove_test_file(progression_path);
@@ -275,6 +279,9 @@ struct ContentRepositoryFixture {
     void write_content_files() const {
         cleanup();
         DEFN_REQUIRE(DirAccess::make_dir_absolute(levels_directory) == OK);
+        write_text_file(
+            campaign_map_path,
+            R"({"background":{"path":"res://assets/campaign/map_background_v2.jpg","texture_scale":1.0},"missions":[{"level_id":"level_01","position":[0.2,0.3],"tagline":"Test operation.","threat":"low","ambience":"dust","preview":{"path":"res://assets/campaign/desert_outpost_preview.jpg","texture_scale":0.25,"focus":[0.38,0.5],"node_zoom":1.0,"dossier_zoom":1.0}}]})");
         write_text_file(
             menu_path,
             R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
@@ -302,7 +309,45 @@ const LevelDefinition &require_level_definition(const LoadedLevelValidationInput
     return loaded_level.definition.value();
 }
 
+void check_campaign_map_loaded(const JsonLoadedContent &loaded) {
+    DEFN_CHECK(loaded.campaign_map.has_value());
+    DEFN_CHECK(loaded.missing_campaign_assets.empty());
+}
+
 } // namespace
+
+DEFN_TEST(campaign_map_loader_reads_concrete_mission_preview) {
+    Dictionary preview;
+    preview["path"] = "res://mission.jpg";
+    preview["texture_scale"] = 0.25;
+    preview["focus"] = make_array({0.38, 0.5});
+    preview["node_zoom"] = 1.2;
+    preview["dossier_zoom"] = 1.1;
+
+    Dictionary mission;
+    mission["level_id"] = "level_01";
+    mission["position"] = make_array({0.2, 0.3});
+    mission["threat"] = "high";
+    mission["ambience"] = "mist";
+    mission["preview"] = preview;
+
+    Dictionary background;
+    background["path"] = "res://map.jpg";
+    background["texture_scale"] = 1.0;
+    Dictionary data;
+    data["background"] = background;
+    data["missions"] = make_array({mission});
+
+    const auto loaded = CampaignMapDataLoader::load_from_data(data);
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_REQUIRE(loaded->missions.size() == static_cast<std::size_t>(1));
+    const CampaignPreviewDefinition &resolved = loaded->missions[0].preview;
+    DEFN_CHECK_EQ(resolved.texture.path, std::string("res://mission.jpg"));
+    DEFN_CHECK_CLOSE(resolved.texture.texture_scale, 0.25F, 0.0001F);
+    DEFN_CHECK_CLOSE(resolved.focus_x, 0.38F, 0.0001F);
+    DEFN_CHECK_CLOSE(resolved.node_zoom, 1.2F, 0.0001F);
+    DEFN_CHECK_CLOSE(resolved.dossier_zoom, 1.1F, 0.0001F);
+}
 
 DEFN_TEST(upgrade_effect_type_parser_recognizes_known_values) {
     UpgradeEffectType effect_type = UpgradeEffectType::STARTING_ENERGY_DELTA;
@@ -560,6 +605,7 @@ DEFN_TEST(json_content_repository_loads_content_for_validation_from_paths) {
 
     const JsonLoadedContent loaded = repository.load_for_validation();
     DEFN_CHECK(loaded.load_issues.empty());
+    check_campaign_map_loaded(loaded);
     DEFN_CHECK(loaded.menu_data.has_value());
     DEFN_CHECK(loaded.music_playlist.has_value());
     DEFN_CHECK_EQ(loaded.music_playlist->tracks.size(), static_cast<size_t>(2));

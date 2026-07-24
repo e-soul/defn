@@ -49,6 +49,7 @@ class MenuManager : public Node2D {
     void handle_menu_intent(const MenuIntent &intent);
     void apply_menu_flow_result(const MenuFlowResult &result);
     void clear_buttons();
+    void clear_active_view();
     void build_options_ui(const MenuScreenViewModel &view_model);
 
     MenuContentData menu_data_;
@@ -59,6 +60,7 @@ class MenuManager : public Node2D {
     TextureRect *background_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
     Label *total_score_label_ = nullptr;
+    Control *active_fullscreen_view_ = nullptr;
     class UiSfxPlayer *ui_sfx_player_ = nullptr;
 
     // Options-menu state (reset by clear_buttons)

@@ -75,13 +75,6 @@ MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInp
     return view_model;
 }
 
-LevelSelectViewModel build_level_select_view_model(std::vector<LevelSelectRowViewModel> levels) {
-    LevelSelectViewModel view_model;
-    view_model.levels = std::move(levels);
-    view_model.back_button = make_back_button("game_menu");
-    return view_model;
-}
-
 ProgressionScreenViewModel build_progression_screen_view_model() {
     ProgressionScreenViewModel view_model;
     view_model.back_button = make_back_button("game_menu");

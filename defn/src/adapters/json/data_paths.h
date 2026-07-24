@@ -9,6 +9,7 @@ namespace defn::DataPaths {
 using namespace godot;
 
 inline constexpr auto LEVELS_DIRECTORY = "res://data/levels";
+inline constexpr auto CAMPAIGN_MAP_DATA = "res://data/campaign_map.json";
 inline constexpr auto MENU_DATA = "res://data/menu_data.json";
 inline constexpr auto MUSIC_PLAYLIST_DATA = "res://data/music_playlist.json";
 inline constexpr auto PROGRESSION_DATA = "res://data/progression.json";

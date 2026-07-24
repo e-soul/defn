@@ -8,6 +8,10 @@
 #include "background_music_player.h"
 #include "base_objective.h"
 #include "battle_entity.h"
+#include "campaign_map_node_view.h"
+#include "campaign_map_view.h"
+#include "campaign_preview_view.h"
+#include "campaign_texture_cache.h"
 #include "combat_component.h"
 #include "detection_component.h"
 #include "field_promotion_effect.h"
@@ -20,6 +24,7 @@
 #include "hud.h"
 #include "menu_manager.h"
 #include "movement_component.h"
+#include "operation_dossier_view.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
 #include "progression_stat_meter.h"
@@ -65,6 +70,11 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
     ClassDB::register_internal_class<defn::ProgressionStatMeter>();
     ClassDB::register_internal_class<defn::UiSfxPlayer>();
+    ClassDB::register_internal_class<defn::CampaignTextureCache>();
+    ClassDB::register_internal_class<defn::CampaignPreviewView>();
+    ClassDB::register_internal_class<defn::CampaignMapNodeView>();
+    ClassDB::register_internal_class<defn::OperationDossierView>();
+    ClassDB::register_internal_class<defn::CampaignMapView>();
     ClassDB::register_class<defn::PauseMenu>();
 #ifdef DEFN_HOSTED_TESTS_ENABLED
     ClassDB::register_class<defn::DefnHostedTestRunner>();

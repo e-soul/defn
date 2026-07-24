@@ -24,13 +24,6 @@ DEFN_TEST(progression_presentation_describes_new_unlock_ids) {
     DEFN_CHECK_EQ(unlocks[1], std::string("NEW UNLOCK: Challenge Room!"));
 }
 
-DEFN_TEST(progression_presentation_formats_level_button_state) {
-    DEFN_CHECK_EQ(ProgressionPresentation::format_level_button_label({.level_id = "level_01"}, true, true, 350), std::string("Level 01 - Best: 350"));
-    DEFN_CHECK_EQ(ProgressionPresentation::format_level_button_label({.level_id = "level_02", .requires_completed = "level_01"}, false, false, 0),
-                  std::string("Level 02 (Complete Level 01)"));
-    DEFN_CHECK_EQ(ProgressionPresentation::format_level_button_label({.level_id = "challenge"}, false, false, 0), std::string("Challenge (Locked)"));
-}
-
 DEFN_TEST(progression_presentation_builds_upgrade_card_view_model) {
     const ProgressionUpgradeCardViewModel view_model = ProgressionPresentation::build_upgrade_card_view_model(
         {.id = "hp", .name = "Extra Plating", .description = "More health.", .emoji = "+", .category = "defense"}, 2);

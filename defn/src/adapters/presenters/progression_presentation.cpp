@@ -71,24 +71,6 @@ std::vector<std::string> ProgressionPresentation::describe_new_unlocks(const std
     return result;
 }
 
-std::string ProgressionPresentation::format_level_button_label(const ProgressionLevelUnlock &level_unlock, bool unlocked, bool completed, int best_score) {
-    std::string label_text = format_level_name(level_unlock.level_id);
-    if (!unlocked) {
-        if (!level_unlock.requires_completed.empty()) {
-            label_text += " (Complete " + format_level_name(level_unlock.requires_completed) + ")";
-        } else {
-            label_text += " (Locked)";
-        }
-        return label_text;
-    }
-
-    if (completed) {
-        label_text += " - Best: " + std::to_string(best_score);
-    }
-
-    return label_text;
-}
-
 ProgressionUpgradeCardViewModel ProgressionPresentation::build_upgrade_card_view_model(const ProgressionUpgradePresentation &card, int owned_count) {
     return {
         .id = card.id,

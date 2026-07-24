@@ -1,7 +1,7 @@
 ﻿{
   "level_id": 1,
   "name": "Desert Outpost",
-  "background": "res://assets/backgrounds/middle_east_ruin_tiling.png",
+  "background": "res://assets/backgrounds/background_desert_outpost_tiling.png",
   "starting_core_resource": 44,
   "base_integrity": 3,
   "waves": [

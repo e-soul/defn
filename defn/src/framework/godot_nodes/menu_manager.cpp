@@ -1,10 +1,13 @@
 #include "menu_manager.h"
+#include "campaign_map_data_loader.h"
+#include "campaign_map_view.h"
+#include "campaign_map_view_model.h"
 #include "data_paths.h"
 #include "godot_string.h"
+#include "level_loader.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
 #include "progression_manager.h"
-#include "progression_presentation.h"
 #include "progression_stats_screen_view.h"
 #include "scene_navigator.h"
 #include "settings_service.h"
@@ -417,9 +420,23 @@ void MenuManager::clear_buttons() {
     }
 }
 
+void MenuManager::clear_active_view() {
+    if (active_fullscreen_view_ == nullptr) {
+        return;
+    }
+
+    Control *view = active_fullscreen_view_;
+    active_fullscreen_view_ = nullptr;
+    view->queue_free();
+}
+
 void MenuManager::show_menu(const String &menu_name) {
+    clear_active_view();
     clear_buttons();
     current_menu_ = menu_name;
+    if (total_score_label_ != nullptr) {
+        total_score_label_->set_visible(true);
+    }
 
     const MenuDefinition *menu = menu_data_.find_menu(to_std_string(menu_name));
     if (menu == nullptr) {
@@ -468,54 +485,62 @@ void MenuManager::apply_menu_flow_result(const MenuFlowResult &result) {
 }
 
 void MenuManager::show_level_select() {
+    clear_active_view();
     clear_buttons();
     current_menu_ = "level_select";
-
-    const ButtonStyle button_style = build_button_style(menu_data_.style);
-
-    button_container_->add_theme_constant_override("separation", button_style.separation);
-
-    auto *title = memnew(Label);
-    std::vector<LevelSelectRowViewModel> levels;
     auto *progression = CampaignService::get_singleton();
+    if (progression == nullptr) {
+        UtilityFunctions::printerr("MenuManager: Campaign service unavailable");
+        show_menu("game_menu");
+        return;
+    }
+
+    const auto loaded_map = CampaignMapDataLoader::load(DataPaths::CAMPAIGN_MAP_DATA);
+    if (!loaded_map.has_value()) {
+        UtilityFunctions::printerr("MenuManager: Campaign map data unavailable");
+        show_menu("game_menu");
+        return;
+    }
+    const CampaignMapDefinition &map = *loaded_map;
+
+    std::vector<CampaignLevelPresentationSource> levels;
     const auto level_data = progression->get_level_unlock_data();
     levels.reserve(level_data.size());
     for (const auto &level : level_data) {
-        levels.push_back({
+        const auto definition = LevelLoader::load(DataPaths::level_definition(to_godot_string(level.level_id)));
+        if (!definition.has_value()) {
+            UtilityFunctions::printerr("MenuManager: Failed to load level definition: ", to_godot_string(level.level_id));
+            continue;
+        }
+        levels.push_back(CampaignLevelPresentationSource{
             .level_id = level.level_id,
-            .label = ProgressionPresentation::format_level_button_label(level, progression->is_level_unlocked(level.level_id),
-                                                                        progression->is_level_completed(level.level_id),
-                                                                        progression->get_highest_level_score(level.level_id)),
+            .definition = *definition,
+            .requires_completed = level.requires_completed,
             .unlocked = progression->is_level_unlocked(level.level_id),
+            .completed = progression->is_level_completed(level.level_id),
+            .frontier = progression->get_frontier_level_id() == level.level_id,
+            .best_score = progression->get_highest_level_score(level.level_id),
+            .effective_starting_energy = progression->get_effective_starting_energy(definition->starting_core_resource),
+            .effective_base_integrity = progression->get_effective_base_integrity(definition->base_integrity),
         });
     }
-    const LevelSelectViewModel view_model = build_level_select_view_model(std::move(levels));
 
-    title->set_text(to_godot_string(view_model.title));
-    title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    title->add_theme_font_size_override("font_size", 36);
-    title->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
-    button_container_->add_child(title);
-
-    for (const auto &level : view_model.levels) {
-        auto *btn = memnew(Button);
-        btn->set_text(to_godot_string(level.label));
-        btn->set_custom_minimum_size(button_style.minimum_size);
-        btn->set_focus_mode(Control::FOCUS_NONE);
-        apply_button_theme(btn, button_style, button_style.font_size);
-        connect_menu_sfx(btn);
-
-        if (!level.unlocked) {
-            btn->set_disabled(true);
-            btn->set_modulate(godot::Color(0.5, 0.5, 0.5, 0.7));
-        } else {
-            btn->connect("pressed", callable_mp(this, &MenuManager::on_level_selected).bind(to_godot_string(level.level_id)));
-        }
-
-        button_container_->add_child(btn);
+    if (levels.empty()) {
+        UtilityFunctions::printerr("MenuManager: No campaign levels could be composed");
+        show_menu("game_menu");
+        return;
     }
 
-    add_menu_button(this, button_container_, view_model.back_button, button_style);
+    auto *map_view = memnew(CampaignMapView);
+    map_view->set_name("CampaignMapView");
+    const Callable deploy_action = callable_mp(this, &MenuManager::on_level_selected);
+    const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed).bind(static_cast<int>(MenuIntentType::GotoMenu), String("game_menu"));
+    ui_layer_->add_child(map_view);
+    map_view->configure(CampaignMapPresenter::present(map, levels), deploy_action, back_action, ui_sfx_player_);
+    active_fullscreen_view_ = map_view;
+    if (total_score_label_ != nullptr) {
+        total_score_label_->set_visible(false);
+    }
 }
 
 void MenuManager::on_level_selected(const String &level_id) {
@@ -523,8 +548,12 @@ void MenuManager::on_level_selected(const String &level_id) {
 }
 
 void MenuManager::show_progression() {
+    clear_active_view();
     clear_buttons();
     current_menu_ = "progression";
+    if (total_score_label_ != nullptr) {
+        total_score_label_->set_visible(true);
+    }
 
     const ProgressionScreenViewModel view_model = build_progression_screen_view_model();
     auto *progression = CampaignService::get_singleton();

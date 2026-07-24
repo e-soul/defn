@@ -1,6 +1,7 @@
 #ifndef CONTENT_VALIDATOR_H
 #define CONTENT_VALIDATOR_H
 
+#include "campaign_map_definition.h"
 #include "level_definition.h"
 #include "menu_models.h"
 #include "unit_definition.h"
@@ -42,6 +43,8 @@ struct UpgradeCatalogValidationData {
 };
 
 struct ContentValidationInput {
+    std::optional<CampaignMapDefinition> campaign_map;
+    std::vector<std::string> missing_campaign_assets;
     std::optional<MenuContentData> menu_data;
     std::optional<ProgressionCatalogValidationData> progression_catalog;
     std::optional<UpgradeCatalogValidationData> upgrade_catalog;

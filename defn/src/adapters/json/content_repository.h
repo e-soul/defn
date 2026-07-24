@@ -1,6 +1,7 @@
 #ifndef CONTENT_REPOSITORY_H
 #define CONTENT_REPOSITORY_H
 
+#include "campaign_map_definition.h"
 #include "content_validator.h"
 #include "menu_models.h"
 #include "music_playlist.h"
@@ -18,6 +19,7 @@ namespace defn {
 using namespace godot;
 
 struct JsonContentPaths {
+    String campaign_map_path;
     String menu_path;
     String music_playlist_path;
     String progression_path;
@@ -28,6 +30,8 @@ struct JsonContentPaths {
 };
 
 struct JsonLoadedContent {
+    std::optional<CampaignMapDefinition> campaign_map;
+    std::vector<std::string> missing_campaign_assets;
     std::optional<MenuContentData> menu_data;
     std::optional<MusicPlaylist> music_playlist;
     ProgressionCatalog progression_catalog;

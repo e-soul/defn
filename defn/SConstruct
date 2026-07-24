@@ -94,6 +94,7 @@ extension_sources = [
     "src/application/progression/unit_progression_mapper.cpp",
     "src/application/settings/settings_use_case.cpp",
     "src/adapters/json/json_file_loader.cpp",
+    "src/adapters/json/campaign_map_data_loader.cpp",
     "src/adapters/json/music_playlist_loader.cpp",
     "src/framework/godot_nodes/attack_target_resolver.cpp",
     "src/framework/godot_nodes/battle_entity.cpp",
@@ -140,6 +141,12 @@ extension_sources = [
     "src/adapters/presenters/hud_presenter.cpp",
     "src/adapters/presenters/match_result_cutscene_view_model.cpp",
     "src/adapters/presenters/menu_view_model.cpp",
+    "src/adapters/presenters/campaign_map_view_model.cpp",
+    "src/adapters/godot/ui/campaign_texture_cache.cpp",
+    "src/adapters/godot/ui/campaign_preview_view.cpp",
+    "src/adapters/godot/ui/campaign_map_node_view.cpp",
+    "src/adapters/godot/ui/operation_dossier_view.cpp",
+    "src/adapters/godot/ui/campaign_map_view.cpp",
     "src/adapters/godot/ui/deploy_card_presenter.cpp",
     "src/adapters/godot/ui/upgrade_card_presenter.cpp",
     "src/framework/godot_nodes/detection_component.cpp",
@@ -207,6 +214,7 @@ test_support_sources = [
     "src/adapters/presenters/hud_presenter.cpp",
     "src/adapters/presenters/match_result_cutscene_view_model.cpp",
     "src/adapters/presenters/menu_view_model.cpp",
+    "src/adapters/presenters/campaign_map_view_model.cpp",
     "src/adapters/presenters/score_screen_view_model.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
 ]
@@ -226,6 +234,7 @@ unit_test_sources = [
     "tests/test_spawn_timeline.cpp",
     "tests/test_menu_flow_use_case.cpp",
     "tests/test_presentation_view_models.cpp",
+    "tests/test_campaign_map_presenter.cpp",
     "tests/test_settings_use_case.cpp",
     "tests/test_random_source.cpp",
     "tests/test_content_validator.cpp",
@@ -281,6 +290,23 @@ def prepare_godot_project(godot_executable, project_dir, run_env=None):
         env=run_env,
     )
     return import_result.returncode
+
+
+def make_hosted_test_environment(name):
+    root = pathlib.Path("build") / "hosted_test_user" / name
+    if root.exists():
+        shutil.rmtree(root)
+
+    roaming_dir = root / "Roaming"
+    local_dir = root / "Local"
+    for directory in [roaming_dir, local_dir]:
+        directory.mkdir(parents=True, exist_ok=True)
+
+    run_env = os.environ.copy()
+    run_env["APPDATA"] = str(roaming_dir.resolve())
+    run_env["LOCALAPPDATA"] = str(local_dir.resolve())
+
+    return run_env
 
 
 def resolve_clang_profile_runtime(arch):
@@ -421,7 +447,7 @@ def run_hosted_coverage(target, source, env):
     raw_dir = prepare_coverage_raw_dir(coverage_dir)
     project_dir = pathlib.Path(".").resolve()
     script_path = project_dir / "tests" / "godot_hosted_runner.gd"
-    run_env = os.environ.copy()
+    run_env = make_hosted_test_environment("coverage")
     run_env["LLVM_PROFILE_FILE"] = str((raw_dir / "defn_hosted_tests-%p.profraw").resolve())
     prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
     if prepare_result != 0:
@@ -553,7 +579,8 @@ def run_hosted_tests(target, source, env):
 
     project_dir = pathlib.Path(".").resolve()
     script_path = project_dir / "tests" / "godot_hosted_runner.gd"
-    prepare_result = prepare_godot_project(godot_executable, project_dir)
+    run_env = make_hosted_test_environment("tests")
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
     if prepare_result != 0:
         return prepare_result
 
@@ -561,6 +588,7 @@ def run_hosted_tests(target, source, env):
         [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)],
         check=False,
         cwd=project_dir,
+        env=run_env,
     )
     target_path = pathlib.Path(str(target[0]))
     target_path.parent.mkdir(parents=True, exist_ok=True)

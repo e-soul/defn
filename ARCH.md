@@ -125,7 +125,7 @@ Current boundary ownership:
   ports, and match intents. `GameManager` converts their level labels and
   background paths to Godot `String` values when rendering the scene.
 - `ContentValidator` consumes `ContentValidationInput`, a plain value model of
-  menu, progression, upgrade, unit, and level data, and returns
+  campaign-map, menu, progression, upgrade, unit, and level data, and returns
   `std::vector<std::string>` issues. `JsonContentRepository` converts parsed
   Godot-backed catalog values into that input; `ContentStartupValidator` owns
   Godot logging.
@@ -135,7 +135,11 @@ Current boundary ownership:
   `UnitFactory`, and match decisions to `MatchDirector`.
 - `MenuManager` is the framework UI entry point. It delegates menu decisions
   and screen models to `MenuFlowUseCase` and presenter builders, style shaping
-  to `MenuStyle`, and display/audio persistence to `SettingsService`.
+  to `MenuStyle`, and display/audio persistence to `SettingsService`. The
+  level-selection composition loads `campaign_map.json` and level definitions,
+  passes plain campaign state to `CampaignMapPresenter`, then mounts one
+  full-screen `CampaignMapView` directly under its UI layer. Texture loading,
+  downsampling, preview framing, and Godot controls remain adapter concerns.
 
 Keep these translations at the edge. A new engine-facing value in domain or
 application code is an architectural regression, not a convenience shortcut.
@@ -373,7 +377,7 @@ flowchart TB
         DeployCardModel[DeployCardModel]
         ScoreScreenModel[ScoreScreenModel]
         MenuScreenModel[MenuScreenModel]
-        LevelSelectModel[LevelSelectModel]
+        CampaignMapModel[CampaignMapViewModel]
         SettingsModel[SettingsModel]
     end
 
@@ -382,6 +386,7 @@ flowchart TB
         DeployCardPresenter[DeployCardPresenter]
         ScorePresenter[ScoreScreenPresenter]
         MenuPresenter[MenuPresenter]
+        CampaignMapPresenter[CampaignMapPresenter]
         SettingsPresenter[SettingsPresenter]
     end
 
@@ -389,6 +394,7 @@ flowchart TB
         HUD[HUD CanvasLayer]
         MenuManager[MenuManager Node2D]
         PauseMenu[PauseMenu]
+        CampaignMapView[CampaignMapView and dossier/node views]
         GodotControls[Buttons, labels, panels]
     end
 
@@ -403,6 +409,9 @@ flowchart TB
     UiAdapters --> ScenePorts
     HUD --> GodotControls
     MenuManager --> GodotControls
+    CampaignMapPresenter --> CampaignMapModel
+    CampaignMapView --> CampaignMapModel
+    MenuManager --> CampaignMapView
 ```
 
 ## Module 6: Godot Entity Construction

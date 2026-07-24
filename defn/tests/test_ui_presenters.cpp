@@ -4,6 +4,8 @@
 #include "base_objective.h"
 #include "base_objective_factory.h"
 #include "camera_scroll_controller.h"
+#include "campaign_map_view.h"
+#include "campaign_texture_cache.h"
 #include "combat_component.h"
 #include "deploy_card_presenter.h"
 #include "game_background_builder.h"
@@ -25,6 +27,7 @@
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
+#include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/label.hpp>
@@ -44,12 +47,19 @@
 #include <array>
 #include <cmath>
 #include <initializer_list>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace defn {
 
 namespace {
+
+template <typename ObjectType> struct GodotObjectDeleter {
+    void operator()(ObjectType *object) const { memdelete(object); }
+};
+
+template <typename ObjectType> using GodotObjectOwner = std::unique_ptr<ObjectType, GodotObjectDeleter<ObjectType>>;
 
 template <typename NodeType> void collect_nodes(Node *root, std::vector<NodeType *> &result) {
     if (root == nullptr) {
@@ -280,11 +290,20 @@ bool menu_manager_shows_options_menu(MenuManager *menu_manager) {
 }
 
 bool menu_manager_shows_level_select(MenuManager *menu_manager) {
-    return has_all_labels(menu_manager, {"SELECT LEVEL"}) && has_all_buttons(menu_manager, {"Back"});
+    return has_all_labels(menu_manager, {"CAMPAIGN / THE EASTERN EXPEDITION", "ENEMY PRESENCE"}) && has_all_buttons(menu_manager, {"BACK"}) &&
+           (find_button_by_text(menu_manager, "DEPLOY") != nullptr || find_button_by_text(menu_manager, "REPLAY") != nullptr);
 }
 
 bool menu_manager_shows_progression(MenuManager *menu_manager) {
     return has_all_labels(menu_manager, {"COMMAND ROSTER"}) && has_all_buttons(menu_manager, {"All Owned Upgrades", "Back"});
+}
+
+CampaignMapView *show_campaign_map(MenuManager *menu_manager) {
+    menu_manager->_ready();
+    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
+    std::vector<CampaignMapView *> campaign_maps;
+    collect_nodes(menu_manager, campaign_maps);
+    return campaign_maps.size() == static_cast<std::size_t>(1) ? campaign_maps.front() : nullptr;
 }
 
 bool menu_manager_background_covers_viewport(MenuManager *menu_manager) {
@@ -631,8 +650,23 @@ DEFN_TEST(field_promotion_audio_resource_loads) {
     DEFN_CHECK(stream.is_valid());
 }
 
+DEFN_TEST(campaign_texture_cache_downsamples_and_deduplicates_preview_art) {
+    Ref<CampaignTextureCache> cache;
+    cache.instantiate();
+    const CampaignTextureDefinition preview{.path = "res://assets/campaign/desert_outpost_preview.jpg", .texture_scale = 0.25F};
+
+    const Ref<Texture2D> first = cache->load(preview);
+    const Ref<Texture2D> second = cache->load(preview);
+
+    DEFN_REQUIRE(first.is_valid());
+    DEFN_CHECK_EQ(first->get_width(), 960);
+    DEFN_CHECK_EQ(first->get_height(), 540);
+    DEFN_CHECK(first.ptr() == second.ptr());
+}
+
 DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
-    auto *menu_manager = memnew(MenuManager);
+    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
+    auto *menu_manager = menu_manager_owner.get();
     menu_manager->_ready();
 
     DEFN_CHECK(menu_manager_shows_main_menu(menu_manager));
@@ -649,8 +683,60 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
 
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowProgression), {});
     DEFN_CHECK(menu_manager_shows_progression(menu_manager));
+    std::vector<CampaignMapView *> campaign_maps;
+    collect_nodes(menu_manager, campaign_maps);
+    DEFN_REQUIRE(campaign_maps.size() == 1);
+    DEFN_CHECK(campaign_maps.front()->is_queued_for_deletion());
+}
 
-    memdelete(menu_manager);
+DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
+    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
+    auto *menu_manager = menu_manager_owner.get();
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager);
+
+    DEFN_REQUIRE(campaign_map != nullptr);
+    DEFN_CHECK(Object::cast_to<CanvasLayer>(campaign_map->get_parent()) != nullptr);
+    auto *reference_surface = Object::cast_to<Control>(campaign_map->get_node_or_null("ReferenceSurface"));
+    DEFN_REQUIRE(reference_surface != nullptr);
+    DEFN_CHECK(reference_surface->is_clipping_contents());
+    auto *panorama = Object::cast_to<Sprite2D>(campaign_map->get_node_or_null("ReferenceSurface/Panorama"));
+    DEFN_REQUIRE(panorama != nullptr);
+    DEFN_REQUIRE(panorama->get_texture().is_valid());
+    DEFN_CHECK_CLOSE(static_cast<double>(panorama->get_texture()->get_width()) * panorama->get_scale().x, 1920.0, 0.001);
+    DEFN_CHECK_CLOSE(static_cast<double>(panorama->get_texture()->get_height()) * panorama->get_scale().y, 1080.0, 0.001);
+}
+
+DEFN_TEST(campaign_map_renders_utf8_and_uses_compact_preview_nodes) {
+    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
+    auto *menu_manager = menu_manager_owner.get();
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager);
+
+    DEFN_REQUIRE(campaign_map != nullptr);
+    DEFN_CHECK(find_button_by_text(campaign_map, String::utf8("×")) != nullptr);
+    DEFN_CHECK(has_label_text(campaign_map, String::utf8("[Esc] Back     [←/→] Choose operation     [Enter] Inspect / Deploy")));
+    auto *desert_node = Object::cast_to<Control>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01"));
+    DEFN_REQUIRE(desert_node != nullptr);
+    DEFN_CHECK_EQ(desert_node->get_size(), godot::Vector2(188.0F, 134.0F));
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/LabelPlate") == nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/MissionName") == nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/MissionDetail") == nullptr);
+}
+
+DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
+    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
+    auto *menu_manager = menu_manager_owner.get();
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager);
+
+    DEFN_REQUIRE(campaign_map != nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_04/PostcardFrame") != nullptr);
+    auto *medallion = Object::cast_to<Label>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/StateMedallion"));
+    DEFN_REQUIRE(medallion != nullptr);
+    DEFN_CHECK(medallion->has_theme_stylebox_override("normal"));
+    auto *node_interaction = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
+    DEFN_REQUIRE(node_interaction != nullptr);
+    DEFN_CHECK(node_interaction->has_theme_stylebox_override("focus"));
+    DEFN_CHECK(has_label_text(campaign_map, "Grime"));
+    DEFN_CHECK(!has_label_text(campaign_map, "[Grime]"));
 }
 
 DEFN_TEST(progression_stats_screen_view_switches_dossiers_and_preserves_selection_across_owned_grid) {

@@ -1,15 +1,21 @@
 #include "content_repository.h"
 
+#include "campaign_map_data_loader.h"
 #include "data_paths.h"
 #include "godot_string.h"
 #include "level_loader.h"
 #include "menu_data_loader.h"
 #include "music_playlist_loader.h"
 
+#include <godot_cpp/classes/resource_loader.hpp>
+
+#include <algorithm>
+
 namespace defn {
 
 JsonContentPaths default_json_content_paths() {
     return {
+        .campaign_map_path = DataPaths::CAMPAIGN_MAP_DATA,
         .menu_path = DataPaths::MENU_DATA,
         .music_playlist_path = DataPaths::MUSIC_PLAYLIST_DATA,
         .progression_path = DataPaths::PROGRESSION_DATA,
@@ -24,6 +30,24 @@ JsonContentRepository::JsonContentRepository(JsonContentPaths paths) : paths_(st
 
 JsonLoadedContent JsonContentRepository::load_for_validation() const {
     JsonLoadedContent content;
+
+    content.campaign_map = CampaignMapDataLoader::load(paths_.campaign_map_path);
+    if (!content.campaign_map.has_value()) {
+        content.load_issues.emplace_back("failed to load campaign_map.json");
+    } else {
+        const CampaignMapDefinition &map = *content.campaign_map;
+        std::vector<std::string> asset_paths = {map.background.path};
+        for (const auto &mission : map.missions) {
+            asset_paths.push_back(mission.preview.texture.path);
+        }
+        std::ranges::sort(asset_paths);
+        asset_paths.erase(std::ranges::unique(asset_paths).begin(), asset_paths.end());
+        for (const std::string &path : asset_paths) {
+            if (!path.empty() && !godot::ResourceLoader::get_singleton()->exists(to_godot_string(path))) {
+                content.missing_campaign_assets.push_back(path);
+            }
+        }
+    }
 
     content.menu_data = MenuDataLoader::load(paths_.menu_path);
     if (!content.menu_data.has_value()) {
@@ -124,6 +148,8 @@ ContentValidationInput make_content_validation_input(const JsonLoadedContent &co
     if (content.units_loaded) {
         input.field_promotion_rules = content.unit_data.get_globals().field_promotion;
     }
+    input.campaign_map = content.campaign_map;
+    input.missing_campaign_assets = content.missing_campaign_assets;
     return input;
 }
 

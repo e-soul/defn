@@ -182,13 +182,7 @@ DEFN_TEST(menu_view_model_keeps_options_and_back_button_as_plain_data) {
     DEFN_CHECK_EQ(view_model.back_button->intent.target, std::string("main_menu"));
 }
 
-DEFN_TEST(menu_view_model_builds_standard_level_and_progression_screens) {
-    const LevelSelectViewModel level_select = build_level_select_view_model({{.level_id = "level_01", .label = "Level 01", .unlocked = true}});
-    DEFN_CHECK_EQ(level_select.title, std::string("SELECT LEVEL"));
-    DEFN_REQUIRE(level_select.levels.size() == static_cast<size_t>(1));
-    DEFN_CHECK_EQ(level_select.back_button.intent.type, MenuIntentType::GotoMenu);
-    DEFN_CHECK_EQ(level_select.back_button.intent.target, std::string("game_menu"));
-
+DEFN_TEST(menu_view_model_builds_standard_progression_screen) {
     const ProgressionScreenViewModel progression = build_progression_screen_view_model();
     DEFN_CHECK_EQ(progression.title, std::string("YOUR UPGRADES"));
     DEFN_CHECK_EQ(progression.back_button.intent.type, MenuIntentType::GotoMenu);

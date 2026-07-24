@@ -76,18 +76,6 @@ struct MenuScreenViewModel {
     std::optional<MenuButtonViewModel> back_button;
 };
 
-struct LevelSelectRowViewModel {
-    std::string level_id;
-    std::string label;
-    bool unlocked = false;
-};
-
-struct LevelSelectViewModel {
-    std::string title = "SELECT LEVEL";
-    std::vector<LevelSelectRowViewModel> levels;
-    MenuButtonViewModel back_button;
-};
-
 struct ProgressionScreenViewModel {
     std::string title = "YOUR UPGRADES";
     MenuButtonViewModel back_button;
@@ -95,7 +83,6 @@ struct ProgressionScreenViewModel {
 
 [[nodiscard]] MenuIntent build_menu_intent(MenuIntentType intent_type, const std::string &target = {});
 [[nodiscard]] MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input);
-[[nodiscard]] LevelSelectViewModel build_level_select_view_model(std::vector<LevelSelectRowViewModel> levels);
 [[nodiscard]] ProgressionScreenViewModel build_progression_screen_view_model();
 
 } // namespace defn

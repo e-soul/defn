@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <unordered_set>
 
 namespace defn {
 
@@ -29,6 +30,82 @@ void validate_menu_content(const MenuContentData &menu_data, std::vector<std::st
                 push_issue(issues, "menu " + quoted(menu.name) + " has unsupported setting " + quoted(setting.setting_id));
             }
         }
+    }
+}
+
+bool normalized(float value) { return value >= 0.0F && value <= 1.0F; }
+
+void validate_texture(const CampaignTextureDefinition &texture, const std::string &label, std::vector<std::string> &issues) {
+    if (texture.path.empty()) {
+        push_issue(issues, "campaign map " + label + " path is empty");
+    }
+    if (texture.texture_scale <= 0.0F || texture.texture_scale > 1.0F) {
+        push_issue(issues, "campaign map " + label + " texture_scale must be in (0, 1]");
+    }
+}
+
+void validate_preview(const CampaignPreviewDefinition &preview, const std::string &label, std::vector<std::string> &issues) {
+    validate_texture(preview.texture, label, issues);
+    if (!normalized(preview.focus_x) || !normalized(preview.focus_y)) {
+        push_issue(issues, "campaign map " + label + " focus must be normalized");
+    }
+    if (preview.node_zoom < 1.0F || preview.dossier_zoom < 1.0F) {
+        push_issue(issues, "campaign map " + label + " zoom values must be at least 1.0");
+    }
+}
+
+std::vector<std::string> validate_campaign_missions(const CampaignMapDefinition &map, std::vector<std::string> &issues) {
+    static const std::unordered_set<std::string> threats = {"low", "moderate", "high", "severe", "extreme"};
+    std::vector<std::string> mission_ids;
+    mission_ids.reserve(map.missions.size());
+    for (const auto &mission : map.missions) {
+        if (contains_string(mission_ids, mission.level_id)) {
+            push_issue(issues, "campaign_map.json contains duplicate level_id " + quoted(mission.level_id));
+        }
+        mission_ids.push_back(mission.level_id);
+        if (!normalized(mission.position_normalized.x) || !normalized(mission.position_normalized.y)) {
+            push_issue(issues, "campaign map position for " + quoted(mission.level_id) + " must be normalized");
+        }
+        if (!threats.contains(mission.threat_id)) {
+            push_issue(issues, "campaign map mission " + quoted(mission.level_id) + " has unknown threat " + quoted(mission.threat_id));
+        }
+        if (mission.ambience == CampaignMapAmbience::UNKNOWN) {
+            push_issue(issues, "campaign map mission " + quoted(mission.level_id) + " has unknown ambience");
+        }
+        validate_preview(mission.preview, "preview for " + quoted(mission.level_id), issues);
+    }
+    return mission_ids;
+}
+
+void validate_campaign_progression(const std::vector<std::string> &mission_ids, const ProgressionCatalogValidationData &progression,
+                                   std::vector<std::string> &issues) {
+    for (std::size_t index = 0; index < progression.level_unlocks.size(); ++index) {
+        const std::string &expected = progression.level_unlocks[index].level_id;
+        if (!contains_string(mission_ids, expected)) {
+            push_issue(issues, "campaign_map.json missing progression level " + quoted(expected));
+        } else if (index >= mission_ids.size() || mission_ids[index] != expected) {
+            push_issue(issues, "campaign map mission order must follow progression.json");
+        }
+    }
+    for (const std::string &mission_id : mission_ids) {
+        const bool known =
+            std::ranges::any_of(progression.level_unlocks, [&mission_id](const ProgressionLevelValidationData &level) { return level.level_id == mission_id; });
+        if (!known) {
+            push_issue(issues, "campaign_map.json contains unknown level " + quoted(mission_id));
+        }
+    }
+}
+
+void validate_campaign_map(const CampaignMapDefinition &map, const ProgressionCatalogValidationData *progression,
+                           const std::vector<std::string> &missing_assets, std::vector<std::string> &issues) {
+    validate_texture(map.background, "background", issues);
+    const std::vector<std::string> mission_ids = validate_campaign_missions(map, issues);
+    if (progression != nullptr) {
+        validate_campaign_progression(mission_ids, *progression, issues);
+    }
+
+    for (const std::string &asset : missing_assets) {
+        push_issue(issues, "campaign map resource does not exist: " + quoted(asset));
     }
 }
 
@@ -135,6 +212,10 @@ ContentValidationReport ContentValidator::validate_loaded_content(const ContentV
         }
     }
 
+    if (input.campaign_map.has_value()) {
+        validate_campaign_map(*input.campaign_map, input.progression_catalog.has_value() ? &*input.progression_catalog : nullptr, input.missing_campaign_assets,
+                              report.issues);
+    }
     if (input.menu_data.has_value()) {
         validate_menu_content(*input.menu_data, report.issues);
     }

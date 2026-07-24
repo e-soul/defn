@@ -1,6 +1,6 @@
 ﻿{
   "level_id": 4,
-  "name": "The Winter Forst",
+  "name": "The Winter Forest",
   "background": "res://assets/backgrounds/background_winter_forest_tiling.png",
   "starting_core_resource": 84,
   "base_integrity": 3,

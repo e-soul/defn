@@ -28,13 +28,13 @@ void UiSfxPlayer::connect_menu_button(godot::BaseButton *button) {
         button->connect("mouse_entered", callable_mp(this, &UiSfxPlayer::play_hover).bind(button));
     }
     if (click_player_ != nullptr) {
-        button->connect("pressed", callable_mp(this, &UiSfxPlayer::play_click).bind(button));
+        button->connect("button_down", callable_mp(this, &UiSfxPlayer::play_click).bind(button));
     }
 }
 
 void UiSfxPlayer::connect_deploy_card(godot::BaseButton *button) {
     if (button != nullptr && deploy_card_player_ != nullptr) {
-        button->connect("pressed", callable_mp(this, &UiSfxPlayer::play_deploy_card).bind(button));
+        button->connect("button_down", callable_mp(this, &UiSfxPlayer::play_deploy_card).bind(button));
     }
 }
 
@@ -58,19 +58,19 @@ godot::AudioStreamPlayer *UiSfxPlayer::create_player(const char *name, const UiS
 }
 
 void UiSfxPlayer::play_hover(godot::BaseButton *button) {
-    if (button != nullptr && !button->is_disabled() && hover_player_ != nullptr) {
+    if (button != nullptr && !button->is_disabled() && hover_player_ != nullptr && hover_player_->is_inside_tree()) {
         hover_player_->play();
     }
 }
 
 void UiSfxPlayer::play_click(godot::BaseButton *button) {
-    if (button != nullptr && !button->is_disabled() && click_player_ != nullptr) {
+    if (button != nullptr && !button->is_disabled() && click_player_ != nullptr && click_player_->is_inside_tree()) {
         click_player_->play();
     }
 }
 
 void UiSfxPlayer::play_deploy_card(godot::BaseButton *button) {
-    if (button != nullptr && !button->is_disabled() && deploy_card_player_ != nullptr) {
+    if (button != nullptr && !button->is_disabled() && deploy_card_player_ != nullptr && deploy_card_player_->is_inside_tree()) {
         deploy_card_player_->play();
     }
 }

@@ -1,0 +1,78 @@
+{
+    "background": {
+        "path": "res://assets/campaign/map_background_v2.jpg",
+        "texture_scale": 1.0
+    },
+    "missions": [
+        {
+            "level_id": "level_01",
+            "position": [0.165, 0.25],
+            "tagline": "Reclaim a shattered relay before the first swarm gathers.",
+            "threat": "low",
+            "ambience": "dust",
+            "preview": {
+                "path": "res://assets/campaign/desert_outpost_preview.jpg",
+                "texture_scale": 0.25,
+                "focus": [0.38, 0.50],
+                "node_zoom": 1.0,
+                "dossier_zoom": 1.0
+            }
+        },
+        {
+            "level_id": "level_02",
+            "position": [0.22, 0.72],
+            "tagline": "Hold a vine-choked causeway where heavy attackers first emerge.",
+            "threat": "moderate",
+            "ambience": "spores",
+            "preview": {
+                "path": "res://assets/campaign/jungle_ruin_preview.jpg",
+                "texture_scale": 0.25,
+                "focus": [0.38, 0.50],
+                "node_zoom": 1.0,
+                "dossier_zoom": 1.0
+            }
+        },
+        {
+            "level_id": "level_03",
+            "position": [0.49, 0.55],
+            "tagline": "Defend an exposed shoreline against a widening enemy roster.",
+            "threat": "high",
+            "ambience": "mist",
+            "preview": {
+                "path": "res://assets/campaign/beach_preview.jpg",
+                "texture_scale": 0.25,
+                "focus": [0.38, 0.50],
+                "node_zoom": 1.0,
+                "dossier_zoom": 1.0
+            }
+        },
+        {
+            "level_id": "level_04",
+            "position": [0.63, 0.30],
+            "tagline": "Survive a frozen approach as fast hunters join the assault.",
+            "threat": "severe",
+            "ambience": "snow",
+            "preview": {
+                "path": "res://assets/campaign/winter_forest_preview.jpg",
+                "texture_scale": 0.25,
+                "focus": [0.38, 0.50],
+                "node_zoom": 1.0,
+                "dossier_zoom": 1.0
+            }
+        },
+        {
+            "level_id": "level_05",
+            "position": [0.66, 0.73],
+            "tagline": "Make the final stand at a fortified settlement under sustained pressure.",
+            "threat": "extreme",
+            "ambience": "embers",
+            "preview": {
+                "path": "res://assets/campaign/feldkirchen_preview.jpg",
+                "texture_scale": 0.25,
+                "focus": [0.38, 0.50],
+                "node_zoom": 1.0,
+                "dossier_zoom": 1.0
+            }
+        }
+    ]
+}
