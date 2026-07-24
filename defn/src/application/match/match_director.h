@@ -39,6 +39,7 @@ class MatchDirector {
     int get_level_number() const { return spawn_scheduler_.get_level_number(); }
     const std::string &get_level_name() const { return spawn_scheduler_.get_level_name(); }
     int get_total_waves() const { return spawn_scheduler_.get_total_waves(); }
+    Vector2 get_base_position_ratio() const { return spawn_scheduler_.get_base_position_ratio(); }
     const std::string &get_background_path() const { return spawn_scheduler_.get_background_path(); }
     std::vector<UnitConfig> build_available_friendlies() const;
 

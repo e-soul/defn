@@ -508,12 +508,15 @@ DEFN_TEST(level_loader_maps_wave_data_from_dictionary) {
     level_data["name"] = "Factory";
     level_data["starting_core_resource"] = 150;
     level_data["base_integrity"] = 4;
+    level_data["base_position"] = make_array({0.125, 0.75});
     level_data["background"] = "res://factory.png";
     level_data["waves"] = make_array({wave});
 
     const auto level = LevelLoader::load_from_data(level_data);
     DEFN_REQUIRE(level.has_value());
     DEFN_CHECK_EQ(level->level_id, 7);
+    DEFN_CHECK_CLOSE(level->base_position_ratio.x, 0.125, 0.000001);
+    DEFN_CHECK_CLOSE(level->base_position_ratio.y, 0.75, 0.000001);
     DEFN_CHECK_EQ(level->waves.size(), static_cast<size_t>(1));
     DEFN_CHECK_EQ(level->waves[0].spawns.size(), static_cast<size_t>(2));
     DEFN_CHECK_EQ(level->waves[0].spawns[1].type, std::string("operator"));

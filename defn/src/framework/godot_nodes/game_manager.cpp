@@ -36,8 +36,6 @@ namespace defn {
 
 namespace {
 
-constexpr real_t HALF = 2.0F;
-
 float linear_to_db(float linear) {
     const float clamped_linear = std::clamp(linear, 0.0001F, 1.0F);
     return 20.0F * std::log10(clamped_linear);
@@ -293,16 +291,18 @@ void GameManager::update_scroll_trigger_positions() {
     }
 }
 
-godot::Vector2 GameManager::get_base_objective_position() {
+godot::Vector2 GameManager::get_base_objective_position() const {
     auto *grid = GridManager::get_singleton();
     if (grid == nullptr) {
         return {};
     }
 
     const auto &rules = grid->get_rules();
-    const real_t objective_x = rules.breach_x + 96.0F;
-    const real_t objective_y = (rules.belt_top_y + rules.belt_bottom_y) / HALF;
-    return {objective_x, objective_y};
+    const defn::Vector2 ratio = match_director_.get_base_position_ratio();
+    return {
+        ratio.x * rules.viewport_width,
+        ratio.y * rules.viewport_height,
+    };
 }
 
 bool GameManager::is_valid_scroll_trigger_unit(Area2D *area, const char *required_group) {

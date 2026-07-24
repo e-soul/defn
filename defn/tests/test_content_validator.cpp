@@ -110,6 +110,20 @@ DEFN_TEST(content_validator_rejects_invalid_field_promotion_rules) {
     DEFN_CHECK(contains_issue(report, "health_multiplier"));
 }
 
+DEFN_TEST(content_validator_rejects_non_normalized_level_base_position) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    input.levels = {{.level_id = "level_01",
+                     .definition = LevelDefinition{
+                         .base_position_ratio = {.x = 1.1F, .y = 0.5F},
+                         .waves = {{.wave_number = 1, .spawns = {{.time = 0.0, .type = "jackal"}}}},
+                     }}};
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+
+    DEFN_CHECK(contains_issue(report, "base_position must be normalized"));
+}
+
 DEFN_TEST(content_validator_accepts_campaign_map_matching_progression) {
     FakeUnitCatalog units;
     ContentValidationInput input = make_valid_input(units);

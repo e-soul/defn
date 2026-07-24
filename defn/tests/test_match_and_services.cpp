@@ -386,6 +386,7 @@ DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     level.level_id = 4;
     level.name = "Skipped Spawn Test";
     level.background_path = "res://background.png";
+    level.base_position_ratio = {.x = 0.125F, .y = 0.75F};
     level.waves.push_back({.wave_number = 1, .spawns = {{.time = 0.0, .type = "jackal"}, {.time = 0.0, .type = "ghost"}}});
 
     SpawnScheduler unconfigured_scheduler;
@@ -393,6 +394,8 @@ DEFN_TEST(spawn_scheduler_skips_spawns_without_dependencies_or_known_units) {
     DEFN_CHECK_EQ(unconfigured_scheduler.get_level_number(), 4);
     DEFN_CHECK_EQ(unconfigured_scheduler.get_level_name(), std::string("Skipped Spawn Test"));
     DEFN_CHECK_EQ(unconfigured_scheduler.get_total_waves(), 1);
+    DEFN_CHECK_CLOSE(unconfigured_scheduler.get_base_position_ratio().x, 0.125, 0.000001);
+    DEFN_CHECK_CLOSE(unconfigured_scheduler.get_base_position_ratio().y, 0.75, 0.000001);
     DEFN_CHECK_EQ(unconfigured_scheduler.get_background_path(), std::string("res://background.png"));
     unconfigured_scheduler.start();
     const SpawnSchedulerUpdate unconfigured_update = unconfigured_scheduler.update(0.1);

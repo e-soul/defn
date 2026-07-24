@@ -17,6 +17,13 @@ std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &dat
     level_definition.name = to_std_string(String(data.get("name", "")));
     level_definition.starting_core_resource = VariantTools::as_int(data.get("starting_core_resource", 100));
     level_definition.base_integrity = VariantTools::as_int(data.get("base_integrity", 3));
+    const Array base_position = data.get("base_position", Array());
+    if (base_position.size() >= 2) {
+        level_definition.base_position_ratio = {
+            .x = VariantTools::as_float(base_position[0]),
+            .y = VariantTools::as_float(base_position[1]),
+        };
+    }
     level_definition.background_path = to_std_string(String(data.get("background", "")));
 
     Array wave_array = data.get("waves", Array());

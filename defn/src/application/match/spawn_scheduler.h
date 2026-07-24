@@ -39,6 +39,7 @@ class SpawnScheduler {
     }
     int get_starting_core_resource() const { return level_definition_ ? level_definition_->starting_core_resource : 100; }
     int get_base_integrity() const { return level_definition_ ? level_definition_->base_integrity : 3; }
+    Vector2 get_base_position_ratio() const { return level_definition_ ? level_definition_->base_position_ratio : Vector2{}; }
     const std::string &get_background_path() const {
         static const std::string empty;
         return level_definition_ ? level_definition_->background_path : empty;
