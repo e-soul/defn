@@ -308,13 +308,13 @@ ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel 
     apply_button_enabled(retry_button, presentation.retry_button_enabled);
     button_row->add_child(retry_button);
 
-    auto *menu_button = make_action_button("Main Menu");
+    auto *campaign_button = make_action_button("Campaign");
     if (ui_sfx_player != nullptr) {
-        ui_sfx_player->connect_menu_button(menu_button);
+        ui_sfx_player->connect_menu_button(campaign_button);
     }
-    connect_if_valid(menu_button, actions.on_main_menu);
-    apply_button_enabled(menu_button, presentation.main_menu_button_enabled);
-    button_row->add_child(menu_button);
+    connect_if_valid(campaign_button, actions.on_campaign);
+    apply_button_enabled(campaign_button, presentation.campaign_button_enabled);
+    button_row->add_child(campaign_button);
 
     return view;
 }

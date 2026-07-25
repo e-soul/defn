@@ -279,7 +279,7 @@ struct ContentRepositoryFixture {
         DEFN_REQUIRE(DirAccess::make_dir_absolute(levels_directory) == OK);
         write_text_file(
             campaign_map_path,
-            R"({"background":{"path":"res://assets/campaign/map_background_v2.jpg","texture_scale":1.0},"missions":[{"level_id":"level_01","position":[0.2,0.3],"tagline":"Test operation.","threat":"low","ambience":"dust","preview":{"path":"res://assets/campaign/desert_outpost_preview.jpg","texture_scale":0.25,"focus":[0.38,0.5],"node_zoom":1.0,"dossier_zoom":1.0}}]})");
+            R"({"background":{"path":"res://assets/campaign/map_background_v2.jpg"},"missions":[{"level_id":"level_01","position":[0.2,0.3],"tagline":"Test operation.","threat":"low","ambience":"dust","preview":{"path":"res://assets/campaign/desert_outpost_preview.jpg","focus":[0.38,0.5],"node_zoom":1.0,"dossier_zoom":1.0}}]})");
         write_text_file(
             menu_path,
             R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
@@ -317,7 +317,6 @@ void check_campaign_map_loaded(const JsonLoadedContent &loaded) {
 DEFN_TEST(campaign_map_loader_reads_concrete_mission_preview) {
     Dictionary preview;
     preview["path"] = "res://mission.jpg";
-    preview["texture_scale"] = 0.25;
     preview["focus"] = make_array({0.38, 0.5});
     preview["node_zoom"] = 1.2;
     preview["dossier_zoom"] = 1.1;
@@ -331,7 +330,6 @@ DEFN_TEST(campaign_map_loader_reads_concrete_mission_preview) {
 
     Dictionary background;
     background["path"] = "res://map.jpg";
-    background["texture_scale"] = 1.0;
     Dictionary data;
     data["background"] = background;
     data["missions"] = make_array({mission});
@@ -341,7 +339,6 @@ DEFN_TEST(campaign_map_loader_reads_concrete_mission_preview) {
     DEFN_REQUIRE(loaded->missions.size() == static_cast<std::size_t>(1));
     const CampaignPreviewDefinition &resolved = loaded->missions[0].preview;
     DEFN_CHECK_EQ(resolved.texture.path, std::string("res://mission.jpg"));
-    DEFN_CHECK_CLOSE(resolved.texture.texture_scale, 0.25F, 0.0001F);
     DEFN_CHECK_CLOSE(resolved.focus_x, 0.38F, 0.0001F);
     DEFN_CHECK_CLOSE(resolved.node_zoom, 1.2F, 0.0001F);
     DEFN_CHECK_CLOSE(resolved.dossier_zoom, 1.1F, 0.0001F);

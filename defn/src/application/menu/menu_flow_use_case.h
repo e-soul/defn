@@ -26,6 +26,7 @@ class MenuFlowUseCase {
     [[nodiscard]] static MenuFlowResult handle(const MenuIntent &intent);
     [[nodiscard]] MenuFlowResult select_level(const std::string &level_id) const;
     [[nodiscard]] static MenuFlowResult request_main_menu();
+    [[nodiscard]] static MenuFlowResult request_campaign_map();
 
   private:
     ProgressionService *progression_ = nullptr;

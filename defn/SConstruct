@@ -146,7 +146,6 @@ extension_sources = [
     "src/adapters/presenters/match_result_cutscene_view_model.cpp",
     "src/adapters/presenters/menu_view_model.cpp",
     "src/adapters/presenters/campaign_map_view_model.cpp",
-    "src/adapters/godot/ui/campaign_texture_cache.cpp",
     "src/adapters/godot/ui/campaign_preview_view.cpp",
     "src/adapters/godot/ui/campaign_map_node_view.cpp",
     "src/adapters/godot/ui/operation_dossier_view.cpp",

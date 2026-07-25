@@ -1,10 +1,7 @@
 #include "menu_manager.h"
-#include "campaign_map_data_loader.h"
 #include "campaign_map_view.h"
-#include "campaign_map_view_model.h"
 #include "data_paths.h"
 #include "godot_string.h"
-#include "level_loader.h"
 #include "menu_data_loader.h"
 #include "menu_style.h"
 #include "progression_manager.h"
@@ -367,7 +364,11 @@ void MenuManager::_ready() {
     button_container_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     center->add_child(button_container_);
 
-    show_menu("main_menu");
+    if (SceneNavigator::consume_campaign_map_request()) {
+        show_level_select();
+    } else {
+        show_menu("main_menu");
+    }
 }
 
 bool MenuManager::load_menu_data() {
@@ -495,49 +496,13 @@ void MenuManager::show_level_select() {
         return;
     }
 
-    const auto loaded_map = CampaignMapDataLoader::load(DataPaths::CAMPAIGN_MAP_DATA);
-    if (!loaded_map.has_value()) {
-        UtilityFunctions::printerr("MenuManager: Campaign map data unavailable");
-        show_menu("game_menu");
-        return;
-    }
-    const CampaignMapDefinition &map = *loaded_map;
-
-    std::vector<CampaignLevelPresentationSource> levels;
-    const auto level_data = progression->get_level_unlock_data();
-    levels.reserve(level_data.size());
-    for (const auto &level : level_data) {
-        const auto definition = LevelLoader::load(DataPaths::level_definition(to_godot_string(level.level_id)));
-        if (!definition.has_value()) {
-            UtilityFunctions::printerr("MenuManager: Failed to load level definition: ", to_godot_string(level.level_id));
-            continue;
-        }
-        levels.push_back(CampaignLevelPresentationSource{
-            .level_id = level.level_id,
-            .definition = *definition,
-            .requires_completed = level.requires_completed,
-            .unlocked = progression->is_level_unlocked(level.level_id),
-            .completed = progression->is_level_completed(level.level_id),
-            .frontier = progression->get_frontier_level_id() == level.level_id,
-            .best_score = progression->get_highest_level_score(level.level_id),
-            .effective_starting_energy = progression->get_effective_starting_energy(definition->starting_core_resource),
-            .effective_base_integrity = progression->get_effective_base_integrity(definition->base_integrity),
-        });
-    }
-
-    if (levels.empty()) {
-        UtilityFunctions::printerr("MenuManager: No campaign levels could be composed");
-        show_menu("game_menu");
-        return;
-    }
-
     auto *map_view = memnew(CampaignMapView);
     map_view->set_name("CampaignMapView");
     const Callable deploy_action = callable_mp(this, &MenuManager::on_level_selected);
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed).bind(static_cast<int>(MenuIntentType::GotoMenu), String("game_menu"));
     ui_layer_->add_child(map_view);
-    map_view->configure(CampaignMapPresenter::present(map, levels), deploy_action, back_action, ui_sfx_player_);
     active_fullscreen_view_ = map_view;
+    map_view->configure(progression, deploy_action, back_action, ui_sfx_player_);
     if (total_score_label_ != nullptr) {
         total_score_label_->set_visible(false);
     }

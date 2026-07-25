@@ -76,7 +76,7 @@ DEFN_TEST(score_screen_view_model_blocks_actions_until_reward_selected) {
     DEFN_CHECK_EQ(view_model.title, std::string("DEFEAT"));
     DEFN_CHECK(!view_model.next_level_button_visible);
     DEFN_CHECK(!view_model.retry_button_enabled);
-    DEFN_CHECK(!view_model.main_menu_button_enabled);
+    DEFN_CHECK(!view_model.campaign_button_enabled);
     DEFN_CHECK_EQ(view_model.reward_title, std::string("CHOOSE 1 UPGRADE"));
 }
 

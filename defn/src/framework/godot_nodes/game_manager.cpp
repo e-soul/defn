@@ -174,7 +174,7 @@ void GameManager::_ready() {
     hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
     hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
     hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
-    hud->connect("score_screen_main_menu", callable_mp(this, &GameManager::on_score_screen_main_menu));
+    hud->connect("score_screen_campaign", callable_mp(this, &GameManager::on_score_screen_campaign));
     hud->connect("score_screen_upgrade_selected", callable_mp(this, &GameManager::on_score_screen_upgrade_selected));
 
     setup_base_objective();
@@ -202,7 +202,7 @@ void GameManager::_ready() {
     auto *pause_menu = memnew(PauseMenu);
     pause_menu->set_name("PauseMenu");
     add_child(pause_menu);
-    pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_score_screen_main_menu));
+    pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
 }
 
 void GameManager::_process(double delta) {
@@ -634,14 +634,16 @@ void GameManager::on_score_screen_retry(const String &level_id) {
     navigate_if_requested(get_tree(), result);
 }
 
-void GameManager::on_score_screen_main_menu() {
+void GameManager::on_score_screen_campaign() {
     if (!match_director_.finalize_selected_upgrade()) {
         return;
     }
 
     match_director_.clear_pending_match_end();
-    navigate_if_requested(get_tree(), MenuFlowUseCase::request_main_menu());
+    navigate_if_requested(get_tree(), MenuFlowUseCase::request_campaign_map());
 }
+
+void GameManager::on_pause_menu_main_menu() { navigate_if_requested(get_tree(), MenuFlowUseCase::request_main_menu()); }
 
 void GameManager::on_score_screen_upgrade_selected(const String &upgrade_id) {
     if (!match_director_.select_upgrade(to_std_string(upgrade_id))) {

@@ -35,7 +35,7 @@ struct ScoreScreenViewModel {
     bool next_level_button_visible = false;
     bool next_level_button_enabled = true;
     bool retry_button_enabled = true;
-    bool main_menu_button_enabled = true;
+    bool campaign_button_enabled = true;
     bool reward_available = false;
     std::string reward_title;
     std::string reward_subtitle;

@@ -49,7 +49,7 @@ ScoreScreenViewModel build_score_screen_view_model(const ScoreScreenPresentation
     view_model.next_level_button_visible = input.victory && !input.next_level_id.empty();
     view_model.next_level_button_enabled = actions_enabled;
     view_model.retry_button_enabled = actions_enabled;
-    view_model.main_menu_button_enabled = actions_enabled;
+    view_model.campaign_button_enabled = actions_enabled;
     view_model.reward_available = input.reward_available;
     view_model.reward_title = input.reward_title.empty() ? "CHOOSE 1 UPGRADE" : input.reward_title;
     view_model.reward_subtitle = input.reward_subtitle;

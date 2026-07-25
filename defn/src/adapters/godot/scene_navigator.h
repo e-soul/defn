@@ -15,10 +15,15 @@ class SceneNavigator {
     SceneNavigator() = delete;
 
     static void go_to_main_menu(SceneTree *tree);
+    static void go_to_campaign_map(SceneTree *tree);
     static void go_to_level(SceneTree *tree, const String &level_id);
     static void go_to_current_level(SceneTree *tree);
     static void quit(SceneTree *tree);
     static void navigate(SceneTree *tree, const SceneNavigationRequest &request);
+    [[nodiscard]] static bool consume_campaign_map_request();
+
+  private:
+    static bool campaign_map_requested_;
 };
 
 } // namespace defn

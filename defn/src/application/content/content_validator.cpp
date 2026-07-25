@@ -39,9 +39,6 @@ void validate_texture(const CampaignTextureDefinition &texture, const std::strin
     if (texture.path.empty()) {
         push_issue(issues, "campaign map " + label + " path is empty");
     }
-    if (texture.texture_scale <= 0.0F || texture.texture_scale > 1.0F) {
-        push_issue(issues, "campaign map " + label + " texture_scale must be in (0, 1]");
-    }
 }
 
 void validate_preview(const CampaignPreviewDefinition &preview, const std::string &label, std::vector<std::string> &issues) {

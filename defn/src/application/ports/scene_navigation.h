@@ -5,7 +5,7 @@
 
 namespace defn {
 
-enum class SceneNavigationDestination { MainMenu, CurrentLevel, Level, Quit };
+enum class SceneNavigationDestination { MainMenu, CampaignMap, CurrentLevel, Level, Quit };
 
 struct SceneNavigationRequest {
     SceneNavigationDestination destination = SceneNavigationDestination::MainMenu;

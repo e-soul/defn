@@ -8,7 +8,6 @@
 #endif
 #include "camera_scroll_controller.h"
 #include "campaign_map_view.h"
-#include "campaign_texture_cache.h"
 #include "combat_component.h"
 #include "deploy_card_presenter.h"
 #include "game_background_builder.h"
@@ -36,6 +35,7 @@
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -246,9 +246,9 @@ bool score_screen_has_victory_content(Node *overlay) {
 bool score_screen_has_disabled_primary_actions(Node *overlay) {
     Button *next_button = find_button_by_text(overlay, "Next Level");
     Button *retry_button = find_button_by_text(overlay, "Retry");
-    Button *menu_button = find_button_by_text(overlay, "Main Menu");
-    return next_button != nullptr && retry_button != nullptr && menu_button != nullptr && next_button->is_disabled() && retry_button->is_disabled() &&
-           menu_button->is_disabled();
+    Button *campaign_button = find_button_by_text(overlay, "Campaign");
+    return next_button != nullptr && retry_button != nullptr && campaign_button != nullptr && next_button->is_disabled() && retry_button->is_disabled() &&
+           campaign_button->is_disabled();
 }
 
 bool hud_has_initial_state(HUD *hud) { return has_label_containing(hud, "Energy: 100") && has_all_labels(hud, {"Score: 0", "WAVE 1 / 3"}); }
@@ -301,12 +301,36 @@ bool menu_manager_shows_progression(MenuManager *menu_manager) {
     return has_all_labels(menu_manager, {"COMMAND ROSTER"}) && has_all_buttons(menu_manager, {"All Owned Upgrades", "Back"});
 }
 
+bool pump_campaign_map_loading(CampaignMapView *campaign_map) {
+    if (campaign_map == nullptr) {
+        return false;
+    }
+    for (int attempt = 0; attempt < 10000 && campaign_map->loading_state() != CampaignMapView::LoadingState::Ready &&
+                          campaign_map->loading_state() != CampaignMapView::LoadingState::Failed;
+         ++attempt) {
+        campaign_map->_process(0.016);
+        OS::get_singleton()->delay_usec(1000);
+    }
+    return campaign_map->loading_state() == CampaignMapView::LoadingState::Ready;
+}
+
+CampaignMapView *find_campaign_map(Node *root) {
+    std::vector<CampaignMapView *> campaign_maps;
+    collect_nodes(root, campaign_maps);
+    return campaign_maps.size() == static_cast<std::size_t>(1) ? campaign_maps.front() : nullptr;
+}
+
+bool menu_manager_finishes_level_select_loading(MenuManager *menu_manager) {
+    CampaignMapView *campaign_map = find_campaign_map(menu_manager);
+    return pump_campaign_map_loading(campaign_map) && menu_manager_shows_level_select(menu_manager);
+}
+
 CampaignMapView *show_campaign_map(MenuManager *menu_manager) {
     menu_manager->_ready();
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
-    std::vector<CampaignMapView *> campaign_maps;
-    collect_nodes(menu_manager, campaign_maps);
-    return campaign_maps.size() == static_cast<std::size_t>(1) ? campaign_maps.front() : nullptr;
+    CampaignMapView *campaign_map = find_campaign_map(menu_manager);
+    (void)pump_campaign_map_loading(campaign_map);
+    return campaign_map;
 }
 
 bool menu_manager_background_covers_viewport(MenuManager *menu_manager) {
@@ -463,7 +487,7 @@ DEFN_TEST(score_screen_presenter_builds_victory_screen_with_rewards_and_disabled
 
     const Callable action = make_valid_callable(parent);
     const ScoreScreenViewNodes view =
-        ScoreScreenView::show(parent, model, {.on_next_level = action, .on_retry = action, .on_main_menu = action, .on_select_upgrade = action});
+        ScoreScreenView::show(parent, model, {.on_next_level = action, .on_retry = action, .on_campaign = action, .on_select_upgrade = action});
 
     DEFN_CHECK(score_screen_view_matches_victory_layout(parent, view));
     DEFN_CHECK(score_screen_has_victory_content(view.overlay));
@@ -491,7 +515,7 @@ DEFN_TEST(score_screen_presenter_handles_null_parent_and_defeat_without_next_lev
     DEFN_CHECK(has_label_text(view.overlay, "DEFEAT"));
     DEFN_CHECK(find_button_by_text(view.overlay, "Next Level") == nullptr);
     DEFN_REQUIRE(find_button_by_text(view.overlay, "Retry") != nullptr);
-    DEFN_REQUIRE(find_button_by_text(view.overlay, "Main Menu") != nullptr);
+    DEFN_REQUIRE(find_button_by_text(view.overlay, "Campaign") != nullptr);
 
     memdelete(parent);
 }
@@ -653,20 +677,6 @@ DEFN_TEST(field_promotion_audio_resource_loads) {
     DEFN_CHECK(stream.is_valid());
 }
 
-DEFN_TEST(campaign_texture_cache_downsamples_and_deduplicates_preview_art) {
-    Ref<CampaignTextureCache> cache;
-    cache.instantiate();
-    const CampaignTextureDefinition preview{.path = "res://assets/campaign/desert_outpost_preview.jpg", .texture_scale = 0.25F};
-
-    const Ref<Texture2D> first = cache->load(preview);
-    const Ref<Texture2D> second = cache->load(preview);
-
-    DEFN_REQUIRE(first.is_valid());
-    DEFN_CHECK_EQ(first->get_width(), 960);
-    DEFN_CHECK_EQ(first->get_height(), 540);
-    DEFN_CHECK(first.ptr() == second.ptr());
-}
-
 DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
     auto *menu_manager = menu_manager_owner.get();
@@ -682,7 +692,7 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     DEFN_CHECK(menu_manager_shows_options_menu(menu_manager));
 
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
-    DEFN_CHECK(menu_manager_shows_level_select(menu_manager));
+    DEFN_CHECK(menu_manager_finishes_level_select_loading(menu_manager));
 
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowProgression), {});
     DEFN_CHECK(menu_manager_shows_progression(menu_manager));
@@ -690,6 +700,55 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     collect_nodes(menu_manager, campaign_maps);
     DEFN_REQUIRE(campaign_maps.size() == 1);
     DEFN_CHECK(campaign_maps.front()->is_queued_for_deletion());
+}
+
+DEFN_TEST(campaign_map_mounts_loading_overlay_before_composing_content) {
+    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
+    auto *menu_manager = menu_manager_owner.get();
+    menu_manager->_ready();
+    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
+
+    std::vector<CampaignMapView *> campaign_maps;
+    collect_nodes(menu_manager, campaign_maps);
+    DEFN_REQUIRE(campaign_maps.size() == 1);
+    CampaignMapView *campaign_map = campaign_maps.front();
+    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::WaitingToStart);
+    DEFN_CHECK(campaign_map->get_node_or_null("LoadingOverlay") != nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface") == nullptr);
+
+    DEFN_CHECK(pump_campaign_map_loading(campaign_map));
+    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Ready);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface") != nullptr);
+}
+
+DEFN_TEST(campaign_map_loading_failure_shows_retry_and_back_actions) {
+    GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
+    CampaignMapView *campaign_map = campaign_map_owner.get();
+    campaign_map->configure(static_cast<ProgressionService *>(nullptr), {}, {}, nullptr);
+
+    (void)pump_campaign_map_loading(campaign_map);
+    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Failed);
+    DEFN_CHECK(find_button_by_text(campaign_map, "Retry") != nullptr);
+    DEFN_CHECK(find_button_by_text(campaign_map, "Back") != nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface") == nullptr);
+}
+
+DEFN_TEST(campaign_map_loading_selects_the_presented_initial_mission) {
+    GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
+    CampaignMapView *campaign_map = campaign_map_owner.get();
+    const CampaignTextureDefinition texture{.path = "res://assets/campaign/desert_outpost_preview.jpg"};
+    CampaignMapViewModel view_model{
+        .background = texture,
+        .missions = {{.level_id = "level_01", .name = "First", .preview = {.texture = texture}},
+                     {.level_id = "level_02", .name = "Second", .preview = {.texture = texture}}},
+        .initial_selected_level_id = "level_02",
+    };
+    campaign_map->configure(std::move(view_model), {}, {}, nullptr);
+
+    DEFN_CHECK(pump_campaign_map_loading(campaign_map));
+    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Ready);
+    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_02"));
+    DEFN_REQUIRE(campaign_map->dossier() != nullptr);
 }
 
 DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {

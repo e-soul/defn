@@ -14,7 +14,6 @@
 #include "campaign_map_node_view.h"
 #include "campaign_map_view.h"
 #include "campaign_preview_view.h"
-#include "campaign_texture_cache.h"
 #include "combat_component.h"
 #include "detection_component.h"
 #include "field_promotion_effect.h"
@@ -76,7 +75,6 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
     ClassDB::register_internal_class<defn::ProgressionStatMeter>();
     ClassDB::register_internal_class<defn::UiSfxPlayer>();
-    ClassDB::register_internal_class<defn::CampaignTextureCache>();
     ClassDB::register_internal_class<defn::CampaignPreviewView>();
     ClassDB::register_internal_class<defn::CampaignMapNodeView>();
     ClassDB::register_internal_class<defn::OperationDossierView>();

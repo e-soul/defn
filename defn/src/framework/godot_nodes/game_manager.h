@@ -80,8 +80,9 @@ class GameManager : public Node2D {
     // Score screen callbacks
     void on_score_screen_next_level(const String &level_id);
     void on_score_screen_retry(const String &level_id);
-    void on_score_screen_main_menu();
+    void on_score_screen_campaign();
     void on_score_screen_upgrade_selected(const String &upgrade_id);
+    void on_pause_menu_main_menu();
 
     // Child nodes
     HUD *hud = nullptr;

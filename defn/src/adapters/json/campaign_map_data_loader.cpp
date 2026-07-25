@@ -34,7 +34,6 @@ Vector2 parse_vector2(const Variant &value, Vector2 invalid_value) {
 CampaignTextureDefinition parse_texture(const Dictionary &data) {
     return {
         .path = to_std_string(String(data.get("path", ""))),
-        .texture_scale = as_float(data.get("texture_scale", 0.0F), 0.0F),
     };
 }
 

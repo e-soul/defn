@@ -8,34 +8,22 @@ namespace {
 
 CampaignMapDefinition make_map() {
     return {
-        .background = {.path = "res://map.jpg", .texture_scale = 1.0F},
+        .background = {.path = "res://map.jpg"},
         .missions = {{.level_id = "level_01",
                       .position_normalized = {.x = 0.2F, .y = 0.3F},
                       .tagline = "First.",
                       .threat_id = "low",
-                      .preview = {.texture = {.path = "res://preview_01.jpg", .texture_scale = 0.25F},
-                                  .focus_x = 0.38F,
-                                  .focus_y = 0.5F,
-                                  .node_zoom = 1.0F,
-                                  .dossier_zoom = 1.1F}},
+                      .preview = {.texture = {.path = "res://preview_01.jpg"}, .focus_x = 0.38F, .focus_y = 0.5F, .node_zoom = 1.0F, .dossier_zoom = 1.1F}},
                      {.level_id = "level_02",
                       .position_normalized = {.x = 0.4F, .y = 0.5F},
                       .tagline = "Second.",
                       .threat_id = "high",
-                      .preview = {.texture = {.path = "res://preview_02.jpg", .texture_scale = 0.25F},
-                                  .focus_x = 0.5F,
-                                  .focus_y = 0.5F,
-                                  .node_zoom = 1.0F,
-                                  .dossier_zoom = 1.0F}},
+                      .preview = {.texture = {.path = "res://preview_02.jpg"}, .focus_x = 0.5F, .focus_y = 0.5F, .node_zoom = 1.0F, .dossier_zoom = 1.0F}},
                      {.level_id = "level_03",
                       .position_normalized = {.x = 0.6F, .y = 0.7F},
                       .tagline = "Third.",
                       .threat_id = "severe",
-                      .preview = {.texture = {.path = "res://preview_03.jpg", .texture_scale = 0.25F},
-                                  .focus_x = 0.5F,
-                                  .focus_y = 0.5F,
-                                  .node_zoom = 1.0F,
-                                  .dossier_zoom = 1.0F}}},
+                      .preview = {.texture = {.path = "res://preview_03.jpg"}, .focus_x = 0.5F, .focus_y = 0.5F, .node_zoom = 1.0F, .dossier_zoom = 1.0F}}},
     };
 }
 

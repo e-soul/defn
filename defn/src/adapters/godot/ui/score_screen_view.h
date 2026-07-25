@@ -17,7 +17,7 @@ class UiSfxPlayer;
 struct ScoreScreenActions {
     Callable on_next_level;
     Callable on_retry;
-    Callable on_main_menu;
+    Callable on_campaign;
     Callable on_select_upgrade;
 };
 

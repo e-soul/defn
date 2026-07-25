@@ -136,10 +136,12 @@ Current boundary ownership:
 - `MenuManager` is the framework UI entry point. It delegates menu decisions
   and screen models to `MenuFlowUseCase` and presenter builders, style shaping
   to `MenuStyle`, and display/audio persistence to `SettingsService`. The
-  level-selection composition loads `campaign_map.json` and level definitions,
-  passes plain campaign state to `CampaignMapPresenter`, then mounts one
-  full-screen `CampaignMapView` directly under its UI layer. Texture loading,
-  downsampling, preview framing, and Godot controls remain adapter concerns.
+  level-selection composition mounts one full-screen `CampaignMapView` directly
+  under its UI layer and supplies progression access plus navigation callbacks.
+  `CampaignMapView` first presents its loading overlay, then owns synchronous
+  campaign/level definition composition and threaded texture requests before it
+  passes plain campaign state to `CampaignMapPresenter` and builds the map UI.
+  Preview framing and Godot controls remain adapter concerns.
 
 Keep these translations at the edge. A new engine-facing value in domain or
 application code is an architectural regression, not a convenience shortcut.

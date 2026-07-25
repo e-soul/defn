@@ -20,7 +20,7 @@ void HUD::_bind_methods() {
     ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "unit_type")));
     ADD_SIGNAL(MethodInfo("score_screen_next_level", PropertyInfo(Variant::STRING, "level_id")));
     ADD_SIGNAL(MethodInfo("score_screen_retry", PropertyInfo(Variant::STRING, "level_id")));
-    ADD_SIGNAL(MethodInfo("score_screen_main_menu"));
+    ADD_SIGNAL(MethodInfo("score_screen_campaign"));
     ADD_SIGNAL(MethodInfo("score_screen_upgrade_selected", PropertyInfo(Variant::STRING, "upgrade_id")));
 }
 
@@ -292,7 +292,7 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
                               {
                                   .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(to_godot_string(summary.next_level_id)),
                                   .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
-                                  .on_main_menu = callable_mp(this, &HUD::on_main_menu_pressed),
+                                  .on_campaign = callable_mp(this, &HUD::on_campaign_pressed),
                                   .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
                               },
                               ui_sfx_player_);
@@ -305,7 +305,7 @@ void HUD::on_next_level_pressed(const String &level_id) { emit_signal("score_scr
 
 void HUD::on_retry_pressed(const String &level_id) { emit_signal("score_screen_retry", level_id); }
 
-void HUD::on_main_menu_pressed() { emit_signal("score_screen_main_menu"); }
+void HUD::on_campaign_pressed() { emit_signal("score_screen_campaign"); }
 
 void HUD::on_upgrade_card_pressed(const String &upgrade_id) { emit_signal("score_screen_upgrade_selected", upgrade_id); }
 

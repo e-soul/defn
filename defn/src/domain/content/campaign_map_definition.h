@@ -12,7 +12,6 @@ enum class CampaignMapAmbience { DUST, SPORES, MIST, SNOW, EMBERS, UNKNOWN };
 
 struct CampaignTextureDefinition {
     std::string path;
-    float texture_scale = 0.0F;
 };
 
 struct CampaignPreviewDefinition {

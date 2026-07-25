@@ -1,7 +1,6 @@
 {
     "background": {
-        "path": "res://assets/campaign/map_background_v2.jpg",
-        "texture_scale": 1.0
+        "path": "res://assets/campaign/map_background_v2.jpg"
     },
     "missions": [
         {
@@ -12,7 +11,6 @@
             "ambience": "dust",
             "preview": {
                 "path": "res://assets/campaign/desert_outpost_preview.jpg",
-                "texture_scale": 0.25,
                 "focus": [0.38, 0.50],
                 "node_zoom": 1.0,
                 "dossier_zoom": 1.0
@@ -26,7 +24,6 @@
             "ambience": "spores",
             "preview": {
                 "path": "res://assets/campaign/jungle_ruin_preview.jpg",
-                "texture_scale": 0.25,
                 "focus": [0.38, 0.50],
                 "node_zoom": 1.0,
                 "dossier_zoom": 1.0
@@ -40,7 +37,6 @@
             "ambience": "mist",
             "preview": {
                 "path": "res://assets/campaign/beach_preview.jpg",
-                "texture_scale": 0.25,
                 "focus": [0.38, 0.50],
                 "node_zoom": 1.0,
                 "dossier_zoom": 1.0
@@ -54,7 +50,6 @@
             "ambience": "snow",
             "preview": {
                 "path": "res://assets/campaign/winter_forest_preview.jpg",
-                "texture_scale": 0.25,
                 "focus": [0.38, 0.50],
                 "node_zoom": 1.0,
                 "dossier_zoom": 1.0
@@ -68,7 +63,6 @@
             "ambience": "embers",
             "preview": {
                 "path": "res://assets/campaign/feldkirchen_preview.jpg",
-                "texture_scale": 0.25,
                 "focus": [0.38, 0.50],
                 "node_zoom": 1.0,
                 "dossier_zoom": 1.0

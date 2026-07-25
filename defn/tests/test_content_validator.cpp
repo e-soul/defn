@@ -141,16 +141,12 @@ DEFN_TEST(content_validator_accepts_campaign_map_matching_progression) {
     FakeUnitCatalog units;
     ContentValidationInput input = make_valid_input(units);
     input.campaign_map = CampaignMapDefinition{
-        .background = {.path = "res://map.jpg", .texture_scale = 1.0F},
+        .background = {.path = "res://map.jpg"},
         .missions = {{.level_id = "level_01",
                       .position_normalized = {.x = 0.2F, .y = 0.3F},
                       .threat_id = "low",
                       .ambience = CampaignMapAmbience::DUST,
-                      .preview = {.texture = {.path = "res://preview.jpg", .texture_scale = 0.25F},
-                                  .focus_x = 0.5F,
-                                  .focus_y = 0.5F,
-                                  .node_zoom = 1.0F,
-                                  .dossier_zoom = 1.0F}}},
+                      .preview = {.texture = {.path = "res://preview.jpg"}, .focus_x = 0.5F, .focus_y = 0.5F, .node_zoom = 1.0F, .dossier_zoom = 1.0F}}},
     };
 
     DEFN_CHECK(ContentValidator::validate_loaded_content(input).is_valid());
@@ -161,12 +157,12 @@ DEFN_TEST(content_validator_reports_campaign_map_shape_cross_references_and_asse
     ContentValidationInput input = make_valid_input(units);
     input.progression_catalog->level_unlocks.push_back({.level_id = "level_02", .requires_completed = "level_01"});
     input.campaign_map = CampaignMapDefinition{
-        .background = {.texture_scale = 0.0F},
+        .background = {},
         .missions = {{.level_id = "ghost",
                       .position_normalized = {.x = -0.1F, .y = 0.3F},
                       .threat_id = "impossible",
                       .ambience = CampaignMapAmbience::UNKNOWN,
-                      .preview = {.texture = {.path = "res://preview.jpg", .texture_scale = 1.2F}, .focus_x = 1.2F, .node_zoom = 0.9F}},
+                      .preview = {.texture = {.path = "res://preview.jpg"}, .focus_x = 1.2F, .node_zoom = 0.9F}},
                      {.level_id = "ghost", .position_normalized = {.x = 0.2F, .y = 0.3F}}},
     };
     input.missing_campaign_assets = {"res://missing.jpg"};
@@ -174,7 +170,6 @@ DEFN_TEST(content_validator_reports_campaign_map_shape_cross_references_and_asse
     const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
     DEFN_CHECK(contains_issue(report, "background path is empty"));
     DEFN_CHECK(contains_issue(report, "preview for 'ghost' path is empty"));
-    DEFN_CHECK(contains_issue(report, "texture_scale"));
     DEFN_CHECK(contains_issue(report, "focus must be normalized"));
     DEFN_CHECK(contains_issue(report, "zoom values"));
     DEFN_CHECK(contains_issue(report, "duplicate level_id 'ghost'"));

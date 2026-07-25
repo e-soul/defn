@@ -86,4 +86,10 @@ DEFN_TEST(menu_flow_use_case_builds_main_menu_navigation_request) {
     DEFN_CHECK_EQ(result.navigation->destination, SceneNavigationDestination::MainMenu);
 }
 
+DEFN_TEST(menu_flow_use_case_builds_campaign_map_navigation_request) {
+    const MenuFlowResult result = MenuFlowUseCase().request_campaign_map();
+    DEFN_REQUIRE(result.navigation.has_value());
+    DEFN_CHECK_EQ(result.navigation->destination, SceneNavigationDestination::CampaignMap);
+}
+
 } // namespace defn
