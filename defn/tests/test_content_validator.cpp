@@ -124,6 +124,19 @@ DEFN_TEST(content_validator_rejects_non_normalized_level_base_position) {
     DEFN_CHECK(contains_issue(report, "base_position must be normalized"));
 }
 
+DEFN_TEST(content_validator_rejects_invalid_level_belt_width) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    input.levels[0].definition->belt_width_ratio = {.x = 0.75F, .y = 0.75F};
+
+    ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(contains_issue(report, "belt_width must contain two distinct normalized ratios"));
+
+    input.levels[0].definition->belt_width_ratio = {.x = -0.1F, .y = 0.75F};
+    report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(contains_issue(report, "belt_width must contain two distinct normalized ratios"));
+}
+
 DEFN_TEST(content_validator_accepts_campaign_map_matching_progression) {
     FakeUnitCatalog units;
     ContentValidationInput input = make_valid_input(units);

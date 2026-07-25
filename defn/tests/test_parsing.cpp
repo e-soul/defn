@@ -37,8 +37,6 @@ Dictionary make_global_data() {
     gameplay_rules["viewport_width"] = 1280;
     gameplay_rules["viewport_height"] = 720;
     gameplay_rules["world_multiplier"] = 3;
-    gameplay_rules["belt_top_y"] = 160.0;
-    gameplay_rules["belt_bottom_y"] = 420.0;
     gameplay_rules["breach_x"] = 96.0;
     gameplay_rules["spawn_offset"] = 64.0;
     gameplay_rules["friendly_world_margin"] = 128.0;
@@ -509,6 +507,7 @@ DEFN_TEST(level_loader_maps_wave_data_from_dictionary) {
     level_data["starting_core_resource"] = 150;
     level_data["base_integrity"] = 4;
     level_data["base_position"] = make_array({0.125, 0.75});
+    level_data["belt_width"] = make_array({0.65, 0.85});
     level_data["background"] = "res://factory.png";
     level_data["waves"] = make_array({wave});
 
@@ -517,6 +516,8 @@ DEFN_TEST(level_loader_maps_wave_data_from_dictionary) {
     DEFN_CHECK_EQ(level->level_id, 7);
     DEFN_CHECK_CLOSE(level->base_position_ratio.x, 0.125, 0.000001);
     DEFN_CHECK_CLOSE(level->base_position_ratio.y, 0.75, 0.000001);
+    DEFN_CHECK_CLOSE(level->belt_width_ratio.x, 0.65, 0.000001);
+    DEFN_CHECK_CLOSE(level->belt_width_ratio.y, 0.85, 0.000001);
     DEFN_CHECK_EQ(level->waves.size(), static_cast<size_t>(1));
     DEFN_CHECK_EQ(level->waves[0].spawns.size(), static_cast<size_t>(2));
     DEFN_CHECK_EQ(level->waves[0].spawns[1].type, std::string("operator"));

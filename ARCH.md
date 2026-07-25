@@ -328,6 +328,10 @@ This split keeps singleton access, file I/O, random selection, rule calculation,
 
 Content loading lives at the adapter boundary: JSON repositories own file I/O and parsing, then hand use cases already-loaded content through plain models and catalog ports. Validation stays pure and reports issues for outer startup adapters to handle.
 
+Level definitions own normalized, per-level belt-width endpoints. The Godot grid adapter resolves those ratios against the configured viewport height when a match is composed, keeping screen-space spawn bounds out of global content.
+
+`template_debug` builds include a code-created belt debug overlay. It starts hidden and can be toggled with F3 to draw the two resolved horizontal belt boundaries; editor and release targets exclude the overlay at build time.
+
 ```mermaid
 flowchart TB
     subgraph ContentFiles[Files]

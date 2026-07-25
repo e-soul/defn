@@ -3,6 +3,9 @@
 #include "attack_target_resolver.h"
 #include "base_objective.h"
 #include "base_objective_factory.h"
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+#include "belt_debug_overlay.h"
+#endif
 #include "camera_scroll_controller.h"
 #include "campaign_map_view.h"
 #include "campaign_texture_cache.h"
@@ -850,6 +853,32 @@ DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
     memdelete(camera);
     memdelete(grid);
 }
+
+DEFN_TEST(grid_manager_resolves_level_belt_width_ratios_to_screen_coordinates) {
+    GameplayRules rules;
+    rules.viewport_height = 800.0F;
+
+    auto *grid = memnew(GridManager);
+    grid->configure(rules, 0.75F, 0.25F);
+
+    DEFN_CHECK_CLOSE(grid->get_rules().belt_top_y, 200.0, 0.001);
+    DEFN_CHECK_CLOSE(grid->get_rules().belt_bottom_y, 600.0, 0.001);
+    memdelete(grid);
+}
+
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+DEFN_TEST(belt_debug_overlay_starts_hidden_and_toggles_visibility) {
+    auto *overlay = memnew(BeltDebugOverlay);
+
+    DEFN_CHECK(!overlay->is_visible());
+    overlay->toggle_visibility();
+    DEFN_CHECK(overlay->is_visible());
+    overlay->toggle_visibility();
+    DEFN_CHECK(!overlay->is_visible());
+
+    memdelete(overlay);
+}
+#endif
 
 DEFN_TEST(game_background_builder_builds_parallax_background_from_texture) {
     GameplayRules rules = make_camera_test_rules();

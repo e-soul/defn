@@ -22,7 +22,7 @@ class GridManager : public Object, public GridQueryService {
     static void register_singleton();
     static void unregister_singleton();
 
-    void configure(const GameplayRules &rules);
+    void configure(const GameplayRules &rules, float belt_endpoint_a_ratio, float belt_endpoint_b_ratio);
     const GameplayRules &get_rules() const { return rules_; }
 
     [[nodiscard]] static real_t random_belt_y();    // random Y within the belt area

@@ -3,8 +3,6 @@
     "viewport_width": 1920.0,
     "viewport_height": 1080.0,
     "world_multiplier": 4,
-    "belt_top_y": 750.0,
-    "belt_bottom_y": 850.0,
     "breach_x": 50.0,
     "spawn_offset": 100.0,
     "friendly_world_margin": 100.0,

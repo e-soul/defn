@@ -71,6 +71,10 @@ if env["platform"] == "windows":
 else:
     env.Append(CXXFLAGS=["-std=c++23"])
 
+debug_rendering_enabled = env["target"] == "template_debug"
+if debug_rendering_enabled:
+    env.Append(CPPDEFINES=["DEFN_DEBUG_RENDERING_ENABLED"])
+
 requested_targets = set(COMMAND_LINE_TARGETS)
 coverage_native_requested = "coverage_native" in requested_targets
 coverage_hosted_requested = "coverage_hosted" in requested_targets
@@ -176,6 +180,9 @@ extension_sources = [
     "src/framework/godot_nodes/menu_manager.cpp",
     "src/framework/godot_nodes/pause_menu.cpp",
 ]
+
+if debug_rendering_enabled:
+    extension_sources.append("src/framework/godot_nodes/belt_debug_overlay.cpp")
 
 hosted_test_sources = [
     "src/framework/testing/defn_hosted_test_runner.cpp",

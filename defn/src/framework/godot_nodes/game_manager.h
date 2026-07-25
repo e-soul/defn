@@ -25,6 +25,9 @@ using namespace godot;
 class HUD;
 class BaseObjective;
 class Unit;
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+class BeltDebugOverlay;
+#endif
 
 class GameManager : public Node2D {
     GDCLASS(GameManager, Node2D)
@@ -42,6 +45,9 @@ class GameManager : public Node2D {
   private:
     void setup_background(const String &bg_path);
     void setup_camera();
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+    void setup_belt_debug_overlay();
+#endif
     void setup_base_objective();
     void setup_scroll_triggers();
     Area2D *create_scroll_trigger(const String &name, uint32_t collision_mask);
@@ -87,6 +93,9 @@ class GameManager : public Node2D {
     BaseObjective *base_objective = nullptr;
     Area2D *left_scroll_trigger = nullptr;
     Area2D *right_scroll_trigger = nullptr;
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+    BeltDebugOverlay *belt_debug_overlay_ = nullptr;
+#endif
 
     // Scrolling state
     CameraScrollController camera_scroll_controller_;

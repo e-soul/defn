@@ -3,6 +3,9 @@
 #include "background_music_player.h"
 #include "base_objective.h"
 #include "base_objective_factory.h"
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+#include "belt_debug_overlay.h"
+#endif
 #include "bounty_energy_effect.h"
 #include "collision_layers.h"
 #include "data_paths.h"
@@ -26,6 +29,10 @@
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/audio_stream_player.hpp>
 #include <godot_cpp/classes/collision_shape2d.hpp>
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+#include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/viewport.hpp>
+#endif
 #include <godot_cpp/classes/rectangle_shape2d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -120,17 +127,18 @@ void GameManager::_ready() {
     // Load unit data from JSON
     unit_data_.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
 
-    if (auto *grid = GridManager::get_singleton()) {
-        grid->configure(unit_data_.get_globals().gameplay_rules);
-        camera_scroll_controller_.configure(grid->get_rules(), grid->get_world_width());
-    }
-
-    match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
     const auto loaded_level = LevelLoader::load(level_path);
     if (!loaded_level) {
         UtilityFunctions::printerr("GameManager: Failed to load level: ", level_path);
         return;
     }
+
+    if (auto *grid = GridManager::get_singleton()) {
+        grid->configure(unit_data_.get_globals().gameplay_rules, loaded_level->belt_width_ratio.x, loaded_level->belt_width_ratio.y);
+        camera_scroll_controller_.configure(grid->get_rules(), grid->get_world_width());
+    }
+
+    match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
     match_director_.load_level_definition(*loaded_level, to_std_string(level_id));
     match_director_.begin_match();
 
@@ -141,6 +149,9 @@ void GameManager::_ready() {
     }
     setup_background(bg_path);
     setup_camera();
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+    setup_belt_debug_overlay();
+#endif
 
     // Entity container (y-sort so closer-to-bottom entities render in front)
     entity_container = memnew(Node2D);
@@ -203,8 +214,16 @@ void GameManager::_process(double delta) {
     apply_match_update(match_director_.update(delta));
 }
 
-void GameManager::_input(const Ref<InputEvent> & /*event*/) {
-    // Deployment is handled through HUD card buttons
+void GameManager::_input(const Ref<InputEvent> &event) {
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+    auto *key = Object::cast_to<InputEventKey>(event.ptr());
+    if (key != nullptr && key->is_pressed() && !key->is_echo() && key->get_keycode() == KEY_F3 && belt_debug_overlay_ != nullptr) {
+        belt_debug_overlay_->toggle_visibility();
+        get_viewport()->set_input_as_handled();
+    }
+#else
+    (void)event;
+#endif
 }
 
 void GameManager::setup_background(const String &bg_path) {
@@ -235,6 +254,21 @@ void GameManager::setup_camera() {
 
     add_child(camera);
 }
+
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+void GameManager::setup_belt_debug_overlay() {
+    auto *grid = GridManager::get_singleton();
+    if (grid == nullptr) {
+        return;
+    }
+
+    const GameplayRules &rules = grid->get_rules();
+    belt_debug_overlay_ = memnew(BeltDebugOverlay);
+    belt_debug_overlay_->set_name("BeltDebugOverlay");
+    belt_debug_overlay_->configure(grid->get_world_width(), rules.belt_top_y, rules.belt_bottom_y);
+    add_child(belt_debug_overlay_);
+}
+#endif
 
 void GameManager::update_camera_scroll(double delta) { camera_scroll_controller_.update_camera(camera, GridManager::get_singleton(), delta); }
 

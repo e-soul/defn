@@ -175,6 +175,10 @@ void validate_levels(const ProgressionCatalogValidationData &catalog, const Unit
         if (!normalized(level_definition.base_position_ratio.x) || !normalized(level_definition.base_position_ratio.y)) {
             push_issue(issues, "level " + quoted(unlock.level_id) + " base_position must be normalized");
         }
+        if (!normalized(level_definition.belt_width_ratio.x) || !normalized(level_definition.belt_width_ratio.y) ||
+            level_definition.belt_width_ratio.x == level_definition.belt_width_ratio.y) {
+            push_issue(issues, "level " + quoted(unlock.level_id) + " belt_width must contain two distinct normalized ratios");
+        }
         if (level_definition.waves.empty()) {
             push_issue(issues, "level " + quoted(unlock.level_id) + " has no waves");
         }

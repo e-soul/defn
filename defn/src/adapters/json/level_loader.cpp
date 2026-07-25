@@ -24,6 +24,13 @@ std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &dat
             .y = VariantTools::as_float(base_position[1]),
         };
     }
+    const Array belt_width = data.get("belt_width", Array());
+    if (belt_width.size() >= 2) {
+        level_definition.belt_width_ratio = {
+            .x = VariantTools::as_float(belt_width[0]),
+            .y = VariantTools::as_float(belt_width[1]),
+        };
+    }
     level_definition.background_path = to_std_string(String(data.get("background", "")));
 
     Array wave_array = data.get("waves", Array());

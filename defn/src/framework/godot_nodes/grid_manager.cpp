@@ -1,5 +1,6 @@
 #include "grid_manager.h"
 
+#include <algorithm>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -41,8 +42,10 @@ void GridManager::unregister_singleton() {
     singleton_ = nullptr;
 }
 
-void GridManager::configure(const GameplayRules &rules) {
+void GridManager::configure(const GameplayRules &rules, float belt_endpoint_a_ratio, float belt_endpoint_b_ratio) {
     rules_ = rules;
+    rules_.belt_top_y = std::min(belt_endpoint_a_ratio, belt_endpoint_b_ratio) * rules_.viewport_height;
+    rules_.belt_bottom_y = std::max(belt_endpoint_a_ratio, belt_endpoint_b_ratio) * rules_.viewport_height;
     world_width_ = rules_.viewport_width * static_cast<real_t>(rules_.world_multiplier);
     camera_x_ = rules_.viewport_width / 2.0F;
 }

@@ -8,6 +8,9 @@
 #include "background_music_player.h"
 #include "base_objective.h"
 #include "battle_entity.h"
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+#include "belt_debug_overlay.h"
+#endif
 #include "campaign_map_node_view.h"
 #include "campaign_map_view.h"
 #include "campaign_preview_view.h"
@@ -64,6 +67,9 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::FieldPromotionView>();
     ClassDB::register_internal_class<defn::vfx::FieldPromotionEffect>();
     ClassDB::register_class<defn::Unit>();
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+    ClassDB::register_internal_class<defn::BeltDebugOverlay>();
+#endif
     ClassDB::register_class<defn::GameManager>();
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();

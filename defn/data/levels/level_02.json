@@ -5,6 +5,7 @@
   "starting_core_resource": 56,
   "base_integrity": 3,
   "base_position": [0.06, 0.65],
+  "belt_width": [0.66, 0.79],
   "waves": [
     {
       "wave_number": 1,

@@ -24,6 +24,7 @@ struct LevelDefinition {
     int starting_core_resource = 100;
     int base_integrity = 3;
     Vector2 base_position_ratio{.x = 0.0760416667F, .y = 0.7407407407F};
+    Vector2 belt_width_ratio{.x = 0.6944444444F, .y = 0.7870370370F};
     std::string background_path;
     std::vector<WaveDefinition> waves;
 };
