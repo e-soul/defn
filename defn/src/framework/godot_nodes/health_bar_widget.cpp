@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "health_bar_widget.h"
 #include "health_component.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>

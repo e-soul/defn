@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "content_startup_validator.h"
 
 #include "content_repository.h"

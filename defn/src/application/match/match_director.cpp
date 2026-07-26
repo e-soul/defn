@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "match_director.h"
 
 #include "unit_progression_mapper.h"

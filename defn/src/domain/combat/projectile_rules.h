@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef PROJECTILE_RULES_H
 #define PROJECTILE_RULES_H
 

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef UNIT_PROGRESSION_MAPPER_H
 #define UNIT_PROGRESSION_MAPPER_H
 

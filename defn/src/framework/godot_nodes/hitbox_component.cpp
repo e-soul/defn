@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "hitbox_component.h"
 
 #include <godot_cpp/classes/circle_shape2d.hpp>

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef UNIT_FACTORY_H
 #define UNIT_FACTORY_H
 

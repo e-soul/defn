@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "sound_controller.h"
 #include "godot_string.h"
 #include <algorithm>

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "unit.h"
 #include "animation_controller.h"
 #include "combat_component.h"

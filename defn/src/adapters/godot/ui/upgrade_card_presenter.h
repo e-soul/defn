@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef UPGRADE_CARD_PRESENTER_H
 #define UPGRADE_CARD_PRESENTER_H
 

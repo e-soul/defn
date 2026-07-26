@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef MOVEMENT_COMPONENT_H
 #define MOVEMENT_COMPONENT_H
 

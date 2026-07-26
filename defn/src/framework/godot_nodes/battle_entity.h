@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef BATTLE_ENTITY_H
 #define BATTLE_ENTITY_H
 

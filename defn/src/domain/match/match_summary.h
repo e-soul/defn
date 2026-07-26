@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef MATCH_SUMMARY_H
 #define MATCH_SUMMARY_H
 

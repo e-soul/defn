@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "game_background_builder.h"
 
 #include <godot_cpp/classes/resource_loader.hpp>

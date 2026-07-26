@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef VFX_BOUNTY_ENERGY_EFFECT_H
 #define VFX_BOUNTY_ENERGY_EFFECT_H
 

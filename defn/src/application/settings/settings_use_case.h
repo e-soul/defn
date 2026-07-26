@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef SETTINGS_USE_CASE_H
 #define SETTINGS_USE_CASE_H
 

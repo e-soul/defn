@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "hud.h"
 #include "data_paths.h"
 #include "deploy_card_presenter.h"

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 e-soul.org
+# SPDX-License-Identifier: BSD-2-Clause
+
 from __future__ import annotations
 
 import argparse

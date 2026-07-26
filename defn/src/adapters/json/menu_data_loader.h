@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef MENU_DATA_LOADER_H
 #define MENU_DATA_LOADER_H
 

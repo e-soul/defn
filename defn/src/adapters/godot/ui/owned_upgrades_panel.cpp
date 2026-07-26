@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "owned_upgrades_panel.h"
 
 #include "upgrade_card_presenter.h"

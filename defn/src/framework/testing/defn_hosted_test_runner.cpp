@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #include "defn_hosted_test_runner.h"
 
 #include "test_harness.h"

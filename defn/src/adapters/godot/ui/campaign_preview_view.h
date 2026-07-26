@@ -1,3 +1,6 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
 #ifndef CAMPAIGN_PREVIEW_VIEW_H
 #define CAMPAIGN_PREVIEW_VIEW_H
 
