@@ -29,59 +29,6 @@ Color parse_content_color(const Array &arr, const Color &fallback) {
     return fallback;
 }
 
-MenuStyleBoxData parse_style_box_data(const Dictionary &style_dict, const MenuStyleBoxData &fallback) {
-    MenuStyleBoxData style = fallback;
-    style.bg_color = parse_content_color(style_dict.get("bg_color", Array()), style.bg_color);
-    style.border_color = parse_content_color(style_dict.get("border_color", Array()), style.border_color);
-    style.border_width = VariantTools::as_int(style_dict.get("border_width", style.border_width));
-    style.corner_radius = VariantTools::as_int(style_dict.get("corner_radius", style.corner_radius));
-    style.font_color = parse_content_color(style_dict.get("font_color", Array()), style.font_color);
-    return style;
-}
-
-MenuOptionsStyleData parse_options_style_data(const Dictionary &options_dict, const MenuOptionsStyleData &fallback) {
-    MenuOptionsStyleData options = fallback;
-    options.label_font_size = VariantTools::as_int(options_dict.get("label_font_size", options.label_font_size));
-    options.label_min_width = VariantTools::as_int(options_dict.get("label_min_width", options.label_min_width));
-    options.control_min_width = VariantTools::as_int(options_dict.get("control_min_width", options.control_min_width));
-    options.control_min_height = VariantTools::as_int(options_dict.get("control_min_height", options.control_min_height));
-    options.row_separation = VariantTools::as_int(options_dict.get("row_separation", options.row_separation));
-    options.section_font_size = VariantTools::as_int(options_dict.get("section_font_size", options.section_font_size));
-    options.value_font_size = VariantTools::as_int(options_dict.get("value_font_size", options.value_font_size));
-    options.section_font_color = parse_content_color(options_dict.get("section_font_color", Array()), options.section_font_color);
-    options.label_font_color = parse_content_color(options_dict.get("label_font_color", Array()), options.label_font_color);
-    options.value_font_color = parse_content_color(options_dict.get("value_font_color", Array()), options.value_font_color);
-    return options;
-}
-
-MenuStyleData parse_style_data(const Dictionary &style_dict) {
-    MenuStyleData style;
-    style.button_font_size = VariantTools::as_int(style_dict.get("button_font_size", style.button_font_size));
-    style.button_min_width = VariantTools::as_int(style_dict.get("button_min_width", style.button_min_width));
-    style.button_min_height = VariantTools::as_int(style_dict.get("button_min_height", style.button_min_height));
-    style.button_separation = VariantTools::as_int(style_dict.get("button_separation", style.button_separation));
-    style.normal = parse_style_box_data(style_dict.get("normal", Dictionary()), style.normal);
-    style.hover = parse_style_box_data(style_dict.get("hover", Dictionary()), style.hover);
-    style.pressed = parse_style_box_data(style_dict.get("pressed", Dictionary()), style.pressed);
-    style.options = parse_options_style_data(style_dict.get("options", Dictionary()), style.options);
-    return style;
-}
-
-UiSoundData parse_ui_sound_data(const Dictionary &sound_dict) {
-    return {
-        .path = to_std_string(String(sound_dict.get("path", ""))),
-        .volume_linear = VariantTools::as_float(sound_dict.get("volume_linear", 0.2)),
-    };
-}
-
-UiSfxData parse_ui_sfx_data(const Dictionary &sfx_dict) {
-    return {
-        .hover = parse_ui_sound_data(sfx_dict.get("hover", Dictionary())),
-        .click = parse_ui_sound_data(sfx_dict.get("click", Dictionary())),
-        .deploy_card = parse_ui_sound_data(sfx_dict.get("deploy_card", Dictionary())),
-    };
-}
-
 } // namespace
 
 MenuDefinitionType parse_menu_type(const Dictionary &menu_dict) {
@@ -202,8 +149,6 @@ std::optional<MenuContentData> MenuDataLoader::load(const String &path) {
 std::optional<MenuContentData> MenuDataLoader::load_from_data(const Dictionary &data) {
     MenuContentData menu_data;
     menu_data.background = to_std_string(String(data.get("background", "")));
-    menu_data.style = parse_style_data(data.get("style", Dictionary()));
-    menu_data.sfx = parse_ui_sfx_data(data.get("sfx", Dictionary()));
 
     const Dictionary menus = data.get("menus", Dictionary());
     const Array menu_names = menus.keys();

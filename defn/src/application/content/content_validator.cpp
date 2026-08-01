@@ -198,6 +198,82 @@ void validate_levels(const ProgressionCatalogValidationData &catalog, const Unit
     }
 }
 
+void require_color_role(const UiThemeData &theme, const std::string &role, const std::string &owner, std::vector<std::string> &issues) {
+    if (!role.empty() && !theme.find_color_role(role).has_value()) {
+        push_issue(issues, "ui_theme.json " + owner + " references unknown color role " + quoted(role));
+    }
+}
+
+void require_font_size_role(const UiThemeData &theme, const std::string &role, const std::string &owner, std::vector<std::string> &issues) {
+    if (!role.empty() && !theme.find_font_size_role(role).has_value()) {
+        push_issue(issues, "ui_theme.json " + owner + " references unknown font size role " + quoted(role));
+    }
+}
+
+void require_spacing_role(const UiThemeData &theme, const std::string &role, const std::string &owner, std::vector<std::string> &issues) {
+    if (!role.empty() && !theme.find_spacing_role(role).has_value()) {
+        push_issue(issues, "ui_theme.json " + owner + " references unknown spacing role " + quoted(role));
+    }
+}
+
+void require_shape_role(const UiThemeData &theme, const std::string &role, const std::string &owner, std::vector<std::string> &issues) {
+    if (!role.empty() && !theme.find_shape_role(role).has_value()) {
+        push_issue(issues, "ui_theme.json " + owner + " references unknown shape role " + quoted(role));
+    }
+}
+
+void validate_button_state(const UiThemeData &theme, const UiButtonState &state, const std::string &owner, std::vector<std::string> &issues) {
+    require_color_role(theme, state.bg_role, owner, issues);
+    require_color_role(theme, state.border_role, owner, issues);
+    require_color_role(theme, state.font_role, owner, issues);
+}
+
+void validate_ui_theme(const UiThemeData &theme, std::vector<std::string> &issues) {
+    for (const auto &[name, surface] : theme.surfaces) {
+        const std::string owner = "surface " + quoted(name);
+        require_color_role(theme, surface.bg_role, owner, issues);
+        require_color_role(theme, surface.border_role, owner, issues);
+        require_color_role(theme, surface.shadow_role, owner, issues);
+        require_shape_role(theme, surface.shape_role, owner, issues);
+        require_shape_role(theme, surface.border_width_role, owner, issues);
+        require_spacing_role(theme, surface.content_margin_role, owner, issues);
+    }
+
+    for (const auto &[name, button] : theme.buttons) {
+        const std::string owner = "button " + quoted(name);
+        require_font_size_role(theme, button.font_size_role, owner, issues);
+        require_shape_role(theme, button.shape_role, owner, issues);
+        require_spacing_role(theme, button.content_margin_role, owner, issues);
+        validate_button_state(theme, button.normal, owner, issues);
+        validate_button_state(theme, button.hover, owner, issues);
+        validate_button_state(theme, button.pressed, owner, issues);
+        validate_button_state(theme, button.disabled, owner, issues);
+        validate_button_state(theme, button.focus, owner, issues);
+    }
+
+    for (const auto &[name, text_style] : theme.text_styles) {
+        const std::string owner = "text style " + quoted(name);
+        require_font_size_role(theme, text_style.font_size_role, owner, issues);
+        require_color_role(theme, text_style.color_role, owner, issues);
+        if (text_style.outline_size > 0) {
+            require_color_role(theme, text_style.outline_role, owner, issues);
+        }
+    }
+
+    const std::string screen_owner = "screen";
+    require_color_role(theme, theme.screen.backdrop_role, screen_owner, issues);
+    require_spacing_role(theme, theme.screen.footer_gap_role, screen_owner, issues);
+    if (theme.find_text_style(theme.screen.title_text_style) == nullptr) {
+        push_issue(issues, "ui_theme.json screen references unknown text style " + quoted(theme.screen.title_text_style));
+    }
+    if (theme.find_text_style(theme.screen.subtitle_text_style) == nullptr) {
+        push_issue(issues, "ui_theme.json screen references unknown text style " + quoted(theme.screen.subtitle_text_style));
+    }
+    if (theme.find_surface(theme.screen.panel_surface) == nullptr) {
+        push_issue(issues, "ui_theme.json screen references unknown surface " + quoted(theme.screen.panel_surface));
+    }
+}
+
 } // namespace
 
 ContentValidationReport ContentValidator::validate_loaded_content(const ContentValidationInput &input) {
@@ -225,6 +301,9 @@ ContentValidationReport ContentValidator::validate_loaded_content(const ContentV
     }
     if (input.menu_data.has_value()) {
         validate_menu_content(*input.menu_data, report.issues);
+    }
+    if (input.ui_theme.has_value()) {
+        validate_ui_theme(*input.ui_theme, report.issues);
     }
     if (input.progression_catalog.has_value()) {
         validate_progression_catalog(*input.progression_catalog, report.issues);

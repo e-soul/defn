@@ -1,0 +1,89 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
+#include "test_harness.h"
+#include "ui_theme_models.h"
+
+namespace {
+
+using namespace defn;
+
+UiThemeData make_theme() {
+    UiThemeData theme;
+    theme.surfaces.emplace("panel", UiSurfaceStyle{.bg_role = "surface_raised", .border_role = "border_strong", .shape_role = "corner_lg"});
+    theme.buttons.emplace("menu", UiButtonVariant{.min_width = 400, .min_height = 60, .font_size_role = "heading"});
+    theme.text_styles.emplace("screen_title", UiTextStyle{.font_size_role = "title", .color_role = "accent"});
+    theme.metrics.emplace("option_label_width", 250);
+    return theme;
+}
+
+DEFN_TEST(ui_theme_defaults_are_populated) {
+    const UiThemeData theme;
+    DEFN_CHECK_EQ(theme.typography.body, 18);
+    DEFN_CHECK_EQ(theme.spacing.section_gap, 16);
+    DEFN_CHECK_EQ(theme.shape.corner_md, 8);
+    DEFN_CHECK_EQ(theme.screen.panel_surface, std::string("panel"));
+    DEFN_CHECK(theme.surfaces.empty());
+    DEFN_CHECK(theme.buttons.empty());
+    DEFN_CHECK(theme.text_styles.empty());
+}
+
+DEFN_TEST(ui_theme_named_lookups_resolve_registered_entries) {
+    const UiThemeData theme = make_theme();
+
+    const UiSurfaceStyle *surface = theme.find_surface("panel");
+    DEFN_REQUIRE(surface != nullptr);
+    DEFN_CHECK_EQ(surface->bg_role, std::string("surface_raised"));
+
+    const UiButtonVariant *button = theme.find_button("menu");
+    DEFN_REQUIRE(button != nullptr);
+    DEFN_CHECK_EQ(button->min_width, 400);
+
+    const UiTextStyle *text_style = theme.find_text_style("screen_title");
+    DEFN_REQUIRE(text_style != nullptr);
+    DEFN_CHECK_EQ(text_style->color_role, std::string("accent"));
+}
+
+DEFN_TEST(ui_theme_named_lookups_return_null_for_unknown_entries) {
+    const UiThemeData theme = make_theme();
+    DEFN_CHECK(theme.find_surface("nope") == nullptr);
+    DEFN_CHECK(theme.find_button("nope") == nullptr);
+    DEFN_CHECK(theme.find_text_style("nope") == nullptr);
+}
+
+DEFN_TEST(ui_theme_role_lookups_resolve_tokens) {
+    const UiThemeData theme = make_theme();
+
+    const auto accent = theme.find_color_role("accent");
+    DEFN_REQUIRE(accent.has_value());
+    DEFN_CHECK_CLOSE(accent->r, theme.palette.accent.r, 0.0001F);
+
+    const auto title = theme.find_font_size_role("title");
+    DEFN_REQUIRE(title.has_value());
+    DEFN_CHECK_EQ(*title, theme.typography.title);
+
+    const auto gap = theme.find_spacing_role("section_gap");
+    DEFN_REQUIRE(gap.has_value());
+    DEFN_CHECK_EQ(*gap, theme.spacing.section_gap);
+
+    const auto corner = theme.find_shape_role("corner_lg");
+    DEFN_REQUIRE(corner.has_value());
+    DEFN_CHECK_EQ(*corner, theme.shape.corner_lg);
+}
+
+DEFN_TEST(ui_theme_role_lookups_reject_unknown_roles) {
+    const UiThemeData theme = make_theme();
+    DEFN_CHECK(!theme.find_color_role("chartreuse").has_value());
+    DEFN_CHECK(!theme.find_font_size_role("gigantic").has_value());
+    DEFN_CHECK(!theme.find_spacing_role("xxl").has_value());
+    DEFN_CHECK(!theme.find_shape_role("corner_xl").has_value());
+}
+
+DEFN_TEST(ui_theme_metrics_fall_back_when_missing) {
+    const UiThemeData theme = make_theme();
+    DEFN_CHECK_EQ(theme.metric("option_label_width"), 250);
+    DEFN_CHECK_EQ(theme.metric("unknown_metric", 42), 42);
+    DEFN_CHECK_EQ(theme.metric("unknown_metric"), 0);
+}
+
+} // namespace

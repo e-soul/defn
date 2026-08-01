@@ -37,7 +37,6 @@ class ProgressionStatsScreenView : public godot::VBoxContainer {
   private:
     void rebuild();
     void clear_content();
-    void connect_menu_sfx(godot::BaseButton *button) const;
     void on_stat_detail_changed(const godot::String &stat_id, const godot::String &detail, bool active);
 
     ProgressionOverviewSnapshot snapshot_;

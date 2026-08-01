@@ -5,6 +5,7 @@
 
 #include "campaign_preview_view.h"
 #include "godot_string.h"
+#include "ui_theme_provider.h"
 
 #include <godot_cpp/classes/style_box_empty.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
@@ -18,17 +19,17 @@ using GVector2 = godot::Vector2;
 
 namespace {
 
-GColor state_color(CampaignNodeState state) {
+std::string_view state_color_role(CampaignNodeState state) {
     switch (state) {
     case CampaignNodeState::COMPLETED:
-        return {"5fcb9a"};
+        return "state_success";
     case CampaignNodeState::AVAILABLE:
     case CampaignNodeState::FRONTIER:
-        return {"f2be55"};
+        return "accent";
     case CampaignNodeState::LOCKED:
-        return {"59646c"};
+        return "state_locked";
     }
-    return {"59646c"};
+    return "state_locked";
 }
 
 String state_icon(CampaignNodeState state) {
@@ -45,45 +46,34 @@ String state_icon(CampaignNodeState state) {
     return "?";
 }
 
+real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
+
 Ref<StyleBoxFlat> frame_style(const GColor &border, bool selected) {
-    Ref<StyleBoxFlat> style;
-    style.instantiate();
-    style->set_bg_color(GColor("0a1118"));
-    style->set_border_width_all(selected ? 5 : 3);
-    style->set_border_color(selected ? GColor("f7e5a0") : border);
-    style->set_corner_radius_all(5);
-    style->set_shadow_color(GColor(0.0F, 0.0F, 0.0F, 0.75F));
-    style->set_shadow_size(selected ? 12 : 8);
+    Ref<StyleBoxFlat> style = UiThemeProvider::surface("map_node");
+    style->set_border_width_all(UiThemeProvider::shape(selected ? "border_width_strong" : "border_width"));
+    style->set_border_color(selected ? UiThemeProvider::color("border_focus") : border);
     return style;
 }
 
 Ref<StyleBoxFlat> outline_style(const GColor &color, int width) {
-    Ref<StyleBoxFlat> style;
-    style.instantiate();
-    style->set_bg_color(GColor(0.0F, 0.0F, 0.0F, 0.0F));
+    Ref<StyleBoxFlat> style = UiThemeProvider::surface("outline");
     style->set_border_color(color);
     style->set_border_width_all(width);
-    style->set_corner_radius_all(8);
     return style;
 }
 
 Ref<StyleBoxFlat> medallion_style(const GColor &border) {
-    Ref<StyleBoxFlat> style;
-    style.instantiate();
-    style->set_bg_color(GColor("0a1118"));
+    Ref<StyleBoxFlat> style = UiThemeProvider::surface("medallion");
     style->set_border_color(border);
-    style->set_border_width_all(2);
-    style->set_corner_radius_all(19);
-    style->set_shadow_color(GColor(0.0F, 0.0F, 0.0F, 0.8F));
-    style->set_shadow_size(5);
     return style;
 }
 
 } // namespace
 
 CampaignMapNodeView::CampaignMapNodeView() {
-    set_custom_minimum_size({188.0F, 134.0F});
-    set_size({188.0F, 134.0F});
+    const GVector2 node_size{metric("map_node_width", 188), metric("map_node_height", 134)};
+    set_custom_minimum_size(node_size);
+    set_size(node_size);
     set_mouse_filter(MOUSE_FILTER_PASS);
 
     selection_ring_ = memnew(Panel);
@@ -120,7 +110,7 @@ CampaignMapNodeView::CampaignMapNodeView() {
     medallion_->set_size({38.0F, 38.0F});
     medallion_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     medallion_->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
-    medallion_->add_theme_font_size_override("font_size", 22);
+    medallion_->set_theme_type_variation(UiThemeProvider::label_variation("screen_heading"));
     medallion_->set_mouse_filter(MOUSE_FILTER_IGNORE);
     add_child(medallion_);
 
@@ -186,16 +176,16 @@ void CampaignMapNodeView::on_pressed() {
 }
 
 void CampaignMapNodeView::update_style() {
-    const GColor color = state_color(mission_.state);
+    const GColor color = UiThemeProvider::color(state_color_role(mission_.state));
     frame_->add_theme_stylebox_override("panel", frame_style(color, selected_));
-    selection_ring_->add_theme_stylebox_override("panel", outline_style(color, 2));
+    selection_ring_->add_theme_stylebox_override("panel", outline_style(color, UiThemeProvider::shape("border_width")));
     selection_ring_->set_visible(selected_);
-    focus_ring_->add_theme_stylebox_override("panel", outline_style(GColor("f7e5a0"), 1));
+    focus_ring_->add_theme_stylebox_override("panel", outline_style(UiThemeProvider::color("border_focus"), 1));
     focus_ring_->set_visible(focused_);
     medallion_->set_text(state_icon(mission_.state));
     medallion_->add_theme_color_override("font_color", color);
     medallion_->add_theme_stylebox_override("normal", medallion_style(color));
-    preview_->set_modulate(mission_.state == CampaignNodeState::LOCKED ? GColor(0.55F, 0.6F, 0.65F, 0.45F) : GColor(1, 1, 1, 1));
+    preview_->set_modulate(mission_.state == CampaignNodeState::LOCKED ? UiThemeProvider::color("locked_tint") : GColor(1, 1, 1, 1));
 }
 
 } // namespace defn

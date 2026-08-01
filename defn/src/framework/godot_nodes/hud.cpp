@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "hud.h"
-#include "data_paths.h"
 #include "deploy_card_presenter.h"
 #include "godot_color.h"
 #include "godot_string.h"
-#include "menu_data_loader.h"
 #include "score_screen_view.h"
 #include "ui_sfx_player.h"
+#include "ui_theme_provider.h"
+#include "ui_widgets.h"
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -28,12 +28,11 @@ void HUD::_bind_methods() {
 }
 
 void HUD::_ready() {
-    if (const auto menu_data = MenuDataLoader::load(DataPaths::MENU_DATA); menu_data.has_value()) {
-        ui_sfx_player_ = memnew(UiSfxPlayer);
-        ui_sfx_player_->set_name("UiSfxPlayer");
-        add_child(ui_sfx_player_);
-        ui_sfx_player_->configure(menu_data->sfx);
-    }
+    UiThemeProvider::install(get_tree());
+    ui_sfx_player_ = memnew(UiSfxPlayer);
+    ui_sfx_player_->set_name("UiSfxPlayer");
+    add_child(ui_sfx_player_);
+    ui_sfx_player_->configure(UiThemeProvider::data().sfx);
     build_ui();
 }
 
@@ -51,29 +50,20 @@ void HUD::build_ui() {
     add_child(top_bar);
 
     // Energy label (left)
-    core_resource_label = memnew(Label);
-    core_resource_label->set_text(String::utf8("\u26A1 Energy: 100"));
+    core_resource_label = make_label(String::utf8("\u26A1 Energy: 100"), "hud_resource");
     core_resource_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    core_resource_label->add_theme_font_size_override("font_size", 28);
-    core_resource_label->add_theme_color_override("font_color", godot::Color(0.05, 0.2, 0.55));
     top_bar->add_child(core_resource_label);
 
     // Score label
-    score_label = memnew(Label);
-    score_label->set_text("Score: 0");
+    score_label = make_label("Score: 0", "hud_score");
     score_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     score_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    score_label->add_theme_font_size_override("font_size", 24);
-    score_label->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
     top_bar->add_child(score_label);
 
     // Wave label (center)
-    wave_label = memnew(Label);
-    wave_label->set_text("WAVE 1 / 3");
+    wave_label = make_label("WAVE 1 / 3", "hud_wave");
     wave_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     wave_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    wave_label->add_theme_font_size_override("font_size", 28);
-    wave_label->add_theme_color_override("font_color", godot::Color(1, 1, 1));
     top_bar->add_child(wave_label);
 
     // Hearts container (right)
@@ -83,16 +73,13 @@ void HUD::build_ui() {
     top_bar->add_child(hearts_container);
     ensure_heart_icons(3);
 
-    level_label = memnew(Label);
+    level_label = make_label("LEVEL", "hud_level");
     level_label->set_anchors_preset(Control::PRESET_TOP_WIDE);
     level_label->set_offset(Side::SIDE_LEFT, 16.0);
     level_label->set_offset(Side::SIDE_RIGHT, -16.0);
     level_label->set_offset(Side::SIDE_TOP, 52.0);
     level_label->set_offset(Side::SIDE_BOTTOM, 78.0);
     level_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    level_label->add_theme_font_size_override("font_size", 20);
-    level_label->add_theme_color_override("font_color", godot::Color(0.95, 0.95, 0.95));
-    level_label->set_text("LEVEL");
     add_child(level_label);
 
     // ==========================================================
@@ -106,7 +93,7 @@ void HUD::build_ui() {
     card_container->set_h_grow_direction(Control::GROW_DIRECTION_BOTH);
     card_container->set_v_grow_direction(Control::GROW_DIRECTION_BEGIN);
     card_container->set_offset(Side::SIDE_BOTTOM, -10.0);
-    card_container->add_theme_constant_override("separation", 12);
+    card_container->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
     add_child(card_container);
 
     render(HudPresenter::build(hud_input_));
@@ -181,8 +168,7 @@ void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
             continue;
         }
         const bool enabled = cards[index].enabled;
-        button->set_disabled(!enabled);
-        button->set_modulate(enabled ? godot::Color(1, 1, 1, 1) : godot::Color(0.5, 0.5, 0.5, 0.7));
+        apply_enabled(button, enabled);
     }
 }
 
@@ -203,10 +189,7 @@ void HUD::ensure_heart_icons(int count) {
     }
 
     while (std::cmp_less(heart_icons.size(), count)) {
-        auto *heart = memnew(Label);
-        heart->set_text(String::utf8("\u2665"));
-        heart->add_theme_font_size_override("font_size", 32);
-        heart->add_theme_color_override("font_color", godot::Color(0.9, 0.15, 0.15));
+        auto *heart = make_label(String::utf8("\u2665"), "hud_heart");
         hearts_container->add_child(heart);
         heart_icons.push_back(heart);
     }
@@ -251,24 +234,20 @@ void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {
     match_result_overlay->set_offset(SIDE_TOP, 0.0);
     match_result_overlay->set_offset(SIDE_BOTTOM, 0.0);
     match_result_overlay->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    match_result_overlay->set_color(model.victory ? godot::Color(0.03, 0.12, 0.08, 0.42) : godot::Color(0.18, 0.0, 0.0, 0.48));
+    match_result_overlay->set_color(UiThemeProvider::color(model.victory ? "overlay_victory" : "overlay_defeat"));
     add_child(match_result_overlay);
 
-    match_result_label = memnew(Label);
+    match_result_label = make_label(to_godot_string(model.label), "banner");
     match_result_label->set_name("MatchResultBannerLabel");
     match_result_label->set_anchors_preset(Control::PRESET_FULL_RECT);
     match_result_label->set_offset(SIDE_LEFT, 0.0);
     match_result_label->set_offset(SIDE_RIGHT, 0.0);
     match_result_label->set_offset(SIDE_TOP, 0.0);
     match_result_label->set_offset(SIDE_BOTTOM, 0.0);
-    match_result_label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    match_result_label->set_text(to_godot_string(model.label));
     match_result_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     match_result_label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
-    match_result_label->add_theme_font_size_override("font_size", 74);
     match_result_label->add_theme_color_override("font_color", to_godot_color(model.label_color));
     match_result_label->add_theme_color_override("font_outline_color", to_godot_color(model.label_outline_color));
-    match_result_label->add_theme_constant_override("outline_size", 6);
     match_result_overlay->add_child(match_result_label);
 }
 

@@ -11,6 +11,10 @@ A simple belt-scroller tug-of-war 2.5D game. For more details see the [Game Desi
 
 Powered by ![The Godot Engine](https://img.shields.io/badge/Godot-white?logo=godotengine) and ![The C++ Programming Language](https://img.shields.io/badge/C++-blue?logo=cplusplus)
 
+## UI look and feel
+
+All UI colors, fonts, spacing, shapes, buttons, and screen chrome live in `defn/data/ui_theme.json`.
+
 ## Build and test
 
 The build should be invoked from within the "defn" directory, where `SConstruct` is.

@@ -343,6 +343,7 @@ flowchart TB
         ProgressionJson[data/progression.json]
         UpgradesJson[data/upgrades.json]
         MenuJson[data/menu_data.json]
+        UiThemeJson[data/ui_theme.json]
     end
 
     subgraph JsonAdapters[JSON Adapters]
@@ -376,6 +377,8 @@ flowchart TB
 
 Godot UI nodes are humble adapters: they render pure view models into controls and translate user input/signals into application intents. Presentation shaping, settings changes, and menu/post-match navigation decisions live in presenters and use cases; only Godot adapters touch `SceneTree`, display/audio APIs, and concrete engine services.
 
+Look and feel is data-driven and shared. `data/ui_theme.json` is the single source of colors, typography, spacing, shapes, surfaces, button variants, text styles, screen layout, named metrics, and UI SFX. `UiThemeLoader` parses it into the engine-neutral `UiThemeData` tokens in `src/domain/content/ui_theme_models.h`; `UiThemeProvider` turns those tokens into one Godot `Theme` of type variations installed on the `SceneTree` root. UI code builds controls through `ui_widgets` (`make_label`, `make_button`, `make_surface`, `make_chip`, ...) and `ui_screen_scaffold::build_screen`, so screens carry no hardcoded colors or sizes. `ContentValidator` checks that every role referenced by the theme resolves.
+
 ```mermaid
 flowchart TB
     subgraph PresentationModels[Presentation Models]
@@ -404,6 +407,13 @@ flowchart TB
         GodotControls[Buttons, labels, panels]
     end
 
+    subgraph ThemeLayer[Shared UI Theme]
+        UiThemeJson[data/ui_theme.json]
+        UiThemeData[UiThemeData tokens]
+        UiThemeProvider[UiThemeProvider Theme]
+        UiWidgets[ui_widgets and ui_screen_scaffold]
+    end
+
     subgraph ScenePorts[Scene and Settings Ports]
         SceneNavigationPort[SceneNavigation]
         SettingsPort[SettingsStore]
@@ -418,6 +428,11 @@ flowchart TB
     CampaignMapPresenter --> CampaignMapModel
     CampaignMapView --> CampaignMapModel
     MenuManager --> CampaignMapView
+    UiThemeJson --> UiThemeData
+    UiThemeData --> UiThemeProvider
+    UiThemeProvider --> UiWidgets
+    UiWidgets --> GodotControls
+    UiAdapters --> UiWidgets
 ```
 
 ## Module 6: Godot Entity Construction

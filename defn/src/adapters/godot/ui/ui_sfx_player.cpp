@@ -4,7 +4,7 @@
 #include "ui_sfx_player.h"
 
 #include "godot_string.h"
-#include "menu_models.h"
+#include "ui_theme_models.h"
 
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>

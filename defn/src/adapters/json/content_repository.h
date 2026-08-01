@@ -24,6 +24,7 @@ using namespace godot;
 struct JsonContentPaths {
     String campaign_map_path;
     String menu_path;
+    String ui_theme_path;
     String music_playlist_path;
     String progression_path;
     String upgrades_path;
@@ -36,6 +37,7 @@ struct JsonLoadedContent {
     std::optional<CampaignMapDefinition> campaign_map;
     std::vector<std::string> missing_campaign_assets;
     std::optional<MenuContentData> menu_data;
+    std::optional<UiThemeData> ui_theme;
     std::optional<MusicPlaylist> music_playlist;
     ProgressionCatalog progression_catalog;
     UpgradeCatalog upgrade_catalog;

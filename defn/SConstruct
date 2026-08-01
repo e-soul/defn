@@ -135,7 +135,11 @@ extension_sources = [
     "src/adapters/godot/camera_scroll_controller.cpp",
     "src/adapters/godot/game_background_builder.cpp",
     "src/adapters/json/menu_data_loader.cpp",
-    "src/adapters/presenters/menu_style.cpp",
+    "src/domain/content/ui_theme_models.cpp",
+    "src/adapters/json/ui_theme_loader.cpp",
+    "src/adapters/godot/ui/ui_theme_provider.cpp",
+    "src/adapters/godot/ui/ui_widgets.cpp",
+    "src/adapters/godot/ui/ui_screen_scaffold.cpp",
     "src/adapters/godot/settings_service.cpp",
     "src/adapters/godot/scene_navigator.cpp",
     "src/application/match/deployment_service.cpp",
@@ -190,13 +194,13 @@ hosted_test_sources = [
     "src/framework/testing/defn_hosted_test_runner.cpp",
     "tests/test_combat_logic.cpp",
     "tests/test_match_and_services.cpp",
-    "tests/test_menu_style.cpp",
     "tests/test_match_session_core.cpp",
     "tests/test_models.cpp",
     "tests/test_parsing.cpp",
     "tests/test_progression_presentation.cpp",
     "tests/test_settings_service.cpp",
     "tests/test_ui_presenters.cpp",
+    "tests/test_ui_theme_provider.cpp",
     "tests/test_unit_profiles.cpp",
 ]
 
@@ -226,6 +230,7 @@ test_support_sources = [
     "src/adapters/presenters/campaign_map_view_model.cpp",
     "src/adapters/presenters/score_screen_view_model.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
+    "src/domain/content/ui_theme_models.cpp",
 ]
 
 unit_test_sources = [
@@ -242,6 +247,7 @@ unit_test_sources = [
     "tests/test_unit_runtime_config_resolver.cpp",
     "tests/test_spawn_timeline.cpp",
     "tests/test_menu_flow_use_case.cpp",
+    "tests/test_ui_theme.cpp",
     "tests/test_presentation_view_models.cpp",
     "tests/test_campaign_map_presenter.cpp",
     "tests/test_settings_use_case.cpp",

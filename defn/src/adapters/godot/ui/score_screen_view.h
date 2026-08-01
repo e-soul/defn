@@ -25,7 +25,7 @@ struct ScoreScreenActions {
 };
 
 struct ScoreScreenViewNodes {
-    ColorRect *overlay = nullptr;
+    Control *overlay = nullptr;
     PanelContainer *panel = nullptr;
 };
 

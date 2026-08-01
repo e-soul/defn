@@ -75,7 +75,7 @@ class HUD : public CanvasLayer {
     // Score screen
     ColorRect *match_result_overlay = nullptr;
     Label *match_result_label = nullptr;
-    ColorRect *score_screen_overlay = nullptr;
+    Control *score_screen_overlay = nullptr;
     PanelContainer *score_screen_panel = nullptr;
 };
 

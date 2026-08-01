@@ -67,6 +67,39 @@ template <typename ObjectType> struct GodotObjectDeleter {
 
 template <typename ObjectType> using GodotObjectOwner = std::unique_ptr<ObjectType, GodotObjectDeleter<ObjectType>>;
 
+Window *scene_root() {
+    auto *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
+    return tree == nullptr ? nullptr : tree->get_root();
+}
+
+// Mounts the node under the real scene root so `_ready()` paths that use `get_tree()` behave as they do in game.
+template <typename NodeType> class TreeMountedNode {
+  public:
+    TreeMountedNode() : node_(memnew(NodeType)), root_(scene_root()) {
+        if (root_ != nullptr) {
+            root_->add_child(node_);
+        }
+    }
+
+    TreeMountedNode(const TreeMountedNode &) = delete;
+    TreeMountedNode &operator=(const TreeMountedNode &) = delete;
+    TreeMountedNode(TreeMountedNode &&) = delete;
+    TreeMountedNode &operator=(TreeMountedNode &&) = delete;
+
+    ~TreeMountedNode() {
+        if (root_ != nullptr) {
+            root_->remove_child(node_);
+        }
+        memdelete(node_);
+    }
+
+    [[nodiscard]] NodeType *get() const { return node_; }
+
+  private:
+    NodeType *node_;
+    Window *root_;
+};
+
 template <typename NodeType> void collect_nodes(Node *root, std::vector<NodeType *> &result) {
     if (root == nullptr) {
         return;
@@ -187,29 +220,14 @@ bool button_minimum_size_is(Button *button, double width, double height) {
     return nearly_equal(minimum_size.x, width) && nearly_equal(minimum_size.y, height);
 }
 
-bool roster_button_states_have_consistent_geometry(Button *button) {
-    if (button == nullptr) {
-        return false;
-    }
-
-    constexpr std::array<const char *, 5> states = {"normal", "hover", "pressed", "focus", "disabled"};
-    const Ref<StyleBoxFlat> normal = button->get_theme_stylebox(states.front());
-    if (normal.is_null()) {
-        return false;
-    }
-
-    return std::ranges::all_of(states, [button, &normal](const char *state) {
-        const Ref<StyleBoxFlat> style = button->get_theme_stylebox(state);
-        return style.is_valid() && style->get_minimum_size() == normal->get_minimum_size() &&
-               style->get_border_width(SIDE_LEFT) == normal->get_border_width(SIDE_LEFT) &&
-               style->get_corner_radius(CORNER_TOP_LEFT) == normal->get_corner_radius(CORNER_TOP_LEFT) &&
-               nearly_equal(style->get_content_margin(SIDE_LEFT), normal->get_content_margin(SIDE_LEFT));
-    });
+bool roster_button_uses_variation(Button *button, const char *variation) {
+    return button != nullptr && button->get_theme_type_variation() == StringName(variation);
 }
 
 bool selected_upgrade_button_matches(Button *button) {
-    return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 180.0, 220.0) && button->has_theme_stylebox_override("normal") &&
-           button->has_theme_stylebox_override("disabled") && has_all_labels(button, {"+", "x2", "Rapid Reload", "Shoot more often."});
+    return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 180.0, 220.0) &&
+           button->get_theme_type_variation() == StringName("DefnCardSelectedButton") &&
+           has_all_labels(button, {"+", "x2", "Rapid Reload", "Shoot more often."});
 }
 
 bool fallback_upgrade_button_matches(Button *button) { return button != nullptr && !button->is_disabled() && has_all_labels(button, {"?", "Upgrade"}); }
@@ -218,8 +236,8 @@ bool progression_view_has_initial_entity_state(ProgressionStatsScreenView *view)
     Button *selected_button = find_button_by_text(view, "Breacher");
     Button *locked_button = find_button_by_text(view, "Marksman [Locked]");
     return has_label_text(view, "Breacher") && view->find_child("EntityPortraitFallback", true, false) != nullptr && selected_button != nullptr &&
-           button_minimum_size_is(selected_button, 150.0, 74.0) && roster_button_states_have_consistent_geometry(selected_button) && locked_button != nullptr &&
-           locked_button->is_disabled() && roster_button_states_have_consistent_geometry(locked_button);
+           button_minimum_size_is(selected_button, 150.0, 74.0) && roster_button_uses_variation(selected_button, "DefnRosterSelectedButton") &&
+           locked_button != nullptr && locked_button->is_disabled() && roster_button_uses_variation(locked_button, "DefnRosterButton");
 }
 
 bool progression_stat_meter_shows_exact_detail_on_request(ProgressionStatsScreenView *view) {
@@ -238,7 +256,7 @@ bool progression_stat_meter_shows_exact_detail_on_request(ProgressionStatsScreen
 }
 
 bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenViewNodes &view) {
-    return view.overlay != nullptr && view.panel != nullptr && parent->get_child_count() == 1 && nearly_equal(view.overlay->get_color().a, 0.7);
+    return view.overlay != nullptr && view.panel != nullptr && parent->get_child_count() == 1;
 }
 
 bool score_screen_has_victory_content(Node *overlay) {
@@ -285,6 +303,15 @@ bool unit_has_passive_factory_stack(Unit *unit) {
 
 bool unit_has_combat_factory_stack(Unit *unit) { return has_all_named_nodes(unit, {"DetectionComponent", "MovementComponent", "CombatComponent"}); }
 
+// Entering the tree already triggers `_ready()`; only drive it manually when the node stayed detached.
+MenuManager *ready_menu_manager(const TreeMountedNode<MenuManager> &owner) {
+    MenuManager *menu_manager = owner.get();
+    if (menu_manager->get_node_or_null("UILayer") == nullptr) {
+        menu_manager->_ready();
+    }
+    return menu_manager;
+}
+
 bool menu_manager_shows_main_menu(MenuManager *menu_manager) {
     return has_label_containing(menu_manager, "Career Score:") && has_all_buttons(menu_manager, {"Play", "Options", "Quit"});
 }
@@ -328,8 +355,8 @@ bool menu_manager_finishes_level_select_loading(MenuManager *menu_manager) {
     return pump_campaign_map_loading(campaign_map) && menu_manager_shows_level_select(menu_manager);
 }
 
-CampaignMapView *show_campaign_map(MenuManager *menu_manager) {
-    menu_manager->_ready();
+CampaignMapView *show_campaign_map(const TreeMountedNode<MenuManager> &owner) {
+    MenuManager *menu_manager = ready_menu_manager(owner);
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
     CampaignMapView *campaign_map = find_campaign_map(menu_manager);
     (void)pump_campaign_map_loading(campaign_map);
@@ -432,12 +459,13 @@ DEFN_TEST(deploy_card_presenter_builds_card_content_from_unit_config) {
     DEFN_REQUIRE(button != nullptr);
     DEFN_CHECK_CLOSE(button->get_custom_minimum_size().x, 190.0, 0.001);
     DEFN_CHECK_CLOSE(button->get_custom_minimum_size().y, 110.0, 0.001);
-    DEFN_CHECK(button->has_theme_stylebox_override("normal"));
-    DEFN_CHECK(button->has_theme_stylebox_override("hover"));
-    DEFN_CHECK(button->has_theme_stylebox_override("pressed"));
-    DEFN_CHECK(button->has_theme_stylebox_override("disabled"));
+    DEFN_CHECK(button->get_theme_type_variation() == StringName("DefnDeployCardButton"));
     DEFN_CHECK(has_label_text(button, "Operator"));
     DEFN_CHECK(has_label_containing(button, "25"));
+
+    Label *title = find_label_by_text(button, "Operator");
+    DEFN_REQUIRE(title != nullptr);
+    DEFN_CHECK(title->get_theme_type_variation() == StringName("DefnDeployCardTitleLabel"));
 
     memdelete(button);
     memdelete(receiver);
@@ -524,8 +552,8 @@ DEFN_TEST(score_screen_presenter_handles_null_parent_and_defeat_without_next_lev
 }
 
 DEFN_TEST(hud_builds_and_updates_core_labels_cards_and_score_screen) {
-    auto *hud = memnew(HUD);
-    hud->_ready();
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
 
     DEFN_CHECK(hud_has_initial_state(hud));
 
@@ -554,13 +582,11 @@ DEFN_TEST(hud_builds_and_updates_core_labels_cards_and_score_screen) {
     summary.hearts_total = 3;
     hud->show_score_screen(summary);
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
-
-    memdelete(hud);
 }
 
 DEFN_TEST(hud_shows_and_hides_match_result_banner) {
-    auto *hud = memnew(HUD);
-    hud->_ready();
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
 
     hud->show_match_result_banner(MatchResultCutscenePresenter::build(true));
     DEFN_CHECK(has_label_text(hud, "AREA SECURED"));
@@ -571,8 +597,6 @@ DEFN_TEST(hud_shows_and_hides_match_result_banner) {
     hud->show_match_result_banner(MatchResultCutscenePresenter::build(false));
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
     DEFN_CHECK(label_font_color_matches(hud, "DEFEAT", godot::Color(1.0, 0.2, 0.2, 1.0)));
-
-    memdelete(hud);
 }
 
 DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
@@ -681,9 +705,8 @@ DEFN_TEST(field_promotion_audio_resource_loads) {
 }
 
 DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
-    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
-    auto *menu_manager = menu_manager_owner.get();
-    menu_manager->_ready();
+    const TreeMountedNode<MenuManager> menu_manager_owner;
+    auto *menu_manager = ready_menu_manager(menu_manager_owner);
 
     DEFN_CHECK(menu_manager_shows_main_menu(menu_manager));
     DEFN_CHECK(menu_manager_background_covers_viewport(menu_manager));
@@ -706,9 +729,8 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
 }
 
 DEFN_TEST(campaign_map_mounts_loading_overlay_before_composing_content) {
-    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
-    auto *menu_manager = menu_manager_owner.get();
-    menu_manager->_ready();
+    const TreeMountedNode<MenuManager> menu_manager_owner;
+    auto *menu_manager = ready_menu_manager(menu_manager_owner);
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
 
     std::vector<CampaignMapView *> campaign_maps;
@@ -755,9 +777,8 @@ DEFN_TEST(campaign_map_loading_selects_the_presented_initial_mission) {
 }
 
 DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
-    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
-    auto *menu_manager = menu_manager_owner.get();
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager);
+    const TreeMountedNode<MenuManager> menu_manager_owner;
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
 
     DEFN_REQUIRE(campaign_map != nullptr);
     DEFN_CHECK(Object::cast_to<CanvasLayer>(campaign_map->get_parent()) != nullptr);
@@ -772,9 +793,8 @@ DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
 }
 
 DEFN_TEST(campaign_map_renders_utf8_and_uses_compact_preview_nodes) {
-    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
-    auto *menu_manager = menu_manager_owner.get();
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager);
+    const TreeMountedNode<MenuManager> menu_manager_owner;
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
 
     DEFN_REQUIRE(campaign_map != nullptr);
     DEFN_CHECK(find_button_by_text(campaign_map, String::utf8("×")) != nullptr);
@@ -788,9 +808,8 @@ DEFN_TEST(campaign_map_renders_utf8_and_uses_compact_preview_nodes) {
 }
 
 DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
-    GodotObjectOwner<MenuManager> menu_manager_owner(memnew(MenuManager));
-    auto *menu_manager = menu_manager_owner.get();
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager);
+    const TreeMountedNode<MenuManager> menu_manager_owner;
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
 
     DEFN_REQUIRE(campaign_map != nullptr);
     DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_04/PostcardFrame") != nullptr);

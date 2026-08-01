@@ -6,6 +6,7 @@
 #include "campaign_map_data_loader.h"
 #include "content_repository.h"
 #include "content_validator.h"
+#include "data_paths.h"
 #include "json_file_loader.h"
 #include "level_loader.h"
 #include "menu_data_loader.h"
@@ -256,6 +257,7 @@ struct ContentRepositoryFixture {
         return {
             .campaign_map_path = campaign_map_path,
             .menu_path = menu_path,
+            .ui_theme_path = DataPaths::UI_THEME,
             .music_playlist_path = music_playlist_path,
             .progression_path = progression_path,
             .upgrades_path = upgrades_path,
@@ -407,28 +409,12 @@ DEFN_TEST(music_playlist_loader_rejects_invalid_configuration) {
     DEFN_CHECK(!MusicPlaylistLoader::load_from_data(invalid_delay).has_value());
 }
 
-DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
+DEFN_TEST(menu_data_loader_maps_actions_to_plain_models) {
     Dictionary entry;
     entry["id"] = "start";
     entry["label"] = "Start";
     entry["action"] = "start_game";
     entry["target"] = "level_01";
-
-    Dictionary normal;
-    normal["bg_color"] = make_array({0.2, 0.3, 0.4, 0.5});
-    normal["font_color"] = make_array({0.8, 0.9, 1.0, 0.7});
-    normal["border_width"] = 4;
-    normal["corner_radius"] = 10;
-
-    Dictionary options;
-    options["label_font_size"] = 21;
-    options["value_font_color"] = make_array({0.6, 0.7, 0.8, 0.9});
-
-    Dictionary style;
-    style["button_font_size"] = 18;
-    style["button_min_width"] = 220;
-    style["normal"] = normal;
-    style["options"] = options;
 
     Dictionary main_menu;
     main_menu["entries"] = make_array({entry});
@@ -437,24 +423,8 @@ DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
     Dictionary menus;
     menus["main_menu"] = main_menu;
 
-    Dictionary hover_sfx;
-    hover_sfx["path"] = "res://ui_hover.wav";
-    hover_sfx["volume_linear"] = 0.12;
-    Dictionary click_sfx;
-    click_sfx["path"] = "res://ui_click.wav";
-    click_sfx["volume_linear"] = 0.18;
-    Dictionary deploy_sfx;
-    deploy_sfx["path"] = "res://deploy_card_click.wav";
-    deploy_sfx["volume_linear"] = 0.22;
-    Dictionary sfx;
-    sfx["hover"] = hover_sfx;
-    sfx["click"] = click_sfx;
-    sfx["deploy_card"] = deploy_sfx;
-
     Dictionary data;
     data["background"] = "res://background.png";
-    data["sfx"] = sfx;
-    data["style"] = style;
     data["menus"] = menus;
 
     const auto loaded = MenuDataLoader::load_from_data(data);
@@ -464,21 +434,7 @@ DEFN_TEST(menu_data_loader_maps_actions_and_style_to_plain_models) {
     DEFN_CHECK_EQ(loaded->background, std::string("res://background.png"));
     DEFN_CHECK_EQ(loaded->menus[0].entries[0].action_type, MenuActionType::START_GAME);
     DEFN_CHECK_EQ(loaded->menus[0].entries[0].target, std::string("level_01"));
-    DEFN_CHECK_EQ(loaded->style.button_font_size, 18);
-    DEFN_CHECK_EQ(loaded->style.button_min_width, 220);
-    DEFN_CHECK_EQ(loaded->style.normal.border_width, 4);
-    DEFN_CHECK_EQ(loaded->style.normal.corner_radius, 10);
-    DEFN_CHECK_EQ(loaded->style.options.label_font_size, 21);
-    DEFN_CHECK_EQ(loaded->sfx.hover.path, std::string("res://ui_hover.wav"));
-    DEFN_CHECK_CLOSE(loaded->sfx.hover.volume_linear, 0.12, 0.000001);
-    DEFN_CHECK_EQ(loaded->sfx.click.path, std::string("res://ui_click.wav"));
-    DEFN_CHECK_CLOSE(loaded->sfx.click.volume_linear, 0.18, 0.000001);
-    DEFN_CHECK_EQ(loaded->sfx.deploy_card.path, std::string("res://deploy_card_click.wav"));
-    DEFN_CHECK_CLOSE(loaded->sfx.deploy_card.volume_linear, 0.22, 0.000001);
     check_content_color_close(loaded->menus[0].overlay_color, {.r = 0.1F, .g = 0.2F, .b = 0.3F, .a = 0.4F});
-    check_content_color_close(loaded->style.normal.bg_color, {.r = 0.2F, .g = 0.3F, .b = 0.4F, .a = 0.5F});
-    check_content_color_close(loaded->style.normal.font_color, {.r = 0.8F, .g = 0.9F, .b = 1.0F, .a = 0.7F});
-    check_content_color_close(loaded->style.options.value_font_color, {.r = 0.6F, .g = 0.7F, .b = 0.8F, .a = 0.9F});
 }
 
 DEFN_TEST(unit_side_and_rounding_parsers_return_expected_values) {

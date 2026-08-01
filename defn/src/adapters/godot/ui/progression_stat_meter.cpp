@@ -4,6 +4,7 @@
 #include "progression_stat_meter.h"
 
 #include "godot_string.h"
+#include "ui_theme_provider.h"
 
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
@@ -27,14 +28,10 @@ constexpr float SEGMENT_GAP = 5.0F;
 constexpr float SEGMENT_SLOPE = 5.0F;
 
 godot::Color tier_color(int tier, bool neutral) {
-    if (neutral) {
-        const std::array<godot::Color, 4> neutral_colors = {godot::Color(0.30, 0.40, 0.50), godot::Color(0.48, 0.57, 0.64), godot::Color(0.67, 0.73, 0.77),
-                                                            godot::Color(0.84, 0.87, 0.89)};
-        return neutral_colors[std::min(static_cast<std::size_t>(std::max(tier, 0)), neutral_colors.size() - 1)];
-    }
-    const std::array<godot::Color, 4> power_colors = {godot::Color(0.29, 0.52, 0.72), godot::Color(0.95, 0.70, 0.20), godot::Color(0.62, 0.40, 0.82),
-                                                      godot::Color(0.86, 0.91, 0.96)};
-    return power_colors[std::min(static_cast<std::size_t>(std::max(tier, 0)), power_colors.size() - 1)];
+    const std::array<const char *, 4> neutral_roles = {"meter_neutral_0", "meter_neutral_1", "meter_neutral_2", "meter_neutral_3"};
+    const std::array<const char *, 4> power_roles = {"meter_power_0", "meter_power_1", "meter_power_2", "meter_power_3"};
+    const auto &roles = neutral ? neutral_roles : power_roles;
+    return UiThemeProvider::color(roles[std::min(static_cast<std::size_t>(std::max(tier, 0)), roles.size() - 1)]);
 }
 
 godot::PackedVector2Array segment_polygon(float left, float top, float width, float height) {
@@ -150,14 +147,19 @@ void ProgressionStatMeter::_draw() {
     const float available_width = std::max(100.0F, size.x - ICON_WIDTH);
     const float segment_width = (available_width - SEGMENT_GAP * 4.0F) / 5.0F;
     const bool neutral = model_.direction == ProgressionStatDirection::MORE_IS_EXPENSIVE;
-    draw_icon(*this, model_.icon, godot::Color(0.76, 0.83, 0.90), size.y / 2.0F);
+    draw_icon(*this, model_.icon, UiThemeProvider::color("meter_icon"), size.y / 2.0F);
+
+    const godot::Color track_color = UiThemeProvider::color("meter_track");
+    const godot::Color outline_color = UiThemeProvider::color("meter_outline");
+    const godot::Color notch_color = UiThemeProvider::color("meter_notch");
+    const godot::Color upgrade_color = UiThemeProvider::color("meter_upgrade");
 
     for (std::size_t index = 0; index < model_.segments.size(); ++index) {
         const auto &segment = model_.segments[index];
         const float left = ICON_WIDTH + (static_cast<float>(index) * (segment_width + SEGMENT_GAP));
         const float center_x = left + (segment_width * 0.5F);
         const auto outline = segment_polygon(left, top, segment_width, height);
-        draw_colored_polygon(outline, godot::Color(0.08, 0.13, 0.19));
+        draw_colored_polygon(outline, track_color);
         if (segment.foundation_tier >= 0) {
             draw_colored_polygon(outline, tier_color(segment.foundation_tier, neutral));
         }
@@ -165,15 +167,15 @@ void ProgressionStatMeter::_draw() {
             draw_colored_polygon(partial_segment_polygon(left, top, segment_width, height, segment.promotion_fraction),
                                  tier_color(segment.promoted_tier, neutral));
         }
-        draw_polyline(outline, godot::Color(0.43, 0.55, 0.66), 1.5F, true);
-        draw_line(outline[3], outline[0], godot::Color(0.43, 0.55, 0.66), 1.5F, true);
+        draw_polyline(outline, outline_color, 1.5F, true);
+        draw_line(outline[3], outline[0], outline_color, 1.5F, true);
 
         const int visible_tier = segment.promotion_fraction > 0.35 ? segment.promoted_tier : segment.foundation_tier;
         const int mark_count = std::clamp(visible_tier, 0, 4);
         for (int mark = 0; mark < mark_count; ++mark) {
             const float mark_offset = (static_cast<float>(mark) * 3.0F) - (static_cast<float>(mark_count - 1) * 1.5F);
             const float mark_x = center_x + mark_offset;
-            draw_line({mark_x - 2.0F, top + (height * 0.65F)}, {mark_x + 1.0F, top + (height * 0.35F)}, godot::Color(0.05, 0.08, 0.12), 1.5F, true);
+            draw_line({mark_x - 2.0F, top + (height * 0.65F)}, {mark_x + 1.0F, top + (height * 0.35F)}, notch_color, 1.5F, true);
         }
         if (visible_tier >= 3) {
             godot::PackedVector2Array diamond;
@@ -181,17 +183,16 @@ void ProgressionStatMeter::_draw() {
             diamond.push_back({center_x + 3.0F, top + (height * 0.5F)});
             diamond.push_back({center_x, (top + height) - 4.0F});
             diamond.push_back({center_x - 3.0F, top + (height * 0.5F)});
-            draw_colored_polygon(diamond, godot::Color(0.05, 0.08, 0.12));
+            draw_colored_polygon(diamond, notch_color);
         }
         if (segment.upgrade_emphasis) {
-            const godot::Color upgrade_color(0.45, 0.90, 0.95);
             draw_line({left + 2.0F, top + height - 2.0F}, {left + segment_width - 4.0F, top + height - 2.0F}, upgrade_color, 2.0F, true);
             draw_line({center_x - 3.0F, top + 1.0F}, {center_x, top - 3.0F}, upgrade_color, 2.0F, true);
             draw_line({center_x, top - 3.0F}, {center_x + 3.0F, top + 1.0F}, upgrade_color, 2.0F, true);
         }
     }
     if (has_focus()) {
-        draw_rect({{0.0F, 1.0F}, {size.x, size.y - 2.0F}}, godot::Color(0.55, 0.78, 0.95), false, 2.0F, true);
+        draw_rect({{0.0F, 1.0F}, {size.x, size.y - 2.0F}}, UiThemeProvider::color("meter_focus"), false, 2.0F, true);
     }
 }
 

@@ -9,6 +9,7 @@
 #include "level_loader.h"
 #include "menu_data_loader.h"
 #include "music_playlist_loader.h"
+#include "ui_theme_loader.h"
 
 #include <godot_cpp/classes/resource_loader.hpp>
 
@@ -20,6 +21,7 @@ JsonContentPaths default_json_content_paths() {
     return {
         .campaign_map_path = DataPaths::CAMPAIGN_MAP_DATA,
         .menu_path = DataPaths::MENU_DATA,
+        .ui_theme_path = DataPaths::UI_THEME,
         .music_playlist_path = DataPaths::MUSIC_PLAYLIST_DATA,
         .progression_path = DataPaths::PROGRESSION_DATA,
         .upgrades_path = DataPaths::UPGRADES_DATA,
@@ -55,6 +57,11 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
     content.menu_data = MenuDataLoader::load(paths_.menu_path);
     if (!content.menu_data.has_value()) {
         content.load_issues.emplace_back("failed to load menu_data.json");
+    }
+
+    content.ui_theme = UiThemeLoader::load(paths_.ui_theme_path);
+    if (!content.ui_theme.has_value()) {
+        content.load_issues.emplace_back("failed to load ui_theme.json");
     }
 
     content.music_playlist = MusicPlaylistLoader::load(paths_.music_playlist_path);
@@ -153,6 +160,7 @@ ContentValidationInput make_content_validation_input(const JsonLoadedContent &co
     }
     input.campaign_map = content.campaign_map;
     input.missing_campaign_assets = content.missing_campaign_assets;
+    input.ui_theme = content.ui_theme;
     return input;
 }
 

@@ -183,4 +183,44 @@ DEFN_TEST(content_validator_reports_campaign_map_shape_cross_references_and_asse
     DEFN_CHECK(contains_issue(report, "resource does not exist"));
 }
 
+DEFN_TEST(content_validator_accepts_a_ui_theme_with_resolvable_roles) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    UiThemeData theme;
+    theme.surfaces["panel"] = {.bg_role = "surface", .border_role = "border", .shape_role = "corner_md", .content_margin_role = "md"};
+    theme.text_styles["screen_title"] = {.font_size_role = "title", .color_role = "text_primary"};
+    theme.text_styles["secondary"] = {.font_size_role = "body", .color_role = "text_secondary"};
+    theme.buttons["menu"] = {.font_size_role = "body", .shape_role = "corner_md", .normal = {.bg_role = "surface", .font_role = "text_primary"}};
+    theme.screen = {.backdrop_role = "overlay_scrim",
+                    .title_text_style = "screen_title",
+                    .subtitle_text_style = "secondary",
+                    .panel_surface = "panel",
+                    .footer_gap_role = "md"};
+    input.ui_theme = theme;
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(report.is_valid());
+}
+
+DEFN_TEST(content_validator_reports_unknown_ui_theme_roles) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    UiThemeData theme;
+    theme.surfaces["panel"] = {.bg_role = "ghost_color", .shape_role = "ghost_shape", .content_margin_role = "ghost_spacing"};
+    theme.text_styles["screen_title"] = {.font_size_role = "ghost_size", .color_role = "text_primary"};
+    theme.buttons["menu"] = {.normal = {.bg_role = "ghost_button_color"}};
+    theme.screen = {.title_text_style = "missing_style", .subtitle_text_style = "screen_title", .panel_surface = "missing_surface"};
+    input.ui_theme = theme;
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(!report.is_valid());
+    DEFN_CHECK(contains_issue(report, "unknown color role 'ghost_color'"));
+    DEFN_CHECK(contains_issue(report, "unknown shape role 'ghost_shape'"));
+    DEFN_CHECK(contains_issue(report, "unknown spacing role 'ghost_spacing'"));
+    DEFN_CHECK(contains_issue(report, "unknown font size role 'ghost_size'"));
+    DEFN_CHECK(contains_issue(report, "unknown color role 'ghost_button_color'"));
+    DEFN_CHECK(contains_issue(report, "unknown text style 'missing_style'"));
+    DEFN_CHECK(contains_issue(report, "unknown surface 'missing_surface'"));
+}
+
 } // namespace defn

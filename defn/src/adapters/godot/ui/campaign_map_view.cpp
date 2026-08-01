@@ -11,12 +11,14 @@
 #include "level_loader.h"
 #include "operation_dossier_view.h"
 #include "progression_service.h"
+#include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
+#include "ui_theme_provider.h"
+#include "ui_widgets.h"
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
 #include <godot_cpp/classes/canvas_item.hpp>
-#include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
@@ -25,7 +27,6 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/tween.hpp>
-#include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -51,31 +52,31 @@ GVector2 mission_center(const CampaignMissionViewModel &mission) { return {missi
 GColor route_color(CampaignRouteState state) {
     switch (state) {
     case CampaignRouteState::COMPLETED:
-        return {"5fcb9a"};
+        return UiThemeProvider::color("state_success");
     case CampaignRouteState::FRONTIER:
-        return {"f2be55"};
+        return UiThemeProvider::color("accent");
     case CampaignRouteState::LOCKED:
-        return {0.35F, 0.39F, 0.42F, 0.48F};
+        return UiThemeProvider::color("route_locked");
     }
-    return {"59646c"};
+    return UiThemeProvider::color("state_locked");
 }
 
 GColor ambience_color(CampaignMapAmbience ambience) {
     switch (ambience) {
     case CampaignMapAmbience::DUST:
-        return {0.82F, 0.65F, 0.36F, 0.42F};
+        return UiThemeProvider::color("ambience_dust");
     case CampaignMapAmbience::SPORES:
-        return {0.48F, 0.78F, 0.5F, 0.4F};
+        return UiThemeProvider::color("ambience_spores");
     case CampaignMapAmbience::MIST:
-        return {0.55F, 0.82F, 0.86F, 0.3F};
+        return UiThemeProvider::color("ambience_mist");
     case CampaignMapAmbience::SNOW:
-        return {0.82F, 0.91F, 1.0F, 0.52F};
+        return UiThemeProvider::color("ambience_snow");
     case CampaignMapAmbience::EMBERS:
-        return {0.95F, 0.4F, 0.22F, 0.48F};
+        return UiThemeProvider::color("ambience_embers");
     case CampaignMapAmbience::UNKNOWN:
-        return {0.82F, 0.65F, 0.36F, 0.42F};
+        return UiThemeProvider::color("ambience_dust");
     }
-    return {0.82F, 0.65F, 0.36F, 0.42F};
+    return UiThemeProvider::color("ambience_dust");
 }
 
 PackedVector2Array route_points(const GVector2 &start, const GVector2 &end) {
@@ -91,18 +92,12 @@ PackedVector2Array route_points(const GVector2 &start, const GVector2 &end) {
     return points;
 }
 
-Label *make_header_label(const String &text, int size, const GColor &color) {
-    auto *label = memnew(Label);
-    label->set_text(text);
-    label->add_theme_font_size_override("font_size", size);
-    label->add_theme_color_override("font_color", color);
-    label->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    return label;
-}
+real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
 
 } // namespace
 
 CampaignMapView::CampaignMapView() {
+    UiThemeProvider::apply_to(this);
     set_anchors_and_offsets_preset(PRESET_FULL_RECT);
     set_mouse_filter(MOUSE_FILTER_PASS);
     set_process_unhandled_input(true);
@@ -160,55 +155,32 @@ void CampaignMapView::configure_loading(const Callable &deploy_action, const Cal
 }
 
 void CampaignMapView::build_loading_overlay() {
-    loading_overlay_ = memnew(ColorRect);
+    const UiScreenScaffold scaffold = build_screen(this, {.show_backdrop = true, .panelled_body = false, .scrollable_body = false});
+    loading_overlay_ = scaffold.root;
     loading_overlay_->set_name("LoadingOverlay");
-    Object::cast_to<ColorRect>(loading_overlay_)->set_color(GColor("071018"));
-    loading_overlay_->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
     loading_overlay_->set_mouse_filter(MOUSE_FILTER_STOP);
-    add_child(loading_overlay_);
 
-    auto *center = memnew(CenterContainer);
-    center->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
-    loading_overlay_->add_child(center);
-
-    auto *stack = memnew(VBoxContainer);
-    stack->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-    stack->add_theme_constant_override("separation", 18);
-    center->add_child(stack);
-
-    loading_spinner_ = make_header_label("|", 46, GColor("f2be55"));
+    loading_spinner_ = make_label("|", "screen_display");
     loading_spinner_->set_name("LoadingSpinner");
+    set_state_tint(loading_spinner_, "accent");
     loading_spinner_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    stack->add_child(loading_spinner_);
+    scaffold.body->add_child(loading_spinner_);
 
-    loading_status_ = make_header_label("Establishing command link...", 18, GColor("b9c4c3"));
+    loading_status_ = make_label("Establishing command link...", "tagline");
     loading_status_->set_name("LoadingStatus");
     loading_status_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    stack->add_child(loading_status_);
+    scaffold.body->add_child(loading_status_);
 
-    loading_actions_ = memnew(HBoxContainer);
+    loading_actions_ = scaffold.footer;
     loading_actions_->set_name("LoadingActions");
     loading_actions_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-    loading_actions_->add_theme_constant_override("separation", 16);
     loading_actions_->hide();
-    stack->add_child(loading_actions_);
 
-    auto *retry = memnew(Button);
-    retry->set_text("Retry");
-    retry->set_custom_minimum_size({160.0F, 52.0F});
-    retry->connect("pressed", callable_mp(this, &CampaignMapView::retry_loading));
+    auto *retry = make_button("Retry", "secondary", callable_mp(this, &CampaignMapView::retry_loading), ui_sfx_player_);
     loading_actions_->add_child(retry);
 
-    auto *back = memnew(Button);
-    back->set_text("Back");
-    back->set_custom_minimum_size({160.0F, 52.0F});
-    back->connect("pressed", callable_mp(this, &CampaignMapView::request_back));
+    auto *back = make_button("Back", "secondary", callable_mp(this, &CampaignMapView::request_back), ui_sfx_player_);
     loading_actions_->add_child(back);
-
-    if (ui_sfx_player_ != nullptr) {
-        ui_sfx_player_->connect_menu_button(retry);
-        ui_sfx_player_->connect_menu_button(back);
-    }
 }
 
 void CampaignMapView::begin_loading() {
@@ -331,7 +303,7 @@ void CampaignMapView::poll_texture_requests() {
 }
 
 void CampaignMapView::complete_loading() {
-    build_screen(ui_sfx_player_);
+    build_map_content(ui_sfx_player_);
     move_child(loading_overlay_, get_child_count() - 1);
     const std::string initial_selected_level_id = view_model_.initial_selected_level_id;
     select_level(to_godot_string(initial_selected_level_id));
@@ -387,9 +359,9 @@ Ref<Texture2D> CampaignMapView::texture_for(const CampaignTextureDefinition &def
     return found == loaded_textures_.end() ? Ref<Texture2D>() : found->second;
 }
 
-void CampaignMapView::build_screen(UiSfxPlayer *ui_sfx_player) {
+void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     auto *backdrop = memnew(ColorRect);
-    backdrop->set_color(GColor("0a1118"));
+    backdrop->set_color(UiThemeProvider::color("backdrop"));
     backdrop->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
     backdrop->set_mouse_filter(MOUSE_FILTER_IGNORE);
     add_child(backdrop);
@@ -414,7 +386,7 @@ void CampaignMapView::build_screen(UiSfxPlayer *ui_sfx_player) {
     reference_surface_->add_child(panorama_view);
 
     auto *vignette = memnew(ColorRect);
-    vignette->set_color(GColor(0.01F, 0.025F, 0.035F, 0.18F));
+    vignette->set_color(UiThemeProvider::color("scrim_soft"));
     vignette->set_position({0.0F, 0.0F});
     vignette->set_size({REFERENCE_WIDTH, REFERENCE_HEIGHT});
     vignette->set_mouse_filter(MOUSE_FILTER_IGNORE);
@@ -462,60 +434,52 @@ void CampaignMapView::build_screen(UiSfxPlayer *ui_sfx_player) {
 
     auto *header_backplate = memnew(ColorRect);
     header_backplate->set_name("HeaderBackplate");
-    header_backplate->set_color(GColor(0.02F, 0.035F, 0.05F, 0.5F));
+    header_backplate->set_color(UiThemeProvider::color("scrim_panel"));
     header_backplate->set_position({0.0F, 0.0F});
-    header_backplate->set_size({REFERENCE_WIDTH, 104.0F});
+    header_backplate->set_size({REFERENCE_WIDTH, metric("map_header_height", 104)});
     header_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(header_backplate);
 
     auto *hints_backplate = memnew(ColorRect);
     hints_backplate->set_name("HintsBackplate");
-    hints_backplate->set_color(GColor(0.02F, 0.035F, 0.05F, 0.58F));
+    hints_backplate->set_color(UiThemeProvider::color("scrim_panel"));
     hints_backplate->set_position({0.0F, 990.0F});
     hints_backplate->set_size({1392.0F, 90.0F});
     hints_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(hints_backplate);
 
-    auto *breadcrumb = make_header_label("CAMPAIGN / THE EASTERN EXPEDITION", 24, GColor("e8ddc3"));
+    auto *breadcrumb = make_label("CAMPAIGN / THE EASTERN EXPEDITION", "screen_heading");
     breadcrumb->set_name("Breadcrumb");
     breadcrumb->set_position({64.0F, 34.0F});
     breadcrumb->set_size({900.0F, 48.0F});
     reference_surface_->add_child(breadcrumb);
 
-    auto *secured = make_header_label(vformat("%d / %d SECURED", view_model_.completed_count, view_model_.missions.size()), 22, GColor("5fcb9a"));
+    auto *secured = make_label(vformat("%d / %d SECURED", view_model_.completed_count, view_model_.missions.size()), "screen_heading");
     secured->set_name("SecuredCount");
+    set_state_tint(secured, "state_success");
     secured->set_position({1150.0F, 40.0F});
     secured->set_size({220.0F, 40.0F});
     secured->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     reference_surface_->add_child(secured);
 
-    auto *close = memnew(Button);
+    auto *close = make_button(String::utf8("×"), "close", callable_mp(this, &CampaignMapView::request_back), ui_sfx_player);
     close->set_name("CloseButton");
-    close->set_text(String::utf8("×"));
     close->set_flat(true);
     close->set_position({1812.0F, 30.0F});
     close->set_size({48.0F, 48.0F});
     close->set_focus_mode(FOCUS_ALL);
-    close->add_theme_font_size_override("font_size", 32);
-    close->connect("pressed", callable_mp(this, &CampaignMapView::request_back));
-    if (ui_sfx_player != nullptr) {
-        ui_sfx_player->connect_menu_button(close);
-    }
     reference_surface_->add_child(close);
 
     dossier_ = memnew(OperationDossierView);
     dossier_->set_name("OperationDossier");
-    dossier_->set_position({1408.0F, 124.0F});
-    dossier_->set_size({464.0F, 866.0F});
+    dossier_->set_position({metric("map_dossier_x", 1408), metric("map_dossier_y", 124)});
+    dossier_->set_size({metric("operation_dossier_width", 464), metric("operation_dossier_height", 866)});
     dossier_->connect("deploy_requested", callable_mp(this, &CampaignMapView::activate_level));
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
-    if (ui_sfx_player != nullptr) {
-        ui_sfx_player->connect_menu_button(dossier_->deploy_button());
-        ui_sfx_player->connect_menu_button(dossier_->back_button());
-    }
+    dossier_->attach_sfx(ui_sfx_player);
     reference_surface_->add_child(dossier_);
 
-    auto *hints = make_header_label(String::utf8("[Esc] Back     [←/→] Choose operation     [Enter] Inspect / Deploy"), 18, GColor("b9c4c3"));
+    auto *hints = make_label(String::utf8("[Esc] Back     [\u2190/\u2192] Choose operation     [Enter] Inspect / Deploy"), "tagline");
     hints->set_name("InputHints");
     hints->set_position({72.0F, 1010.0F});
     hints->set_size({1050.0F, 36.0F});
@@ -533,7 +497,7 @@ void CampaignMapView::build_routes(Control *route_layer) {
         shadow->set_name(vformat("RouteShadow%d", route.from_index));
         shadow->set_points(points);
         shadow->set_width(8.0F);
-        shadow->set_default_color(GColor(0.02F, 0.04F, 0.05F, 0.9F));
+        shadow->set_default_color(UiThemeProvider::color("route_shadow"));
         shadow->set_antialiased(true);
         route_layer->add_child(shadow);
 

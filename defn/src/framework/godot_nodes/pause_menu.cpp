@@ -6,8 +6,9 @@
 #include "godot_color.h"
 #include "godot_string.h"
 #include "menu_data_loader.h"
-#include "menu_style.h"
 #include "ui_sfx_player.h"
+#include "ui_theme_provider.h"
+#include "ui_widgets.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
@@ -22,6 +23,7 @@ namespace defn {
 void PauseMenu::_bind_methods() { ADD_SIGNAL(MethodInfo("main_menu_requested")); }
 
 void PauseMenu::_ready() {
+    UiThemeProvider::install(get_tree());
     // Render on top of everything
     set_layer(100);
     // Keep processing input while tree is paused
@@ -61,12 +63,10 @@ void PauseMenu::build_ui() {
         return;
     }
 
-    const MenuStyleData &style = menu_data_.style;
-
     ui_sfx_player_ = memnew(UiSfxPlayer);
     ui_sfx_player_->set_name("UiSfxPlayer");
     add_child(ui_sfx_player_);
-    ui_sfx_player_->configure(menu_data_.sfx);
+    ui_sfx_player_->configure(UiThemeProvider::data().sfx);
 
     // Dark overlay
     overlay_ = memnew(ColorRect);
@@ -85,24 +85,18 @@ void PauseMenu::build_ui() {
     button_container_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     center->add_child(button_container_);
 
-    const ButtonStyle button_style = build_button_style(style);
-
-    button_container_->add_theme_constant_override("separation", button_style.separation);
+    button_container_->add_theme_constant_override("separation",
+                                                   UiThemeProvider::data().metric("menu_button_separation", UiThemeProvider::spacing("section_gap")));
 
     for (const auto &entry : pause_menu->entries) {
-        auto *btn = memnew(Button);
-        btn->set_text(entry.label.empty() ? String("???") : to_godot_string(entry.label));
-        btn->set_custom_minimum_size(button_style.minimum_size);
-        btn->set_focus_mode(Control::FOCUS_NONE);
-        apply_button_theme(btn, button_style, button_style.font_size);
-        ui_sfx_player_->connect_menu_button(btn);
-
+        Callable pressed;
         if (entry.action_type == MenuActionType::RESUME) {
-            btn->connect("pressed", callable_mp(this, &PauseMenu::on_resume));
+            pressed = callable_mp(this, &PauseMenu::on_resume);
         } else if (entry.action_type == MenuActionType::MAIN_MENU) {
-            btn->connect("pressed", callable_mp(this, &PauseMenu::on_main_menu));
+            pressed = callable_mp(this, &PauseMenu::on_main_menu);
         }
 
+        auto *btn = make_button(entry.label.empty() ? String("???") : to_godot_string(entry.label), "menu", pressed, ui_sfx_player_);
         button_container_->add_child(btn);
     }
 }

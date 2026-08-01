@@ -39,6 +39,7 @@ class MenuManager : public Node2D {
     void on_vsync_toggled(bool toggled);
     void on_volume_changed(double value, const String &bus_name);
     void connect_menu_sfx(BaseButton *button);
+    [[nodiscard]] class UiSfxPlayer *sfx_player() const { return ui_sfx_player_; }
 
   protected:
     static void _bind_methods();

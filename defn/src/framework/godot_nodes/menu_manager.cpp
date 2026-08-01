@@ -6,12 +6,13 @@
 #include "data_paths.h"
 #include "godot_string.h"
 #include "menu_data_loader.h"
-#include "menu_style.h"
 #include "progression_manager.h"
 #include "progression_stats_screen_view.h"
 #include "scene_navigator.h"
 #include "settings_service.h"
 #include "ui_sfx_player.h"
+#include "ui_theme_provider.h"
+#include "ui_widgets.h"
 #include "variant_tools.h"
 #include <cmath>
 #include <godot_cpp/classes/center_container.hpp>
@@ -136,54 +137,56 @@ MenuIntent to_menu_intent(int intent_type, const String &target) {
 }
 
 godot::Vector2 get_progression_screen_size(Node *parent) {
+    const godot::Vector2 fallback(800.0F, 360.0F);
     if (parent == nullptr || parent->get_viewport() == nullptr) {
-        return make_size(800, 360);
+        return fallback;
     }
 
     const godot::Vector2 viewport_size = parent->get_viewport()->get_visible_rect().size;
     if (viewport_size.x <= 0.0 || viewport_size.y <= 0.0) {
-        return make_size(800, 360);
+        return fallback;
     }
 
     return {viewport_size.x * PROGRESSION_SCREEN_WIDTH_RATIO, viewport_size.y * PROGRESSION_SCREEN_HEIGHT_RATIO};
 }
 
-void add_section_label(VBoxContainer *button_container, const MenuSettingViewModel &setting, const OptionsLayout &options_layout) {
-    auto *section_label = memnew(Label);
-    section_label->set_text(to_godot_string(setting.label));
-    section_label->add_theme_font_size_override("font_size", options_layout.section_font_size);
-    section_label->add_theme_color_override("font_color", options_layout.section_color);
+void add_section_label(VBoxContainer *button_container, const MenuSettingViewModel &setting) {
+    auto *section_label = make_label(to_godot_string(setting.label), "option_section");
     section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
     button_container->add_child(section_label);
 }
 
-HBoxContainer *create_option_row(const MenuSettingViewModel &setting, const OptionsLayout &options_layout) {
+HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
     auto *row = memnew(HBoxContainer);
     row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-    row->add_theme_constant_override("separation", 16);
+    row->add_theme_constant_override("separation", UiThemeProvider::spacing("section_gap"));
 
-    auto *name_label = memnew(Label);
-    name_label->set_text(setting.label.empty() ? String("???") : to_godot_string(setting.label));
-    name_label->set_custom_minimum_size(options_layout.label_minimum_size);
-    name_label->add_theme_font_size_override("font_size", options_layout.label_font_size);
-    name_label->add_theme_color_override("font_color", options_layout.label_color);
+    auto *name_label = make_label(setting.label.empty() ? String("???") : to_godot_string(setting.label), "option_label");
+    name_label->set_custom_minimum_size({static_cast<real_t>(UiThemeProvider::data().metric("option_label_width")), 0.0F});
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(name_label);
 
     return row;
 }
 
-bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const ButtonStyle &button_style,
-                                  const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode,
+godot::Vector2 option_control_size() {
+    const UiButtonVariant *variant = UiThemeProvider::data().find_button("option_control");
+    if (variant == nullptr) {
+        return {300.0F, 40.0F};
+    }
+    return {static_cast<real_t>(variant->min_width), static_cast<real_t>(variant->min_height)};
+}
+
+bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, DisplayServer::WindowMode current_mode,
                                   std::vector<DisplayServer::WindowMode> &display_mode_values) {
     if (setting.kind != MenuSettingViewKind::DisplayMode) {
         return false;
     }
 
     auto *option_button = memnew(OptionButton);
-    option_button->set_custom_minimum_size(options_layout.control_minimum_size);
+    option_button->set_custom_minimum_size(option_control_size());
     option_button->set_focus_mode(Control::FOCUS_NONE);
-    apply_button_theme(option_button, button_style, options_layout.label_font_size);
+    apply_button_style(option_button, "option_control");
 
     display_mode_values.clear();
     int selected_index = 0;
@@ -205,17 +208,16 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     return true;
 }
 
-bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const ButtonStyle &button_style,
-                                const OptionsLayout &options_layout, DisplayServer::WindowMode current_mode, const Vector2i &current_size,
-                                OptionButton *&resolution_dropdown, std::vector<Vector2i> &resolution_values) {
+bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, DisplayServer::WindowMode current_mode,
+                                const Vector2i &current_size, OptionButton *&resolution_dropdown, std::vector<Vector2i> &resolution_values) {
     if (setting.kind != MenuSettingViewKind::Resolution) {
         return false;
     }
 
     auto *option_button = memnew(OptionButton);
-    option_button->set_custom_minimum_size(options_layout.control_minimum_size);
+    option_button->set_custom_minimum_size(option_control_size());
     option_button->set_focus_mode(Control::FOCUS_NONE);
-    apply_button_theme(option_button, button_style, options_layout.label_font_size);
+    apply_button_style(option_button, "option_control");
 
     resolution_values.clear();
     int selected_index = 0;
@@ -233,7 +235,7 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     option_button->select(selected_index);
 
     const bool windowed = static_cast<int>(current_mode) == static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED);
-    apply_disabled_style(option_button, windowed);
+    apply_enabled(option_button, windowed);
 
     resolution_dropdown = option_button;
     manager->connect_menu_sfx(option_button);
@@ -242,13 +244,13 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     return true;
 }
 
-bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setting, const OptionsLayout &options_layout, bool vsync_on, MenuManager *manager) {
+bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setting, bool vsync_on, MenuManager *manager) {
     if (setting.kind != MenuSettingViewKind::Vsync) {
         return false;
     }
 
     auto *check_button = memnew(CheckButton);
-    check_button->set_custom_minimum_size(options_layout.control_minimum_size);
+    check_button->set_custom_minimum_size(option_control_size());
     check_button->set_focus_mode(Control::FOCUS_NONE);
     check_button->set_pressed(vsync_on);
     manager->connect_menu_sfx(check_button);
@@ -257,8 +259,8 @@ bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setti
     return true;
 }
 
-bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const OptionsLayout &options_layout,
-                            const SettingsState &settings_state, std::vector<std::pair<String, Label *>> &volume_labels) {
+bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const MenuSettingViewModel &setting, const SettingsState &settings_state,
+                            std::vector<std::pair<String, Label *>> &volume_labels) {
     if (setting.kind != MenuSettingViewKind::BusVolume) {
         return false;
     }
@@ -270,7 +272,7 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     const double current_percent = SettingsService::get_bus_volume_percent(settings_state, bus_name);
 
     auto *slider = memnew(HSlider);
-    slider->set_custom_minimum_size(options_layout.control_minimum_size);
+    slider->set_custom_minimum_size(option_control_size());
     slider->set_min(min_value);
     slider->set_max(max_value);
     slider->set_step(step_value);
@@ -279,11 +281,8 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     slider->connect("value_changed", callable_mp(manager, &MenuManager::on_volume_changed).bind(bus_name));
     row->add_child(slider);
 
-    auto *value_label = memnew(Label);
-    value_label->set_text(vformat("%d%%", static_cast<int>(current_percent)));
-    value_label->set_custom_minimum_size(make_size(60, 0));
-    value_label->add_theme_font_size_override("font_size", options_layout.value_font_size);
-    value_label->add_theme_color_override("font_color", options_layout.value_color);
+    auto *value_label = make_label(vformat("%d%%", static_cast<int>(current_percent)), "option_value");
+    value_label->set_custom_minimum_size({static_cast<real_t>(UiThemeProvider::data().metric("option_value_width")), 0.0F});
     value_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(value_label);
 
@@ -291,33 +290,20 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     return true;
 }
 
-void add_menu_button(MenuManager *manager, VBoxContainer *button_container, const MenuButtonViewModel &button_model, const ButtonStyle &button_style,
-                     real_t width_override = 0.0F) {
-    auto *button = memnew(Button);
-    button->set_text(to_godot_string(button_model.label));
-    const godot::Vector2 minimum_size = width_override > 0.0F ? godot::Vector2(width_override, button_style.minimum_size.y) : button_style.minimum_size;
-    button->set_custom_minimum_size(minimum_size);
-    button->set_focus_mode(Control::FOCUS_NONE);
-    apply_button_theme(button, button_style, button_style.font_size);
-
-    if (!button_model.enabled) {
-        button->set_disabled(true);
-        button->set_modulate(godot::Color(0.5, 0.5, 0.5, 0.7));
-    }
-
-    manager->connect_menu_sfx(button);
-    button->connect(
-        "pressed",
-        callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target)));
+void add_menu_button(MenuManager *manager, VBoxContainer *button_container, const MenuButtonViewModel &button_model) {
+    const Callable pressed =
+        callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target));
+    auto *button = make_button(to_godot_string(button_model.label), "menu", pressed, manager->sfx_player());
+    apply_enabled(button, button_model.enabled);
     button_container->add_child(button);
 }
 
-void add_back_button(MenuManager *manager, VBoxContainer *button_container, const std::optional<MenuButtonViewModel> &back, const ButtonStyle &button_style) {
+void add_back_button(MenuManager *manager, VBoxContainer *button_container, const std::optional<MenuButtonViewModel> &back) {
     if (!back.has_value()) {
         return;
     }
 
-    add_menu_button(manager, button_container, *back, button_style);
+    add_menu_button(manager, button_container, *back);
 }
 
 } // namespace
@@ -333,10 +319,12 @@ void MenuManager::_ready() {
     settings_state_ = SettingsService::load_or_default();
     SettingsService::apply(settings_state_);
 
+    UiThemeProvider::install(get_tree());
+
     ui_sfx_player_ = memnew(UiSfxPlayer);
     ui_sfx_player_->set_name("UiSfxPlayer");
     add_child(ui_sfx_player_);
-    ui_sfx_player_->configure(menu_data_.sfx);
+    ui_sfx_player_->configure(UiThemeProvider::data().sfx);
 
     ui_layer_ = memnew(CanvasLayer);
     ui_layer_->set_name("UILayer");
@@ -346,15 +334,12 @@ void MenuManager::_ready() {
 
     // Total score label (top right)
     auto *progression = CampaignService::get_singleton();
-    total_score_label_ = memnew(Label);
-    total_score_label_->set_text(vformat("Career Score: %d", progression->get_total_score()));
+    total_score_label_ = make_label(vformat("Career Score: %d", progression->get_total_score()), "career_score");
     total_score_label_->set_anchors_preset(Control::PRESET_TOP_RIGHT);
-    total_score_label_->set_offset(Side::SIDE_RIGHT, -24.0);
-    total_score_label_->set_offset(Side::SIDE_TOP, 16.0);
-    total_score_label_->set_offset(Side::SIDE_LEFT, -300.0);
+    total_score_label_->set_offset(Side::SIDE_RIGHT, -static_cast<real_t>(UiThemeProvider::data().metric("career_score_right_margin", 24)));
+    total_score_label_->set_offset(Side::SIDE_TOP, static_cast<real_t>(UiThemeProvider::data().metric("career_score_top_margin", 16)));
+    total_score_label_->set_offset(Side::SIDE_LEFT, -static_cast<real_t>(UiThemeProvider::data().metric("career_score_width")));
     total_score_label_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
-    total_score_label_->add_theme_font_size_override("font_size", 24);
-    total_score_label_->add_theme_color_override("font_color", godot::Color(1.0, 0.85, 0.3));
     ui_layer_->add_child(total_score_label_);
 
     // Center container spanning the full viewport
@@ -455,12 +440,11 @@ void MenuManager::show_menu(const String &menu_name) {
         return;
     }
 
-    const ButtonStyle button_style = build_button_style(menu_data_.style);
-
-    button_container_->add_theme_constant_override("separation", button_style.separation);
+    button_container_->add_theme_constant_override("separation",
+                                                   UiThemeProvider::data().metric("menu_button_separation", UiThemeProvider::spacing("section_gap")));
 
     for (const auto &button_model : view_model.buttons) {
-        add_menu_button(this, button_container_, button_model, button_style);
+        add_menu_button(this, button_container_, button_model);
     }
 }
 
@@ -534,10 +518,7 @@ void MenuManager::show_progression() {
 }
 
 void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
-    const ButtonStyle button_style = build_button_style(menu_data_.style);
-    const OptionsLayout options_layout = build_options_layout(menu_data_.style.options);
-
-    button_container_->add_theme_constant_override("separation", options_layout.row_separation);
+    button_container_->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
 
     const auto current_mode = static_cast<DisplayServer::WindowMode>(settings_state_.display_mode);
     const Vector2i current_size(settings_state_.resolution.width, settings_state_.resolution.height);
@@ -545,16 +526,14 @@ void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
 
     for (const auto &setting : view_model.settings) {
         if (setting.kind == MenuSettingViewKind::Section) {
-            add_section_label(button_container_, setting, options_layout);
+            add_section_label(button_container_, setting);
             continue;
         }
 
-        auto *row = create_option_row(setting, options_layout);
-        const bool handled = try_add_display_mode_control(this, row, setting, button_style, options_layout, current_mode, display_mode_values_) ||
-                             try_add_resolution_control(this, row, setting, button_style, options_layout, current_mode, current_size, resolution_dropdown_,
-                                                        resolution_values_) ||
-                             try_add_vsync_control(row, setting, options_layout, vsync_on, this) ||
-                             try_add_volume_control(this, row, setting, options_layout, settings_state_, volume_labels_);
+        auto *row = create_option_row(setting);
+        const bool handled = try_add_display_mode_control(this, row, setting, current_mode, display_mode_values_) ||
+                             try_add_resolution_control(this, row, setting, current_mode, current_size, resolution_dropdown_, resolution_values_) ||
+                             try_add_vsync_control(row, setting, vsync_on, this) || try_add_volume_control(this, row, setting, settings_state_, volume_labels_);
 
         if (handled) {
             button_container_->add_child(row);
@@ -564,7 +543,7 @@ void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
         }
     }
 
-    add_back_button(this, button_container_, view_model.back_button, button_style);
+    add_back_button(this, button_container_, view_model.back_button);
 }
 
 void MenuManager::on_display_mode_changed(int index) {
@@ -576,7 +555,7 @@ void MenuManager::on_display_mode_changed(int index) {
 
     const bool windowed = settings_state_.display_mode == static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED);
     if (resolution_dropdown_) {
-        apply_disabled_style(resolution_dropdown_, windowed);
+        apply_enabled(resolution_dropdown_, windowed);
     }
 
     SettingsService::save(settings_state_);

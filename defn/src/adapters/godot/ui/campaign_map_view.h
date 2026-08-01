@@ -60,7 +60,7 @@ class CampaignMapView : public godot::Control {
     void finish_overlay_fade();
     void update_loading_animation(double delta);
     [[nodiscard]] godot::Ref<godot::Texture2D> texture_for(const CampaignTextureDefinition &definition) const;
-    void build_screen(UiSfxPlayer *ui_sfx_player);
+    void build_map_content(UiSfxPlayer *ui_sfx_player);
     void build_routes(godot::Control *route_layer);
     void build_nodes(godot::Control *node_layer, UiSfxPlayer *ui_sfx_player);
     void select_level(const godot::String &level_id);

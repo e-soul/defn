@@ -3,6 +3,7 @@
 
 #include "owned_upgrades_panel.h"
 
+#include "ui_widgets.h"
 #include "upgrade_card_presenter.h"
 
 #include <godot_cpp/classes/grid_container.hpp>
@@ -11,7 +12,6 @@
 #include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/callable.hpp>
-#include <godot_cpp/variant/color.hpp>
 
 #include <algorithm>
 
@@ -19,12 +19,9 @@ namespace defn {
 
 Control *OwnedUpgradesPanel::build(const std::vector<UpgradeCardViewModel> &owned_upgrades, const Options &options) {
     if (owned_upgrades.empty()) {
-        auto *empty_label = memnew(Label);
-        empty_label->set_text("No upgrades yet — clear levels to earn them.");
+        auto *empty_label = make_label(String::utf8("No upgrades yet — clear levels to earn them."), "empty_state");
         empty_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
         empty_label->set_custom_minimum_size(options.min_size);
-        empty_label->add_theme_font_size_override("font_size", 20);
-        empty_label->add_theme_color_override("font_color", Color(0.82, 0.85, 0.9));
         return empty_label;
     }
 

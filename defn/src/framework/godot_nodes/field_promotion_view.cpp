@@ -6,6 +6,7 @@
 #include "animation_controller.h"
 #include "field_promotion_effect.h"
 #include "health_bar_widget.h"
+#include "ui_widgets.h"
 
 #include <algorithm>
 #include <cmath>
@@ -26,12 +27,8 @@ namespace defn {
 namespace {
 
 constexpr auto PROMOTION_SFX_PATH = "res://assets/sfx/field_promotion_kalimba.wav";
-constexpr int STAR_FONT_SIZE = 68;
-constexpr int STAR_OUTLINE_SIZE = 9;
 constexpr float STAR_BAR_GAP = 4.0F;
 constexpr float SFX_VOLUME_LINEAR = 0.55F;
-const godot::Color STAR_COLOR(1.0F, 0.76F, 0.12F, 1.0F);
-const godot::Color OUTLINE_COLOR(0.10F, 0.07F, 0.02F, 0.95F);
 
 float linear_to_db(float linear) { return 20.0F * std::log10(std::clamp(linear, 0.0001F, 1.0F)); }
 
@@ -64,14 +61,8 @@ void FieldPromotionView::show_promotion() {
 }
 
 void FieldPromotionView::create_insignia() {
-    insignia_ = memnew(godot::Label);
+    insignia_ = make_label(String::chr(0x2605), "promotion_star");
     insignia_->set_name("FieldPromotionInsignia");
-    insignia_->set_text(String::chr(0x2605));
-    insignia_->set_mouse_filter(godot::Control::MOUSE_FILTER_IGNORE);
-    insignia_->add_theme_font_size_override("font_size", STAR_FONT_SIZE);
-    insignia_->add_theme_constant_override("outline_size", STAR_OUTLINE_SIZE);
-    insignia_->add_theme_color_override("font_color", STAR_COLOR);
-    insignia_->add_theme_color_override("font_outline_color", OUTLINE_COLOR);
     insignia_->set_z_index(75);
     add_child(insignia_);
 
