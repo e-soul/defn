@@ -10,34 +10,32 @@
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 6.0,  "type": "grime"},
-        {"time": 7.3,  "type": "grime"},
-        {"time": 8.6,  "type": "grime"},
-        {"time": 10.0, "type": "grime"}
+        {"time": 3.0, "type": "grime"},
+        {"time": 4.3, "type": "grime"},
+        {"time": 5.6, "type": "grime"},
+        {"time": 6.0, "type": "grime"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
-        {"time": 27.5, "type": "grime"},
-        {"time": 28.8, "type": "grime"},
-        {"time": 30.1, "type": "grime"},
-        {"time": 31.4, "type": "grime"},
-        {"time": 32.7, "type": "grime"}
+        {"time": 13.5, "type": "grime"},
+        {"time": 14.8, "type": "grime"},
+        {"time": 15.1, "type": "grime"},
+        {"time": 16.4, "type": "grime"},
+        {"time": 17.7, "type": "grime"}
       ]
     },
     {
       "wave_number": 3,
       "spawns": [
-        {"time": 52.5, "type": "grime"},
-        {"time": 53.4, "type": "grime"},
-        {"time": 54.3, "type": "grime"},
-        {"time": 55.2, "type": "grime"},
-        {"time": 56.1, "type": "grime"},
-        {"time": 57.0, "type": "grime"},
-        {"time": 58.2, "type": "grime"},
-        {"time": 59.4, "type": "grime"},
-        {"time": 61.6, "type": "grime"}
+        {"time": 32.5, "type": "grime"},
+        {"time": 33.4, "type": "grime"},
+        {"time": 34.3, "type": "grime"},
+        {"time": 35.2, "type": "grime"},
+        {"time": 36.1, "type": "grime"},
+        {"time": 37.0, "type": "grime"},
+        {"time": 38.2, "type": "grime"}
       ]
     }
   ]
