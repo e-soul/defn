@@ -523,6 +523,7 @@ DEFN_TEST(score_screen_presenter_builds_victory_screen_with_rewards_and_disabled
     DEFN_CHECK(score_screen_view_matches_victory_layout(parent, view));
     DEFN_CHECK(score_screen_has_victory_content(view.overlay));
     DEFN_CHECK(score_screen_has_disabled_primary_actions(view.overlay));
+    DEFN_CHECK(view.overlay->find_child("ScreenScroll", true, false) == nullptr);
 
     memdelete(parent);
 }

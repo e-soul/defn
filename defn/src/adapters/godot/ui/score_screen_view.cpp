@@ -173,8 +173,8 @@ ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel 
                                                             .title_text_style = "screen_display",
                                                             .show_backdrop = true,
                                                             .panelled_body = true,
-                                                            .scrollable_body = true,
-                                                            .constrain_height = true});
+                                                            .scrollable_body = false,
+                                                            .constrain_height = false});
     if (scaffold.root == nullptr) {
         return {};
     }
