@@ -1,5 +1,6 @@
 __pycache__
 .venv/
+BUILD_ENV.md
 build-output.txt
 build/
 defn/.cache/

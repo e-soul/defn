@@ -12,6 +12,8 @@ This is a **Godot** game built as a **Belt Scroller** (2.5D side-scroller). It u
 
 ## Build Instructions
 
+Setting up the build environment is described in @BUILD_ENV.md
+
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
 .\.venv\Scripts\Activate.ps1

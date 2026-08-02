@@ -7,9 +7,17 @@ import shutil
 import subprocess
 
 
-def remove_standard_flags(flags):
-    cxx17_flags = {"/std:c++17", "-std=c++17"}
-    return [flag for flag in flags if str(flag) not in cxx17_flags]
+def remove_flags(flags, flags_to_remove):
+    return [flag for flag in flags if str(flag) not in flags_to_remove]
+
+
+def remove_cppdefine(defines, name):
+    def define_name(define):
+        if isinstance(define, (tuple, list)) and define:
+            return str(define[0])
+        return str(define).split("=", maxsplit=1)[0]
+
+    return [define for define in defines if define_name(define) != name]
 
 
 def parse_bool_arg(value):
@@ -32,9 +40,9 @@ env = Environment(variables=opts)
 # Add compilation database tool
 env.Tool('compilation_db')
 
-# 2. Import the godot-cpp configuration
-# This allows us to use the same compiler flags godot-cpp uses
-env = SConscript("../godot-cpp/SConstruct", exports="env")
+# 2. Import the godot-cpp configuration and preserve its C++17 environment.
+godot_env = SConscript("../godot-cpp/SConstruct", exports="env")
+env = godot_env.Clone()
 
 # 3. Add your local include directory and godot-cpp includes
 env.Append(CPPPATH=[
@@ -65,14 +73,15 @@ env.Append(CPPPATH=[
     "../godot-cpp/include/",
 ])
 
-# Replace godot-cpp's default C++17 flag with the project's required standard.
-env["CXXFLAGS"] = remove_standard_flags(env.get("CXXFLAGS", []))
+# Replace godot-cpp's C++17 and exception settings only in the project environment.
+env["CXXFLAGS"] = remove_flags(env.get("CXXFLAGS", []), {"/std:c++17", "-std=c++17", "-fno-exceptions"})
+env["CPPDEFINES"] = remove_cppdefine(env.get("CPPDEFINES", []), "_HAS_EXCEPTIONS")
 
 # Enable C++23
 if env["platform"] == "windows":
     env.Append(CXXFLAGS=["/std:c++latest", "/EHsc"])
 else:
-    env.Append(CXXFLAGS=["-std=c++23"])
+    env.Append(CXXFLAGS=["-std=c++23", "-fexceptions"])
 
 debug_rendering_enabled = env["target"] == "template_debug"
 if debug_rendering_enabled:
