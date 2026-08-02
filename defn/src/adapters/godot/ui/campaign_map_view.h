@@ -9,7 +9,6 @@
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/cpu_particles2d.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
-#include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -34,14 +33,12 @@ class CampaignMapView : public godot::Control {
     enum class LoadingState { WaitingToStart, LoadingTextures, Ready, Failed };
 
     CampaignMapView();
-    void _ready() override;
     void _process(double delta) override;
     void configure(ProgressionService *progression, const godot::Callable &deploy_action, const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player);
     void configure(CampaignMapViewModel view_model, const godot::Callable &deploy_action, const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player);
     [[nodiscard]] LoadingState loading_state() const { return loading_state_; }
     [[nodiscard]] const std::string &selected_level_id() const { return selected_level_id_; }
     [[nodiscard]] OperationDossierView *dossier() const { return dossier_; }
-    void _unhandled_input(const godot::Ref<godot::InputEvent> &event) override;
 
   protected:
     static void _bind_methods();
@@ -67,9 +64,7 @@ class CampaignMapView : public godot::Control {
     void activate_level(const godot::String &level_id);
     void deploy_selected();
     void request_back();
-    void select_relative(int offset);
     void layout_reference_surface();
-    void focus_selected_node();
     void configure_ambience(const CampaignMissionViewModel &mission);
     [[nodiscard]] const CampaignMissionViewModel *find_mission(const std::string &level_id) const;
 

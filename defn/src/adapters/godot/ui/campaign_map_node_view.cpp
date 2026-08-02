@@ -7,6 +7,7 @@
 #include "godot_string.h"
 #include "ui_theme_provider.h"
 
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/style_box_empty.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -84,14 +85,6 @@ CampaignMapNodeView::CampaignMapNodeView() {
     selection_ring_->set_visible(false);
     add_child(selection_ring_);
 
-    focus_ring_ = memnew(Panel);
-    focus_ring_->set_name("FocusRing");
-    focus_ring_->set_position({3.0F, 0.0F});
-    focus_ring_->set_size({182.0F, 134.0F});
-    focus_ring_->set_mouse_filter(MOUSE_FILTER_IGNORE);
-    focus_ring_->set_visible(false);
-    add_child(focus_ring_);
-
     frame_ = memnew(Panel);
     frame_->set_name("PostcardFrame");
     frame_->set_position({12.0F, 9.0F});
@@ -118,17 +111,14 @@ CampaignMapNodeView::CampaignMapNodeView() {
     interaction_->set_name("Interaction");
     interaction_->set_flat(true);
     interaction_->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
-    interaction_->set_focus_mode(FOCUS_ALL);
+    interaction_->set_focus_mode(FOCUS_NONE);
     interaction_->set_default_cursor_shape(CURSOR_POINTING_HAND);
     Ref<StyleBoxEmpty> empty_button_style;
     empty_button_style.instantiate();
     interaction_->add_theme_stylebox_override("normal", empty_button_style);
     interaction_->add_theme_stylebox_override("hover", empty_button_style);
     interaction_->add_theme_stylebox_override("pressed", empty_button_style);
-    interaction_->add_theme_stylebox_override("focus", empty_button_style);
-    interaction_->connect("mouse_entered", callable_mp(this, &CampaignMapNodeView::on_pointer_entered));
-    interaction_->connect("focus_entered", callable_mp(this, &CampaignMapNodeView::on_focus_entered));
-    interaction_->connect("focus_exited", callable_mp(this, &CampaignMapNodeView::on_focus_exited));
+    interaction_->connect("gui_input", callable_mp(this, &CampaignMapNodeView::on_gui_input));
     interaction_->connect("pressed", callable_mp(this, &CampaignMapNodeView::on_pressed));
     add_child(interaction_);
 }
@@ -153,26 +143,24 @@ void CampaignMapNodeView::set_selected(bool selected) {
     update_style();
 }
 
-void CampaignMapNodeView::grab_node_focus() { interaction_->grab_focus(); }
+void CampaignMapNodeView::on_gui_input(const Ref<InputEvent> &event) {
+    if (!event.is_valid()) {
+        return;
+    }
 
-void CampaignMapNodeView::on_pointer_entered() { emit_signal("selected", to_godot_string(mission_.level_id)); }
-
-void CampaignMapNodeView::on_focus_entered() {
-    focused_ = true;
-    update_style();
-    emit_signal("selected", to_godot_string(mission_.level_id));
-}
-
-void CampaignMapNodeView::on_focus_exited() {
-    focused_ = false;
-    update_style();
+    const auto *mouse = Object::cast_to<InputEventMouseButton>(event.ptr());
+    const bool double_click =
+        mouse != nullptr && mouse->get_button_index() == MOUSE_BUTTON_LEFT && mouse->is_pressed() && mouse->is_double_click();
+    if (double_click) {
+        emit_signal("selected", to_godot_string(mission_.level_id));
+        if (mission_.state != CampaignNodeState::LOCKED) {
+            emit_signal("activated", to_godot_string(mission_.level_id));
+        }
+    }
 }
 
 void CampaignMapNodeView::on_pressed() {
     emit_signal("selected", to_godot_string(mission_.level_id));
-    if (mission_.state != CampaignNodeState::LOCKED) {
-        emit_signal("activated", to_godot_string(mission_.level_id));
-    }
 }
 
 void CampaignMapNodeView::update_style() {
@@ -180,8 +168,6 @@ void CampaignMapNodeView::update_style() {
     frame_->add_theme_stylebox_override("panel", frame_style(color, selected_));
     selection_ring_->add_theme_stylebox_override("panel", outline_style(color, UiThemeProvider::shape("border_width")));
     selection_ring_->set_visible(selected_);
-    focus_ring_->add_theme_stylebox_override("panel", outline_style(UiThemeProvider::color("border_focus"), 1));
-    focus_ring_->set_visible(focused_);
     medallion_->set_text(state_icon(mission_.state));
     medallion_->add_theme_color_override("font_color", color);
     medallion_->add_theme_stylebox_override("normal", medallion_style(color));

@@ -27,7 +27,6 @@
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/tween.hpp>
-#include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/packed_vector2_array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -100,13 +99,10 @@ CampaignMapView::CampaignMapView() {
     UiThemeProvider::apply_to(this);
     set_anchors_and_offsets_preset(PRESET_FULL_RECT);
     set_mouse_filter(MOUSE_FILTER_PASS);
-    set_process_unhandled_input(true);
     set_process(false);
 }
 
 void CampaignMapView::_bind_methods() {}
-
-void CampaignMapView::_ready() { focus_selected_node(); }
 
 void CampaignMapView::_process(double delta) {
     update_loading_animation(delta);
@@ -308,7 +304,6 @@ void CampaignMapView::complete_loading() {
     const std::string initial_selected_level_id = view_model_.initial_selected_level_id;
     select_level(to_godot_string(initial_selected_level_id));
     layout_reference_surface();
-    focus_selected_node();
     loading_state_ = LoadingState::Ready;
     set_process(false);
     Ref<Tween> tween = create_tween();
@@ -440,14 +435,6 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     header_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(header_backplate);
 
-    auto *hints_backplate = memnew(ColorRect);
-    hints_backplate->set_name("HintsBackplate");
-    hints_backplate->set_color(UiThemeProvider::color("scrim_panel"));
-    hints_backplate->set_position({0.0F, 990.0F});
-    hints_backplate->set_size({1392.0F, 90.0F});
-    hints_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
-    reference_surface_->add_child(hints_backplate);
-
     auto *breadcrumb = make_label("CAMPAIGN / THE EASTERN EXPEDITION", "screen_heading");
     breadcrumb->set_name("Breadcrumb");
     breadcrumb->set_position({64.0F, 34.0F});
@@ -462,14 +449,6 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     secured->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     reference_surface_->add_child(secured);
 
-    auto *close = make_button(String::utf8("×"), "close", callable_mp(this, &CampaignMapView::request_back), ui_sfx_player);
-    close->set_name("CloseButton");
-    close->set_flat(true);
-    close->set_position({1812.0F, 30.0F});
-    close->set_size({48.0F, 48.0F});
-    close->set_focus_mode(FOCUS_ALL);
-    reference_surface_->add_child(close);
-
     dossier_ = memnew(OperationDossierView);
     dossier_->set_name("OperationDossier");
     dossier_->set_position({metric("map_dossier_x", 1408), metric("map_dossier_y", 124)});
@@ -478,12 +457,6 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
     dossier_->attach_sfx(ui_sfx_player);
     reference_surface_->add_child(dossier_);
-
-    auto *hints = make_label(String::utf8("[Esc] Back     [\u2190/\u2192] Choose operation     [Enter] Inspect / Deploy"), "tagline");
-    hints->set_name("InputHints");
-    hints->set_position({72.0F, 1010.0F});
-    hints->set_size({1050.0F, 36.0F});
-    reference_surface_->add_child(hints);
 }
 
 void CampaignMapView::build_routes(Control *route_layer) {
@@ -567,38 +540,6 @@ void CampaignMapView::request_back() {
     }
 }
 
-void CampaignMapView::select_relative(int offset) {
-    if (view_model_.missions.empty()) {
-        return;
-    }
-    const auto found =
-        std::ranges::find_if(view_model_.missions, [this](const CampaignMissionViewModel &mission) { return mission.level_id == selected_level_id_; });
-    const std::ptrdiff_t current = found == view_model_.missions.end() ? 0 : std::distance(view_model_.missions.begin(), found);
-    const auto count = static_cast<std::ptrdiff_t>(view_model_.missions.size());
-    const std::ptrdiff_t next = (current + offset + count) % count;
-    select_level(to_godot_string(view_model_.missions[static_cast<std::size_t>(next)].level_id));
-    node_views_[static_cast<std::size_t>(next)]->grab_node_focus();
-}
-
-void CampaignMapView::_unhandled_input(const Ref<InputEvent> &event) {
-    if (loading_state_ != LoadingState::Ready || !event.is_valid() || event->is_echo()) {
-        return;
-    }
-    if (event->is_action_pressed("ui_cancel")) {
-        request_back();
-        get_viewport()->set_input_as_handled();
-    } else if (event->is_action_pressed("ui_left") || event->is_action_pressed("ui_up")) {
-        select_relative(-1);
-        get_viewport()->set_input_as_handled();
-    } else if (event->is_action_pressed("ui_right") || event->is_action_pressed("ui_down")) {
-        select_relative(1);
-        get_viewport()->set_input_as_handled();
-    } else if (event->is_action_pressed("ui_accept")) {
-        deploy_selected();
-        get_viewport()->set_input_as_handled();
-    }
-}
-
 void CampaignMapView::layout_reference_surface() {
     if (reference_surface_ == nullptr || get_size().x <= 0.0F || get_size().y <= 0.0F) {
         return;
@@ -606,18 +547,6 @@ void CampaignMapView::layout_reference_surface() {
     const float scale = std::min(get_size().x / REFERENCE_WIDTH, get_size().y / REFERENCE_HEIGHT);
     reference_surface_->set_scale({scale, scale});
     reference_surface_->set_position((get_size() - GVector2(REFERENCE_WIDTH * scale, REFERENCE_HEIGHT * scale)) * 0.5F);
-}
-
-void CampaignMapView::focus_selected_node() {
-    if (!is_inside_tree()) {
-        return;
-    }
-    for (CampaignMapNodeView *node : node_views_) {
-        if (node != nullptr && node->level_id() == selected_level_id_) {
-            node->grab_node_focus();
-            return;
-        }
-    }
 }
 
 void CampaignMapView::configure_ambience(const CampaignMissionViewModel &mission) {

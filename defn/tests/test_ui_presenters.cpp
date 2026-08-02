@@ -35,6 +35,7 @@
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
@@ -793,19 +794,58 @@ DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
     DEFN_CHECK_CLOSE(static_cast<double>(panorama->get_texture()->get_height()) * panorama->get_scale().y, 1080.0, 0.001);
 }
 
-DEFN_TEST(campaign_map_renders_utf8_and_uses_compact_preview_nodes) {
+DEFN_TEST(campaign_map_uses_compact_preview_nodes_without_auxiliary_navigation_controls) {
     const TreeMountedNode<MenuManager> menu_manager_owner;
     CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
 
     DEFN_REQUIRE(campaign_map != nullptr);
-    DEFN_CHECK(find_button_by_text(campaign_map, String::utf8("×")) != nullptr);
-    DEFN_CHECK(has_label_text(campaign_map, String::utf8("[Esc] Back     [←/→] Choose operation     [Enter] Inspect / Deploy")));
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/CloseButton") == nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/HintsBackplate") == nullptr);
+    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/InputHints") == nullptr);
     auto *desert_node = Object::cast_to<Control>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01"));
     DEFN_REQUIRE(desert_node != nullptr);
     DEFN_CHECK_EQ(desert_node->get_size(), godot::Vector2(188.0F, 134.0F));
     DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/LabelPlate") == nullptr);
     DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/MissionName") == nullptr);
     DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/MissionDetail") == nullptr);
+}
+
+DEFN_TEST(campaign_map_preview_requires_click_and_double_click_deploys) {
+    GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
+    GodotObjectOwner<Button> deployment_recorder(memnew(Button));
+    CampaignMapView *campaign_map = campaign_map_owner.get();
+    const CampaignTextureDefinition texture{.path = "res://assets/campaign/desert_outpost_preview.jpg"};
+    CampaignMapViewModel view_model{
+        .background = texture,
+        .missions = {{.level_id = "level_01", .name = "First", .preview = {.texture = texture}, .state = CampaignNodeState::AVAILABLE},
+                     {.level_id = "level_02", .name = "Second", .preview = {.texture = texture}, .state = CampaignNodeState::AVAILABLE}},
+        .initial_selected_level_id = "level_02",
+    };
+    campaign_map->configure(std::move(view_model), Callable(deployment_recorder.get(), "set_text"), {}, nullptr);
+
+    DEFN_REQUIRE(pump_campaign_map_loading(campaign_map));
+    auto *first = Object::cast_to<Button>(
+        campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
+    auto *second = Object::cast_to<Button>(
+        campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_02/Interaction"));
+    DEFN_REQUIRE(first != nullptr);
+    DEFN_REQUIRE(second != nullptr);
+
+    first->emit_signal("mouse_entered");
+    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_02"));
+
+    first->emit_signal("pressed");
+    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_01"));
+    DEFN_CHECK(deployment_recorder->get_text().is_empty());
+
+    Ref<InputEventMouseButton> double_click;
+    double_click.instantiate();
+    double_click->set_button_index(MOUSE_BUTTON_LEFT);
+    double_click->set_pressed(true);
+    double_click->set_double_click(true);
+    second->emit_signal("gui_input", double_click);
+    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_02"));
+    DEFN_CHECK_EQ(deployment_recorder->get_text(), String("level_02"));
 }
 
 DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
@@ -819,7 +859,8 @@ DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
     DEFN_CHECK(medallion->has_theme_stylebox_override("normal"));
     auto *node_interaction = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
     DEFN_REQUIRE(node_interaction != nullptr);
-    DEFN_CHECK(node_interaction->has_theme_stylebox_override("focus"));
+    DEFN_CHECK_EQ(node_interaction->get_focus_mode(), Control::FOCUS_NONE);
+    DEFN_CHECK(!node_interaction->has_theme_stylebox_override("focus"));
     DEFN_CHECK(has_label_text(campaign_map, "Grime"));
     DEFN_CHECK(!has_label_text(campaign_map, "[Grime]"));
 }

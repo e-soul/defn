@@ -18,7 +18,7 @@
         },
         {
             "level_id": "level_02",
-            "position": [0.22, 0.72],
+            "position": [0.24, 0.8],
             "tagline": "Hold a vine-choked causeway where heavy attackers first emerge.",
             "threat": "moderate",
             "ambience": "spores",
@@ -57,7 +57,7 @@
         },
         {
             "level_id": "level_05",
-            "position": [0.66, 0.73],
+            "position": [0.66, 0.77],
             "tagline": "Make the final stand at a fortified settlement under sustained pressure.",
             "threat": "extreme",
             "ambience": "embers",

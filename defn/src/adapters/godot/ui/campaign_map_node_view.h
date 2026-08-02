@@ -8,6 +8,7 @@
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
@@ -24,7 +25,6 @@ class CampaignMapNodeView : public godot::Control {
     CampaignMapNodeView();
     void configure(const CampaignMissionViewModel &mission, const godot::Ref<godot::Texture2D> &preview_texture);
     void set_selected(bool selected);
-    void grab_node_focus();
     [[nodiscard]] const std::string &level_id() const { return mission_.level_id; }
     [[nodiscard]] godot::Button *button() const { return interaction_; }
 
@@ -32,17 +32,13 @@ class CampaignMapNodeView : public godot::Control {
     static void _bind_methods();
 
   private:
-    void on_pointer_entered();
-    void on_focus_entered();
-    void on_focus_exited();
+    void on_gui_input(const godot::Ref<godot::InputEvent> &event);
     void on_pressed();
     void update_style();
 
     CampaignMissionViewModel mission_;
     bool selected_ = false;
-    bool focused_ = false;
     godot::Panel *selection_ring_ = nullptr;
-    godot::Panel *focus_ring_ = nullptr;
     godot::Panel *frame_ = nullptr;
     CampaignPreviewView *preview_ = nullptr;
     godot::Label *medallion_ = nullptr;
