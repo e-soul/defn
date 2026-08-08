@@ -129,13 +129,24 @@ Current boundary ownership:
   `std::vector<std::string>` issues. `JsonContentRepository` converts parsed
   Godot-backed catalog values into that input; `ContentStartupValidator` owns
   Godot logging.
-- `GameManager` is the framework composition and lifecycle entry point. It
+- `GameManager` is the match-level composition and lifecycle entry point. It
   delegates camera movement to `CameraScrollController`, backgrounds to
   `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and
   `UnitFactory`, and match decisions to `MatchDirector`.
-- `MenuManager` is the framework UI entry point. It delegates menu decisions
-  and screen models to `MenuFlowUseCase` and presenter builders, style shaping
-  to `MenuStyle`, and display/audio persistence to `SettingsService`. The
+- `SettingsRuntime` is a narrow process-level autoload and settings composition
+  boundary. The current root-scene replacement flow requires it to persist
+  independently of `menu.tscn` and `game.tscn`. It owns one engine-neutral
+  `SettingsSession` plus the ConfigFile, audio, and explicit-window display
+  adapters; editor, embedded, and headless capability checks stay at this outer
+  boundary. Godot recovery mode disables the GDExtension and may therefore log
+  that the `SettingsRuntime` class cannot be instantiated from its autoload
+  scene; this diagnostic is expected, and the project remains openable so the
+  extension can be restored for a normal launch.
+- `SettingsSession` owns the process-scoped `SettingsState`, starts
+  idempotently, coordinates `SettingsUseCase`, and persists each mutation.
+- `MenuManager` is a framework UI adapter. It delegates menu decisions and
+  screen models to `MenuFlowUseCase` and presenter builders, renders a settings
+  snapshot, and forwards settings intents to `SettingsRuntime`. The
   level-selection composition mounts one full-screen `CampaignMapView` directly
   under its UI layer and supplies progression access plus navigation callbacks.
   `CampaignMapView` first presents its loading overlay, then owns synchronous
@@ -375,7 +386,7 @@ flowchart TB
 
 ## Module 5: Presentation, UI, and Scene Flow
 
-Godot UI nodes are humble adapters: they render pure view models into controls and translate user input/signals into application intents. Presentation shaping, settings changes, and menu/post-match navigation decisions live in presenters and use cases; only Godot adapters touch `SceneTree`, display/audio APIs, and concrete engine services.
+Godot UI nodes are humble adapters: they render pure view models into controls and translate user input/signals into application intents. Presentation shaping, settings changes, and menu/post-match navigation decisions live in presenters and use cases; only Godot adapters touch `SceneTree`, display/audio APIs, and concrete engine services. `SettingsRuntime` is the settings-specific exception to scene lifetime: it is an autoload because the project replaces its root scene during navigation. It remains a narrow facade and must not become a general service locator.
 
 Look and feel is data-driven and shared. `data/ui_theme.json` is the single source of colors, typography, spacing, shapes, surfaces, button variants, text styles, screen layout, named metrics, and UI SFX. `UiThemeLoader` parses it into the engine-neutral `UiThemeData` tokens in `src/domain/content/ui_theme_models.h`; `UiThemeProvider` turns those tokens into one Godot `Theme` of type variations installed on the `SceneTree` root. UI code builds controls through `ui_widgets` (`make_label`, `make_button`, `make_surface`, `make_chip`, ...) and `ui_screen_scaffold::build_screen`, so screens carry no hardcoded colors or sizes. `ContentValidator` checks that every role referenced by the theme resolves.
 
@@ -403,8 +414,14 @@ flowchart TB
         HUD[HUD CanvasLayer]
         MenuManager[MenuManager Node2D]
         PauseMenu[PauseMenu]
+        SettingsRuntime[SettingsRuntime autoload]
         CampaignMapView[CampaignMapView and dossier/node views]
         GodotControls[Buttons, labels, panels]
+    end
+
+    subgraph SettingsApplication[Settings Application]
+        SettingsSession[SettingsSession]
+        SettingsUseCase[SettingsUseCase]
     end
 
     subgraph ThemeLayer[Shared UI Theme]
@@ -417,7 +434,14 @@ flowchart TB
     subgraph ScenePorts[Scene and Settings Ports]
         SceneNavigationPort[SceneNavigation]
         SettingsPort[SettingsStore]
+        DisplaySettingsPort[DisplaySettings]
         AudioSettingsPort[AudioSettings]
+    end
+
+    subgraph SettingsAdapters[Godot Settings Adapters]
+        ConfigFileStore[ConfigFileSettingsStore]
+        GodotDisplay[GodotDisplaySettings explicit WindowID]
+        GodotAudio[GodotAudioSettings]
     end
 
     Presenters --> PresentationModels
@@ -433,6 +457,15 @@ flowchart TB
     UiThemeProvider --> UiWidgets
     UiWidgets --> GodotControls
     UiAdapters --> UiWidgets
+    MenuManager --> SettingsRuntime
+    SettingsRuntime --> SettingsSession
+    SettingsSession --> SettingsUseCase
+    SettingsUseCase --> SettingsPort
+    SettingsUseCase --> DisplaySettingsPort
+    SettingsUseCase --> AudioSettingsPort
+    ConfigFileStore -. implements .-> SettingsPort
+    GodotDisplay -. implements .-> DisplaySettingsPort
+    GodotAudio -. implements .-> AudioSettingsPort
 ```
 
 ## Module 6: Godot Entity Construction
@@ -490,7 +523,9 @@ High-value ports:
 | `SpawnPointProvider` | `GridManager` adapter | deployment and spawn use cases | Keeps Godot/world geometry at the edge. |
 | `RandomSource` | Godot or standard RNG adapter | draft selection, resolved combat ranges | Enables deterministic tests. |
 | `SceneNavigation` | `SceneNavigator` adapter | menu and post-match flow | Keeps `SceneTree` out of use cases. |
-| `SettingsStore` | Godot display/audio adapter plus save file adapter | settings use case | Keeps OS/window/audio APIs at the edge. |
+| `SettingsStore` | `ConfigFileSettingsStore` | settings use case/session | Keeps save-file access at the edge. |
+| `DisplaySettings` | `GodotDisplaySettings` with an explicit runtime window ID, or `NoOpDisplaySettings` | settings use case/session | Keeps window capability and targeting at the edge. |
+| `AudioSettings` | `GodotAudioSettings` | settings use case/session | Keeps audio-bus APIs at the edge. |
 
 Low-value ports to avoid initially:
 

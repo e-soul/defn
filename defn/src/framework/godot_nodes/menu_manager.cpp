@@ -9,7 +9,8 @@
 #include "progression_manager.h"
 #include "progression_stats_screen_view.h"
 #include "scene_navigator.h"
-#include "settings_service.h"
+#include "settings_runtime.h"
+#include "settings_use_case.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
@@ -224,7 +225,8 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     int option_index = 0;
     for (const auto &option : setting.options) {
         option_button->add_item(to_godot_string(option.label));
-        const Vector2i resolution = SettingsService::parse_resolution_value(to_godot_string(option.value));
+        const SettingsResolution parsed = SettingsUseCase::parse_resolution_value(option.value);
+        const Vector2i resolution(parsed.width, parsed.height);
         resolution_values.push_back(resolution);
         if (resolution == current_size) {
             selected_index = option_index;
@@ -269,7 +271,7 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     const int min_value = setting.min_value;
     const int max_value = setting.max_value;
     const int step_value = setting.step_value;
-    const double current_percent = SettingsService::get_bus_volume_percent(settings_state, bus_name);
+    const double current_percent = SettingsUseCase::get_bus_volume_percent(settings_state, to_std_string(bus_name));
 
     auto *slider = memnew(HSlider);
     slider->set_custom_minimum_size(option_control_size());
@@ -316,8 +318,7 @@ void MenuManager::_ready() {
         return;
     }
 
-    settings_state_ = SettingsService::load_or_default();
-    SettingsService::apply(settings_state_);
+    refresh_settings_snapshot();
 
     UiThemeProvider::install(get_tree());
 
@@ -546,19 +547,52 @@ void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
     add_back_button(this, button_container_, view_model.back_button);
 }
 
+SettingsRuntime *MenuManager::settings_runtime_for_change() {
+    SettingsRuntime *runtime = SettingsRuntime::get_singleton();
+    if (runtime == nullptr || !runtime->is_available()) {
+        UtilityFunctions::printerr("MenuManager: Settings runtime is unavailable");
+        return nullptr;
+    }
+    return runtime;
+}
+
+bool MenuManager::refresh_settings_snapshot() {
+    SettingsRuntime *runtime = SettingsRuntime::get_singleton();
+    if (runtime == nullptr || !runtime->is_available()) {
+        settings_state_ = {};
+        return false;
+    }
+
+    const SettingsState *state = runtime->get_state();
+    if (state == nullptr) {
+        settings_state_ = {};
+        return false;
+    }
+    settings_state_ = *state;
+    return true;
+}
+
 void MenuManager::on_display_mode_changed(int index) {
     if (index < 0 || std::cmp_greater_equal(index, display_mode_values_.size())) {
         return;
     }
 
-    SettingsService::set_display_mode(settings_state_, display_mode_values_[index]);
+    SettingsRuntime *runtime = settings_runtime_for_change();
+    if (runtime == nullptr) {
+        return;
+    }
+
+    const bool persisted = runtime->set_display_mode(static_cast<int>(display_mode_values_[index]));
+    refresh_settings_snapshot();
 
     const bool windowed = settings_state_.display_mode == static_cast<int>(DisplayServer::WINDOW_MODE_WINDOWED);
     if (resolution_dropdown_) {
         apply_enabled(resolution_dropdown_, windowed);
     }
 
-    SettingsService::save(settings_state_);
+    if (!persisted) {
+        UtilityFunctions::printerr("MenuManager: Failed to persist display mode");
+    }
 }
 
 void MenuManager::on_resolution_changed(int index) {
@@ -566,26 +600,52 @@ void MenuManager::on_resolution_changed(int index) {
         return;
     }
 
-    SettingsService::set_resolution(settings_state_, resolution_values_[index]);
-    SettingsService::save(settings_state_);
+    SettingsRuntime *runtime = settings_runtime_for_change();
+    if (runtime == nullptr) {
+        return;
+    }
+
+    const Vector2i resolution = resolution_values_[index];
+    const bool persisted = runtime->set_resolution({.width = resolution.x, .height = resolution.y});
+    refresh_settings_snapshot();
+    if (!persisted) {
+        UtilityFunctions::printerr("MenuManager: Failed to persist resolution");
+    }
 }
 
 void MenuManager::on_vsync_toggled(bool toggled) {
-    SettingsService::set_vsync(settings_state_, toggled);
-    SettingsService::save(settings_state_);
+    SettingsRuntime *runtime = settings_runtime_for_change();
+    if (runtime == nullptr) {
+        return;
+    }
+
+    const bool persisted = runtime->set_vsync(toggled);
+    refresh_settings_snapshot();
+    if (!persisted) {
+        UtilityFunctions::printerr("MenuManager: Failed to persist VSync setting");
+    }
 }
 
 void MenuManager::on_volume_changed(double value, const String &bus_name) {
-    SettingsService::set_bus_volume_percent(settings_state_, bus_name, value);
+    SettingsRuntime *runtime = settings_runtime_for_change();
+    if (runtime == nullptr) {
+        return;
+    }
+
+    const bool persisted = runtime->set_bus_volume_percent(bus_name, value);
+    refresh_settings_snapshot();
+    const double current_value = SettingsUseCase::get_bus_volume_percent(settings_state_, to_std_string(bus_name), value);
 
     for (auto &[name, label] : volume_labels_) {
         if (name == bus_name && label) {
-            label->set_text(vformat("%d%%", static_cast<int>(value)));
+            label->set_text(vformat("%d%%", static_cast<int>(current_value)));
             break;
         }
     }
 
-    SettingsService::save(settings_state_);
+    if (!persisted) {
+        UtilityFunctions::printerr("MenuManager: Failed to persist audio setting for bus ", bus_name);
+    }
 }
 
 void MenuManager::connect_menu_sfx(BaseButton *button) {

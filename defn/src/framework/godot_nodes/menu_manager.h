@@ -7,7 +7,7 @@
 #include "menu_flow_use_case.h"
 #include "menu_models.h"
 #include "menu_view_model.h"
-#include "settings_service.h"
+#include "settings_models.h"
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
@@ -26,6 +26,8 @@
 namespace defn {
 
 using namespace godot;
+
+class SettingsRuntime;
 
 class MenuManager : public Node2D {
     GDCLASS(MenuManager, Node2D)
@@ -55,6 +57,8 @@ class MenuManager : public Node2D {
     void clear_buttons();
     void clear_active_view();
     void build_options_ui(const MenuScreenViewModel &view_model);
+    [[nodiscard]] static SettingsRuntime *settings_runtime_for_change();
+    bool refresh_settings_snapshot();
 
     MenuContentData menu_data_;
     String current_menu_;

@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include <godot_cpp/classes/cpu_particles2d.hpp>
+#include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/gradient.hpp>
 #include <godot_cpp/classes/image.hpp>
 #include <godot_cpp/classes/image_texture.hpp>
@@ -25,6 +26,11 @@ godot::Ref<godot::Texture2D> get_particle_texture() {
     static godot::Ref<godot::Texture2D> texture;
     if (texture.is_valid()) {
         return texture;
+    }
+
+    auto *display_server = godot::DisplayServer::get_singleton();
+    if (display_server == nullptr || display_server->get_name().to_lower() == "headless") {
+        return {};
     }
 
     godot::Ref<godot::Image> image = godot::Image::create_empty(PARTICLE_TEXTURE_SIZE, PARTICLE_TEXTURE_SIZE, false, godot::Image::FORMAT_RGBA8);
@@ -75,7 +81,10 @@ void FieldPromotionEffect::start() {
     particles->set_gravity(godot::Vector2(0.0F, 50.0F));
     particles->set_param_min(godot::CPUParticles2D::PARAM_SCALE, 0.336F);
     particles->set_param_max(godot::CPUParticles2D::PARAM_SCALE, 0.696F);
-    particles->set_texture(get_particle_texture());
+    const godot::Ref<godot::Texture2D> particle_texture = get_particle_texture();
+    if (particle_texture.is_valid()) {
+        particles->set_texture(particle_texture);
+    }
     particles->set_color_ramp(make_color_ramp());
     particles->set_z_index(VFX_Z_INDEX);
     add_child(particles);

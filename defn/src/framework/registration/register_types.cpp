@@ -35,6 +35,7 @@
 #include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
+#include "settings_runtime.h"
 #include "sound_controller.h"
 #include "ui_sfx_player.h"
 #include "unit.h"
@@ -75,6 +76,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::GameManager>();
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();
+    ClassDB::register_class<defn::SettingsRuntime>();
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
     ClassDB::register_internal_class<defn::ProgressionStatMeter>();
     ClassDB::register_internal_class<defn::UiSfxPlayer>();
