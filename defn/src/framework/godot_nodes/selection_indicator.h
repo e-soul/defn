@@ -27,6 +27,8 @@ class SelectionIndicator : public Node2D {
   public:
     void configure(const SelectionIndicatorStyle &style = {});
     [[nodiscard]] real_t get_world_offset_y() const { return style_.world_offset_y; }
+    [[nodiscard]] Color get_fill_color() const { return style_.fill_color; }
+    [[nodiscard]] Color get_border_color() const { return style_.border_color; }
     void _draw() override;
 
   protected:

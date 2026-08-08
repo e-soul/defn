@@ -37,24 +37,34 @@ class UnitSelectionController : public Node2D {
 
   private:
     [[nodiscard]] Unit *resolve_selected_unit() const;
+    [[nodiscard]] Unit *resolve_hovered_unit() const;
     [[nodiscard]] std::vector<Unit *> query_friendly_candidates(const godot::Vector2 &world_position) const;
     [[nodiscard]] Unit *pick_friendly(const godot::Vector2 &world_position) const;
     void select(Unit *unit);
+    void update_hover(Unit *unit);
+    void clear_hover();
     void attach_indicator(Unit *unit);
     void detach_indicator();
+    static void attach_ground_indicator(SelectionIndicator *indicator, Unit *unit);
+    void detach_ground_indicator(SelectionIndicator *indicator);
     void show_destination_marker(const godot::Vector2 &world_position);
     void clear_destination_marker();
     void disconnect_selected_signals(Unit *unit);
+    void disconnect_hovered_signals(Unit *unit);
     void cancel_all_repositions_for_match_end();
     void on_selected_unit_died(Node *unit, uint64_t expected_id);
     void on_selected_unit_tree_exiting(uint64_t expected_id);
+    void on_hovered_unit_tree_exiting(uint64_t expected_id);
 
     Node2D *entity_container_ = nullptr;
     SelectionIndicator *indicator_ = nullptr;
+    SelectionIndicator *hover_indicator_ = nullptr;
     ObjectID selected_unit_id_{};
+    ObjectID hovered_unit_id_{};
     ObjectID destination_marker_id_{};
     Callable selected_died_connection_{};
     Callable selected_tree_exit_connection_{};
+    Callable hovered_tree_exit_connection_{};
     bool gameplay_available_ = true;
 };
 

@@ -39,6 +39,7 @@
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
@@ -745,6 +746,52 @@ DEFN_TEST(unit_selection_controller_selects_visible_sprite_and_clears_when_unit_
     entity_container->remove_child(unit);
     DEFN_CHECK(!controller->has_selection());
     DEFN_CHECK(controller->get_node_or_null("SelectionIndicator") != nullptr);
+    memdelete(unit);
+}
+
+DEFN_TEST(unit_selection_controller_previews_hovered_friendly_at_half_opacity) {
+    const TreeMountedNode<Node2D> host_owner;
+    Node2D *host = host_owner.get();
+    DEFN_REQUIRE(host != nullptr);
+
+    auto *entity_container = memnew(Node2D);
+    host->add_child(entity_container);
+    auto *controller = memnew(UnitSelectionController);
+    host->add_child(controller);
+    controller->configure(entity_container);
+
+    UnitConfig config = make_presenter_unit_config("operator", 20);
+    config.side = UnitSide::FRIENDLY;
+    config.move_speed_pixels_per_second = 60.0F;
+    UnitRuntimeProfile profile = UnitRuntimeProfile::combatant();
+    profile.enable_sound = false;
+    const ResolvedUnitRuntimeConfig resolved{
+        .melee_attack_range = config.melee_attack_range,
+        .ranged_attack_range = config.ranged_attack_range,
+    };
+    Unit *unit = UnitFactory::create(config, {}, profile, resolved, {});
+    unit->set_position({300.0F, 300.0F});
+    entity_container->add_child(unit);
+
+    Ref<InputEventMouseMotion> hover;
+    hover.instantiate();
+    hover->set_position({325.0F, 300.0F});
+    controller->_unhandled_input(hover);
+
+    auto *hover_indicator = Object::cast_to<SelectionIndicator>(unit->get_node_or_null("HoverIndicator"));
+    DEFN_REQUIRE(hover_indicator != nullptr);
+    DEFN_CHECK(hover_indicator->is_visible());
+    DEFN_CHECK_CLOSE(hover_indicator->get_fill_color().a, 0.12, 0.001);
+    DEFN_CHECK_CLOSE(hover_indicator->get_border_color().a, 0.475, 0.001);
+    DEFN_CHECK(hover_indicator->get_global_position().y > unit->get_global_position().y + 40.0F);
+
+    hover->set_position({900.0F, 600.0F});
+    controller->_unhandled_input(hover);
+    auto *detached_hover_indicator = Object::cast_to<SelectionIndicator>(controller->get_node_or_null("HoverIndicator"));
+    DEFN_REQUIRE(detached_hover_indicator != nullptr);
+    DEFN_CHECK(!detached_hover_indicator->is_visible());
+
+    entity_container->remove_child(unit);
     memdelete(unit);
 }
 

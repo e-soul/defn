@@ -13,6 +13,7 @@
 
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/physics_direct_space_state2d.hpp>
 #include <godot_cpp/classes/physics_point_query_parameters2d.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -64,11 +65,22 @@ void UnitSelectionController::configure(Node2D *entity_container) {
         indicator_->configure();
         indicator_->set_visible(false);
     }
+    if (hover_indicator_ == nullptr) {
+        SelectionIndicatorStyle hover_style{};
+        hover_style.fill_color.a *= 0.3F;
+        hover_style.border_color.a *= 0.5F;
+        hover_indicator_ = memnew(SelectionIndicator);
+        hover_indicator_->set_name("HoverIndicator");
+        add_child(hover_indicator_);
+        hover_indicator_->configure(hover_style);
+        hover_indicator_->set_visible(false);
+    }
 }
 
 void UnitSelectionController::set_gameplay_available(bool available) {
     gameplay_available_ = available;
     if (!available) {
+        clear_hover();
         clear_selection();
         clear_destination_marker();
         cancel_all_repositions_for_match_end();
@@ -81,12 +93,26 @@ void UnitSelectionController::_process(double /*delta*/) {
     if (!selected_unit_id_.is_null() && resolve_selected_unit() == nullptr) {
         clear_selection();
     }
+    if (!hovered_unit_id_.is_null() && resolve_hovered_unit() == nullptr) {
+        clear_hover();
+    }
 }
 
 void UnitSelectionController::_unhandled_input(const Ref<InputEvent> &event) {
-    auto *mouse_button = Object::cast_to<InputEventMouseButton>(event.ptr());
     SceneTree *tree = get_tree();
-    if (!gameplay_available_ || tree == nullptr || tree->is_paused() || mouse_button == nullptr || !mouse_button->is_pressed()) {
+    if (!gameplay_available_ || tree == nullptr || tree->is_paused()) {
+        clear_hover();
+        return;
+    }
+
+    if (auto *mouse_motion = Object::cast_to<InputEventMouseMotion>(event.ptr()); mouse_motion != nullptr) {
+        const godot::Vector2 world_position = make_canvas_position_local(mouse_motion->get_position());
+        update_hover(pick_friendly(world_position));
+        return;
+    }
+
+    auto *mouse_button = Object::cast_to<InputEventMouseButton>(event.ptr());
+    if (mouse_button == nullptr || !mouse_button->is_pressed()) {
         return;
     }
 
@@ -121,6 +147,18 @@ Unit *UnitSelectionController::resolve_selected_unit() const {
     }
 
     auto *unit = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(selected_unit_id_)));
+    if (unit == nullptr || unit->is_queued_for_deletion() || !unit->is_commandable()) {
+        return nullptr;
+    }
+    return unit;
+}
+
+Unit *UnitSelectionController::resolve_hovered_unit() const {
+    if (hovered_unit_id_.is_null()) {
+        return nullptr;
+    }
+
+    auto *unit = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(hovered_unit_id_)));
     if (unit == nullptr || unit->is_queued_for_deletion() || !unit->is_commandable()) {
         return nullptr;
     }
@@ -183,6 +221,7 @@ void UnitSelectionController::select(Unit *unit) {
         return;
     }
 
+    clear_hover();
     clear_selection();
     selected_unit_id_ = ObjectID(unit->get_instance_id());
     selected_died_connection_ = callable_mp(this, &UnitSelectionController::on_selected_unit_died).bind(static_cast<uint64_t>(selected_unit_id_));
@@ -190,6 +229,35 @@ void UnitSelectionController::select(Unit *unit) {
     unit->connect("unit_died", selected_died_connection_);
     unit->connect("tree_exiting", selected_tree_exit_connection_);
     attach_indicator(unit);
+}
+
+void UnitSelectionController::update_hover(Unit *unit) {
+    if (unit == resolve_selected_unit()) {
+        unit = nullptr;
+    }
+    if (unit == resolve_hovered_unit()) {
+        return;
+    }
+
+    clear_hover();
+    if (unit == nullptr) {
+        return;
+    }
+
+    hovered_unit_id_ = ObjectID(unit->get_instance_id());
+    hovered_tree_exit_connection_ = callable_mp(this, &UnitSelectionController::on_hovered_unit_tree_exiting).bind(static_cast<uint64_t>(hovered_unit_id_));
+    unit->connect("tree_exiting", hovered_tree_exit_connection_);
+    attach_ground_indicator(hover_indicator_, unit);
+}
+
+void UnitSelectionController::clear_hover() {
+    if (!hovered_unit_id_.is_null()) {
+        auto *unit = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(hovered_unit_id_)));
+        disconnect_hovered_signals(unit);
+    }
+    hovered_unit_id_ = ObjectID();
+    hovered_tree_exit_connection_ = {};
+    detach_ground_indicator(hover_indicator_);
 }
 
 void UnitSelectionController::clear_selection() {
@@ -203,31 +271,35 @@ void UnitSelectionController::clear_selection() {
     detach_indicator();
 }
 
-void UnitSelectionController::attach_indicator(Unit *unit) {
-    if (indicator_ == nullptr || unit == nullptr) {
+void UnitSelectionController::attach_indicator(Unit *unit) { attach_ground_indicator(indicator_, unit); }
+
+void UnitSelectionController::detach_indicator() { detach_ground_indicator(indicator_); }
+
+void UnitSelectionController::attach_ground_indicator(SelectionIndicator *indicator, Unit *unit) {
+    if (indicator == nullptr || unit == nullptr) {
         return;
     }
 
-    indicator_->reparent(unit, false);
+    indicator->reparent(unit, false);
     const godot::Vector2 unit_scale = unit->get_scale();
     const real_t inverse_x = !Math::is_zero_approx(unit_scale.x) ? 1.0F / unit_scale.x : 1.0F;
     const real_t inverse_y = !Math::is_zero_approx(unit_scale.y) ? 1.0F / unit_scale.y : 1.0F;
-    const real_t ground_offset_y = unit->get_selection_ground_offset_y(indicator_->get_world_offset_y());
-    indicator_->set_scale({inverse_x, inverse_y});
-    indicator_->set_position({0.0F, ground_offset_y * inverse_y});
-    indicator_->set_visible(true);
+    const real_t ground_offset_y = unit->get_selection_ground_offset_y(indicator->get_world_offset_y());
+    indicator->set_scale({inverse_x, inverse_y});
+    indicator->set_position({0.0F, ground_offset_y * inverse_y});
+    indicator->set_visible(true);
 }
 
-void UnitSelectionController::detach_indicator() {
-    if (indicator_ == nullptr) {
+void UnitSelectionController::detach_ground_indicator(SelectionIndicator *indicator) {
+    if (indicator == nullptr) {
         return;
     }
-    indicator_->set_visible(false);
-    if (indicator_->get_parent() != this) {
-        indicator_->reparent(this, false);
+    indicator->set_visible(false);
+    if (indicator->get_parent() != this) {
+        indicator->reparent(this, false);
     }
-    indicator_->set_position({});
-    indicator_->set_scale({1.0F, 1.0F});
+    indicator->set_position({});
+    indicator->set_scale({1.0F, 1.0F});
 }
 
 void UnitSelectionController::show_destination_marker(const godot::Vector2 &world_position) {
@@ -266,6 +338,12 @@ void UnitSelectionController::disconnect_selected_signals(Unit *unit) {
     }
 }
 
+void UnitSelectionController::disconnect_hovered_signals(Unit *unit) {
+    if (unit != nullptr && hovered_tree_exit_connection_.is_valid() && unit->is_connected("tree_exiting", hovered_tree_exit_connection_)) {
+        unit->disconnect("tree_exiting", hovered_tree_exit_connection_);
+    }
+}
+
 void UnitSelectionController::cancel_all_repositions_for_match_end() {
     if (entity_container_ == nullptr) {
         return;
@@ -288,6 +366,12 @@ void UnitSelectionController::on_selected_unit_died(Node * /*unit*/, uint64_t ex
 void UnitSelectionController::on_selected_unit_tree_exiting(uint64_t expected_id) {
     if (static_cast<uint64_t>(selected_unit_id_) == expected_id) {
         clear_selection();
+    }
+}
+
+void UnitSelectionController::on_hovered_unit_tree_exiting(uint64_t expected_id) {
+    if (static_cast<uint64_t>(hovered_unit_id_) == expected_id) {
+        clear_hover();
     }
 }
 
