@@ -111,6 +111,13 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
 
     step.state.attack_cooldown_seconds = std::max(step.state.attack_cooldown_seconds - input.delta, 0.0);
 
+    if (input.manual_repositioning) {
+        step.state.attack_mode = AttackMode::NONE;
+        step.state.engaged = false;
+        step.state.target_id = {};
+        return step;
+    }
+
     const bool mode_changed = input.selection.attack_mode != input.state.attack_mode;
     step.state.engaged = input.selection.engaged;
     step.state.target_id = input.selection.target_id;

@@ -26,6 +26,7 @@
 #include "score_screen_models.h"
 #include "unit.h"
 #include "unit_factory.h"
+#include "unit_selection_controller.h"
 #include <algorithm>
 #include <cmath>
 #include <godot_cpp/classes/area2d.hpp>
@@ -161,6 +162,11 @@ void GameManager::_ready() {
     entity_container->set_name("EntityContainer");
     entity_container->set_y_sort_enabled(true);
     add_child(entity_container);
+
+    unit_selection_controller_ = memnew(UnitSelectionController);
+    unit_selection_controller_->set_name("UnitSelectionController");
+    add_child(unit_selection_controller_);
+    unit_selection_controller_->configure(entity_container);
 
     // HUD
     hud = memnew(HUD);
@@ -481,6 +487,9 @@ void GameManager::start_match_result_cutscene(const MatchEnded &match_end) {
     const MatchResultCutsceneModel cutscene_model = MatchResultCutscenePresenter::build(match_end.victory);
     pending_match_result_cutscene_model_ = cutscene_model;
     match_result_cutscene_active_ = true;
+    if (unit_selection_controller_ != nullptr) {
+        unit_selection_controller_->set_gameplay_available(false);
+    }
 
     if (core_resource_timer != nullptr) {
         core_resource_timer->stop();

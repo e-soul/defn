@@ -237,6 +237,7 @@ flowchart TB
         TargetSelection[TargetSelection rules]
         CombatStep[Combat step rules]
         DamageRules[Damage and projectile rules]
+        RepositionRules[Reposition state and step rules]
     end
 
     subgraph CombatUseCases[Combat Use Cases]
@@ -257,6 +258,10 @@ flowchart TB
         DetectionComponent[DetectionComponent]
         MovementComponent[MovementComponent]
         AnimationController[AnimationController]
+        UnitControlComponent[UnitControlComponent]
+        UnitSelectionController[UnitSelectionController]
+        SelectionIndicator[SelectionIndicator]
+        DestinationMarker[RepositionDestinationMarker]
         HealthComponent[HealthComponent]
         ProjectileAttack[ProjectileAttack]
     end
@@ -269,6 +274,13 @@ flowchart TB
     AnimationController -. implements .-> EntityCommandPort
     HealthComponent -. implements .-> EntityCommandPort
     ProjectileAttack -. implements .-> ProjectilePort
+    UnitSelectionController --> UnitControlComponent
+    UnitControlComponent --> RepositionRules
+    UnitControlComponent --> CombatComponent
+    UnitControlComponent --> MovementComponent
+    UnitControlComponent --> AnimationController
+    UnitSelectionController --> SelectionIndicator
+    UnitSelectionController --> DestinationMarker
 ```
 
 Target combat flow:
@@ -277,6 +289,15 @@ Target combat flow:
 2. A combat use case advances deterministic combat state.
 3. The use case returns commands: stop, move, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
 4. The Godot component applies commands to `MovementComponent`, `AnimationController`, `HealthComponent`, `ProjectileAttack`, and VFX/audio adapters.
+
+Friendly fallback control follows the same ownership boundary:
+
+- `reposition_logic` owns the engine-neutral automatic/repositioning state, strict behind-only validation, horizontal clamping, arrival epsilon, and facing/combat intents.
+- `UnitSelectionController` receives unhandled mouse input, performs friendly-hitbox point queries in world coordinates, resolves overlap deterministically, and retains only a safe Godot object ID.
+- `UnitControlComponent` is the sole manual movement coordinator. It applies reposition intents through `MovementComponent`, `AnimationController`, and `CombatComponent`; selection code never manipulates those components directly.
+- Manual reposition suspension clears target engagement and uncommitted attack presentation while preserving the combat cooldown. The cooldown alone advances until arrival, so automatic combat and manual movement never emit movement commands in the same frame.
+- `SelectionIndicator` is one controller-owned, code-drawn ellipse reparented beneath the selected unit. Deselect, death, tree exit, pause, and match-end paths do not leave a stale selection or active marker.
+- Accepted reposition orders create one short-lived `RepositionDestinationMarker` at the clicked X and the ground Y shared by the selected unit's selection ellipse. The view pulses three times, replaces prior destination feedback, and frees itself without entering domain state.
 
 ## Module 3: Progression and Rewards
 

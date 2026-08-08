@@ -28,6 +28,8 @@ class CombatRuntime {
     void configure(BattleEntity *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area, const CombatConfig &config,
                    const std::optional<ProjectileAttackConfig> &projectile_attack = std::nullopt);
     void update(double delta);
+    void begin_manual_reposition();
+    void end_manual_reposition();
 
     bool is_engaged() const { return state_.engaged; }
     AttackMode get_attack_mode() const { return state_.attack_mode; }
@@ -50,6 +52,7 @@ class CombatRuntime {
     CombatTargetSelection selection_{};
     CombatLogicState state_{};
     PendingProjectileSpawn pending_projectile_{};
+    bool manual_repositioning_ = false;
 };
 
 } // namespace defn

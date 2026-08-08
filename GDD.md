@@ -6,7 +6,7 @@ Defn is a 2.5D belt-scroller tug-of-war defense game with light strategy and rea
 
 ## Core Loop
 
-Each mission asks the player to spend regenerating energy and enemy bounties on timely unit deployments, while combat resolves automatically once opposing units enter range. Different friendly and hostile units fulfill different battlefield roles, creating decisions around timing, economy, pressure, and composition without direct unit control.
+Each mission asks the player to spend regenerating energy and enemy bounties on timely unit deployments, while combat resolves automatically once opposing units enter range. The player can also select one mobile friendly and order it to fall back horizontally, trading battlefield ground and attack time for survival or a better engagement. Different friendly and hostile units fulfill different battlefield roles, creating decisions around timing, economy, pressure, composition, and lightweight repositioning.
 
 ## Progression
 

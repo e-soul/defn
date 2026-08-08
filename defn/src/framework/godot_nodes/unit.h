@@ -27,6 +27,7 @@ class MovementComponent;
 class SoundController;
 class FieldPromotionView;
 class UnitFactory;
+class UnitControlComponent;
 
 class Unit : public BattleEntity {
     GDCLASS(Unit, BattleEntity)
@@ -53,6 +54,11 @@ class Unit : public BattleEntity {
     void record_effective_damage_dealt(int effective_damage);
     [[nodiscard]] bool is_field_promoted() const { return field_promotion_.is_promoted(); }
     [[nodiscard]] int get_promotion_damage_progress() const { return field_promotion_.get_effective_damage_dealt(); }
+    [[nodiscard]] bool is_commandable() const;
+    [[nodiscard]] bool contains_selection_point(const godot::Vector2 &world_position) const;
+    [[nodiscard]] real_t get_selection_ground_offset_y(real_t fallback_world_offset) const;
+    [[nodiscard]] bool request_reposition(real_t destination_x);
+    void cancel_reposition_for_match_end();
 
     void freeze_for_match_result(const StringName &animation_name);
 
@@ -82,6 +88,7 @@ class Unit : public BattleEntity {
     MovementComponent *movement = nullptr;
     SoundController *sound = nullptr;
     FieldPromotionView *field_promotion_view = nullptr;
+    UnitControlComponent *unit_control_ = nullptr;
     FieldPromotionRuntime field_promotion_{};
 };
 

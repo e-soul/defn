@@ -152,6 +152,39 @@ DEFN_TEST(advance_combat_logic_respects_existing_cooldown) {
     DEFN_CHECK_CLOSE(step.state.attack_cooldown_seconds, 0.3, 0.001);
 }
 
+DEFN_TEST(advance_combat_logic_suspends_all_automatic_intents_while_repositioning) {
+    const EntityId target{.value = 16};
+
+    CombatLogicInput input;
+    input.state = {.attack_cooldown_seconds = 0.4, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.selection = {.engaged = true, .attack_mode = AttackMode::RANGED, .target_id = target};
+    input.current_pose = CombatPoseState::SHOOT;
+    input.delta = 0.1;
+    input.projectile_pending = true;
+    input.manual_repositioning = true;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::NONE);
+    DEFN_CHECK_EQ(step.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!step.intent.trigger_attack);
+    DEFN_CHECK_EQ(step.state.attack_mode, AttackMode::NONE);
+    DEFN_CHECK(!step.state.engaged);
+    DEFN_CHECK(!step.state.target_id.is_valid());
+    DEFN_CHECK_CLOSE(step.state.attack_cooldown_seconds, 0.3, 0.001);
+}
+
+DEFN_TEST(advance_combat_emits_no_commands_while_manual_repositioning) {
+    CombatLogicInput input;
+    input.state.attack_cooldown_seconds = 0.25;
+    input.selection = {.engaged = true, .attack_mode = AttackMode::MELEE, .target_id = {.value = 17}};
+    input.delta = 0.1;
+    input.manual_repositioning = true;
+
+    const AdvanceCombatOutput output = advance_combat(make_combat_config(), input);
+    DEFN_CHECK(output.commands.empty());
+    DEFN_CHECK_CLOSE(output.state.attack_cooldown_seconds, 0.15, 0.001);
+}
+
 DEFN_TEST(advance_combat_logic_returns_current_state_when_unit_is_dead) {
     const EntityId target{.value = 15};
 

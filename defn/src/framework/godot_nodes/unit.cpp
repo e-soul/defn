@@ -6,7 +6,9 @@
 #include "combat_component.h"
 #include "field_promotion_view.h"
 #include "health_component.h"
+#include "hitbox_component.h"
 #include "movement_component.h"
+#include "unit_control_component.h"
 #include "unit_factory.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
@@ -68,10 +70,48 @@ void Unit::flash_damage(const godot::Color &color) {
     }
 }
 
+bool Unit::is_commandable() const {
+    return get_side() == UnitSide::FRIENDLY && !is_dead() && !is_queued_for_deletion() && runtime_profile_.enable_movement && movement != nullptr &&
+           movement->get_speed_pixels_per_second() > 0.0F && unit_control_ != nullptr;
+}
+
+bool Unit::contains_selection_point(const godot::Vector2 &world_position) const {
+    if (!is_commandable()) {
+        return false;
+    }
+
+    const godot::Rect2 sprite_bounds = animation != nullptr ? animation->get_sprite_local_bounds() : godot::Rect2();
+    if (sprite_bounds.has_area()) {
+        return sprite_bounds.has_point(to_local(world_position));
+    }
+
+    constexpr real_t FALLBACK_SELECTION_RADIUS = 12.0F;
+    return get_global_position().distance_squared_to(world_position) <= FALLBACK_SELECTION_RADIUS * FALLBACK_SELECTION_RADIUS;
+}
+
+real_t Unit::get_selection_ground_offset_y(real_t fallback_world_offset) const {
+    const godot::Rect2 sprite_bounds = animation != nullptr ? animation->get_sprite_local_bounds() : godot::Rect2();
+    if (!sprite_bounds.has_area()) {
+        return fallback_world_offset;
+    }
+
+    return sprite_bounds.get_end().y * Math::abs(get_scale().y);
+}
+
+bool Unit::request_reposition(real_t destination_x) { return is_commandable() && unit_control_->request_reposition(destination_x); }
+
+void Unit::cancel_reposition_for_match_end() {
+    if (unit_control_ != nullptr) {
+        unit_control_->cancel_without_combat_resume();
+    }
+}
+
 void Unit::freeze_for_match_result(const StringName &animation_name) {
     if (is_dead() || is_queued_for_deletion()) {
         return;
     }
+
+    cancel_reposition_for_match_end();
 
     if (movement != nullptr) {
         movement->stop();
@@ -86,6 +126,12 @@ void Unit::freeze_for_match_result(const StringName &animation_name) {
 }
 
 void Unit::on_died() {
+    if (unit_control_ != nullptr) {
+        unit_control_->cancel_without_combat_resume();
+    }
+    if (get_hitbox_component() != nullptr) {
+        get_hitbox_component()->disable();
+    }
     if (movement != nullptr) {
         movement->stop();
     }

@@ -1,0 +1,294 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
+#include "unit_selection_controller.h"
+
+#include "collision_layers.h"
+#include "reposition_destination_marker.h"
+#include "selection_indicator.h"
+#include "unit.h"
+
+#include <algorithm>
+#include <cstdint>
+
+#include <godot_cpp/classes/area2d.hpp>
+#include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/physics_direct_space_state2d.hpp>
+#include <godot_cpp/classes/physics_point_query_parameters2d.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/viewport.hpp>
+#include <godot_cpp/classes/world2d.hpp>
+#include <godot_cpp/core/object.hpp>
+#include <godot_cpp/variant/callable_method_pointer.hpp>
+#include <godot_cpp/variant/dictionary.hpp>
+#include <godot_cpp/variant/typed_array.hpp>
+
+namespace defn {
+
+namespace {
+
+constexpr int MAX_PICK_CANDIDATES = 64;
+
+Unit *unit_from_collider(Object *collider) {
+    auto *area = Object::cast_to<Area2D>(collider);
+    return area != nullptr ? Object::cast_to<Unit>(area->get_parent()) : nullptr;
+}
+
+bool candidate_precedes(const Unit *left, const Unit *right, const godot::Vector2 &world_position) {
+    const real_t left_distance = left->get_global_position().distance_squared_to(world_position);
+    const real_t right_distance = right->get_global_position().distance_squared_to(world_position);
+    if (!Math::is_equal_approx(left_distance, right_distance)) {
+        return left_distance < right_distance;
+    }
+
+    const real_t left_y = left->get_global_position().y;
+    const real_t right_y = right->get_global_position().y;
+    if (!Math::is_equal_approx(left_y, right_y)) {
+        return left_y > right_y;
+    }
+
+    return left->get_instance_id() < right->get_instance_id();
+}
+
+} // namespace
+
+void UnitSelectionController::_bind_methods() {}
+
+void UnitSelectionController::configure(Node2D *entity_container) {
+    entity_container_ = entity_container;
+    set_process_unhandled_input(true);
+    if (indicator_ == nullptr) {
+        indicator_ = memnew(SelectionIndicator);
+        indicator_->set_name("SelectionIndicator");
+        add_child(indicator_);
+        indicator_->configure();
+        indicator_->set_visible(false);
+    }
+}
+
+void UnitSelectionController::set_gameplay_available(bool available) {
+    gameplay_available_ = available;
+    if (!available) {
+        clear_selection();
+        clear_destination_marker();
+        cancel_all_repositions_for_match_end();
+    }
+}
+
+bool UnitSelectionController::has_selection() const { return resolve_selected_unit() != nullptr; }
+
+void UnitSelectionController::_process(double /*delta*/) {
+    if (!selected_unit_id_.is_null() && resolve_selected_unit() == nullptr) {
+        clear_selection();
+    }
+}
+
+void UnitSelectionController::_unhandled_input(const Ref<InputEvent> &event) {
+    auto *mouse_button = Object::cast_to<InputEventMouseButton>(event.ptr());
+    SceneTree *tree = get_tree();
+    if (!gameplay_available_ || tree == nullptr || tree->is_paused() || mouse_button == nullptr || !mouse_button->is_pressed()) {
+        return;
+    }
+
+    const godot::Vector2 world_position = make_canvas_position_local(mouse_button->get_position());
+    if (mouse_button->get_button_index() == MOUSE_BUTTON_LEFT) {
+        if (Unit *candidate = pick_friendly(world_position); candidate != nullptr) {
+            select(candidate);
+            get_viewport()->set_input_as_handled();
+            return;
+        }
+
+        if (Unit *selected = resolve_selected_unit(); selected != nullptr) {
+            if (selected->request_reposition(world_position.x)) {
+                const real_t destination_y =
+                    indicator_ != nullptr && indicator_->is_visible() ? indicator_->get_global_position().y : selected->get_global_position().y;
+                show_destination_marker({world_position.x, destination_y});
+            }
+            get_viewport()->set_input_as_handled();
+        }
+        return;
+    }
+
+    if (mouse_button->get_button_index() == MOUSE_BUTTON_RIGHT && pick_friendly(world_position) == nullptr) {
+        clear_selection();
+        get_viewport()->set_input_as_handled();
+    }
+}
+
+Unit *UnitSelectionController::resolve_selected_unit() const {
+    if (selected_unit_id_.is_null()) {
+        return nullptr;
+    }
+
+    auto *unit = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(selected_unit_id_)));
+    if (unit == nullptr || unit->is_queued_for_deletion() || !unit->is_commandable()) {
+        return nullptr;
+    }
+    return unit;
+}
+
+std::vector<Unit *> UnitSelectionController::query_friendly_candidates(const godot::Vector2 &world_position) const {
+    std::vector<Unit *> candidates;
+    const Ref<World2D> world = get_world_2d();
+    if (world.is_valid()) {
+        if (PhysicsDirectSpaceState2D *space_state = world->get_direct_space_state(); space_state != nullptr) {
+            Ref<PhysicsPointQueryParameters2D> query;
+            query.instantiate();
+            query->set_position(world_position);
+            query->set_collision_mask(CollisionLayers::FRIENDLY_HITBOX);
+            query->set_collide_with_areas(true);
+            query->set_collide_with_bodies(false);
+
+            const TypedArray<Dictionary> hits = space_state->intersect_point(query, MAX_PICK_CANDIDATES);
+            candidates.reserve(static_cast<std::size_t>(hits.size()));
+            for (const Variant &hit_variant : hits) {
+                const Dictionary hit = hit_variant;
+                Object *collider = hit.get("collider", Variant());
+                Unit *unit = unit_from_collider(collider);
+                if (unit != nullptr && unit->is_commandable() && std::ranges::find(candidates, unit) == candidates.end()) {
+                    candidates.push_back(unit);
+                }
+            }
+        }
+    }
+
+    if (entity_container_ == nullptr) {
+        return candidates;
+    }
+    const int child_count = entity_container_->get_child_count();
+    for (int child_index = 0; child_index < child_count; ++child_index) {
+        auto *unit = Object::cast_to<Unit>(entity_container_->get_child(child_index));
+        if (unit != nullptr && unit->contains_selection_point(world_position) && std::ranges::find(candidates, unit) == candidates.end()) {
+            candidates.push_back(unit);
+        }
+    }
+    return candidates;
+}
+
+Unit *UnitSelectionController::pick_friendly(const godot::Vector2 &world_position) const {
+    std::vector<Unit *> candidates = query_friendly_candidates(world_position);
+    if (candidates.empty()) {
+        return nullptr;
+    }
+
+    std::ranges::sort(candidates, [&world_position](const Unit *left, const Unit *right) { return candidate_precedes(left, right, world_position); });
+    return candidates.front();
+}
+
+void UnitSelectionController::select(Unit *unit) {
+    if (unit == nullptr || !unit->is_commandable()) {
+        return;
+    }
+    if (resolve_selected_unit() == unit) {
+        return;
+    }
+
+    clear_selection();
+    selected_unit_id_ = ObjectID(unit->get_instance_id());
+    selected_died_connection_ = callable_mp(this, &UnitSelectionController::on_selected_unit_died).bind(static_cast<uint64_t>(selected_unit_id_));
+    selected_tree_exit_connection_ = callable_mp(this, &UnitSelectionController::on_selected_unit_tree_exiting).bind(static_cast<uint64_t>(selected_unit_id_));
+    unit->connect("unit_died", selected_died_connection_);
+    unit->connect("tree_exiting", selected_tree_exit_connection_);
+    attach_indicator(unit);
+}
+
+void UnitSelectionController::clear_selection() {
+    if (!selected_unit_id_.is_null()) {
+        auto *unit = Object::cast_to<Unit>(ObjectDB::get_instance(static_cast<uint64_t>(selected_unit_id_)));
+        disconnect_selected_signals(unit);
+    }
+    selected_unit_id_ = ObjectID();
+    selected_died_connection_ = {};
+    selected_tree_exit_connection_ = {};
+    detach_indicator();
+}
+
+void UnitSelectionController::attach_indicator(Unit *unit) {
+    if (indicator_ == nullptr || unit == nullptr) {
+        return;
+    }
+
+    indicator_->reparent(unit, false);
+    const godot::Vector2 unit_scale = unit->get_scale();
+    const real_t inverse_x = !Math::is_zero_approx(unit_scale.x) ? 1.0F / unit_scale.x : 1.0F;
+    const real_t inverse_y = !Math::is_zero_approx(unit_scale.y) ? 1.0F / unit_scale.y : 1.0F;
+    const real_t ground_offset_y = unit->get_selection_ground_offset_y(indicator_->get_world_offset_y());
+    indicator_->set_scale({inverse_x, inverse_y});
+    indicator_->set_position({0.0F, ground_offset_y * inverse_y});
+    indicator_->set_visible(true);
+}
+
+void UnitSelectionController::detach_indicator() {
+    if (indicator_ == nullptr) {
+        return;
+    }
+    indicator_->set_visible(false);
+    if (indicator_->get_parent() != this) {
+        indicator_->reparent(this, false);
+    }
+    indicator_->set_position({});
+    indicator_->set_scale({1.0F, 1.0F});
+}
+
+void UnitSelectionController::show_destination_marker(const godot::Vector2 &world_position) {
+    clear_destination_marker();
+    if (entity_container_ == nullptr) {
+        return;
+    }
+
+    auto *marker = memnew(RepositionDestinationMarker);
+    marker->set_name("RepositionDestinationMarker");
+    entity_container_->add_child(marker);
+    marker->set_global_position(world_position);
+    marker->configure();
+    destination_marker_id_ = ObjectID(marker->get_instance_id());
+}
+
+void UnitSelectionController::clear_destination_marker() {
+    if (!destination_marker_id_.is_null()) {
+        auto *marker = Object::cast_to<RepositionDestinationMarker>(ObjectDB::get_instance(static_cast<uint64_t>(destination_marker_id_)));
+        if (marker != nullptr && !marker->is_queued_for_deletion()) {
+            marker->queue_free();
+        }
+    }
+    destination_marker_id_ = ObjectID();
+}
+
+void UnitSelectionController::disconnect_selected_signals(Unit *unit) {
+    if (unit == nullptr) {
+        return;
+    }
+    if (selected_died_connection_.is_valid() && unit->is_connected("unit_died", selected_died_connection_)) {
+        unit->disconnect("unit_died", selected_died_connection_);
+    }
+    if (selected_tree_exit_connection_.is_valid() && unit->is_connected("tree_exiting", selected_tree_exit_connection_)) {
+        unit->disconnect("tree_exiting", selected_tree_exit_connection_);
+    }
+}
+
+void UnitSelectionController::cancel_all_repositions_for_match_end() {
+    if (entity_container_ == nullptr) {
+        return;
+    }
+
+    const int child_count = entity_container_->get_child_count();
+    for (int child_index = 0; child_index < child_count; ++child_index) {
+        if (auto *unit = Object::cast_to<Unit>(entity_container_->get_child(child_index)); unit != nullptr) {
+            unit->cancel_reposition_for_match_end();
+        }
+    }
+}
+
+void UnitSelectionController::on_selected_unit_died(Node * /*unit*/, uint64_t expected_id) {
+    if (static_cast<uint64_t>(selected_unit_id_) == expected_id) {
+        clear_selection();
+    }
+}
+
+void UnitSelectionController::on_selected_unit_tree_exiting(uint64_t expected_id) {
+    if (static_cast<uint64_t>(selected_unit_id_) == expected_id) {
+        clear_selection();
+    }
+}
+
+} // namespace defn

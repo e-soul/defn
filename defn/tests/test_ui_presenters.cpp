@@ -24,9 +24,12 @@
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "projectile_factory.h"
+#include "reposition_destination_marker.h"
 #include "score_screen_view.h"
+#include "selection_indicator.h"
 #include "unit.h"
 #include "unit_factory.h"
+#include "unit_selection_controller.h"
 #include "upgrade_card_presenter.h"
 
 #include <godot_cpp/classes/audio_stream.hpp>
@@ -701,6 +704,97 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
     memdelete(unit);
 }
 
+DEFN_TEST(unit_selection_controller_selects_visible_sprite_and_clears_when_unit_exits_tree) {
+    const TreeMountedNode<Node2D> host_owner;
+    Node2D *host = host_owner.get();
+    DEFN_REQUIRE(host != nullptr);
+
+    auto *entity_container = memnew(Node2D);
+    host->add_child(entity_container);
+    auto *controller = memnew(UnitSelectionController);
+    host->add_child(controller);
+    controller->configure(entity_container);
+
+    UnitConfig config = make_presenter_unit_config("operator", 20);
+    config.side = UnitSide::FRIENDLY;
+    config.move_speed_pixels_per_second = 60.0F;
+    UnitRuntimeProfile profile = UnitRuntimeProfile::combatant();
+    profile.enable_sound = false;
+    const ResolvedUnitRuntimeConfig resolved{
+        .melee_attack_range = config.melee_attack_range,
+        .ranged_attack_range = config.ranged_attack_range,
+    };
+    Unit *unit = UnitFactory::create(config, {}, profile, resolved, {});
+    unit->set_position({300.0F, 300.0F});
+    entity_container->add_child(unit);
+
+    Ref<InputEventMouseButton> click;
+    click.instantiate();
+    click->set_button_index(MOUSE_BUTTON_LEFT);
+    click->set_pressed(true);
+    click->set_position({325.0F, 300.0F});
+    controller->_unhandled_input(click);
+    DEFN_CHECK(controller->has_selection());
+    auto *indicator = Object::cast_to<Node2D>(unit->get_node_or_null("SelectionIndicator"));
+    DEFN_REQUIRE(indicator != nullptr);
+    DEFN_CHECK(indicator->is_visible());
+    DEFN_CHECK_EQ(indicator->get_z_index(), 0);
+    DEFN_CHECK(indicator->is_draw_behind_parent_enabled());
+    DEFN_CHECK(indicator->get_global_position().y > unit->get_global_position().y + 40.0F);
+
+    entity_container->remove_child(unit);
+    DEFN_CHECK(!controller->has_selection());
+    DEFN_CHECK(controller->get_node_or_null("SelectionIndicator") != nullptr);
+    memdelete(unit);
+}
+
+DEFN_TEST(unit_selection_controller_shows_pulsing_destination_marker_for_accepted_order) {
+    const TreeMountedNode<Node2D> host_owner;
+    Node2D *host = host_owner.get();
+    DEFN_REQUIRE(host != nullptr);
+
+    auto *entity_container = memnew(Node2D);
+    host->add_child(entity_container);
+    auto *controller = memnew(UnitSelectionController);
+    host->add_child(controller);
+    controller->configure(entity_container);
+
+    UnitConfig config = make_presenter_unit_config("operator", 20);
+    config.side = UnitSide::FRIENDLY;
+    config.move_speed_pixels_per_second = 60.0F;
+    UnitRuntimeProfile profile = UnitRuntimeProfile::combatant();
+    profile.enable_sound = false;
+    const ResolvedUnitRuntimeConfig resolved{
+        .melee_attack_range = config.melee_attack_range,
+        .ranged_attack_range = config.ranged_attack_range,
+    };
+    Unit *unit = UnitFactory::create(config, {}, profile, resolved, {});
+    unit->set_position({300.0F, 300.0F});
+    entity_container->add_child(unit);
+    controller->select_unit(unit);
+
+    Ref<InputEventMouseButton> order;
+    order.instantiate();
+    order->set_button_index(MOUSE_BUTTON_LEFT);
+    order->set_pressed(true);
+    order->set_position({250.0F, 450.0F});
+    controller->_unhandled_input(order);
+
+    auto *selection_indicator = Object::cast_to<SelectionIndicator>(unit->get_node_or_null("SelectionIndicator"));
+    DEFN_REQUIRE(selection_indicator != nullptr);
+    auto *destination_marker = Object::cast_to<RepositionDestinationMarker>(entity_container->get_node_or_null("RepositionDestinationMarker"));
+    DEFN_REQUIRE(destination_marker != nullptr);
+    DEFN_CHECK_CLOSE(destination_marker->get_global_position().x, 250.0, 0.001);
+    DEFN_CHECK_CLOSE(destination_marker->get_global_position().y, selection_indicator->get_global_position().y, 0.001);
+    destination_marker->_process(0.14);
+    DEFN_CHECK(destination_marker->get_scale().x > 0.65F);
+    destination_marker->_process(0.71);
+    DEFN_CHECK(destination_marker->is_queued_for_deletion());
+
+    entity_container->remove_child(unit);
+    memdelete(unit);
+}
+
 DEFN_TEST(field_promotion_audio_resource_loads) {
     const godot::Ref<godot::AudioStream> stream = godot::ResourceLoader::get_singleton()->load("res://assets/sfx/field_promotion_kalimba.wav");
     DEFN_CHECK(stream.is_valid());
@@ -824,10 +918,8 @@ DEFN_TEST(campaign_map_preview_requires_click_and_double_click_deploys) {
     campaign_map->configure(std::move(view_model), Callable(deployment_recorder.get(), "set_text"), {}, nullptr);
 
     DEFN_REQUIRE(pump_campaign_map_loading(campaign_map));
-    auto *first = Object::cast_to<Button>(
-        campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
-    auto *second = Object::cast_to<Button>(
-        campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_02/Interaction"));
+    auto *first = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
+    auto *second = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_02/Interaction"));
     DEFN_REQUIRE(first != nullptr);
     DEFN_REQUIRE(second != nullptr);
 

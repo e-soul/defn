@@ -20,7 +20,9 @@ class MovementComponent : public Node {
   public:
     void configure(Node2D *owner_node, UnitSide side, real_t speed_pixels_per_second);
     void move(double delta);
+    [[nodiscard]] bool move_toward_x(real_t destination_x, double delta);
     void stop();
+    [[nodiscard]] real_t get_speed_pixels_per_second() const { return speed_pixels_per_second_; }
 
   protected:
     static void _bind_methods();

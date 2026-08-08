@@ -33,6 +33,8 @@ class CombatComponent : public Node {
     bool is_engaged() const { return runtime_.is_engaged(); }
     AttackMode get_attack_mode() const { return runtime_.get_attack_mode(); }
     void set_enabled(bool enabled);
+    void begin_manual_reposition() { runtime_.begin_manual_reposition(); }
+    void end_manual_reposition() { runtime_.end_manual_reposition(); }
     void apply_field_promotion(const FieldPromotionRules &rules);
     [[nodiscard]] const CombatConfig &get_runtime_config() const { return runtime_.get_config(); }
 

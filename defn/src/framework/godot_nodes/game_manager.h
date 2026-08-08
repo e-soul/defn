@@ -28,6 +28,7 @@ using namespace godot;
 class HUD;
 class BaseObjective;
 class Unit;
+class UnitSelectionController;
 #ifdef DEFN_DEBUG_RENDERING_ENABLED
 class BeltDebugOverlay;
 #endif
@@ -95,6 +96,7 @@ class GameManager : public Node2D {
     Timer *match_result_reveal_timer_ = nullptr;
     Camera2D *camera = nullptr;
     BaseObjective *base_objective = nullptr;
+    UnitSelectionController *unit_selection_controller_ = nullptr;
     Area2D *left_scroll_trigger = nullptr;
     Area2D *right_scroll_trigger = nullptr;
 #ifdef DEFN_DEBUG_RENDERING_ENABLED

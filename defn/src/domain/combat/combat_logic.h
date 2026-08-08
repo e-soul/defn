@@ -42,6 +42,7 @@ struct CombatLogicInput {
     double delta = 0.0;
     bool unit_dead = false;
     bool projectile_pending = false;
+    bool manual_repositioning = false;
 };
 
 struct CombatLogicIntent {

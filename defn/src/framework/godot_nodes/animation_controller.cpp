@@ -23,6 +23,8 @@ void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite) {
     this->owner_node = Object::cast_to<Node2D>(owner_node);
     muzzle_offset = to_godot_vector(cfg.muzzle.offset);
+    base_sprite_flip_h_ = cfg.sprite_flip_h;
+    base_muzzle_flip_h_ = cfg.muzzle.flip_h;
 
     if (enable_sprite) {
         sprite = memnew(AnimatedSprite2D);
@@ -217,6 +219,25 @@ bool AnimationController::consume_shoot_effect_triggered() {
 
     shoot_effect_ready = false;
     return true;
+}
+
+void AnimationController::cancel_pending_attack_presentation() {
+    shoot_effect_pending = false;
+    shoot_effect_ready = false;
+    hide_muzzle_flash();
+    set_anim_state(AnimState::WALK);
+}
+
+void AnimationController::set_facing(FacingDirection direction) {
+    const bool backward = direction == FacingDirection::BACKWARD;
+    if (sprite != nullptr) {
+        sprite->set_flip_h(backward ? !base_sprite_flip_h_ : base_sprite_flip_h_);
+    }
+    if (muzzle_flash != nullptr) {
+        muzzle_flash->set_flip_h(backward ? !base_muzzle_flip_h_ : base_muzzle_flip_h_);
+        const real_t offset_x = backward ? -muzzle_offset.x : muzzle_offset.x;
+        muzzle_flash->set_position({offset_x, muzzle_offset.y});
+    }
 }
 
 void AnimationController::flash_damage(const godot::Color &color) {

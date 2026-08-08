@@ -25,6 +25,7 @@ void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, Anima
     selection_ = {};
     state_ = {};
     pending_projectile_ = {};
+    manual_repositioning_ = false;
 }
 
 void CombatRuntime::update(double delta) {
@@ -32,8 +33,10 @@ void CombatRuntime::update(double delta) {
         return;
     }
 
-    try_spawn_pending_projectile();
-    update_target();
+    if (!manual_repositioning_) {
+        try_spawn_pending_projectile();
+        update_target();
+    }
 
     CombatLogicInput input;
     input.state = state_;
@@ -42,8 +45,23 @@ void CombatRuntime::update(double delta) {
     input.delta = delta;
     input.unit_dead = health_->is_dead();
     input.projectile_pending = pending_projectile_.active;
+    input.manual_repositioning = manual_repositioning_;
 
     apply_commands(advance_combat(config_, input), delta);
+}
+
+void CombatRuntime::begin_manual_reposition() {
+    manual_repositioning_ = true;
+    selection_ = {};
+    pending_projectile_ = {};
+    if (animation_ != nullptr) {
+        animation_->cancel_pending_attack_presentation();
+    }
+}
+
+void CombatRuntime::end_manual_reposition() {
+    manual_repositioning_ = false;
+    selection_ = {};
 }
 
 void CombatRuntime::apply_field_promotion(const FieldPromotionRules &rules) {

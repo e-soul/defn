@@ -4,6 +4,7 @@
 #include "movement_component.h"
 
 #include "grid_manager.h"
+#include "reposition_logic.h"
 
 namespace defn {
 
@@ -45,6 +46,19 @@ void MovementComponent::move(double delta) {
 
     position.x -= displacement;
     owner_node_->set_position(position);
+}
+
+bool MovementComponent::move_toward_x(real_t destination_x, double delta) {
+    if (owner_node_ == nullptr) {
+        return false;
+    }
+
+    Vector2 position = owner_node_->get_position();
+    const RepositionState state{.mode = UnitControlMode::REPOSITIONING, .destination_x = destination_x};
+    const RepositionStep step = advance_reposition(state, position.x, speed_pixels_per_second_, delta, static_cast<float>(REPOSITION_ARRIVAL_EPSILON));
+    position.x = step.next_x;
+    owner_node_->set_position(position);
+    return step.arrived;
 }
 
 void MovementComponent::stop() {}

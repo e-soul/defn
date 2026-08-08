@@ -15,6 +15,7 @@ namespace defn {
 using namespace godot;
 
 enum class AnimState { WALK, ATTACK, SHOOT, DEATH };
+enum class FacingDirection { FORWARD, BACKWARD };
 
 class AnimationController : public Node {
     GDCLASS(AnimationController, Node)
@@ -29,6 +30,8 @@ class AnimationController : public Node {
     void play_attack_animation();
     void play_shoot_animation(bool show_muzzle_flash = true, int effect_frame = 0);
     bool consume_shoot_effect_triggered();
+    void cancel_pending_attack_presentation();
+    void set_facing(FacingDirection direction);
 
     void flash_damage(const godot::Color &color);
     godot::Vector2 get_muzzle_global_position() const;
@@ -56,6 +59,8 @@ class AnimationController : public Node {
     Node2D *owner_node = nullptr;
     AnimState anim_state = AnimState::WALK;
     godot::Vector2 muzzle_offset = godot::Vector2();
+    bool base_sprite_flip_h_ = false;
+    bool base_muzzle_flip_h_ = false;
     bool shoot_effect_pending = false;
     bool shoot_effect_ready = false;
     bool show_muzzle_flash_on_shoot_effect = true;

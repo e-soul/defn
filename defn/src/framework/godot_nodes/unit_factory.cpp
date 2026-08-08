@@ -16,6 +16,7 @@
 #include "movement_component.h"
 #include "sound_controller.h"
 #include "unit.h"
+#include "unit_control_component.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 namespace defn {
@@ -115,6 +116,14 @@ CombatComponent *create_combat_component(Unit *unit, HealthComponent *health, An
     return combat;
 }
 
+UnitControlComponent *create_unit_control_component(Unit *unit, MovementComponent *movement, AnimationController *animation, CombatComponent *combat) {
+    auto *unit_control = memnew(UnitControlComponent);
+    unit_control->set_name("UnitControlComponent");
+    unit->add_child(unit_control);
+    unit_control->configure(unit, movement, animation, combat);
+    return unit_control;
+}
+
 } // namespace
 
 Unit *UnitFactory::create(const UnitConfig &config, const godot::Vector2 &position, const UnitRuntimeProfile &profile,
@@ -167,6 +176,9 @@ void UnitFactory::initialize(Unit *unit) {
     if (profile.enable_combat) {
         Area2D *detection_area = unit->detection != nullptr ? unit->detection->get_detection_area() : nullptr;
         unit->combat = create_combat_component(unit, unit->health, unit->animation, detection_area);
+    }
+    if (unit->get_side() == UnitSide::FRIENDLY && profile.enable_movement) {
+        unit->unit_control_ = create_unit_control_component(unit, unit->movement, unit->animation, unit->combat);
     }
     unit->runtime_initialized_ = true;
 }

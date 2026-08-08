@@ -35,10 +35,14 @@
 #include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
+#include "reposition_destination_marker.h"
+#include "selection_indicator.h"
 #include "settings_runtime.h"
 #include "sound_controller.h"
 #include "ui_sfx_player.h"
 #include "unit.h"
+#include "unit_control_component.h"
+#include "unit_selection_controller.h"
 
 #ifdef DEFN_HOSTED_TESTS_ENABLED
 #include "defn_hosted_test_runner.h"
@@ -63,6 +67,10 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::AnimationController>();
     ClassDB::register_class<defn::SoundController>();
     ClassDB::register_class<defn::MovementComponent>();
+    ClassDB::register_internal_class<defn::UnitControlComponent>();
+    ClassDB::register_internal_class<defn::SelectionIndicator>();
+    ClassDB::register_internal_class<defn::RepositionDestinationMarker>();
+    ClassDB::register_internal_class<defn::UnitSelectionController>();
     ClassDB::register_class<defn::BaseObjective>();
     ClassDB::register_class<defn::DetectionComponent>();
     ClassDB::register_class<defn::CombatComponent>();
