@@ -25,6 +25,7 @@
 #include "scene_navigator.h"
 #include "score_screen_models.h"
 #include "unit.h"
+#include "unit_control_config_loader.h"
 #include "unit_factory.h"
 #include "unit_selection_controller.h"
 #include <algorithm>
@@ -166,7 +167,8 @@ void GameManager::_ready() {
     unit_selection_controller_ = memnew(UnitSelectionController);
     unit_selection_controller_->set_name("UnitSelectionController");
     add_child(unit_selection_controller_);
-    unit_selection_controller_->configure(entity_container);
+    const UnitControlConfig unit_control_config = UnitControlConfigLoader::load(DataPaths::UNIT_CONTROL).value_or(UnitControlConfig{});
+    unit_selection_controller_->configure(entity_container, unit_control_config);
 
     // HUD
     hud = memnew(HUD);

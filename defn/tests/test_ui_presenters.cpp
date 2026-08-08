@@ -749,7 +749,7 @@ DEFN_TEST(unit_selection_controller_selects_visible_sprite_and_clears_when_unit_
     memdelete(unit);
 }
 
-DEFN_TEST(unit_selection_controller_previews_hovered_friendly_at_half_opacity) {
+DEFN_TEST(unit_selection_controller_previews_hovered_friendly_with_configured_style) {
     const TreeMountedNode<Node2D> host_owner;
     Node2D *host = host_owner.get();
     DEFN_REQUIRE(host != nullptr);
@@ -781,7 +781,9 @@ DEFN_TEST(unit_selection_controller_previews_hovered_friendly_at_half_opacity) {
     auto *hover_indicator = Object::cast_to<SelectionIndicator>(unit->get_node_or_null("HoverIndicator"));
     DEFN_REQUIRE(hover_indicator != nullptr);
     DEFN_CHECK(hover_indicator->is_visible());
-    DEFN_CHECK_CLOSE(hover_indicator->get_fill_color().a, 0.12, 0.001);
+    DEFN_CHECK_CLOSE(hover_indicator->get_radius_x(), 26.0, 0.001);
+    DEFN_CHECK_CLOSE(hover_indicator->get_radius_y(), 8.0, 0.001);
+    DEFN_CHECK_CLOSE(hover_indicator->get_fill_color().a, 0.072, 0.001);
     DEFN_CHECK_CLOSE(hover_indicator->get_border_color().a, 0.475, 0.001);
     DEFN_CHECK(hover_indicator->get_global_position().y > unit->get_global_position().y + 40.0F);
 
@@ -833,6 +835,8 @@ DEFN_TEST(unit_selection_controller_shows_pulsing_destination_marker_for_accepte
     DEFN_REQUIRE(destination_marker != nullptr);
     DEFN_CHECK_CLOSE(destination_marker->get_global_position().x, 250.0, 0.001);
     DEFN_CHECK_CLOSE(destination_marker->get_global_position().y, selection_indicator->get_global_position().y, 0.001);
+    DEFN_CHECK_CLOSE(destination_marker->get_radius_x(), 14.0, 0.001);
+    DEFN_CHECK_EQ(destination_marker->get_pulse_count(), 3);
     destination_marker->_process(0.14);
     DEFN_CHECK(destination_marker->get_scale().x > 0.65F);
     destination_marker->_process(0.71);

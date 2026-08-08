@@ -114,6 +114,7 @@ extension_sources = [
     "src/adapters/json/json_file_loader.cpp",
     "src/adapters/json/campaign_map_data_loader.cpp",
     "src/adapters/json/music_playlist_loader.cpp",
+    "src/adapters/json/unit_control_config_loader.cpp",
     "src/framework/godot_nodes/attack_target_resolver.cpp",
     "src/framework/godot_nodes/battle_entity.cpp",
     "src/framework/godot_nodes/background_music_player.cpp",

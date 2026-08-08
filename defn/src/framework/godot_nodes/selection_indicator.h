@@ -13,22 +13,25 @@ namespace defn {
 using namespace godot;
 
 struct SelectionIndicatorStyle {
-    real_t radius_x = 26.0F;
-    real_t radius_y = 8.0F;
-    real_t border_width = 2.0F;
-    real_t world_offset_y = 8.0F;
-    Color fill_color = Color(0.12F, 0.85F, 0.48F, 0.24F);
-    Color border_color = Color(0.75F, 1.0F, 0.86F, 0.95F);
+    real_t radius_x = 0.0F;
+    real_t radius_y = 0.0F;
+    real_t border_width = 0.0F;
+    real_t world_offset_y = 0.0F;
+    godot::Color fill_color{};
+    godot::Color border_color{};
 };
 
 class SelectionIndicator : public Node2D {
     GDCLASS(SelectionIndicator, Node2D)
 
   public:
-    void configure(const SelectionIndicatorStyle &style = {});
+    void configure(const SelectionIndicatorStyle &style);
+    [[nodiscard]] real_t get_radius_x() const { return style_.radius_x; }
+    [[nodiscard]] real_t get_radius_y() const { return style_.radius_y; }
+    [[nodiscard]] real_t get_border_width() const { return style_.border_width; }
     [[nodiscard]] real_t get_world_offset_y() const { return style_.world_offset_y; }
-    [[nodiscard]] Color get_fill_color() const { return style_.fill_color; }
-    [[nodiscard]] Color get_border_color() const { return style_.border_color; }
+    [[nodiscard]] godot::Color get_fill_color() const { return style_.fill_color; }
+    [[nodiscard]] godot::Color get_border_color() const { return style_.border_color; }
     void _draw() override;
 
   protected:

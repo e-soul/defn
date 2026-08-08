@@ -75,7 +75,7 @@ bool Unit::is_commandable() const {
            movement->get_speed_pixels_per_second() > 0.0F && unit_control_ != nullptr;
 }
 
-bool Unit::contains_selection_point(const godot::Vector2 &world_position) const {
+bool Unit::contains_selection_point(const godot::Vector2 &world_position, real_t fallback_radius) const {
     if (!is_commandable()) {
         return false;
     }
@@ -85,8 +85,8 @@ bool Unit::contains_selection_point(const godot::Vector2 &world_position) const 
         return sprite_bounds.has_point(to_local(world_position));
     }
 
-    constexpr real_t FALLBACK_SELECTION_RADIUS = 12.0F;
-    return get_global_position().distance_squared_to(world_position) <= FALLBACK_SELECTION_RADIUS * FALLBACK_SELECTION_RADIUS;
+    const real_t safe_radius = Math::max(fallback_radius, 0.0F);
+    return get_global_position().distance_squared_to(world_position) <= safe_radius * safe_radius;
 }
 
 real_t Unit::get_selection_ground_offset_y(real_t fallback_world_offset) const {
@@ -98,7 +98,9 @@ real_t Unit::get_selection_ground_offset_y(real_t fallback_world_offset) const {
     return sprite_bounds.get_end().y * Math::abs(get_scale().y);
 }
 
-bool Unit::request_reposition(real_t destination_x) { return is_commandable() && unit_control_->request_reposition(destination_x); }
+bool Unit::request_reposition(real_t destination_x, float arrival_epsilon) {
+    return is_commandable() && unit_control_->request_reposition(destination_x, arrival_epsilon);
+}
 
 void Unit::cancel_reposition_for_match_end() {
     if (unit_control_ != nullptr) {

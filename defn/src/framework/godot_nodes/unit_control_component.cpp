@@ -19,7 +19,7 @@ void UnitControlComponent::configure(Unit *unit, MovementComponent *movement, An
     combat_ = combat;
 }
 
-bool UnitControlComponent::request_reposition(real_t destination_x) {
+bool UnitControlComponent::request_reposition(real_t destination_x, float arrival_epsilon) {
     if (canceled_ || unit_ == nullptr || movement_ == nullptr || unit_->is_dead() || unit_->is_queued_for_deletion()) {
         return false;
     }
@@ -30,6 +30,7 @@ bool UnitControlComponent::request_reposition(real_t destination_x) {
     }
 
     state_ = request.state;
+    arrival_epsilon_ = arrival_epsilon;
     apply_request_intents(request.intents);
     return true;
 }
@@ -56,7 +57,7 @@ void UnitControlComponent::_process(double delta) {
         return;
     }
 
-    const RepositionStep step = advance_reposition(state_, unit_->get_position().x, movement_->get_speed_pixels_per_second(), delta);
+    const RepositionStep step = advance_reposition(state_, unit_->get_position().x, movement_->get_speed_pixels_per_second(), delta, arrival_epsilon_);
     (void)movement_->move_toward_x(state_.destination_x, delta);
     state_ = step.state;
     if (step.arrived) {

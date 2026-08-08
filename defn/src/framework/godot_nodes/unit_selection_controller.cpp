@@ -4,6 +4,7 @@
 #include "unit_selection_controller.h"
 
 #include "collision_layers.h"
+#include "godot_color.h"
 #include "reposition_destination_marker.h"
 #include "selection_indicator.h"
 #include "unit.h"
@@ -28,7 +29,30 @@ namespace defn {
 
 namespace {
 
-constexpr int MAX_PICK_CANDIDATES = 64;
+SelectionIndicatorStyle to_indicator_style(const GroundMarkerConfig &config) {
+    return {
+        .radius_x = config.radius_x,
+        .radius_y = config.radius_y,
+        .border_width = config.border_width,
+        .world_offset_y = config.ground_offset_y,
+        .fill_color = to_godot_color(config.fill_color),
+        .border_color = to_godot_color(config.border_color),
+    };
+}
+
+RepositionDestinationMarkerStyle to_destination_marker_style(const DestinationMarkerConfig &config) {
+    return {
+        .radius_x = config.radius_x,
+        .radius_y = config.radius_y,
+        .border_width = config.border_width,
+        .minimum_scale = config.minimum_scale,
+        .maximum_scale = config.maximum_scale,
+        .pulse_duration_seconds = config.pulse_duration_seconds,
+        .pulse_count = config.pulse_count,
+        .fill_color = to_godot_color(config.fill_color),
+        .border_color = to_godot_color(config.border_color),
+    };
+}
 
 Unit *unit_from_collider(Object *collider) {
     auto *area = Object::cast_to<Area2D>(collider);
@@ -55,26 +79,24 @@ bool candidate_precedes(const Unit *left, const Unit *right, const godot::Vector
 
 void UnitSelectionController::_bind_methods() {}
 
-void UnitSelectionController::configure(Node2D *entity_container) {
+void UnitSelectionController::configure(Node2D *entity_container, const UnitControlConfig &config) {
     entity_container_ = entity_container;
+    config_ = config;
     set_process_unhandled_input(true);
     if (indicator_ == nullptr) {
         indicator_ = memnew(SelectionIndicator);
         indicator_->set_name("SelectionIndicator");
         add_child(indicator_);
-        indicator_->configure();
-        indicator_->set_visible(false);
     }
+    indicator_->configure(to_indicator_style(config_.selection_marker));
+    indicator_->set_visible(false);
     if (hover_indicator_ == nullptr) {
-        SelectionIndicatorStyle hover_style{};
-        hover_style.fill_color.a *= 0.3F;
-        hover_style.border_color.a *= 0.5F;
         hover_indicator_ = memnew(SelectionIndicator);
         hover_indicator_->set_name("HoverIndicator");
         add_child(hover_indicator_);
-        hover_indicator_->configure(hover_style);
-        hover_indicator_->set_visible(false);
     }
+    hover_indicator_->configure(to_indicator_style(config_.hover_marker));
+    hover_indicator_->set_visible(false);
 }
 
 void UnitSelectionController::set_gameplay_available(bool available) {
@@ -125,7 +147,7 @@ void UnitSelectionController::_unhandled_input(const Ref<InputEvent> &event) {
         }
 
         if (Unit *selected = resolve_selected_unit(); selected != nullptr) {
-            if (selected->request_reposition(world_position.x)) {
+            if (selected->request_reposition(world_position.x, config_.reposition.arrival_epsilon)) {
                 const real_t destination_y =
                     indicator_ != nullptr && indicator_->is_visible() ? indicator_->get_global_position().y : selected->get_global_position().y;
                 show_destination_marker({world_position.x, destination_y});
@@ -177,7 +199,7 @@ std::vector<Unit *> UnitSelectionController::query_friendly_candidates(const god
             query->set_collide_with_areas(true);
             query->set_collide_with_bodies(false);
 
-            const TypedArray<Dictionary> hits = space_state->intersect_point(query, MAX_PICK_CANDIDATES);
+            const TypedArray<Dictionary> hits = space_state->intersect_point(query, config_.picking.max_candidates);
             candidates.reserve(static_cast<std::size_t>(hits.size()));
             for (const Variant &hit_variant : hits) {
                 const Dictionary hit = hit_variant;
@@ -196,7 +218,8 @@ std::vector<Unit *> UnitSelectionController::query_friendly_candidates(const god
     const int child_count = entity_container_->get_child_count();
     for (int child_index = 0; child_index < child_count; ++child_index) {
         auto *unit = Object::cast_to<Unit>(entity_container_->get_child(child_index));
-        if (unit != nullptr && unit->contains_selection_point(world_position) && std::ranges::find(candidates, unit) == candidates.end()) {
+        if (unit != nullptr && unit->contains_selection_point(world_position, config_.picking.fallback_radius) &&
+            std::ranges::find(candidates, unit) == candidates.end()) {
             candidates.push_back(unit);
         }
     }
@@ -312,7 +335,7 @@ void UnitSelectionController::show_destination_marker(const godot::Vector2 &worl
     marker->set_name("RepositionDestinationMarker");
     entity_container_->add_child(marker);
     marker->set_global_position(world_position);
-    marker->configure();
+    marker->configure(to_destination_marker_style(config_.destination_marker));
     destination_marker_id_ = ObjectID(marker->get_instance_id());
 }
 

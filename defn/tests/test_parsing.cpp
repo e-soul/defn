@@ -13,6 +13,7 @@
 #include "music_playlist_loader.h"
 #include "progression_catalog.h"
 #include "progression_save_repository.h"
+#include "unit_control_config_loader.h"
 #include "unit_data.h"
 #include "upgrade_catalog.h"
 
@@ -407,6 +408,72 @@ DEFN_TEST(music_playlist_loader_rejects_invalid_configuration) {
     invalid_delay["delay_seconds"] = -0.1;
     invalid_delay["tracks"] = make_array({String("res://theme.mp3")});
     DEFN_CHECK(!MusicPlaylistLoader::load_from_data(invalid_delay).has_value());
+}
+
+DEFN_TEST(unit_control_config_loader_maps_marker_visuals) {
+    Dictionary selection;
+    selection["radius"] = make_array({31.0, 9.0});
+    selection["border_width"] = 3.0;
+    selection["ground_offset_y"] = 11.0;
+    selection["fill_color"] = make_array({1.0, 0.5, 0.25, 0.8});
+    selection["border_color"] = make_array({0.1, 0.2, 0.3, 0.9});
+
+    Dictionary pulse;
+    pulse["minimum_scale"] = 0.4;
+    pulse["maximum_scale"] = 1.4;
+    pulse["duration_seconds"] = 0.5;
+    pulse["count"] = 4;
+    Dictionary destination;
+    destination["radius"] = make_array({18.0, 6.0});
+    destination["pulse"] = pulse;
+
+    Dictionary data;
+    data["selection_marker"] = selection;
+    data["destination_marker"] = destination;
+    const UnitControlConfig loaded = UnitControlConfigLoader::load_from_data(data);
+
+    DEFN_CHECK_CLOSE(loaded.selection_marker.radius_x, 31.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.selection_marker.radius_y, 9.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.selection_marker.border_width, 3.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.selection_marker.ground_offset_y, 11.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.selection_marker.fill_color.a, 0.8, 0.001);
+    DEFN_CHECK_CLOSE(loaded.selection_marker.border_color.b, 0.3, 0.001);
+    DEFN_CHECK_CLOSE(loaded.destination_marker.radius_x, 18.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.destination_marker.minimum_scale, 0.4, 0.001);
+    DEFN_CHECK_CLOSE(loaded.destination_marker.maximum_scale, 1.4, 0.001);
+    DEFN_CHECK_CLOSE(loaded.destination_marker.pulse_duration_seconds, 0.5, 0.001);
+    DEFN_CHECK_EQ(loaded.destination_marker.pulse_count, 4);
+}
+
+DEFN_TEST(unit_control_config_loader_maps_behavior_and_rejects_unsafe_values) {
+    Dictionary picking;
+    picking["fallback_radius"] = 20.0;
+    picking["max_candidates"] = 128;
+    Dictionary reposition;
+    reposition["arrival_epsilon"] = 0.25;
+    Dictionary hover;
+    hover["radius"] = make_array({-1.0, 0.0});
+    hover["fill_color"] = make_array({0.1, 0.2, 0.3, 2.0});
+    Dictionary data;
+    data["picking"] = picking;
+    data["reposition"] = reposition;
+    data["hover_marker"] = hover;
+
+    const UnitControlConfig loaded = UnitControlConfigLoader::load_from_data(data);
+    DEFN_CHECK_CLOSE(loaded.picking.fallback_radius, 20.0, 0.001);
+    DEFN_CHECK_EQ(loaded.picking.max_candidates, 128);
+    DEFN_CHECK_CLOSE(loaded.reposition.arrival_epsilon, 0.25, 0.001);
+    DEFN_CHECK_CLOSE(loaded.hover_marker.fill_color.a, 1.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.hover_marker.radius_x, 26.0, 0.001);
+    DEFN_CHECK_CLOSE(loaded.hover_marker.radius_y, 8.0, 0.001);
+}
+
+DEFN_TEST(unit_control_config_loader_reads_shipped_configuration) {
+    const auto loaded = UnitControlConfigLoader::load(DataPaths::UNIT_CONTROL);
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_CHECK_CLOSE(loaded->hover_marker.fill_color.a, 0.072, 0.001);
+    DEFN_CHECK_CLOSE(loaded->hover_marker.border_color.a, 0.475, 0.001);
+    DEFN_CHECK_EQ(loaded->destination_marker.pulse_count, 3);
 }
 
 DEFN_TEST(menu_data_loader_maps_actions_to_plain_models) {

@@ -23,7 +23,7 @@ class UnitControlComponent : public Node {
 
   public:
     void configure(Unit *unit, MovementComponent *movement, AnimationController *animation, CombatComponent *combat);
-    [[nodiscard]] bool request_reposition(real_t destination_x);
+    [[nodiscard]] bool request_reposition(real_t destination_x, float arrival_epsilon);
     void cancel_without_combat_resume();
     [[nodiscard]] bool is_repositioning() const { return state_.mode == UnitControlMode::REPOSITIONING; }
 
@@ -41,6 +41,7 @@ class UnitControlComponent : public Node {
     AnimationController *animation_ = nullptr;
     CombatComponent *combat_ = nullptr;
     RepositionState state_{};
+    float arrival_epsilon_ = REPOSITION_ARRIVAL_EPSILON;
     bool canceled_ = false;
 };
 

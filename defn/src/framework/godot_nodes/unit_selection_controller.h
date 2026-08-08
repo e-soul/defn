@@ -4,6 +4,8 @@
 #ifndef UNIT_SELECTION_CONTROLLER_H
 #define UNIT_SELECTION_CONTROLLER_H
 
+#include "unit_control_config.h"
+
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -23,7 +25,7 @@ class UnitSelectionController : public Node2D {
     GDCLASS(UnitSelectionController, Node2D)
 
   public:
-    void configure(Node2D *entity_container);
+    void configure(Node2D *entity_container, const UnitControlConfig &config = {});
     void set_gameplay_available(bool available);
     void select_unit(Unit *unit) { select(unit); }
     void clear_selection();
@@ -65,6 +67,7 @@ class UnitSelectionController : public Node2D {
     Callable selected_died_connection_{};
     Callable selected_tree_exit_connection_{};
     Callable hovered_tree_exit_connection_{};
+    UnitControlConfig config_{};
     bool gameplay_available_ = true;
 };
 

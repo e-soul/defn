@@ -55,9 +55,9 @@ class Unit : public BattleEntity {
     [[nodiscard]] bool is_field_promoted() const { return field_promotion_.is_promoted(); }
     [[nodiscard]] int get_promotion_damage_progress() const { return field_promotion_.get_effective_damage_dealt(); }
     [[nodiscard]] bool is_commandable() const;
-    [[nodiscard]] bool contains_selection_point(const godot::Vector2 &world_position) const;
+    [[nodiscard]] bool contains_selection_point(const godot::Vector2 &world_position, real_t fallback_radius) const;
     [[nodiscard]] real_t get_selection_ground_offset_y(real_t fallback_world_offset) const;
-    [[nodiscard]] bool request_reposition(real_t destination_x);
+    [[nodiscard]] bool request_reposition(real_t destination_x, float arrival_epsilon);
     void cancel_reposition_for_match_end();
 
     void freeze_for_match_result(const StringName &animation_name);

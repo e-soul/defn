@@ -296,8 +296,9 @@ Friendly fallback control follows the same ownership boundary:
 - `UnitSelectionController` receives unhandled mouse input, performs friendly-hitbox point queries in world coordinates, resolves overlap deterministically, and retains only a safe Godot object ID.
 - `UnitControlComponent` is the sole manual movement coordinator. It applies reposition intents through `MovementComponent`, `AnimationController`, and `CombatComponent`; selection code never manipulates those components directly.
 - Manual reposition suspension clears target engagement and uncommitted attack presentation while preserving the combat cooldown. The cooldown alone advances until arrival, so automatic combat and manual movement never emit movement commands in the same frame.
-- `SelectionIndicator` provides controller-owned, code-drawn ground ellipses for selection and hover preview. Hover uses the same geometry at half opacity, is suppressed for the selected unit, and clears when the pointer leaves a selectable friendly. Deselect, death, tree exit, pause, and match-end paths do not leave stale indicators.
+- `SelectionIndicator` provides controller-owned, code-drawn ground ellipses for selection and hover preview. Hover is suppressed for the selected unit and clears when the pointer leaves a selectable friendly. Deselect, death, tree exit, pause, and match-end paths do not leave stale indicators.
 - Accepted reposition orders create one short-lived `RepositionDestinationMarker` at the clicked X and the ground Y shared by the selected unit's selection ellipse. The view pulses three times, replaces prior destination feedback, and frees itself without entering domain state.
+- `data/unit_control.json` is the design-owned configuration surface for picking tolerance, selection/hover/destination marker geometry and RGBA colors (including alpha), pulse timing, and reposition arrival epsilon. `UnitControlConfigLoader` merges partial JSON over safe engine-neutral defaults before `GameManager` injects the result into `UnitSelectionController`; the Godot adapter uses the shared `godot_color.h` conversion boundary.
 
 ## Module 3: Progression and Rewards
 

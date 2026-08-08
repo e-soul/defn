@@ -13,22 +13,26 @@ namespace defn {
 using namespace godot;
 
 struct RepositionDestinationMarkerStyle {
-    real_t radius_x = 14.0F;
-    real_t radius_y = 4.0F;
-    real_t border_width = 1.5F;
-    real_t minimum_scale = 0.65F;
-    real_t maximum_scale = 1.15F;
-    double pulse_duration_seconds = 0.28;
-    int pulse_count = 3;
-    Color fill_color = Color(0.2F, 0.9F, 0.58F, 0.18F);
-    Color border_color = Color(0.8F, 1.0F, 0.88F, 0.9F);
+    real_t radius_x = 0.0F;
+    real_t radius_y = 0.0F;
+    real_t border_width = 0.0F;
+    real_t minimum_scale = 1.0F;
+    real_t maximum_scale = 1.0F;
+    double pulse_duration_seconds = 0.0;
+    int pulse_count = 0;
+    godot::Color fill_color{};
+    godot::Color border_color{};
 };
 
 class RepositionDestinationMarker : public Node2D {
     GDCLASS(RepositionDestinationMarker, Node2D)
 
   public:
-    void configure(const RepositionDestinationMarkerStyle &style = {});
+    void configure(const RepositionDestinationMarkerStyle &style);
+    [[nodiscard]] real_t get_radius_x() const { return style_.radius_x; }
+    [[nodiscard]] real_t get_radius_y() const { return style_.radius_y; }
+    [[nodiscard]] real_t get_border_width() const { return style_.border_width; }
+    [[nodiscard]] int get_pulse_count() const { return style_.pulse_count; }
     void _draw() override;
     void _process(double delta) override;
 
