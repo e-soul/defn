@@ -40,6 +40,7 @@
 #include "settings_runtime.h"
 #include "sound_controller.h"
 #include "ui_sfx_player.h"
+#include "ui_theme_provider.h"
 #include "unit.h"
 #include "unit_control_component.h"
 #include "unit_selection_controller.h"
@@ -103,6 +104,7 @@ void uninitialize_module(ModuleInitializationLevel p_level) {
         return;
     }
 
+    defn::UiThemeProvider::reload();
     defn::CampaignService::unregister_singleton();
     defn::GridManager::unregister_singleton();
 }

@@ -1,5 +1,5 @@
 ![GitHub CI Workflow Status](https://img.shields.io/github/actions/workflow/status/e-soul/defn/windows-ci.yml?label=CI%20build)
-![GitHub Release Workflow Status](https://img.shields.io/github/actions/workflow/status/e-soul/defn/windows-release.yml?label=release%20build)
+![GitHub Release Workflow Status](https://img.shields.io/github/actions/workflow/status/e-soul/defn/release.yml?label=release%20build)
 ![coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fe-soul%2Fdefn%2Frefs%2Fheads%2Fbuild-artifacts%2Fcoverage.json)
 ![clang-tidy](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fe-soul%2Fdefn%2Frefs%2Fheads%2Fbuild-artifacts%2Fclang-tidy.json)
 
@@ -13,7 +13,7 @@ Powered by ![The Godot Engine](https://img.shields.io/badge/Godot-white?logo=god
 
 ## Build and test
 
-The build should be invoked from within the "defn" directory, where `SConstruct` is.
+The build should be invoked from within the `defn` directory, where `SConstruct` is. SCons defaults to the native Windows or Linux target for the host operating system.
 
 Build the normal extension only: `scons`
 
@@ -40,3 +40,5 @@ Build and run the broader headless Godot-hosted suite: `scons hosted_test godot_
 Build and run both suites together: `scons test_all godot_bin=path/to/godot_executable`
 
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
+
+Create a native release archive from the repository root: `python scripts/build.py --platform windows` or `python scripts/build.py --platform linux`.

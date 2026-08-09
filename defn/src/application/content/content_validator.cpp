@@ -171,7 +171,8 @@ void validate_levels(const ProgressionCatalogValidationData &catalog, const Unit
             continue;
         }
 
-        const LevelDefinition &level_definition = *found_level->definition;
+        const LevelDefinition level_definition =
+            found_level->definition.value_or(LevelDefinition{});
         if (!normalized(level_definition.base_position_ratio.x) || !normalized(level_definition.base_position_ratio.y)) {
             push_issue(issues, "level " + quoted(unlock.level_id) + " base_position must be normalized");
         }

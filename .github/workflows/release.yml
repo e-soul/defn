@@ -1,4 +1,4 @@
-name: Windows Release
+name: Release
 
 on:
   workflow_dispatch:
@@ -10,8 +10,20 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    runs-on: windows-2022
+  build:
+    name: Build ${{ matrix.name }} release
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            platform: windows
+            runner: windows-2022
+          - name: Linux
+            platform: linux
+            runner: ubuntu-24.04
 
     env:
       SCONS_CACHE: ${{ github.workspace }}/build/.scons-cache
@@ -39,24 +51,45 @@ jobs:
           persist-credentials: false
 
       - name: Set up Windows build
+        if: matrix.platform == 'windows'
         uses: ./.github/actions/setup-windows-build
         with:
           scons-cache: ${{ env.SCONS_CACHE }}
           scons-version: ${{ env.SCONS_VERSION }}
 
-      - name: Build and export Windows release
-        run: python scripts/build.py --build-version "${{ github.ref_name }}"
+      - name: Set up Linux build
+        if: matrix.platform == 'linux'
+        uses: ./.github/actions/setup-linux-build
+        with:
+          scons-cache: ${{ env.SCONS_CACHE }}
+          scons-version: ${{ env.SCONS_VERSION }}
 
-      - name: Upload release archive
+      - name: Build and export ${{ matrix.name }} release
+        run: python scripts/build.py --platform "${{ matrix.platform }}" --build-version "${{ github.ref_name }}"
+
+      - name: Upload ${{ matrix.name }} release archive
         uses: actions/upload-artifact@v7
         with:
-          name: windows-release
+          name: ${{ matrix.platform }}-release
           path: build/*.zip
           if-no-files-found: error
 
+  publish:
+    name: Publish GitHub release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download release archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: '*-release'
+          path: release-assets
+          merge-multiple: true
+
       - name: Publish GitHub release
-        if: github.ref_type == 'tag'
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: build/*.zip
+          files: release-assets/*.zip

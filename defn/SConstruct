@@ -1,6 +1,7 @@
 # Copyright (c) 2026 e-soul.org
 # SPDX-License-Identifier: BSD-2-Clause
 
+import json
 import os
 import pathlib
 import shutil
@@ -26,11 +27,13 @@ def parse_bool_arg(value):
 
 with_hosted_tests_arg = parse_bool_arg(ARGUMENTS.pop("with_hosted_tests", ""))
 godot_bin_arg = ARGUMENTS.pop("godot_bin", "")
+with_tidy_arg = parse_bool_arg(ARGUMENTS.pop("with_tidy", ""))
 
 
 # 1. Setup the basic SCons environment
 opts = Variables()
-opts.Add(EnumVariable("platform", "The platform to build for", "windows", ["windows", "linux", "macos", "android", "ios"]))
+default_platform = "windows" if os.name == "nt" else "linux"
+opts.Add(EnumVariable("platform", "The platform to build for", default_platform, ["windows", "linux", "macos", "android", "ios"]))
 opts.Add(EnumVariable("target", "The target to build for", "template_debug", ["template_debug", "template_release", "editor"]))
 opts.Add(EnumVariable("precision", "Floating-point precision", "single", ["single", "double"]))
 opts.Add(BoolVariable("with_tidy", "Run clang-tidy alongside compilation", False))
@@ -43,6 +46,7 @@ env.Tool('compilation_db')
 # 2. Import the godot-cpp configuration and preserve its C++17 environment.
 godot_env = SConscript("../godot-cpp/SConstruct", exports="env")
 env = godot_env.Clone()
+env["with_tidy"] = with_tidy_arg
 
 # 3. Add your local include directory and godot-cpp includes
 env.Append(CPPPATH=[
@@ -336,12 +340,24 @@ def make_hosted_test_environment(name):
 
     roaming_dir = root / "Roaming"
     local_dir = root / "Local"
-    for directory in [roaming_dir, local_dir]:
+    xdg_config_dir = root / "xdg_config"
+    xdg_data_dir = root / "xdg_data"
+    xdg_cache_dir = root / "xdg_cache"
+    for directory in [
+        roaming_dir,
+        local_dir,
+        xdg_config_dir,
+        xdg_data_dir,
+        xdg_cache_dir,
+    ]:
         directory.mkdir(parents=True, exist_ok=True)
 
     run_env = os.environ.copy()
     run_env["APPDATA"] = str(roaming_dir.resolve())
     run_env["LOCALAPPDATA"] = str(local_dir.resolve())
+    run_env["XDG_CONFIG_HOME"] = str(xdg_config_dir.resolve())
+    run_env["XDG_DATA_HOME"] = str(xdg_data_dir.resolve())
+    run_env["XDG_CACHE_HOME"] = str(xdg_cache_dir.resolve())
 
     return run_env
 
@@ -548,22 +564,54 @@ library = env.SharedLibrary(
 
 # 7. Clang-Tidy alias and dependency
 if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:
-    comp_db = env.Alias('compilation_db', 'compile_commands.json')
+    comp_db = env.Alias("compilation_db", "compile_commands.json")
+
+    def write_tidy_compilation_database(target, source, env):
+        with open(str(source[0]), encoding="utf-8") as source_file:
+            commands = json.load(source_file)
+
+        for command in commands:
+            if "arguments" in command:
+                command["arguments"] = [
+                    argument
+                    for argument in command["arguments"]
+                    if argument != "-fno-gnu-unique"
+                ]
+            elif "command" in command:
+                command["command"] = command["command"].replace(
+                    " -fno-gnu-unique",
+                    "",
+                )
+
+        target_path = pathlib.Path(str(target[0]))
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        with target_path.open("w", encoding="utf-8") as target_file:
+            json.dump(commands, target_file, indent=2)
+
+    tidy_comp_db = env.Command(
+        os.path.join("build", "tidy", "compile_commands.json"),
+        "compile_commands.json",
+        Action(
+            write_tidy_compilation_database,
+            "Preparing clang-tidy compilation database",
+        ),
+    )
+    env.Depends(tidy_comp_db, comp_db)
     tidy_command = " ".join([
         "clang-tidy",
         "--quiet",
         "--warnings-as-errors=*",
         "--extra-arg=-Qunused-arguments",
-        "-p .",
+        "-p build/tidy",
         "$SOURCE",
     ])
     tidy_targets = []
     for src in extension_sources:
-        action = Action(tidy_command, 'Running clang-tidy on $SOURCE')
-        tidy_node = env.Command(src + ".tidy", [src, comp_db], action)
+        action = Action(tidy_command, "Running clang-tidy on $SOURCE")
+        tidy_node = env.Command(src + ".tidy", [src, tidy_comp_db], action)
         tidy_targets.append(tidy_node)
 
-    env.Alias('tidy', tidy_targets)
+    env.Alias("tidy", tidy_targets)
     if env.get("with_tidy", False):
         env.Depends(library, tidy_targets)
 

@@ -7,6 +7,7 @@
 #include "scripted_random_source.h"
 #include "unit_definition.h"
 
+#include <algorithm>
 #include <optional>
 
 namespace defn {

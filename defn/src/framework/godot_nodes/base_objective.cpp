@@ -101,11 +101,11 @@ void BaseObjective::configure(int max_hp, const godot::Vector2 &position, const 
 }
 
 void BaseObjective::ensure_attack_components() {
-    if (!objective_can_attack(visual_config_)) {
+    if (!visual_config_.has_value() || !objective_can_attack(visual_config_)) {
         return;
     }
 
-    const UnitConfig &config = *visual_config_;
+    const UnitConfig &config = visual_config_.value();
     const auto detection_channels = get_detection_channels(get_side());
 
     if (animation_ == nullptr) {

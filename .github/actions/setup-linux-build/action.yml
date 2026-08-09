@@ -1,5 +1,5 @@
-name: Set up Windows build
-description: Set up Python, SCons caches, and Godot for Windows jobs.
+name: Set up Linux build
+description: Set up native dependencies, Python, SCons caches, and Godot for Linux jobs.
 
 inputs:
   python-version:
@@ -16,6 +16,12 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Install native build dependencies
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install --yes build-essential clang clang-tidy pkg-config
+
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
@@ -23,34 +29,30 @@ runs:
 
     - name: Resolve godot-cpp revision
       id: godot-cpp-revision
-      shell: pwsh
-      run: |
-        $revision = git -C godot-cpp rev-parse HEAD
-        "sha=$revision" >> $env:GITHUB_OUTPUT
+      shell: bash
+      run: echo "sha=$(git -C godot-cpp rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
     - name: Cache godot-cpp SCons outputs
       uses: actions/cache@v4
       with:
         path: ${{ inputs.scons-cache }}
-        key: godot-cpp-windows-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
+        key: godot-cpp-linux-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
 
     - name: Resolve Godot version
       id: godot-version
-      shell: pwsh
-      run: |
-        $version = python scripts/build.py --print-godot-version
-        "version=$version" >> $env:GITHUB_OUTPUT
+      shell: bash
+      run: echo "version=$(python scripts/build.py --print-godot-version)" >> "$GITHUB_OUTPUT"
 
     - name: Cache Godot engine
       uses: actions/cache@v4
       with:
         path: build/.cache/godot
-        key: godot-engine-windows-${{ steps.godot-version.outputs.version }}
+        key: godot-engine-linux-${{ steps.godot-version.outputs.version }}
 
     - name: Install SCons
-      shell: pwsh
+      shell: bash
       run: python -m pip install --upgrade pip scons==${{ inputs.scons-version }}
 
     - name: Set up Godot engine
-      shell: pwsh
-      run: python scripts/build.py --setup-godot-env
+      shell: bash
+      run: python scripts/build.py --platform linux --setup-godot-env

@@ -8,20 +8,65 @@ import os
 import re
 import shlex
 import shutil
+import stat
 import subprocess
 import sys
 import time
 import urllib.request
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
 
 
 DEFAULT_GODOT_VERSION = "4.7.1"
 DEFAULT_BUILD_DIR: str = "build"
-DEFAULT_ARCHIVE_NAME: str = "defn-win-x86_64.zip"
 DEFAULT_BUILD_VERSION: str = "snapshot"
 GODOT_EXECUTABLE_ENV_VAR = "GODOT_BIN"
-DEFAULT_EXPORT_PRESET_NAME: str = "defn_win_release_x86_64"
+
+
+@dataclass(frozen=True)
+class PlatformConfig:
+    name: str
+    archive_name: str
+    export_preset_name: str
+    export_executable_name: str
+    extension_library_name: str
+    debug_extension_library_name: str
+    godot_editor_slug: str
+    godot_download_platform: str
+
+
+PLATFORM_CONFIGS = {
+    "windows": PlatformConfig(
+        name="windows",
+        archive_name="defn-win-x86_64.zip",
+        export_preset_name="defn_win_release_x86_64",
+        export_executable_name="defn.exe",
+        extension_library_name=(
+            "defn_core.windows.template_release.x86_64.dll"
+        ),
+        debug_extension_library_name=(
+            "defn_core.windows.template_debug.x86_64.dll"
+        ),
+        godot_editor_slug="win64.exe.zip",
+        godot_download_platform="windows.64",
+    ),
+    "linux": PlatformConfig(
+        name="linux",
+        archive_name="defn-linux-x86_64.zip",
+        export_preset_name="defn_linux_release_x86_64",
+        export_executable_name="defn.x86_64",
+        extension_library_name=(
+            "libdefn_core.linux.template_release.x86_64.so"
+        ),
+        debug_extension_library_name=(
+            "libdefn_core.linux.template_debug.x86_64.so"
+        ),
+        godot_editor_slug="linux.x86_64.zip",
+        godot_download_platform="linux.64",
+    ),
+}
+DEFAULT_PLATFORM = "windows" if os.name == "nt" else "linux"
 
 
 def format_command(command: list[str]) -> str:
@@ -95,35 +140,71 @@ def copy_tree(source: Path, destination: Path) -> None:
         shutil.copy2(item, target)
 
 
-def find_godot_executable(directory: Path) -> Path:
-    console_executables = sorted(directory.rglob("Godot*_console.exe"))
-    if console_executables:
-        return console_executables[0]
+def find_godot_executable(
+    directory: Path,
+    platform_config: PlatformConfig,
+) -> Path:
+    if platform_config.name == "windows":
+        console_executables = sorted(
+            directory.rglob("Godot*_console.exe")
+        )
+        if console_executables:
+            return console_executables[0]
 
-    executables = sorted(directory.rglob("Godot*.exe"))
+        executables = sorted(directory.rglob("Godot*.exe"))
+    else:
+        executables = sorted(
+            path
+            for path in directory.rglob("Godot*")
+            if path.is_file() and path.suffix != ".zip"
+        )
+
     if not executables:
         raise FileNotFoundError(
             f"Unable to locate a Godot executable under {directory}"
         )
 
+    if platform_config.name == "linux":
+        executable = executables[0]
+        executable.chmod(
+            executable.stat().st_mode
+            | stat.S_IXUSR
+            | stat.S_IXGRP
+            | stat.S_IXOTH
+        )
+
     return executables[0]
 
 
-def templates_install_dir(version: str) -> Path:
-    appdata = os.environ.get("APPDATA", "").strip()
-    if not appdata:
-        raise EnvironmentError(
-            "APPDATA is required to install Godot export templates on Windows."
-        )
+def templates_install_dir(version: str, platform: str) -> Path:
+    if platform == "windows":
+        appdata = os.environ.get("APPDATA", "").strip()
+        if not appdata:
+            raise EnvironmentError(
+                "APPDATA is required to install Godot export templates on "
+                "Windows."
+            )
+        data_dir = Path(appdata) / "Godot"
+    else:
+        xdg_data_home = os.environ.get("XDG_DATA_HOME", "").strip()
+        data_dir = (
+            Path(xdg_data_home).expanduser()
+            if xdg_data_home
+            else Path.home() / ".local" / "share"
+        ) / "godot"
 
-    return Path(appdata) / "Godot" / "export_templates" / f"{version}.stable"
+    return data_dir / "export_templates" / f"{version}.stable"
 
 
-def ensure_godot_export_templates(version: str, output_dir: Path) -> None:
+def ensure_godot_export_templates(
+    version: str,
+    output_dir: Path,
+    platform: str,
+) -> None:
     cache_dir = output_dir / ".cache" / "godot" / f"{version}.stable"
     templates_archive = cache_dir / "export_templates.tpz"
     templates_dir = cache_dir / "templates"
-    installed_templates_dir = templates_install_dir(version)
+    installed_templates_dir = templates_install_dir(version, platform)
     templates_url = (
         "https://downloads.godotengine.org/"
         f"?version={version}&flavor=stable&slug=export_templates.tpz"
@@ -141,25 +222,46 @@ def ensure_godot_export_templates(version: str, output_dir: Path) -> None:
         copy_tree(source_dir, installed_templates_dir)
 
 
-def ensure_godot(version: str, output_dir: Path) -> str:
-    cache_dir = output_dir / ".cache" / "godot" / f"{version}.stable"
+def ensure_godot(
+    version: str,
+    output_dir: Path,
+    platform_config: PlatformConfig,
+) -> str:
+    cache_dir = (
+        output_dir
+        / ".cache"
+        / "godot"
+        / f"{version}.stable"
+        / platform_config.name
+    )
     editor_archive = cache_dir / "editor.zip"
     editor_dir = cache_dir / "editor"
     editor_url = (
         "https://downloads.godotengine.org/"
-        f"?version={version}&flavor=stable&slug=win64.exe.zip"
-        "&platform=windows.64"
+        f"?version={version}&flavor=stable"
+        f"&slug={platform_config.godot_editor_slug}"
+        f"&platform={platform_config.godot_download_platform}"
     )
 
     try:
-        godot_executable = find_godot_executable(editor_dir)
+        godot_executable = find_godot_executable(
+            editor_dir,
+            platform_config,
+        )
     except FileNotFoundError:
         if not editor_archive.exists():
             download_file(editor_url, editor_archive)
         extract_zip(editor_archive, editor_dir)
-        godot_executable = find_godot_executable(editor_dir)
+        godot_executable = find_godot_executable(
+            editor_dir,
+            platform_config,
+        )
 
-    ensure_godot_export_templates(version, output_dir)
+    ensure_godot_export_templates(
+        version,
+        output_dir,
+        platform_config.name,
+    )
 
     return str(godot_executable)
 
@@ -168,22 +270,31 @@ def resolve_godot_executable(
     configured_path: str | None,
     version: str,
     output_dir: Path,
+    platform_config: PlatformConfig,
 ) -> str:
     if configured_path:
         godot_executable = resolve_existing_path(
             configured_path,
             "Godot executable",
         )
-        ensure_godot_export_templates(version, output_dir)
+        ensure_godot_export_templates(
+            version,
+            output_dir,
+            platform_config.name,
+        )
         return str(godot_executable)
 
     env_godot = os.environ.get(GODOT_EXECUTABLE_ENV_VAR, "").strip()
     if env_godot:
         godot_executable = resolve_existing_path(env_godot, "Godot executable")
-        ensure_godot_export_templates(version, output_dir)
+        ensure_godot_export_templates(
+            version,
+            output_dir,
+            platform_config.name,
+        )
         return str(godot_executable)
 
-    return ensure_godot(version, output_dir)
+    return ensure_godot(version, output_dir, platform_config)
 
 
 def write_github_env(name: str, value: str) -> None:
@@ -220,7 +331,13 @@ def create_archive(source_dir: Path, archive_path: Path) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Build and export the Windows release headlessly."
+        description="Build and export a native release headlessly."
+    )
+    parser.add_argument(
+        "--platform",
+        choices=sorted(PLATFORM_CONFIGS),
+        default=DEFAULT_PLATFORM,
+        help="Target platform (defaults to the current host platform).",
     )
     parser.add_argument(
         "--godot-exe",
@@ -239,8 +356,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--archive-name",
-        default=DEFAULT_ARCHIVE_NAME,
-        help="Name of the ZIP archive to produce.",
+        default=None,
+        help="Name of the ZIP archive (defaults per target platform).",
     )
     parser.add_argument(
         "--build-version",
@@ -249,8 +366,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--export-preset",
-        default=DEFAULT_EXPORT_PRESET_NAME,
-        help="Godot export preset name to use.",
+        default=None,
+        help="Godot export preset (defaults per target platform).",
     )
     parser.add_argument(
         "--skip-archive",
@@ -272,6 +389,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    platform_config = PLATFORM_CONFIGS[args.platform]
 
     if args.print_godot_version:
         print(DEFAULT_GODOT_VERSION)
@@ -290,6 +408,7 @@ def main() -> int:
             args.godot_exe,
             args.godot_version,
             output_dir,
+            platform_config,
         )
         os.environ[GODOT_EXECUTABLE_ENV_VAR] = godot_executable
         write_github_env(GODOT_EXECUTABLE_ENV_VAR, godot_executable)
@@ -297,19 +416,27 @@ def main() -> int:
         return 0
 
     archive_name = versioned_archive_name(
-        args.archive_name,
+        args.archive_name or platform_config.archive_name,
         args.build_version,
     )
     export_dir = output_dir / Path(archive_name).stem
     archive_path = output_dir / archive_name
-    export_exe_path = export_dir / "defn.exe"
-    project_dll_path = (
-        project_dir / "bin" / "defn_core.windows.template_release.x86_64.dll"
+    export_executable_path = (
+        export_dir / platform_config.export_executable_name
+    )
+    project_library_path = (
+        project_dir / "bin" / platform_config.extension_library_name
+    )
+    debug_library_path = (
+        project_dir
+        / "bin"
+        / platform_config.debug_extension_library_name
     )
     godot_executable = resolve_godot_executable(
         args.godot_exe,
         args.godot_version,
         output_dir,
+        platform_config,
     )
 
     if export_dir.exists():
@@ -325,37 +452,47 @@ def main() -> int:
             sys.executable,
             "-m",
             "SCons",
-            "platform=windows",
+            f"platform={platform_config.name}",
             "target=template_release",
         ],
         cwd=project_dir,
     )
 
-    if not project_dll_path.exists():
+    if not project_library_path.exists():
         raise FileNotFoundError(
-            f"Expected release DLL was not produced: {project_dll_path}"
+            "Expected release extension library was not produced: "
+            f"{project_library_path}"
         )
 
-    run_command(
-        [
-            godot_executable,
-            "--headless",
-            "--path",
-            str(project_dir),
-            "--import",
-        ]
-    )
-    run_command(
-        [
-            godot_executable,
-            "--headless",
-            "--path",
-            str(project_dir),
-            "--export-release",
-            args.export_preset,
-            str(export_exe_path),
-        ]
-    )
+    temporary_debug_library = not debug_library_path.exists()
+    if temporary_debug_library:
+        shutil.copy2(project_library_path, debug_library_path)
+
+    try:
+        run_command(
+            [
+                godot_executable,
+                "--headless",
+                "--path",
+                str(project_dir),
+                "--import",
+            ]
+        )
+        run_command(
+            [
+                godot_executable,
+                "--headless",
+                "--path",
+                str(project_dir),
+                "--export-release",
+                args.export_preset
+                or platform_config.export_preset_name,
+                str(export_executable_path),
+            ]
+        )
+    finally:
+        if temporary_debug_library:
+            debug_library_path.unlink(missing_ok=True)
 
     exported_files = wait_for_exported_files(export_dir)
     if not exported_files:
@@ -371,7 +508,7 @@ def main() -> int:
                 f"Expected archive was not created: {archive_path}"
             )
 
-    print("Windows release export complete.")
+    print(f"{platform_config.name.title()} release export complete.")
     print(f"Build version: {sanitize_build_version(args.build_version)}")
     print(f"Export directory: {export_dir}")
     if not args.skip_archive:
