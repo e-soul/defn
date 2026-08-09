@@ -387,6 +387,11 @@ def configure_llvm_coverage_env(coverage_env):
             print("WARNING: Unable to locate clang_rt.profile runtime; coverage link may fail.")
     else:
         coverage_env.Replace(CC="clang", CXX="clang++", LINK="clang++")
+        for flag_variable in ("CCFLAGS", "CXXFLAGS"):
+            coverage_env[flag_variable] = remove_flags(
+                coverage_env.get(flag_variable, []),
+                {"-fno-gnu-unique"},
+            )
         coverage_env.AppendUnique(LINKFLAGS=["-fprofile-instr-generate"])
 
     coverage_env.AppendUnique(CCFLAGS=["-fprofile-instr-generate", "-fcoverage-mapping"])
@@ -556,11 +561,11 @@ for src in extension_sources:
 
 # 6. Build the Shared Library (The DLL)
 library_path = "bin/defn_core" + env["suffix"] + env["SHLIBSUFFIX"]
-env["DEFN_EXTENSION_LIBRARY_PATH"] = library_path
 library = env.SharedLibrary(
     target=library_path,
     source=objects,
 )
+env["DEFN_EXTENSION_LIBRARY_PATH"] = str(library[0])
 
 # 7. Clang-Tidy alias and dependency
 if env.get("with_tidy", False) or "tidy" in COMMAND_LINE_TARGETS:

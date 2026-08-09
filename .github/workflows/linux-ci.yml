@@ -1,0 +1,113 @@
+name: Linux CI
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    env:
+      SCONS_CACHE: ${{ github.workspace }}/build/.scons-cache
+      SCONS_VERSION: 4.10.1
+
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DEFN_ASSETS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEFN_ASSETS_APP_PRIVATE_KEY }}
+          owner: e-soul
+          repositories: |
+            defn
+            defn-assets
+          permission-contents: read
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          lfs: true
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Set up Linux build environment
+        uses: ./.github/actions/setup-linux-build
+        with:
+          scons-cache: ${{ env.SCONS_CACHE }}
+          scons-version: ${{ env.SCONS_VERSION }}
+
+      - name: Verify compiler and coverage tools
+        shell: bash
+        run: |
+          clang --version
+          clang-tidy --version
+          llvm-profdata --version
+          llvm-cov --version
+
+      - name: Run tests with merged coverage
+        working-directory: defn
+        run: python -m SCons -Q with_hosted_tests=yes coverage
+
+      - name: Run clang-tidy report
+        id: clang-tidy
+        continue-on-error: true
+        working-directory: defn
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m SCons -Q -k tidy 2>&1 | tee build/clang-tidy-report.txt
+
+      - name: Generate badge artifacts
+        if: always()
+        run: python scripts/github-workflow.py badges
+
+      - name: Add coverage summary
+        if: always()
+        shell: bash
+        run: |
+          summary="defn/build/coverage/merged/summary.txt"
+          if [[ -f "$summary" ]]; then
+            {
+              echo "## Linux Merged Coverage"
+              echo '```text'
+              cat "$summary"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-coverage
+          path: defn/build/coverage/**
+          if-no-files-found: warn
+
+      - name: Upload clang-tidy report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-clang-tidy
+          path: defn/build/clang-tidy-report.txt
+          if-no-files-found: warn
+
+      - name: Upload badge artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-badges
+          path: build/artifacts/**
+          if-no-files-found: warn
+
+      - name: Fail on clang-tidy findings
+        if: steps.clang-tidy.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "clang-tidy reported findings. See the linux-clang-tidy artifact."
+          exit 1
