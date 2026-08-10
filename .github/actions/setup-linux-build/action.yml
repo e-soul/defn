@@ -6,6 +6,10 @@ inputs:
     description: Python version to install.
     required: false
     default: "3.12"
+  architecture:
+    description: CPU architecture used to build godot-cpp.
+    required: false
+    default: "x86_64"
   scons-cache:
     description: SCons cache directory.
     required: true
@@ -27,16 +31,38 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
+    - name: Install SCons
+      shell: bash
+      run: python -m pip install --upgrade pip scons==${{ inputs.scons-version }}
+
     - name: Resolve godot-cpp revision
       id: godot-cpp-revision
       shell: bash
       run: echo "sha=$(git -C godot-cpp rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-    - name: Cache godot-cpp SCons outputs
-      uses: actions/cache@v4
+    - name: Restore godot-cpp SCons outputs
+      id: godot-cpp-cache
+      uses: actions/cache/restore@v4
       with:
         path: ${{ inputs.scons-cache }}
-        key: godot-cpp-linux-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
+        key: godot-cpp-v1-linux-${{ inputs.architecture }}-scons-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
+
+    - name: Build godot-cpp cache
+      if: steps.godot-cpp-cache.outputs.cache-hit != 'true'
+      working-directory: godot-cpp
+      shell: bash
+      env:
+        SCONS_CACHE: ${{ inputs.scons-cache }}
+      run: |
+        python -m SCons -Q platform=linux arch=${{ inputs.architecture }} target=template_debug
+        python -m SCons -Q platform=linux arch=${{ inputs.architecture }} target=template_release
+
+    - name: Save godot-cpp SCons outputs
+      if: steps.godot-cpp-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: godot-cpp-v1-linux-${{ inputs.architecture }}-scons-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
 
     - name: Resolve Godot version
       id: godot-version
@@ -48,10 +74,6 @@ runs:
       with:
         path: build/.cache/godot
         key: godot-engine-linux-${{ steps.godot-version.outputs.version }}
-
-    - name: Install SCons
-      shell: bash
-      run: python -m pip install --upgrade pip scons==${{ inputs.scons-version }}
 
     - name: Set up Godot engine
       shell: bash
