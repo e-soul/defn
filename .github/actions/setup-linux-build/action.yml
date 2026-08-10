@@ -20,7 +20,7 @@ runs:
       shell: bash
       run: |
         sudo apt-get update
-        sudo apt-get install --yes build-essential clang clang-tidy pkg-config
+        sudo apt-get install --yes build-essential clang clang-tidy llvm pkg-config
 
     - name: Set up Python
       uses: actions/setup-python@v6
