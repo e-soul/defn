@@ -10,6 +10,10 @@ inputs:
     description: CPU architecture used to build godot-cpp.
     required: false
     default: "x86_64"
+  cache-export-templates:
+    description: Cache the Godot export-template archive for release jobs.
+    required: false
+    default: "false"
   scons-cache:
     description: SCons cache directory.
     required: true
@@ -50,6 +54,7 @@ runs:
       env:
         SCONS_CACHE: ${{ inputs.scons-cache }}
       run: |
+        New-Item -ItemType Directory -Force -Path $env:SCONS_CACHE | Out-Null
         python -m SCons -Q platform=windows arch=${{ inputs.architecture }} target=template_debug
         python -m SCons -Q platform=windows arch=${{ inputs.architecture }} target=template_release
 
@@ -67,11 +72,18 @@ runs:
         $version = python scripts/build.py --print-godot-version
         "version=$version" >> $env:GITHUB_OUTPUT
 
-    - name: Cache Godot engine
+    - name: Cache Godot editor
       uses: actions/cache@v4
       with:
-        path: build/.cache/godot
-        key: godot-engine-windows-${{ steps.godot-version.outputs.version }}
+        path: build/.cache/godot/${{ steps.godot-version.outputs.version }}.stable/windows
+        key: godot-editor-v1-windows-${{ inputs.architecture }}-${{ steps.godot-version.outputs.version }}
+
+    - name: Cache Godot export templates
+      if: inputs.cache-export-templates == 'true'
+      uses: actions/cache@v4
+      with:
+        path: build/.cache/godot/${{ steps.godot-version.outputs.version }}.stable/export_templates.tpz
+        key: godot-export-templates-v1-windows-${{ inputs.architecture }}-${{ steps.godot-version.outputs.version }}
 
     - name: Set up Godot engine
       shell: pwsh
