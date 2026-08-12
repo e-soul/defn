@@ -148,11 +148,7 @@ void GameManager::_ready() {
     match_director_.begin_match();
 
     // Setup camera and visual layers using background from level data
-    String bg_path = to_godot_string(match_director_.get_background_path());
-    if (bg_path.is_empty()) {
-        bg_path = DataPaths::DEFAULT_GAME_BACKGROUND;
-    }
-    setup_background(bg_path);
+    setup_background(to_godot_string(match_director_.get_background_path()));
     setup_camera();
 #ifdef DEFN_DEBUG_RENDERING_ENABLED
     setup_belt_debug_overlay();

@@ -21,7 +21,6 @@ inline constexpr auto UPGRADES_DATA = "res://data/upgrades.json";
 inline constexpr auto UNIT_DATA = "res://data/unit_data.json";
 inline constexpr auto UNIT_GLOBALS = "res://data/unit_globals.json";
 inline constexpr auto UNIT_CONTROL = "res://data/unit_control.json";
-inline constexpr auto DEFAULT_GAME_BACKGROUND = "res://assets/backgrounds/middle_east_ruin_tiling.png";
 inline constexpr auto SAVE_DATA = "user://save_data.json";
 
 inline String level_definition(const String &level_id) { return vformat("%s/%s.json", String(LEVELS_DIRECTORY), level_id); }
