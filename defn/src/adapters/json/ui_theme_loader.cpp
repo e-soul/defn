@@ -162,6 +162,13 @@ UiTextStyle parse_text_style(const Dictionary &source) {
     return text_style;
 }
 
+UiMedallionStyle parse_medallion(const Dictionary &source) {
+    UiMedallionStyle medallion;
+    medallion.mark = parse_role(source, "mark", medallion.mark);
+    medallion.color_role = parse_role(source, "color", medallion.color_role);
+    return medallion;
+}
+
 UiScreenStyle parse_screen(const Dictionary &source, UiScreenStyle screen) {
     screen.backdrop_role = parse_role(source, "backdrop", screen.backdrop_role);
     screen.title_text_style = parse_role(source, "title_text_style", screen.title_text_style);
@@ -213,6 +220,7 @@ UiThemeData UiThemeLoader::load_from_data(const Dictionary &data) {
     parse_named_entries(data.get("surfaces", Dictionary()), theme.surfaces, parse_surface);
     parse_named_entries(data.get("buttons", Dictionary()), theme.buttons, parse_button);
     parse_named_entries(data.get("text_styles", Dictionary()), theme.text_styles, parse_text_style);
+    parse_named_entries(data.get("medallions", Dictionary()), theme.medallions, parse_medallion);
     const Dictionary metrics = data.get("metrics", Dictionary());
     for (const Variant &name_variant : Array(metrics.keys())) {
         const String name = name_variant;

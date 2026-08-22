@@ -23,6 +23,8 @@ const UiButtonVariant *UiThemeData::find_button(std::string_view name) const { r
 
 const UiTextStyle *UiThemeData::find_text_style(std::string_view name) const { return find_entry(text_styles, name); }
 
+const UiMedallionStyle *UiThemeData::find_medallion(std::string_view name) const { return find_entry(medallions, name); }
+
 int UiThemeData::metric(std::string_view name, int fallback) const {
     const auto found = metrics.find(name);
     return found == metrics.end() ? fallback : found->second;

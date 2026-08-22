@@ -51,6 +51,7 @@ struct ContentValidationInput {
     std::vector<std::string> missing_campaign_assets;
     std::optional<MenuContentData> menu_data;
     std::optional<UiThemeData> ui_theme;
+    std::vector<std::string> missing_ui_theme_assets;
     std::optional<ProgressionCatalogValidationData> progression_catalog;
     std::optional<UpgradeCatalogValidationData> upgrade_catalog;
     const UnitCatalog *unit_catalog = nullptr;

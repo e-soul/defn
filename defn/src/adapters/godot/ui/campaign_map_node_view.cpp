@@ -8,6 +8,7 @@
 #include "ui_theme_provider.h"
 
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/style_box_empty.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -20,31 +21,26 @@ using GVector2 = godot::Vector2;
 
 namespace {
 
-std::string_view state_color_role(CampaignNodeState state) {
+/// Maps the node state onto its `medallions` entry in `ui_theme.json`, which owns both the mark and the node accent colour.
+std::string_view state_key(CampaignNodeState state) {
     switch (state) {
     case CampaignNodeState::COMPLETED:
-        return "state_success";
+        return "completed";
     case CampaignNodeState::AVAILABLE:
+        return "available";
     case CampaignNodeState::FRONTIER:
-        return "accent";
+        return "frontier";
     case CampaignNodeState::LOCKED:
-        return "state_locked";
+        return "locked";
     }
-    return "state_locked";
+    return "locked";
 }
 
-String state_icon(CampaignNodeState state) {
-    switch (state) {
-    case CampaignNodeState::COMPLETED:
-        return String::utf8("✓");
-    case CampaignNodeState::AVAILABLE:
-        return String::utf8("◇");
-    case CampaignNodeState::FRONTIER:
-        return String::utf8("◆");
-    case CampaignNodeState::LOCKED:
-        return String::utf8("🔒");
+Ref<Texture2D> mark_texture(const std::string &mark) {
+    if (mark.empty()) {
+        return {};
     }
-    return "?";
+    return ResourceLoader::get_singleton()->load(to_godot_string(mark));
 }
 
 real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
@@ -63,7 +59,7 @@ Ref<StyleBoxFlat> outline_style(const GColor &color, int width) {
     return style;
 }
 
-Ref<StyleBoxFlat> medallion_style(const GColor &border) {
+Ref<StyleBoxFlat> medallion_style_box(const GColor &border) {
     Ref<StyleBoxFlat> style = UiThemeProvider::surface("medallion");
     style->set_border_color(border);
     return style;
@@ -97,15 +93,20 @@ CampaignMapNodeView::CampaignMapNodeView() {
     preview_->set_size({156.0F, 108.0F});
     frame_->add_child(preview_);
 
-    medallion_ = memnew(Label);
+    medallion_ = memnew(Panel);
     medallion_->set_name("StateMedallion");
-    medallion_->set_position({-5.0F, -4.0F});
-    medallion_->set_size({38.0F, 38.0F});
-    medallion_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    medallion_->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
-    medallion_->set_theme_type_variation(UiThemeProvider::label_variation("screen_heading"));
     medallion_->set_mouse_filter(MOUSE_FILTER_IGNORE);
     add_child(medallion_);
+
+    // The mark fills the whole medallion rect; its inset is baked into the SVG viewBox, so it stays centred at any scale.
+    medallion_mark_ = memnew(TextureRect);
+    medallion_mark_->set_name("StateMark");
+    medallion_mark_->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
+    medallion_mark_->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
+    medallion_mark_->set_stretch_mode(TextureRect::STRETCH_SCALE);
+    medallion_mark_->set_texture_filter(CanvasItem::TEXTURE_FILTER_LINEAR_WITH_MIPMAPS);
+    medallion_mark_->set_mouse_filter(MOUSE_FILTER_IGNORE);
+    medallion_->add_child(medallion_mark_);
 
     interaction_ = memnew(Button);
     interaction_->set_name("Interaction");
@@ -149,8 +150,7 @@ void CampaignMapNodeView::on_gui_input(const Ref<InputEvent> &event) {
     }
 
     const auto *mouse = Object::cast_to<InputEventMouseButton>(event.ptr());
-    const bool double_click =
-        mouse != nullptr && mouse->get_button_index() == MOUSE_BUTTON_LEFT && mouse->is_pressed() && mouse->is_double_click();
+    const bool double_click = mouse != nullptr && mouse->get_button_index() == MOUSE_BUTTON_LEFT && mouse->is_pressed() && mouse->is_double_click();
     if (double_click) {
         emit_signal("selected", to_godot_string(mission_.level_id));
         if (mission_.state != CampaignNodeState::LOCKED) {
@@ -159,18 +159,23 @@ void CampaignMapNodeView::on_gui_input(const Ref<InputEvent> &event) {
     }
 }
 
-void CampaignMapNodeView::on_pressed() {
-    emit_signal("selected", to_godot_string(mission_.level_id));
-}
+void CampaignMapNodeView::on_pressed() { emit_signal("selected", to_godot_string(mission_.level_id)); }
 
 void CampaignMapNodeView::update_style() {
-    const GColor color = UiThemeProvider::color(state_color_role(mission_.state));
+    // A theme without an entry for this state must not borrow another state's colour, so fall back to the neutral model default.
+    static const UiMedallionStyle unstyled;
+    const UiMedallionStyle *found = UiThemeProvider::data().find_medallion(state_key(mission_.state));
+    const UiMedallionStyle &medallion = found != nullptr ? *found : unstyled;
+    const GColor color = UiThemeProvider::color(medallion.color_role);
     frame_->add_theme_stylebox_override("panel", frame_style(color, selected_));
     selection_ring_->add_theme_stylebox_override("panel", outline_style(color, UiThemeProvider::shape("border_width")));
     selection_ring_->set_visible(selected_);
-    medallion_->set_text(state_icon(mission_.state));
-    medallion_->add_theme_color_override("font_color", color);
-    medallion_->add_theme_stylebox_override("normal", medallion_style(color));
+    const real_t medallion_size = metric("medallion_size", 38);
+    medallion_->set_position({metric("medallion_offset_x", -5), metric("medallion_offset_y", -4)});
+    medallion_->set_size({medallion_size, medallion_size});
+    medallion_->add_theme_stylebox_override("panel", medallion_style_box(color));
+    medallion_mark_->set_texture(mark_texture(medallion.mark));
+    medallion_mark_->set_modulate(color);
     preview_->set_modulate(mission_.state == CampaignNodeState::LOCKED ? UiThemeProvider::color("locked_tint") : GColor(1, 1, 1, 1));
 }
 

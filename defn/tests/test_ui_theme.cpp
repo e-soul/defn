@@ -13,6 +13,7 @@ UiThemeData make_theme() {
     theme.surfaces.emplace("panel", UiSurfaceStyle{.bg_role = "surface_raised", .border_role = "border_strong", .shape_role = "corner_lg"});
     theme.buttons.emplace("menu", UiButtonVariant{.min_width = 400, .min_height = 60, .font_size_role = "heading"});
     theme.text_styles.emplace("screen_title", UiTextStyle{.font_size_role = "title", .color_role = "accent"});
+    theme.medallions.emplace("completed", UiMedallionStyle{.mark = "res://assets/ui/medallions/check.svg", .color_role = "state_success"});
     theme.metrics.emplace("option_label_width", 250);
     return theme;
 }
@@ -26,6 +27,9 @@ DEFN_TEST(ui_theme_defaults_are_populated) {
     DEFN_CHECK(theme.surfaces.empty());
     DEFN_CHECK(theme.buttons.empty());
     DEFN_CHECK(theme.text_styles.empty());
+    DEFN_CHECK(theme.medallions.empty());
+    // The medallion default must stay a neutral role: views fall back to it when a state has no entry.
+    DEFN_CHECK_EQ(UiMedallionStyle().color_role, std::string("text_primary"));
 }
 
 DEFN_TEST(ui_theme_named_lookups_resolve_registered_entries) {
@@ -42,6 +46,11 @@ DEFN_TEST(ui_theme_named_lookups_resolve_registered_entries) {
     const UiTextStyle *text_style = theme.find_text_style("screen_title");
     DEFN_REQUIRE(text_style != nullptr);
     DEFN_CHECK_EQ(text_style->color_role, std::string("accent"));
+
+    const UiMedallionStyle *medallion = theme.find_medallion("completed");
+    DEFN_REQUIRE(medallion != nullptr);
+    DEFN_CHECK_EQ(medallion->mark, std::string("res://assets/ui/medallions/check.svg"));
+    DEFN_CHECK_EQ(medallion->color_role, std::string("state_success"));
 }
 
 DEFN_TEST(ui_theme_named_lookups_return_null_for_unknown_entries) {
@@ -49,6 +58,7 @@ DEFN_TEST(ui_theme_named_lookups_return_null_for_unknown_entries) {
     DEFN_CHECK(theme.find_surface("nope") == nullptr);
     DEFN_CHECK(theme.find_button("nope") == nullptr);
     DEFN_CHECK(theme.find_text_style("nope") == nullptr);
+    DEFN_CHECK(theme.find_medallion("nope") == nullptr);
 }
 
 DEFN_TEST(ui_theme_role_lookups_resolve_tokens) {

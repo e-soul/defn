@@ -171,8 +171,7 @@ void validate_levels(const ProgressionCatalogValidationData &catalog, const Unit
             continue;
         }
 
-        const LevelDefinition level_definition =
-            found_level->definition.value_or(LevelDefinition{});
+        const LevelDefinition level_definition = found_level->definition.value_or(LevelDefinition{});
         if (!normalized(level_definition.base_position_ratio.x) || !normalized(level_definition.base_position_ratio.y)) {
             push_issue(issues, "level " + quoted(unlock.level_id) + " base_position must be normalized");
         }
@@ -229,7 +228,7 @@ void validate_button_state(const UiThemeData &theme, const UiButtonState &state,
     require_color_role(theme, state.font_role, owner, issues);
 }
 
-void validate_ui_theme(const UiThemeData &theme, std::vector<std::string> &issues) {
+void validate_ui_theme(const UiThemeData &theme, const std::vector<std::string> &missing_assets, std::vector<std::string> &issues) {
     for (const auto &[name, surface] : theme.surfaces) {
         const std::string owner = "surface " + quoted(name);
         require_color_role(theme, surface.bg_role, owner, issues);
@@ -259,6 +258,25 @@ void validate_ui_theme(const UiThemeData &theme, std::vector<std::string> &issue
         if (text_style.outline_size > 0) {
             require_color_role(theme, text_style.outline_role, owner, issues);
         }
+    }
+
+    static const std::array<std::string, 4> required_medallions = {"available", "completed", "frontier", "locked"};
+    for (const std::string &required_medallion : required_medallions) {
+        if (theme.find_medallion(required_medallion) == nullptr) {
+            push_issue(issues, "ui_theme.json missing required medallion " + quoted(required_medallion));
+        }
+    }
+
+    for (const auto &[name, medallion] : theme.medallions) {
+        const std::string owner = "medallion " + quoted(name);
+        require_color_role(theme, medallion.color_role, owner, issues);
+        if (medallion.mark.empty()) {
+            push_issue(issues, "ui_theme.json " + owner + " is missing a mark");
+        }
+    }
+
+    for (const std::string &asset : missing_assets) {
+        push_issue(issues, "ui_theme.json resource does not exist: " + quoted(asset));
     }
 
     const std::string screen_owner = "screen";
@@ -304,7 +322,7 @@ ContentValidationReport ContentValidator::validate_loaded_content(const ContentV
         validate_menu_content(*input.menu_data, report.issues);
     }
     if (input.ui_theme.has_value()) {
-        validate_ui_theme(*input.ui_theme, report.issues);
+        validate_ui_theme(*input.ui_theme, input.missing_ui_theme_assets, report.issues);
     }
     if (input.progression_catalog.has_value()) {
         validate_progression_catalog(*input.progression_catalog, report.issues);

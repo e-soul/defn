@@ -70,6 +70,24 @@ ContentValidationInput make_valid_input(FakeUnitCatalog &units) {
     return input;
 }
 
+UiThemeData make_valid_ui_theme() {
+    UiThemeData theme;
+    theme.surfaces["panel"] = {.bg_role = "surface", .border_role = "border", .shape_role = "corner_md", .content_margin_role = "md"};
+    theme.text_styles["screen_title"] = {.font_size_role = "title", .color_role = "text_primary"};
+    theme.text_styles["secondary"] = {.font_size_role = "body", .color_role = "text_secondary"};
+    theme.buttons["menu"] = {.font_size_role = "body", .shape_role = "corner_md", .normal = {.bg_role = "surface", .font_role = "text_primary"}};
+    theme.medallions["available"] = {.mark = "res://mark.svg", .color_role = "accent"};
+    theme.medallions["completed"] = {.mark = "res://mark.svg", .color_role = "text_primary"};
+    theme.medallions["frontier"] = {.mark = "res://mark.svg", .color_role = "accent"};
+    theme.medallions["locked"] = {.mark = "res://mark.svg", .color_role = "text_secondary"};
+    theme.screen = {.backdrop_role = "overlay_scrim",
+                    .title_text_style = "screen_title",
+                    .subtitle_text_style = "secondary",
+                    .panel_surface = "panel",
+                    .footer_gap_role = "md"};
+    return theme;
+}
+
 } // namespace
 
 DEFN_TEST(content_validator_accepts_plain_valid_content) {
@@ -186,20 +204,27 @@ DEFN_TEST(content_validator_reports_campaign_map_shape_cross_references_and_asse
 DEFN_TEST(content_validator_accepts_a_ui_theme_with_resolvable_roles) {
     FakeUnitCatalog units;
     ContentValidationInput input = make_valid_input(units);
-    UiThemeData theme;
-    theme.surfaces["panel"] = {.bg_role = "surface", .border_role = "border", .shape_role = "corner_md", .content_margin_role = "md"};
-    theme.text_styles["screen_title"] = {.font_size_role = "title", .color_role = "text_primary"};
-    theme.text_styles["secondary"] = {.font_size_role = "body", .color_role = "text_secondary"};
-    theme.buttons["menu"] = {.font_size_role = "body", .shape_role = "corner_md", .normal = {.bg_role = "surface", .font_role = "text_primary"}};
-    theme.screen = {.backdrop_role = "overlay_scrim",
-                    .title_text_style = "screen_title",
-                    .subtitle_text_style = "secondary",
-                    .panel_surface = "panel",
-                    .footer_gap_role = "md"};
-    input.ui_theme = theme;
+    input.ui_theme = make_valid_ui_theme();
 
     const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
     DEFN_CHECK(report.is_valid());
+}
+
+DEFN_TEST(content_validator_reports_medallion_gaps_and_missing_marks) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    UiThemeData theme = make_valid_ui_theme();
+    theme.medallions.erase("frontier");
+    theme.medallions["locked"] = {.mark = "", .color_role = "ghost_medallion_color"};
+    input.ui_theme = theme;
+    input.missing_ui_theme_assets = {"res://assets/ui/medallions/gone.svg"};
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(!report.is_valid());
+    DEFN_CHECK(contains_issue(report, "missing required medallion 'frontier'"));
+    DEFN_CHECK(contains_issue(report, "medallion 'locked' is missing a mark"));
+    DEFN_CHECK(contains_issue(report, "unknown color role 'ghost_medallion_color'"));
+    DEFN_CHECK(contains_issue(report, "ui_theme.json resource does not exist: 'res://assets/ui/medallions/gone.svg'"));
 }
 
 DEFN_TEST(content_validator_reports_unknown_ui_theme_roles) {

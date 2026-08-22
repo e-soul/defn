@@ -17,6 +17,40 @@
 
 namespace defn {
 
+namespace {
+
+/// Deduplicates the paths and returns those the engine cannot resolve. Empty paths are reported by the validator, not here.
+std::vector<std::string> missing_resources(std::vector<std::string> paths) {
+    std::ranges::sort(paths);
+    paths.erase(std::ranges::unique(paths).begin(), paths.end());
+    std::vector<std::string> missing;
+    for (const std::string &path : paths) {
+        if (!path.empty() && !godot::ResourceLoader::get_singleton()->exists(to_godot_string(path))) {
+            missing.push_back(path);
+        }
+    }
+    return missing;
+}
+
+std::vector<std::string> campaign_asset_paths(const CampaignMapDefinition &map) {
+    std::vector<std::string> paths = {map.background.path};
+    for (const auto &mission : map.missions) {
+        paths.push_back(mission.preview.texture.path);
+    }
+    return paths;
+}
+
+std::vector<std::string> medallion_mark_paths(const UiThemeData &theme) {
+    std::vector<std::string> paths;
+    paths.reserve(theme.medallions.size());
+    for (const auto &[name, medallion] : theme.medallions) {
+        paths.push_back(medallion.mark);
+    }
+    return paths;
+}
+
+} // namespace
+
 JsonContentPaths default_json_content_paths() {
     return {
         .campaign_map_path = DataPaths::CAMPAIGN_MAP_DATA,
@@ -40,18 +74,7 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
     if (!content.campaign_map.has_value()) {
         content.load_issues.emplace_back("failed to load campaign_map.json");
     } else {
-        const CampaignMapDefinition &map = *content.campaign_map;
-        std::vector<std::string> asset_paths = {map.background.path};
-        for (const auto &mission : map.missions) {
-            asset_paths.push_back(mission.preview.texture.path);
-        }
-        std::ranges::sort(asset_paths);
-        asset_paths.erase(std::ranges::unique(asset_paths).begin(), asset_paths.end());
-        for (const std::string &path : asset_paths) {
-            if (!path.empty() && !godot::ResourceLoader::get_singleton()->exists(to_godot_string(path))) {
-                content.missing_campaign_assets.push_back(path);
-            }
-        }
+        content.missing_campaign_assets = missing_resources(campaign_asset_paths(*content.campaign_map));
     }
 
     content.menu_data = MenuDataLoader::load(paths_.menu_path);
@@ -62,6 +85,8 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
     content.ui_theme = UiThemeLoader::load(paths_.ui_theme_path);
     if (!content.ui_theme.has_value()) {
         content.load_issues.emplace_back("failed to load ui_theme.json");
+    } else {
+        content.missing_ui_theme_assets = missing_resources(medallion_mark_paths(*content.ui_theme));
     }
 
     content.music_playlist = MusicPlaylistLoader::load(paths_.music_playlist_path);
@@ -161,6 +186,7 @@ ContentValidationInput make_content_validation_input(const JsonLoadedContent &co
     input.campaign_map = content.campaign_map;
     input.missing_campaign_assets = content.missing_campaign_assets;
     input.ui_theme = content.ui_theme;
+    input.missing_ui_theme_assets = content.missing_ui_theme_assets;
     return input;
 }
 

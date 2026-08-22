@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-DEFAULT_GODOT_VERSION = "4.7.1"
+DEFAULT_GODOT_VERSION = "4.7.2"
 DEFAULT_BUILD_DIR: str = "build"
 DEFAULT_BUILD_VERSION: str = "snapshot"
 GODOT_EXECUTABLE_ENV_VAR = "GODOT_BIN"

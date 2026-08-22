@@ -9,9 +9,9 @@
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event.hpp>
-#include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 namespace defn {
@@ -41,7 +41,8 @@ class CampaignMapNodeView : public godot::Control {
     godot::Panel *selection_ring_ = nullptr;
     godot::Panel *frame_ = nullptr;
     CampaignPreviewView *preview_ = nullptr;
-    godot::Label *medallion_ = nullptr;
+    godot::Panel *medallion_ = nullptr;
+    godot::TextureRect *medallion_mark_ = nullptr;
     godot::Button *interaction_ = nullptr;
 };
 

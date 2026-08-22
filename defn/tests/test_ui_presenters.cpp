@@ -44,12 +44,14 @@
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/os.hpp>
+#include <godot_cpp/classes/panel.hpp>
 #include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/style_box.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/core/object.hpp>
@@ -447,6 +449,21 @@ BaseObjective *add_test_objective(Node *parent, UnitSide side, int max_hp, const
     auto *objective = BaseObjectiveFactory::create(max_hp, target_position, make_objective_visual_config(side));
     parent->add_child(objective);
     return objective;
+}
+
+void check_state_medallion(CampaignMapView *campaign_map) {
+    const String medallion_path = "ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/StateMedallion";
+    auto *medallion = Object::cast_to<Panel>(campaign_map->get_node_or_null(medallion_path));
+    DEFN_REQUIRE(medallion != nullptr);
+    DEFN_CHECK(medallion->has_theme_stylebox_override("panel"));
+
+    auto *state_mark = Object::cast_to<TextureRect>(campaign_map->get_node_or_null(medallion_path + String("/StateMark")));
+    DEFN_REQUIRE(state_mark != nullptr);
+    DEFN_CHECK(state_mark->get_texture().is_valid());
+    // The mark spans the medallion exactly, so it stays concentric with the ring at any node scale.
+    DEFN_CHECK_CLOSE(static_cast<double>(state_mark->get_anchor(SIDE_RIGHT)), 1.0, 0.001);
+    DEFN_CHECK_CLOSE(static_cast<double>(state_mark->get_anchor(SIDE_BOTTOM)), 1.0, 0.001);
+    DEFN_CHECK(state_mark->get_modulate() != godot::Color(1, 1, 1, 1));
 }
 
 } // namespace
@@ -997,9 +1014,7 @@ DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
 
     DEFN_REQUIRE(campaign_map != nullptr);
     DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_04/PostcardFrame") != nullptr);
-    auto *medallion = Object::cast_to<Label>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/StateMedallion"));
-    DEFN_REQUIRE(medallion != nullptr);
-    DEFN_CHECK(medallion->has_theme_stylebox_override("normal"));
+    check_state_medallion(campaign_map);
     auto *node_interaction = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
     DEFN_REQUIRE(node_interaction != nullptr);
     DEFN_CHECK_EQ(node_interaction->get_focus_mode(), Control::FOCUS_NONE);

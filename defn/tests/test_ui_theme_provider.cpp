@@ -4,6 +4,7 @@
 #include "test_harness.h"
 
 #include "data_paths.h"
+#include "godot_string.h"
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_loader.h"
@@ -12,6 +13,7 @@
 
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/theme.hpp>
 #include <godot_cpp/variant/array.hpp>
@@ -32,6 +34,14 @@ Array color_array(double red, double green, double blue, double alpha) {
     return values;
 }
 
+/// Every campaign node state must resolve to a mark that actually ships, since the view no longer assembles the path itself.
+void check_shipped_medallion(const UiThemeData &theme, const char *state) {
+    const UiMedallionStyle *medallion = theme.find_medallion(state);
+    DEFN_REQUIRE(medallion != nullptr);
+    DEFN_CHECK(!medallion->mark.empty());
+    DEFN_CHECK(ResourceLoader::get_singleton()->exists(to_godot_string(medallion->mark)));
+}
+
 } // namespace
 
 DEFN_TEST(ui_theme_loader_reads_the_shipped_theme_file) {
@@ -40,6 +50,9 @@ DEFN_TEST(ui_theme_loader_reads_the_shipped_theme_file) {
     DEFN_CHECK(theme->find_surface("panel") != nullptr);
     DEFN_CHECK(theme->find_button("menu") != nullptr);
     DEFN_CHECK(theme->find_text_style("screen_title") != nullptr);
+    for (const char *state : {"available", "completed", "frontier", "locked"}) {
+        check_shipped_medallion(*theme, state);
+    }
     DEFN_CHECK(!theme->sfx.hover.path.empty());
     DEFN_CHECK(!theme->sfx.click.path.empty());
 }
@@ -53,6 +66,7 @@ DEFN_TEST(ui_theme_loader_returns_defaults_for_an_empty_dictionary) {
     DEFN_CHECK(theme.surfaces.empty());
     DEFN_CHECK(theme.buttons.empty());
     DEFN_CHECK(theme.text_styles.empty());
+    DEFN_CHECK(theme.medallions.empty());
 }
 
 DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
@@ -79,6 +93,12 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     Dictionary buttons;
     buttons["primary"] = button;
 
+    Dictionary medallion;
+    medallion["mark"] = "res://assets/ui/medallions/check.svg";
+    medallion["color"] = "accent";
+    Dictionary medallions;
+    medallions["completed"] = medallion;
+
     Dictionary metrics;
     metrics["custom_width"] = 321;
 
@@ -87,6 +107,7 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     data["typography"] = typography;
     data["surfaces"] = surfaces;
     data["buttons"] = buttons;
+    data["medallions"] = medallions;
     data["metrics"] = metrics;
 
     const UiThemeData theme = UiThemeLoader::load_from_data(data);
@@ -105,6 +126,11 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     DEFN_CHECK_EQ(primary->min_height, 45);
     DEFN_CHECK_EQ(primary->normal.bg_role, std::string("accent"));
     DEFN_CHECK_EQ(primary->hover.bg_role, std::string("accent"));
+
+    const UiMedallionStyle *completed = theme.find_medallion("completed");
+    DEFN_REQUIRE(completed != nullptr);
+    DEFN_CHECK_EQ(completed->mark, std::string("res://assets/ui/medallions/check.svg"));
+    DEFN_CHECK_EQ(completed->color_role, std::string("accent"));
 
     DEFN_CHECK_EQ(theme.metric("custom_width"), 321);
 }

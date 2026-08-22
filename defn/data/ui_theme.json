@@ -158,6 +158,12 @@
         "empty_state":    { "font_size": "subheading",  "color": "text_secondary" },
         "promotion_star": { "font_size": "banner",      "color": "promotion_star", "outline_size": 9, "outline": "promotion_outline" }
     },
+    "medallions": {
+        "completed": { "mark": "res://assets/ui/medallions/check.svg",          "color": "state_success" },
+        "available": { "mark": "res://assets/ui/medallions/diamond_hollow.svg", "color": "accent" },
+        "frontier":  { "mark": "res://assets/ui/medallions/diamond.svg",        "color": "accent" },
+        "locked":    { "mark": "res://assets/ui/medallions/lock.svg",           "color": "state_locked" }
+    },
     "buttons": {
         "menu": {
             "min_size": [400, 60],
@@ -266,6 +272,9 @@
         }
     },
     "metrics": {
+        "medallion_size": 38,
+        "medallion_offset_x": -5,
+        "medallion_offset_y": -4,
         "option_label_width": 250,
         "option_value_width": 60,
         "menu_button_separation": 16,
