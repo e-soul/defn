@@ -101,6 +101,56 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
     return {};
 }
 
+namespace {
+
+void apply_engaged_intents(const CombatConfig &config, const CombatLogicInput &input, CombatLogicStep &step) {
+    step.intent.movement = CombatMovementIntent::STOP;
+
+    // A running attack animation owns the sprite; re-posing here would freeze it mid-swing.
+    if (!input.attack_animation_playing) {
+        if (input.selection.attack_mode == AttackMode::MELEE && input.current_pose != CombatPoseState::ATTACK) {
+            step.intent.pose = CombatPoseIntent::ATTACK;
+        } else if (input.selection.attack_mode == AttackMode::RANGED && input.current_pose != CombatPoseState::SHOOT) {
+            step.intent.pose = CombatPoseIntent::SHOOT;
+        }
+    }
+
+    double attack_period_seconds = 0.0;
+    if (input.selection.attack_mode == AttackMode::MELEE) {
+        attack_period_seconds = config.melee_attack_period_seconds;
+    } else if (input.selection.attack_mode == AttackMode::RANGED) {
+        attack_period_seconds = config.ranged_attack_period_seconds;
+    }
+
+    if (attack_period_seconds > 0.0 && step.state.attack_cooldown_seconds <= 0.0) {
+        step.intent.trigger_attack = true;
+        step.state.attack_cooldown_seconds = attack_period_seconds;
+    }
+}
+
+// Reached only when nothing at all is in range, because target selection already re-engages anything that is.
+void apply_disengaged_intents(const CombatLogicInput &input, CombatLogicStep &step) {
+    step.state.engaged = false;
+    step.state.target_id = {};
+    step.state.attack_mode = AttackMode::NONE;
+
+    // The windup always plays. Past it, the backswing gives way to a chase when the target merely fled; when it died
+    // there is nothing to chase, so the animation is left to finish rather than sliding the unit forward.
+    const bool backswing_cancelable = !input.attack_windup_active && input.target_out_of_range;
+    if (input.attack_animation_playing && !backswing_cancelable) {
+        step.intent.movement = CombatMovementIntent::STOP;
+        return;
+    }
+
+    step.intent.hide_muzzle_flash = true;
+    step.intent.movement = CombatMovementIntent::MOVE;
+    if (input.current_pose == CombatPoseState::ATTACK || input.current_pose == CombatPoseState::SHOOT) {
+        step.intent.pose = CombatPoseIntent::WALK;
+    }
+}
+
+} // namespace
+
 CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLogicInput &input) {
     CombatLogicStep step;
     step.state = input.state;
@@ -123,7 +173,7 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
     step.state.target_id = input.selection.target_id;
     step.state.attack_mode = input.selection.attack_mode;
 
-    if (mode_changed && input.selection.attack_mode != AttackMode::RANGED) {
+    if (!input.attack_animation_playing && mode_changed && input.selection.attack_mode != AttackMode::RANGED) {
         step.intent.hide_muzzle_flash = true;
     }
 
@@ -133,39 +183,11 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
     }
 
     if (input.selection.engaged && input.selection.target_id.is_valid()) {
-        step.intent.movement = CombatMovementIntent::STOP;
-
-        if (input.selection.attack_mode == AttackMode::MELEE && input.current_pose != CombatPoseState::ATTACK) {
-            step.intent.pose = CombatPoseIntent::ATTACK;
-        } else if (input.selection.attack_mode == AttackMode::RANGED && input.current_pose != CombatPoseState::SHOOT) {
-            step.intent.pose = CombatPoseIntent::SHOOT;
-        }
-
-        double attack_period_seconds = 0.0;
-        if (input.selection.attack_mode == AttackMode::MELEE) {
-            attack_period_seconds = config.melee_attack_period_seconds;
-        } else if (input.selection.attack_mode == AttackMode::RANGED) {
-            attack_period_seconds = config.ranged_attack_period_seconds;
-        }
-
-        if (attack_period_seconds > 0.0 && step.state.attack_cooldown_seconds <= 0.0) {
-            step.intent.trigger_attack = true;
-            step.state.attack_cooldown_seconds = attack_period_seconds;
-        }
-
+        apply_engaged_intents(config, input, step);
         return step;
     }
 
-    step.state.engaged = false;
-    step.state.target_id = {};
-    step.state.attack_mode = AttackMode::NONE;
-    step.state.attack_cooldown_seconds = 0.0;
-    step.intent.hide_muzzle_flash = true;
-    step.intent.movement = CombatMovementIntent::MOVE;
-    if (input.current_pose == CombatPoseState::ATTACK || input.current_pose == CombatPoseState::SHOOT) {
-        step.intent.pose = CombatPoseIntent::WALK;
-    }
-
+    apply_disengaged_intents(input, step);
     return step;
 }
 

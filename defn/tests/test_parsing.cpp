@@ -80,8 +80,13 @@ Dictionary make_unit_data() {
     friendly["move_speed_pixels_per_second"] = 72.0;
     Dictionary idle_animation;
     idle_animation["path_template"] = "res://operator_idle_%03d.png";
+    Dictionary shoot_animation;
+    shoot_animation["path_template"] = "res://operator_shoot_%03d.png";
+    shoot_animation["frame_count"] = 8;
+    shoot_animation["windup_frames"] = 12;
     Dictionary animations;
     animations["idle"] = idle_animation;
+    animations["shoot"] = shoot_animation;
     friendly["animations"] = animations;
     Dictionary projectile_attack;
     projectile_attack["speed_pixels_per_second"] = 180.0;
@@ -607,8 +612,15 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_CHECK_EQ(loader.get_friendly_units().size(), static_cast<size_t>(1));
     DEFN_CHECK_EQ(friendly->name, std::string("operator"));
     DEFN_CHECK_EQ(friendly->description, std::string("Mobile support specialist."));
-    DEFN_REQUIRE(friendly->animations.size() == static_cast<size_t>(1));
-    DEFN_CHECK_EQ(friendly->animations[0].second.path_template, std::string("res://operator_idle_%03d.png"));
+    DEFN_REQUIRE(friendly->animations.size() == static_cast<size_t>(2));
+    const auto idle = std::ranges::find_if(friendly->animations, [](const auto &animation) { return animation.first == "idle"; });
+    DEFN_REQUIRE(idle != friendly->animations.end());
+    DEFN_CHECK_EQ(idle->second.path_template, std::string("res://operator_idle_%03d.png"));
+    DEFN_CHECK_EQ(idle->second.windup_frames, 3);
+    const auto shoot = std::ranges::find_if(friendly->animations, [](const auto &animation) { return animation.first == "shoot"; });
+    DEFN_REQUIRE(shoot != friendly->animations.end());
+    // A windup longer than the animation is clamped to its frame count.
+    DEFN_CHECK_EQ(shoot->second.windup_frames, 8);
     const auto hostile = loader.get_unit("jackal");
     DEFN_REQUIRE(hostile.has_value());
     DEFN_CHECK_EQ(hostile->description, std::string());

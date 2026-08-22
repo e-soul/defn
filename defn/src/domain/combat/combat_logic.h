@@ -43,6 +43,11 @@ struct CombatLogicInput {
     bool unit_dead = false;
     bool projectile_pending = false;
     bool manual_repositioning = false;
+    // Observed from the sprite: an attack animation is on screen, and it is still inside its committed windup frames.
+    bool attack_animation_playing = false;
+    bool attack_windup_active = false;
+    // The unit's most recent target is still alive but no longer within any attack range, so it must be chased.
+    bool target_out_of_range = false;
 };
 
 struct CombatLogicIntent {

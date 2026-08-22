@@ -60,6 +60,12 @@ void AnimationController::setup_sprite_frames(Node * /*owner_node*/, const UnitC
     frames.instantiate();
 
     for (const auto &[anim_name, anim_cfg] : cfg.animations) {
+        if (anim_name == "attack") {
+            attack_windup_frames_ = anim_cfg.windup_frames;
+        } else if (anim_name == "shoot") {
+            shoot_windup_frames_ = anim_cfg.windup_frames;
+        }
+
         const String animation_name = to_godot_string(anim_name);
         frames->add_animation(animation_name);
         frames->set_animation_speed(animation_name, anim_cfg.speed);
@@ -219,6 +225,24 @@ bool AnimationController::consume_shoot_effect_triggered() {
 
     shoot_effect_ready = false;
     return true;
+}
+
+bool AnimationController::is_attack_animation_playing() const {
+    if (sprite == nullptr || !sprite->is_playing()) {
+        return false;
+    }
+
+    const StringName animation_name = sprite->get_animation();
+    return animation_name == StringName("attack") || animation_name == StringName("shoot");
+}
+
+bool AnimationController::is_attack_windup_active() const {
+    if (!is_attack_animation_playing()) {
+        return false;
+    }
+
+    const int windup_frames = sprite->get_animation() == StringName("attack") ? attack_windup_frames_ : shoot_windup_frames_;
+    return sprite->get_frame() < windup_frames;
 }
 
 void AnimationController::cancel_pending_attack_presentation() {

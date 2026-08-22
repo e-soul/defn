@@ -25,6 +25,7 @@ void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, Anima
     selection_ = {};
     state_ = {};
     pending_projectile_ = {};
+    last_target_id_ = {};
     manual_repositioning_ = false;
 }
 
@@ -46,6 +47,9 @@ void CombatRuntime::update(double delta) {
     input.unit_dead = health_->is_dead();
     input.projectile_pending = pending_projectile_.active;
     input.manual_repositioning = manual_repositioning_;
+    input.attack_animation_playing = animation_ != nullptr && animation_->is_attack_animation_playing();
+    input.attack_windup_active = animation_ != nullptr && animation_->is_attack_windup_active();
+    input.target_out_of_range = CombatTargetSelector::is_target_out_of_range(unit_, config_, last_target_id_);
 
     apply_commands(advance_combat(config_, input), delta);
 }
@@ -54,6 +58,7 @@ void CombatRuntime::begin_manual_reposition() {
     manual_repositioning_ = true;
     selection_ = {};
     pending_projectile_ = {};
+    last_target_id_ = {};
     if (animation_ != nullptr) {
         animation_->cancel_pending_attack_presentation();
     }
@@ -62,6 +67,7 @@ void CombatRuntime::begin_manual_reposition() {
 void CombatRuntime::end_manual_reposition() {
     manual_repositioning_ = false;
     selection_ = {};
+    last_target_id_ = {};
 }
 
 void CombatRuntime::apply_field_promotion(const FieldPromotionRules &rules) {
@@ -69,7 +75,12 @@ void CombatRuntime::apply_field_promotion(const FieldPromotionRules &rules) {
     config_.ranged_attack_period_seconds = apply_promoted_attack_period(config_.ranged_attack_period_seconds, rules);
 }
 
-void CombatRuntime::update_target() { selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id); }
+void CombatRuntime::update_target() {
+    selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id);
+    if (selection_.target_id.is_valid()) {
+        last_target_id_ = selection_.target_id;
+    }
+}
 
 void CombatRuntime::try_spawn_pending_projectile() {
     CombatAttackExecutor::spawn_pending_projectile(projectile_attack_, unit_, animation_, pending_projectile_);

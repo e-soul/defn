@@ -205,7 +205,7 @@ DEFN_TEST(advance_combat_logic_resets_and_moves_when_disengaged) {
     const EntityId target{.value = 4};
 
     CombatLogicInput input;
-    input.state = {.attack_cooldown_seconds = 0.3, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.state = {.attack_cooldown_seconds = 0.4, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
     input.current_pose = CombatPoseState::SHOOT;
     input.delta = 0.1;
 
@@ -215,7 +215,118 @@ DEFN_TEST(advance_combat_logic_resets_and_moves_when_disengaged) {
     DEFN_CHECK(step.intent.hide_muzzle_flash);
     DEFN_CHECK_EQ(step.state.attack_mode, AttackMode::NONE);
     DEFN_CHECK(!step.state.target_id.is_valid());
-    DEFN_CHECK_CLOSE(step.state.attack_cooldown_seconds, 0.0, 0.001);
+    DEFN_CHECK_CLOSE(step.state.attack_cooldown_seconds, 0.3, 0.001);
+}
+
+DEFN_TEST(advance_combat_logic_plays_backswing_out_when_the_target_died) {
+    const EntityId target{.value = 4};
+
+    CombatLogicInput input;
+    input.state = {.attack_cooldown_seconds = 0.5, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.current_pose = CombatPoseState::SHOOT;
+    input.delta = 0.1;
+    input.attack_animation_playing = true;
+    input.target_out_of_range = false;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::STOP);
+    DEFN_CHECK_EQ(step.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!step.intent.hide_muzzle_flash);
+    DEFN_CHECK_EQ(step.state.attack_mode, AttackMode::NONE);
+    DEFN_CHECK(!step.state.target_id.is_valid());
+    DEFN_CHECK_CLOSE(step.state.attack_cooldown_seconds, 0.4, 0.001);
+}
+
+DEFN_TEST(advance_combat_logic_walks_once_the_backswing_animation_ends) {
+    const EntityId target{.value = 4};
+
+    CombatLogicInput input;
+    input.state = {.attack_cooldown_seconds = 0.5, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.current_pose = CombatPoseState::SHOOT;
+    input.delta = 0.1;
+    input.attack_animation_playing = false;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::MOVE);
+    DEFN_CHECK_EQ(step.intent.pose, CombatPoseIntent::WALK);
+    DEFN_CHECK(step.state.attack_cooldown_seconds > 0.0);
+}
+
+DEFN_TEST(advance_combat_logic_holds_the_windup_even_when_the_target_fled) {
+    const EntityId target{.value = 4};
+
+    CombatLogicInput input;
+    input.state = {.attack_cooldown_seconds = 0.5, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.current_pose = CombatPoseState::SHOOT;
+    input.delta = 0.1;
+    input.attack_animation_playing = true;
+    input.attack_windup_active = true;
+    input.target_out_of_range = true;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::STOP);
+    DEFN_CHECK_EQ(step.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!step.intent.hide_muzzle_flash);
+}
+
+DEFN_TEST(advance_combat_logic_cancels_the_backswing_to_chase_a_fled_target) {
+    const EntityId target{.value = 4};
+
+    CombatLogicInput input;
+    input.state = {.attack_cooldown_seconds = 0.5, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.current_pose = CombatPoseState::SHOOT;
+    input.delta = 0.1;
+    input.attack_animation_playing = true;
+    input.attack_windup_active = false;
+    input.target_out_of_range = true;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::MOVE);
+    DEFN_CHECK_EQ(step.intent.pose, CombatPoseIntent::WALK);
+    DEFN_CHECK(step.intent.hide_muzzle_flash);
+    DEFN_CHECK(step.state.attack_cooldown_seconds > 0.0);
+}
+
+DEFN_TEST(advance_combat_logic_keeps_cooldown_across_disengage_and_reacquire) {
+    const EntityId first_target{.value = 4};
+    const EntityId second_target{.value = 5};
+    const CombatConfig config = make_combat_config();
+
+    CombatLogicInput disengaged;
+    disengaged.state = {.attack_cooldown_seconds = 0.5, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = first_target};
+    disengaged.current_pose = CombatPoseState::SHOOT;
+    disengaged.delta = 0.1;
+
+    const CombatLogicStep after_disengage = advance_combat_logic(config, disengaged);
+    DEFN_CHECK_CLOSE(after_disengage.state.attack_cooldown_seconds, 0.4, 0.001);
+
+    CombatLogicInput reacquired;
+    reacquired.state = after_disengage.state;
+    reacquired.selection = {.engaged = true, .attack_mode = AttackMode::RANGED, .target_id = second_target, .target_position = {.x = 80.0F, .y = 0.0F}};
+    reacquired.current_pose = CombatPoseState::SHOOT;
+    reacquired.delta = 0.1;
+
+    const CombatLogicStep after_reacquire = advance_combat_logic(config, reacquired);
+    DEFN_CHECK(!after_reacquire.intent.trigger_attack);
+    DEFN_CHECK_CLOSE(after_reacquire.state.attack_cooldown_seconds, 0.3, 0.001);
+}
+
+DEFN_TEST(advance_combat_logic_does_not_repose_on_mode_change_while_attack_animation_plays) {
+    const EntityId target{.value = 6};
+
+    CombatLogicInput input;
+    input.state = {.attack_cooldown_seconds = 0.4, .attack_mode = AttackMode::RANGED, .engaged = true, .target_id = target};
+    input.selection = {.engaged = true, .attack_mode = AttackMode::MELEE, .target_id = target, .target_position = {.x = 20.0F, .y = 0.0F}};
+    input.current_pose = CombatPoseState::SHOOT;
+    input.delta = 0.1;
+    input.attack_animation_playing = true;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::STOP);
+    DEFN_CHECK_EQ(step.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!step.intent.hide_muzzle_flash);
+    DEFN_CHECK(!step.intent.trigger_attack);
+    DEFN_CHECK_EQ(step.state.attack_mode, AttackMode::MELEE);
 }
 
 DEFN_TEST(advance_combat_returns_damage_and_effect_commands_for_melee_attack) {

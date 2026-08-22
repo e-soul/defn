@@ -21,6 +21,9 @@ struct AnimConfig {
     int frame_count = 10;
     double speed = 10.0;
     bool loop = false;
+    // Attack and shoot animations commit to their first frames: the unit may not be re-posed or moved until they play
+    // out. The remaining frames are the cancelable backswing. Meaningless for animations combat never triggers.
+    int windup_frames = 3;
 };
 
 struct MuzzleConfig {

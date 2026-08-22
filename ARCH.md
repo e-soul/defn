@@ -290,6 +290,10 @@ Target combat flow:
 3. The use case returns commands: stop, move, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
 4. The Godot component applies commands to `MovementComponent`, `AnimationController`, `HealthComponent`, `ProjectileAttack`, and VFX/audio adapters.
 
+Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. The presentation is read from the sprite rather than timed in the domain: `AnimationController` reports whether an attack or shoot animation is on screen and whether it is still inside the `windup_frames` its `AnimConfig` declares, and those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. The domain therefore holds no presentation timer, and the frame index stays the single source of truth for what the player sees.
+
+While an attack animation runs, the unit holds position and is never re-posed. Its windup frames always play. Past them the backswing is cancelable in exactly one case: nothing is in range and the last target is alive, which means it fled and must be chased. A target that died leaves nothing to chase, so the animation finishes before the unit walks on. Target selection re-engages any other target in range before the disengaged path is ever reached, so re-targeting mid-backswing needs no special handling, and a shorter attack period simply restarts the animation at frame 0. `CombatRuntime` remembers the last selected target so a target that flees during the windup is still recognised as a chase once the windup ends. Manual reposition remains the only override, cancelling the presentation outright while still preserving the cooldown.
+
 Friendly fallback control follows the same ownership boundary:
 
 - `reposition_logic` owns the engine-neutral automatic/repositioning state, strict behind-only validation, horizontal clamping, arrival epsilon, and facing/combat intents.

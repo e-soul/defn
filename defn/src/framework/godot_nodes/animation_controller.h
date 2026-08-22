@@ -30,6 +30,9 @@ class AnimationController : public Node {
     void play_attack_animation();
     void play_shoot_animation(bool show_muzzle_flash = true, int effect_frame = 0);
     bool consume_shoot_effect_triggered();
+    // True while an attack or shoot animation is on screen, and while it is still inside its committed windup frames.
+    [[nodiscard]] bool is_attack_animation_playing() const;
+    [[nodiscard]] bool is_attack_windup_active() const;
     void cancel_pending_attack_presentation();
     void set_facing(FacingDirection direction);
 
@@ -65,6 +68,8 @@ class AnimationController : public Node {
     bool shoot_effect_ready = false;
     bool show_muzzle_flash_on_shoot_effect = true;
     int shoot_effect_frame = 0;
+    int attack_windup_frames_ = 0;
+    int shoot_windup_frames_ = 0;
 
     double flash_timer = 0.0;
     godot::Color original_modulate = godot::Color(1, 1, 1, 1);

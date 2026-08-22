@@ -65,4 +65,18 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
     return select_target_from_snapshots(origin, config, current_target_id, snapshots);
 }
 
+bool CombatTargetSelector::is_target_out_of_range(const BattleEntity *unit, const CombatConfig &config, EntityId target_id) {
+    if (unit == nullptr) {
+        return false;
+    }
+
+    AttackTarget *target = resolve_entity_id(target_id);
+    if (target == nullptr || target->is_dead() || target->get_side() == config.side) {
+        return false;
+    }
+
+    const float distance = get_forward_distance(config.side, to_vector(unit->get_target_global_position()), to_vector(target->get_target_global_position()));
+    return classify_target_by_distance(config, distance) == AttackMode::NONE;
+}
+
 } // namespace defn

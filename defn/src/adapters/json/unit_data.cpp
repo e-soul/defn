@@ -56,6 +56,7 @@ AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig 
     animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
     animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
+    animation.windup_frames = std::clamp(VariantTools::as_int(animation_dict.get("windup_frames", animation.windup_frames)), 0, animation.frame_count);
     return animation;
 }
 

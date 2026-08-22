@@ -51,6 +51,8 @@ class CombatRuntime {
     std::optional<ProjectileAttackConfig> projectile_attack_{};
     CombatTargetSelection selection_{};
     CombatLogicState state_{};
+    // Survives disengagement so a target that fled during the committed windup can still be recognised as a chase.
+    EntityId last_target_id_{};
     PendingProjectileSpawn pending_projectile_{};
     bool manual_repositioning_ = false;
 };
