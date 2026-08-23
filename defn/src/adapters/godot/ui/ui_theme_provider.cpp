@@ -257,6 +257,8 @@ void UiThemeProvider::reload() {
 
 godot::Color UiThemeProvider::color(std::string_view role) { return role_color(data(), role); }
 
+real_t UiThemeProvider::metric(std::string_view name, int fallback) { return static_cast<real_t>(data().metric(name, fallback)); }
+
 int UiThemeProvider::font_size(std::string_view role) { return role_font_size(data(), role, data().typography.body); }
 
 int UiThemeProvider::spacing(std::string_view role) { return role_spacing(data(), role, data().spacing.md); }

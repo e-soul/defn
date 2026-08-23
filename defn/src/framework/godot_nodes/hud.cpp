@@ -18,8 +18,6 @@ namespace defn {
 
 namespace {
 
-real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
-
 /// The palette role each integrity band adopts. Both the shield tint and the meter fill read from here, so the
 /// two never disagree about how badly the base is hurt.
 std::string_view integrity_color_role(IntegrityTier tier) {
@@ -59,7 +57,7 @@ ReadoutGroup make_readout_group(std::string_view icon_key) {
     group.row->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
     group.row->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
 
-    group.medallion = make_icon_medallion(metric("hud_icon_size", 38));
+    group.medallion = make_icon_medallion(UiThemeProvider::metric("hud_icon_size", 38));
     group.medallion.plate->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
     const UiMedallionStyle &style = theme_hud_icon(icon_key);
     apply_icon_medallion(group.medallion, style, UiThemeProvider::color(style.color_role));
@@ -79,7 +77,7 @@ struct PodAnchor {
 };
 
 PodAnchor pod_anchor(Control::LayoutPreset preset) {
-    const real_t margin = metric("hud_margin", 24);
+    const real_t margin = UiThemeProvider::metric("hud_margin", 24);
     switch (preset) {
     case Control::PRESET_TOP_LEFT:
         return {.left = margin, .horizontal = Control::GROW_DIRECTION_END};
@@ -95,9 +93,9 @@ PodAnchor pod_anchor(Control::LayoutPreset preset) {
 /// height is what keeps all three plates level with each other however much each one carries.
 void anchor_pod(Control *pod, Control::LayoutPreset preset) {
     const PodAnchor anchor = pod_anchor(preset);
-    const real_t top = metric("hud_margin", 24);
+    const real_t top = UiThemeProvider::metric("hud_margin", 24);
 
-    pod->set_custom_minimum_size({0.0F, metric("hud_plate_height", 64)});
+    pod->set_custom_minimum_size({0.0F, UiThemeProvider::metric("hud_plate_height", 64)});
     pod->set_anchors_preset(preset);
     pod->set_h_grow_direction(anchor.horizontal);
     pod->set_v_grow_direction(Control::GROW_DIRECTION_END);

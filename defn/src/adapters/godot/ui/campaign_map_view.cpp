@@ -91,8 +91,6 @@ PackedVector2Array route_points(const GVector2 &start, const GVector2 &end) {
     return points;
 }
 
-real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
-
 } // namespace
 
 CampaignMapView::CampaignMapView() {
@@ -431,7 +429,7 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     header_backplate->set_name("HeaderBackplate");
     header_backplate->set_color(UiThemeProvider::color("scrim_panel"));
     header_backplate->set_position({0.0F, 0.0F});
-    header_backplate->set_size({REFERENCE_WIDTH, metric("map_header_height", 104)});
+    header_backplate->set_size({REFERENCE_WIDTH, UiThemeProvider::metric("map_header_height", 104)});
     header_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(header_backplate);
 
@@ -451,8 +449,8 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
 
     dossier_ = memnew(OperationDossierView);
     dossier_->set_name("OperationDossier");
-    dossier_->set_position({metric("map_dossier_x", 1408), metric("map_dossier_y", 124)});
-    dossier_->set_size({metric("operation_dossier_width", 464), metric("operation_dossier_height", 866)});
+    dossier_->set_position({UiThemeProvider::metric("map_dossier_x", 1408), UiThemeProvider::metric("map_dossier_y", 124)});
+    dossier_->set_size({UiThemeProvider::metric("operation_dossier_width", 464), UiThemeProvider::metric("operation_dossier_height", 866)});
     dossier_->connect("deploy_requested", callable_mp(this, &CampaignMapView::activate_level));
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
     dossier_->attach_sfx(ui_sfx_player);

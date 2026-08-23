@@ -36,8 +36,6 @@ std::string_view state_key(CampaignNodeState state) {
     return "locked";
 }
 
-real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
-
 Ref<StyleBoxFlat> frame_style(const GColor &border, bool selected) {
     Ref<StyleBoxFlat> style = UiThemeProvider::surface("map_node");
     style->set_border_width_all(UiThemeProvider::shape(selected ? "border_width_strong" : "border_width"));
@@ -55,7 +53,7 @@ Ref<StyleBoxFlat> outline_style(const GColor &color, int width) {
 } // namespace
 
 CampaignMapNodeView::CampaignMapNodeView() {
-    const GVector2 node_size{metric("map_node_width", 188), metric("map_node_height", 134)};
+    const GVector2 node_size{UiThemeProvider::metric("map_node_width", 188), UiThemeProvider::metric("map_node_height", 134)};
     set_custom_minimum_size(node_size);
     set_size(node_size);
     set_mouse_filter(MOUSE_FILTER_PASS);
@@ -80,7 +78,7 @@ CampaignMapNodeView::CampaignMapNodeView() {
     preview_->set_size({156.0F, 108.0F});
     frame_->add_child(preview_);
 
-    medallion_ = make_icon_medallion(metric("medallion_size", 38));
+    medallion_ = make_icon_medallion(UiThemeProvider::metric("medallion_size", 38));
     medallion_.plate->set_name("StateMedallion");
     medallion_.mark->set_name("StateMark");
     add_child(medallion_.plate);
@@ -144,7 +142,7 @@ void CampaignMapNodeView::update_style() {
     frame_->add_theme_stylebox_override("panel", frame_style(color, selected_));
     selection_ring_->add_theme_stylebox_override("panel", outline_style(color, UiThemeProvider::shape("border_width")));
     selection_ring_->set_visible(selected_);
-    medallion_.plate->set_position({metric("medallion_offset_x", -5), metric("medallion_offset_y", -4)});
+    medallion_.plate->set_position({UiThemeProvider::metric("medallion_offset_x", -5), UiThemeProvider::metric("medallion_offset_y", -4)});
     apply_icon_medallion(medallion_, medallion, color);
     preview_->set_modulate(mission_.state == CampaignNodeState::LOCKED ? UiThemeProvider::color("locked_tint") : GColor(1, 1, 1, 1));
 }

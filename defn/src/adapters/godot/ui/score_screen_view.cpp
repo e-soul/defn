@@ -29,7 +29,7 @@ namespace defn {
 namespace {
 
 real_t get_score_screen_width(Node *parent) {
-    const auto min_width = static_cast<real_t>(UiThemeProvider::data().metric("score_screen_min_width", 600));
+    const real_t min_width = UiThemeProvider::metric("score_screen_min_width", 600);
     if (parent == nullptr || parent->get_viewport() == nullptr) {
         return min_width;
     }
@@ -45,7 +45,7 @@ real_t get_score_screen_width(Node *parent) {
     return std::min(std::max(target_width, std::min(min_width, max_width)), max_width);
 }
 
-real_t selection_label_width() { return static_cast<real_t>(UiThemeProvider::data().metric("upgrade_selection_label_width", 240)); }
+real_t selection_label_width() { return UiThemeProvider::metric("upgrade_selection_label_width", 240); }
 
 void add_stat_row(VBoxContainer *parent, const String &label_text, const String &value_text) { parent->add_child(make_stat_row(label_text, value_text)); }
 
@@ -146,7 +146,7 @@ void add_owned_upgrades_section(VBoxContainer *content, const std::vector<Upgrad
     add_selection_label(add_label_column(owned_row), "YOUR UPGRADES", "owned_section");
 
     OwnedUpgradesPanel::Options owned_panel_options;
-    owned_panel_options.min_size = godot::Vector2(0, static_cast<real_t>(UiThemeProvider::data().metric("owned_upgrades_strip_height", 240)));
+    owned_panel_options.min_size = godot::Vector2(0, UiThemeProvider::metric("owned_upgrades_strip_height", 240));
     owned_panel_options.layout = OwnedUpgradesPanel::Layout::HorizontalStrip;
 
     auto *owned_panel = OwnedUpgradesPanel::build(owned_upgrades, owned_panel_options);

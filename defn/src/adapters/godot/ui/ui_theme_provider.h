@@ -29,6 +29,9 @@ class UiThemeProvider {
     static void reload();
 
     static godot::Color color(std::string_view role);
+    /// A named layout figure as the `real_t` Godot sizing calls want. `UiThemeData::metric` still serves the few
+    /// places that need the raw integer, such as counts and theme constants.
+    static godot::real_t metric(std::string_view name, int fallback = 0);
     static int font_size(std::string_view role);
     static int spacing(std::string_view role);
     static int shape(std::string_view role);

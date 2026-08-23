@@ -41,8 +41,6 @@ godot::Ref<godot::Texture2D> load_portrait(const std::string &path_template) {
     return godot::ResourceLoader::get_singleton()->load(frame_zero_path(path_template));
 }
 
-real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
-
 } // namespace
 
 void ProgressionStatsScreenView::_bind_methods() {
@@ -121,7 +119,7 @@ void ProgressionStatsScreenView::rebuild() {
 
     if (showing_all_upgrades_) {
         OwnedUpgradesPanel::Options options;
-        options.min_size = {metric("progression_dossier_width", 880), metric("owned_upgrades_grid_height", 430)};
+        options.min_size = {UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("owned_upgrades_grid_height", 430)};
         options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
         options.grid_columns = 4;
         scaffold.body->add_child(OwnedUpgradesPanel::build(owned_upgrades_, options));
@@ -165,14 +163,14 @@ void ProgressionStatsScreenView::rebuild() {
 
     auto *dossier = make_surface("dossier");
     dossier->set_name("EntityDossier");
-    dossier->set_custom_minimum_size({metric("progression_dossier_width", 880), metric("progression_dossier_height", 330)});
+    dossier->set_custom_minimum_size({UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("progression_dossier_height", 330)});
     auto *columns = memnew(godot::HBoxContainer);
     columns->add_theme_constant_override("separation", UiThemeProvider::spacing("xl"));
     dossier->add_child(columns);
 
     auto *identity = memnew(godot::VBoxContainer);
-    identity->set_custom_minimum_size({metric("dossier_identity_width", 390), 0.0F});
-    const godot::Vector2 portrait_size{metric("dossier_portrait_width", 220), metric("dossier_portrait_height", 150)};
+    identity->set_custom_minimum_size({UiThemeProvider::metric("dossier_identity_width", 390), 0.0F});
+    const godot::Vector2 portrait_size{UiThemeProvider::metric("dossier_portrait_width", 220), UiThemeProvider::metric("dossier_portrait_height", 150)};
     if (const auto texture = load_portrait(model.portrait_path_template); texture.is_valid()) {
         auto *portrait = memnew(godot::TextureRect);
         portrait->set_name("EntityPortrait");
@@ -205,7 +203,7 @@ void ProgressionStatsScreenView::rebuild() {
     for (const auto &stat : model.stats) {
         auto *row = memnew(godot::HBoxContainer);
         auto *label = make_label(to_godot_string(stat.label), "body");
-        label->set_custom_minimum_size({metric("dossier_stat_label_width", 145), 0.0F});
+        label->set_custom_minimum_size({UiThemeProvider::metric("dossier_stat_label_width", 145), 0.0F});
         row->add_child(label);
         auto *meter = memnew(ProgressionStatMeter);
         meter->configure(stat.visual);
@@ -216,7 +214,7 @@ void ProgressionStatsScreenView::rebuild() {
     }
     exact_detail_label_ = make_label({}, "secondary");
     exact_detail_label_->set_name("ExactStatDetail");
-    exact_detail_label_->set_custom_minimum_size({0.0F, metric("dossier_detail_height", 24)});
+    exact_detail_label_->set_custom_minimum_size({0.0F, UiThemeProvider::metric("dossier_detail_height", 24)});
     exact_detail_label_->set_autowrap_mode(godot::TextServer::AUTOWRAP_WORD_SMART);
     stats_column->add_child(exact_detail_label_);
     stats_column->add_child(make_label("UPGRADE SOURCES", "subsection"));

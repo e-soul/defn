@@ -163,7 +163,7 @@ HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
     row->add_theme_constant_override("separation", UiThemeProvider::spacing("section_gap"));
 
     auto *name_label = make_label(setting.label.empty() ? String("???") : to_godot_string(setting.label), "option_label");
-    name_label->set_custom_minimum_size({static_cast<real_t>(UiThemeProvider::data().metric("option_label_width")), 0.0F});
+    name_label->set_custom_minimum_size({UiThemeProvider::metric("option_label_width"), 0.0F});
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(name_label);
 
@@ -284,7 +284,7 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     row->add_child(slider);
 
     auto *value_label = make_label(vformat("%d%%", static_cast<int>(current_percent)), "option_value");
-    value_label->set_custom_minimum_size({static_cast<real_t>(UiThemeProvider::data().metric("option_value_width")), 0.0F});
+    value_label->set_custom_minimum_size({UiThemeProvider::metric("option_value_width"), 0.0F});
     value_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(value_label);
 
@@ -337,9 +337,9 @@ void MenuManager::_ready() {
     auto *progression = CampaignService::get_singleton();
     total_score_label_ = make_label(vformat("Career Score: %d", progression->get_total_score()), "career_score");
     total_score_label_->set_anchors_preset(Control::PRESET_TOP_RIGHT);
-    total_score_label_->set_offset(Side::SIDE_RIGHT, -static_cast<real_t>(UiThemeProvider::data().metric("career_score_right_margin", 24)));
-    total_score_label_->set_offset(Side::SIDE_TOP, static_cast<real_t>(UiThemeProvider::data().metric("career_score_top_margin", 16)));
-    total_score_label_->set_offset(Side::SIDE_LEFT, -static_cast<real_t>(UiThemeProvider::data().metric("career_score_width")));
+    total_score_label_->set_offset(Side::SIDE_RIGHT, -UiThemeProvider::metric("career_score_right_margin", 24));
+    total_score_label_->set_offset(Side::SIDE_TOP, UiThemeProvider::metric("career_score_top_margin", 16));
+    total_score_label_->set_offset(Side::SIDE_LEFT, -UiThemeProvider::metric("career_score_width"));
     total_score_label_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     ui_layer_->add_child(total_score_label_);
 

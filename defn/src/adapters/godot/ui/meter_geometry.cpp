@@ -12,7 +12,7 @@ namespace defn {
 namespace {
 
 /// Horizontal offset of a segment's top edge against its bottom edge.
-float segment_slope() { return static_cast<float>(UiThemeProvider::data().metric("meter_segment_slope", 5)); }
+float segment_slope() { return UiThemeProvider::metric("meter_segment_slope", 5); }
 
 } // namespace
 

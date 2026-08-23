@@ -16,24 +16,23 @@ namespace {
 
 /// The segment strip's proportions, read once per layout or redraw rather than once per segment.
 struct SegmentMetrics {
-    float width;
-    float height;
-    float gap;
-    float outline_width;
+    real_t width;
+    real_t height;
+    real_t gap;
+    real_t outline_width;
 
     static SegmentMetrics from_theme() {
-        const UiThemeData &theme = UiThemeProvider::data();
         return {
-            .width = static_cast<float>(theme.metric("hud_segment_width", 26)),
-            .height = static_cast<float>(theme.metric("hud_segment_height", 15)),
-            .gap = static_cast<float>(UiThemeProvider::spacing("xs")),
-            .outline_width = static_cast<float>(theme.metric("hud_segment_outline_width", 1)),
+            .width = UiThemeProvider::metric("hud_segment_width", 26),
+            .height = UiThemeProvider::metric("hud_segment_height", 15),
+            .gap = static_cast<real_t>(UiThemeProvider::spacing("xs")),
+            .outline_width = UiThemeProvider::metric("hud_segment_outline_width", 1),
         };
     }
 
-    [[nodiscard]] float left_of(int index) const { return static_cast<float>(index) * (width + gap); }
-    [[nodiscard]] float strip_width(int segments) const {
-        return segments <= 0 ? 0.0F : (static_cast<float>(segments) * width) + (static_cast<float>(segments - 1) * gap);
+    [[nodiscard]] real_t left_of(int index) const { return static_cast<real_t>(index) * (width + gap); }
+    [[nodiscard]] real_t strip_width(int segments) const {
+        return segments <= 0 ? 0.0F : (static_cast<real_t>(segments) * width) + (static_cast<real_t>(segments - 1) * gap);
     }
 };
 
@@ -75,12 +74,12 @@ void HudIntegrityMeter::_draw() {
     }
 
     const SegmentMetrics metrics = SegmentMetrics::from_theme();
-    const float height = std::min(metrics.height, get_size().y);
+    const real_t height = std::min(metrics.height, get_size().y);
     const godot::Color track_color = UiThemeProvider::color("meter_track");
     const godot::Color outline_color = UiThemeProvider::color("meter_outline");
 
     for (int index = 0; index < model_.segments; ++index) {
-        const float left = metrics.left_of(index);
+        const real_t left = metrics.left_of(index);
         const double fraction = std::clamp(model_.filled_segments - static_cast<double>(index), 0.0, 1.0);
         const PackedVector2Array outline = segment_polygon(left, 0.0F, metrics.width, height);
 

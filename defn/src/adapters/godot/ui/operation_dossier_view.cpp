@@ -23,8 +23,6 @@ using GColor = godot::Color;
 
 namespace {
 
-real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
-
 Label *make_styled_label(std::string_view text_style) { return make_label({}, text_style); }
 
 String status_text(CampaignNodeState state) {
@@ -59,7 +57,7 @@ String upgraded_value(int base, int effective) {
 
 OperationDossierView::OperationDossierView() {
     UiThemeProvider::apply_to(this);
-    set_custom_minimum_size({metric("operation_dossier_width", 464), metric("operation_dossier_height", 866)});
+    set_custom_minimum_size({UiThemeProvider::metric("operation_dossier_width", 464), UiThemeProvider::metric("operation_dossier_height", 866)});
     set_theme_type_variation(UiThemeProvider::panel_variation("dossier"));
 
     auto *content = memnew(VBoxContainer);
@@ -81,18 +79,18 @@ OperationDossierView::OperationDossierView() {
     title_ = make_styled_label("dossier_title");
     title_->set_name("OperationTitle");
     title_->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-    title_->set_custom_minimum_size({0.0F, metric("operation_title_height", 78)});
+    title_->set_custom_minimum_size({0.0F, UiThemeProvider::metric("operation_title_height", 78)});
     content->add_child(title_);
 
     tagline_ = make_styled_label("tagline");
     tagline_->set_name("OperationTagline");
     tagline_->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-    tagline_->set_custom_minimum_size({0.0F, metric("operation_text_block_height", 54)});
+    tagline_->set_custom_minimum_size({0.0F, UiThemeProvider::metric("operation_text_block_height", 54)});
     content->add_child(tagline_);
 
     preview_ = memnew(CampaignPreviewView);
     preview_->set_name("OperationPreview");
-    preview_->set_custom_minimum_size({metric("operation_preview_width", 416), metric("operation_preview_height", 234)});
+    preview_->set_custom_minimum_size({UiThemeProvider::metric("operation_preview_width", 416), UiThemeProvider::metric("operation_preview_height", 234)});
     content->add_child(preview_);
 
     auto *intel_row = memnew(HBoxContainer);
@@ -128,7 +126,7 @@ OperationDossierView::OperationDossierView() {
     locked_message_->set_name("LockedMessage");
     set_state_tint(locked_message_, "state_danger");
     locked_message_->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-    locked_message_->set_custom_minimum_size({0.0F, metric("operation_text_block_height", 54)});
+    locked_message_->set_custom_minimum_size({0.0F, UiThemeProvider::metric("operation_text_block_height", 54)});
     content->add_child(locked_message_);
 
     auto *spacer = memnew(Control);

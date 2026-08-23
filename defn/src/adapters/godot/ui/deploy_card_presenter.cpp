@@ -17,19 +17,15 @@
 
 namespace defn {
 
-namespace {
-
-real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
-
-} // namespace
+namespace {} // namespace
 
 Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const Callable &pressed_action) {
     auto *button = make_button({}, "deploy_card", pressed_action);
 
     auto *content = memnew(HBoxContainer);
     content->set_anchors_preset(Control::PRESET_FULL_RECT);
-    const real_t horizontal_inset = metric("deploy_card_horizontal_inset", 8);
-    const real_t vertical_inset = metric("deploy_card_vertical_inset", 6);
+    const real_t horizontal_inset = UiThemeProvider::metric("deploy_card_horizontal_inset", 8);
+    const real_t vertical_inset = UiThemeProvider::metric("deploy_card_vertical_inset", 6);
     content->set_offset(Side::SIDE_LEFT, horizontal_inset);
     content->set_offset(Side::SIDE_RIGHT, -horizontal_inset);
     content->set_offset(Side::SIDE_TOP, vertical_inset);
@@ -40,7 +36,7 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
     button->add_child(content);
 
     auto *portrait = memnew(TextureRect);
-    const real_t portrait_size = metric("deploy_card_portrait_size", 80);
+    const real_t portrait_size = UiThemeProvider::metric("deploy_card_portrait_size", 80);
     portrait->set_custom_minimum_size(godot::Vector2(portrait_size, portrait_size));
     portrait->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
     portrait->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_CENTERED);
