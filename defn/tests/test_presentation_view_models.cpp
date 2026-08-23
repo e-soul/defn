@@ -130,22 +130,56 @@ DEFN_TEST(hud_presenter_formats_match_state_and_deploy_card_affordability) {
         .energy = 42,
         .current_wave = 2,
         .total_waves = 5,
-        .hearts = 3,
+        .base_health = 250,
+        .base_max_health = 300,
         .score = 125,
-        .level_number = 4,
         .level_name = "Factory",
         .deploy_cards = {{.unit_id = "operator", .title = "Operator", .cost = 25}, {.unit_id = "tank", .title = "Tank", .cost = 75}},
     });
 
-    DEFN_CHECK_EQ(model.energy_text, std::string("\u26A1 Energy: 42"));
-    DEFN_CHECK_EQ(model.score_text, std::string("Score: 125"));
-    DEFN_CHECK_EQ(model.wave_text, std::string("WAVE 2 / 5"));
-    DEFN_CHECK_EQ(model.level_text, std::string("LEVEL 4 - Factory"));
+    DEFN_CHECK_EQ(model.energy_text, std::string("42"));
+    DEFN_CHECK_EQ(model.score_text, std::string("125"));
+    DEFN_CHECK_EQ(model.wave.current_text, std::string("2"));
+    DEFN_CHECK_EQ(model.wave.total_text, std::string("/ 5"));
+    DEFN_CHECK_EQ(model.level_text, std::string("FACTORY"));
     DEFN_CHECK(model.level_visible);
-    DEFN_CHECK_EQ(model.visible_hearts, 3);
     DEFN_REQUIRE(model.deploy_cards.size() == static_cast<size_t>(2));
     DEFN_CHECK(model.deploy_cards[0].enabled);
     DEFN_CHECK(!model.deploy_cards[1].enabled);
+}
+
+DEFN_TEST(hud_presenter_marks_wave_progress_and_integrity_bands) {
+    const HudModel model = HudPresenter::build({.current_wave = 2, .total_waves = 3, .base_health = 300, .base_max_health = 300});
+
+    DEFN_CHECK_EQ(model.wave.current_text, std::string("2"));
+    DEFN_CHECK_EQ(model.wave.total_text, std::string("/ 3"));
+    DEFN_CHECK_EQ(model.integrity.segments, 3);
+    DEFN_CHECK_CLOSE(model.integrity.filled_segments, 3.0, 0.0001);
+    DEFN_CHECK(model.integrity.tier == IntegrityTier::INTACT);
+
+    // Damage smaller than a whole segment still moves the meter, which a heart count could not show.
+    const HudModel grazed = HudPresenter::build({.base_health = 260, .base_max_health = 300});
+    DEFN_CHECK_CLOSE(grazed.integrity.filled_segments, 2.6, 0.0001);
+    DEFN_CHECK(grazed.integrity.tier == IntegrityTier::DAMAGED);
+
+    const HudModel critical = HudPresenter::build({.base_health = 100, .base_max_health = 300});
+    DEFN_CHECK(critical.integrity.tier == IntegrityTier::CRITICAL);
+
+    const HudModel destroyed = HudPresenter::build({.base_health = -50, .base_max_health = 300});
+    DEFN_CHECK_CLOSE(destroyed.integrity.filled_segments, 0.0, 0.0001);
+    DEFN_CHECK(destroyed.integrity.tier == IntegrityTier::CRITICAL);
+
+    const HudModel unstarted = HudPresenter::build({});
+    DEFN_CHECK_EQ(unstarted.integrity.segments, 0);
+}
+
+DEFN_TEST(hud_presenter_shows_the_level_name_alone) {
+    // The HUD names the operation, it does not number it; the number carries no meaning mid-match.
+    DEFN_CHECK_EQ(HudPresenter::build({.level_name = "The Winter Forest"}).level_text, std::string("THE WINTER FOREST"));
+
+    const HudModel nameless = HudPresenter::build({});
+    DEFN_CHECK(nameless.level_text.empty());
+    DEFN_CHECK(!nameless.level_visible);
 }
 
 DEFN_TEST(menu_view_model_maps_actions_to_typed_intents_and_disabled_entries) {

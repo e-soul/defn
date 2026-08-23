@@ -27,6 +27,7 @@
 #include "health_component.h"
 #include "hitbox_component.h"
 #include "hud.h"
+#include "hud_meters.h"
 #include "menu_manager.h"
 #include "movement_component.h"
 #include "operation_dossier_view.h"
@@ -88,6 +89,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::SettingsRuntime>();
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
     ClassDB::register_internal_class<defn::ProgressionStatMeter>();
+    ClassDB::register_internal_class<defn::HudIntegrityMeter>();
     ClassDB::register_internal_class<defn::UiSfxPlayer>();
     ClassDB::register_internal_class<defn::CampaignPreviewView>();
     ClassDB::register_internal_class<defn::CampaignMapNodeView>();

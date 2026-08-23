@@ -40,11 +40,14 @@ std::vector<std::string> campaign_asset_paths(const CampaignMapDefinition &map) 
     return paths;
 }
 
-std::vector<std::string> medallion_mark_paths(const UiThemeData &theme) {
+std::vector<std::string> theme_mark_paths(const UiThemeData &theme) {
     std::vector<std::string> paths;
-    paths.reserve(theme.medallions.size());
+    paths.reserve(theme.medallions.size() + theme.hud_icons.size());
     for (const auto &[name, medallion] : theme.medallions) {
         paths.push_back(medallion.mark);
+    }
+    for (const auto &[name, hud_icon] : theme.hud_icons) {
+        paths.push_back(hud_icon.mark);
     }
     return paths;
 }
@@ -86,7 +89,7 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
     if (!content.ui_theme.has_value()) {
         content.load_issues.emplace_back("failed to load ui_theme.json");
     } else {
-        content.missing_ui_theme_assets = missing_resources(medallion_mark_paths(*content.ui_theme));
+        content.missing_ui_theme_assets = missing_resources(theme_mark_paths(*content.ui_theme));
     }
 
     content.music_playlist = MusicPlaylistLoader::load(paths_.music_playlist_path);

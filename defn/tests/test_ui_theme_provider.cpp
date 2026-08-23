@@ -42,6 +42,15 @@ void check_shipped_medallion(const UiThemeData &theme, const char *state) {
     DEFN_CHECK(ResourceLoader::get_singleton()->exists(to_godot_string(medallion->mark)));
 }
 
+/// Same contract for the HUD instruments: a missing SVG would show as an empty rect over the battlefield.
+void check_shipped_hud_icon(const UiThemeData &theme, const char *key) {
+    const UiMedallionStyle *hud_icon = theme.find_hud_icon(key);
+    DEFN_REQUIRE(hud_icon != nullptr);
+    DEFN_CHECK(!hud_icon->mark.empty());
+    DEFN_CHECK(ResourceLoader::get_singleton()->exists(to_godot_string(hud_icon->mark)));
+    DEFN_CHECK(theme.find_color_role(hud_icon->color_role).has_value());
+}
+
 } // namespace
 
 DEFN_TEST(ui_theme_loader_reads_the_shipped_theme_file) {
@@ -52,6 +61,9 @@ DEFN_TEST(ui_theme_loader_reads_the_shipped_theme_file) {
     DEFN_CHECK(theme->find_text_style("screen_title") != nullptr);
     for (const char *state : {"available", "completed", "frontier", "locked"}) {
         check_shipped_medallion(*theme, state);
+    }
+    for (const char *key : {"energy", "integrity", "level", "score", "wave"}) {
+        check_shipped_hud_icon(*theme, key);
     }
     DEFN_CHECK(!theme->sfx.hover.path.empty());
     DEFN_CHECK(!theme->sfx.click.path.empty());
@@ -67,6 +79,7 @@ DEFN_TEST(ui_theme_loader_returns_defaults_for_an_empty_dictionary) {
     DEFN_CHECK(theme.buttons.empty());
     DEFN_CHECK(theme.text_styles.empty());
     DEFN_CHECK(theme.medallions.empty());
+    DEFN_CHECK(theme.hud_icons.empty());
 }
 
 DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
@@ -99,6 +112,12 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     Dictionary medallions;
     medallions["completed"] = medallion;
 
+    Dictionary hud_icon;
+    hud_icon["mark"] = "res://assets/ui/hud/bolt.svg";
+    hud_icon["color"] = "energy";
+    Dictionary hud_icons;
+    hud_icons["energy"] = hud_icon;
+
     Dictionary metrics;
     metrics["custom_width"] = 321;
 
@@ -108,6 +127,7 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     data["surfaces"] = surfaces;
     data["buttons"] = buttons;
     data["medallions"] = medallions;
+    data["hud_icons"] = hud_icons;
     data["metrics"] = metrics;
 
     const UiThemeData theme = UiThemeLoader::load_from_data(data);
@@ -131,6 +151,11 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     DEFN_REQUIRE(completed != nullptr);
     DEFN_CHECK_EQ(completed->mark, std::string("res://assets/ui/medallions/check.svg"));
     DEFN_CHECK_EQ(completed->color_role, std::string("accent"));
+
+    const UiMedallionStyle *energy = theme.find_hud_icon("energy");
+    DEFN_REQUIRE(energy != nullptr);
+    DEFN_CHECK_EQ(energy->mark, std::string("res://assets/ui/hud/bolt.svg"));
+    DEFN_CHECK_EQ(energy->color_role, std::string("energy"));
 
     DEFN_CHECK_EQ(theme.metric("custom_width"), 321);
 }

@@ -131,7 +131,8 @@ struct UiTextStyle {
     std::string outline_role;
 };
 
-/// A campaign map node state: which mark texture sits in the medallion and the accent colour the whole node adopts.
+/// A tinted vector mark inside a round plate: the SVG texture and the palette role it is modulated with.
+/// Shared by the campaign map node states and the HUD instrument icons.
 struct UiMedallionStyle {
     std::string mark;
     std::string color_role = "text_primary";
@@ -157,6 +158,7 @@ struct UiThemeData {
     std::map<std::string, UiButtonVariant, std::less<>> buttons;
     std::map<std::string, UiTextStyle, std::less<>> text_styles;
     std::map<std::string, UiMedallionStyle, std::less<>> medallions;
+    std::map<std::string, UiMedallionStyle, std::less<>> hud_icons;
     std::map<std::string, int, std::less<>> metrics;
     UiScreenStyle screen;
     UiSfxData sfx;
@@ -165,6 +167,7 @@ struct UiThemeData {
     [[nodiscard]] const UiButtonVariant *find_button(std::string_view name) const;
     [[nodiscard]] const UiTextStyle *find_text_style(std::string_view name) const;
     [[nodiscard]] const UiMedallionStyle *find_medallion(std::string_view name) const;
+    [[nodiscard]] const UiMedallionStyle *find_hud_icon(std::string_view name) const;
     [[nodiscard]] int metric(std::string_view name, int fallback = 0) const;
     [[nodiscard]] std::optional<Color> find_color_role(std::string_view role) const;
     [[nodiscard]] std::optional<int> find_font_size_role(std::string_view role) const;

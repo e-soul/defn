@@ -80,6 +80,9 @@ UiThemeData make_valid_ui_theme() {
     theme.medallions["completed"] = {.mark = "res://mark.svg", .color_role = "text_primary"};
     theme.medallions["frontier"] = {.mark = "res://mark.svg", .color_role = "accent"};
     theme.medallions["locked"] = {.mark = "res://mark.svg", .color_role = "text_secondary"};
+    for (const char *hud_icon : {"energy", "integrity", "level", "score", "wave"}) {
+        theme.hud_icons[hud_icon] = {.mark = "res://mark.svg", .color_role = "accent"};
+    }
     theme.screen = {.backdrop_role = "overlay_scrim",
                     .title_text_style = "screen_title",
                     .subtitle_text_style = "secondary",
@@ -225,6 +228,23 @@ DEFN_TEST(content_validator_reports_medallion_gaps_and_missing_marks) {
     DEFN_CHECK(contains_issue(report, "medallion 'locked' is missing a mark"));
     DEFN_CHECK(contains_issue(report, "unknown color role 'ghost_medallion_color'"));
     DEFN_CHECK(contains_issue(report, "ui_theme.json resource does not exist: 'res://assets/ui/medallions/gone.svg'"));
+}
+
+DEFN_TEST(content_validator_reports_hud_icon_gaps_and_missing_marks) {
+    FakeUnitCatalog units;
+    ContentValidationInput input = make_valid_input(units);
+    UiThemeData theme = make_valid_ui_theme();
+    theme.hud_icons.erase("integrity");
+    theme.hud_icons["energy"] = {.mark = "", .color_role = "ghost_energy_color"};
+    input.ui_theme = theme;
+    input.missing_ui_theme_assets = {"res://assets/ui/hud/gone.svg"};
+
+    const ContentValidationReport report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(!report.is_valid());
+    DEFN_CHECK(contains_issue(report, "missing required hud icon 'integrity'"));
+    DEFN_CHECK(contains_issue(report, "hud icon 'energy' is missing a mark"));
+    DEFN_CHECK(contains_issue(report, "unknown color role 'ghost_energy_color'"));
+    DEFN_CHECK(contains_issue(report, "ui_theme.json resource does not exist: 'res://assets/ui/hud/gone.svg'"));
 }
 
 DEFN_TEST(content_validator_reports_unknown_ui_theme_roles) {

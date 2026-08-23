@@ -5,6 +5,7 @@
 #define CAMPAIGN_MAP_NODE_VIEW_H
 
 #include "campaign_map_view_model.h"
+#include "icon_medallion.h"
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
@@ -41,8 +42,7 @@ class CampaignMapNodeView : public godot::Control {
     godot::Panel *selection_ring_ = nullptr;
     godot::Panel *frame_ = nullptr;
     CampaignPreviewView *preview_ = nullptr;
-    godot::Panel *medallion_ = nullptr;
-    godot::TextureRect *medallion_mark_ = nullptr;
+    IconMedallionNodes medallion_;
     godot::Button *interaction_ = nullptr;
 };
 

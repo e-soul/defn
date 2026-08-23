@@ -172,11 +172,10 @@ void GameManager::_ready() {
     add_child(hud);
 
     hud->set_friendly_units(match_director_.build_available_friendlies());
-    hud->set_level(match_director_.get_level_number(), to_godot_string(match_director_.get_level_name()));
+    hud->set_level(to_godot_string(match_director_.get_level_name()));
     hud->update_core_resource(match_director_.get_core_resource());
     hud->update_wave(1, match_director_.get_total_waves());
-    hud->update_hearts(match_director_.get_base_integrity());
-    hud->update_card_affordability(match_director_.get_core_resource());
+    hud->update_integrity(match_director_.get_base_health(), match_director_.get_base_max_health());
     hud->update_score(0);
     hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
     hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
@@ -409,15 +408,6 @@ Unit *GameManager::materialize_spawn_intent(const SpawnUnitIntent &intent) {
     return UnitFactory::materialize(intent, *config, unit_data_.get_globals().field_promotion);
 }
 
-void GameManager::refresh_resource_ui(int energy) {
-    if (hud == nullptr) {
-        return;
-    }
-
-    hud->update_core_resource(energy);
-    hud->update_card_affordability(energy);
-}
-
 void GameManager::setup_match_result_cutscene_timer() {
     if (match_result_cutscene_timer_ != nullptr) {
         return;
@@ -457,10 +447,10 @@ void GameManager::apply_match_update(const MatchUpdate &update) {
             hud->update_wave(update.wave_changed->current_wave, update.wave_changed->total_waves);
         }
         if (update.resource_changed.has_value()) {
-            refresh_resource_ui(update.resource_changed->energy);
+            hud->update_core_resource(update.resource_changed->energy);
         }
         if (update.integrity_changed.has_value()) {
-            hud->update_hearts(update.integrity_changed->hearts);
+            hud->update_integrity(update.integrity_changed->health, update.integrity_changed->max_health);
         }
         if (update.score_changed.has_value()) {
             hud->update_score(update.score_changed->kill_score);

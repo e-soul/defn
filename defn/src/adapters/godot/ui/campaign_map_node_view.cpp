@@ -5,10 +5,10 @@
 
 #include "campaign_preview_view.h"
 #include "godot_string.h"
+#include "icon_medallion.h"
 #include "ui_theme_provider.h"
 
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/style_box_empty.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -36,13 +36,6 @@ std::string_view state_key(CampaignNodeState state) {
     return "locked";
 }
 
-Ref<Texture2D> mark_texture(const std::string &mark) {
-    if (mark.empty()) {
-        return {};
-    }
-    return ResourceLoader::get_singleton()->load(to_godot_string(mark));
-}
-
 real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
 
 Ref<StyleBoxFlat> frame_style(const GColor &border, bool selected) {
@@ -56,12 +49,6 @@ Ref<StyleBoxFlat> outline_style(const GColor &color, int width) {
     Ref<StyleBoxFlat> style = UiThemeProvider::surface("outline");
     style->set_border_color(color);
     style->set_border_width_all(width);
-    return style;
-}
-
-Ref<StyleBoxFlat> medallion_style_box(const GColor &border) {
-    Ref<StyleBoxFlat> style = UiThemeProvider::surface("medallion");
-    style->set_border_color(border);
     return style;
 }
 
@@ -93,20 +80,10 @@ CampaignMapNodeView::CampaignMapNodeView() {
     preview_->set_size({156.0F, 108.0F});
     frame_->add_child(preview_);
 
-    medallion_ = memnew(Panel);
-    medallion_->set_name("StateMedallion");
-    medallion_->set_mouse_filter(MOUSE_FILTER_IGNORE);
-    add_child(medallion_);
-
-    // The mark fills the whole medallion rect; its inset is baked into the SVG viewBox, so it stays centred at any scale.
-    medallion_mark_ = memnew(TextureRect);
-    medallion_mark_->set_name("StateMark");
-    medallion_mark_->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
-    medallion_mark_->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
-    medallion_mark_->set_stretch_mode(TextureRect::STRETCH_SCALE);
-    medallion_mark_->set_texture_filter(CanvasItem::TEXTURE_FILTER_LINEAR_WITH_MIPMAPS);
-    medallion_mark_->set_mouse_filter(MOUSE_FILTER_IGNORE);
-    medallion_->add_child(medallion_mark_);
+    medallion_ = make_icon_medallion(metric("medallion_size", 38));
+    medallion_.plate->set_name("StateMedallion");
+    medallion_.mark->set_name("StateMark");
+    add_child(medallion_.plate);
 
     interaction_ = memnew(Button);
     interaction_->set_name("Interaction");
@@ -162,20 +139,13 @@ void CampaignMapNodeView::on_gui_input(const Ref<InputEvent> &event) {
 void CampaignMapNodeView::on_pressed() { emit_signal("selected", to_godot_string(mission_.level_id)); }
 
 void CampaignMapNodeView::update_style() {
-    // A theme without an entry for this state must not borrow another state's colour, so fall back to the neutral model default.
-    static const UiMedallionStyle unstyled;
-    const UiMedallionStyle *found = UiThemeProvider::data().find_medallion(state_key(mission_.state));
-    const UiMedallionStyle &medallion = found != nullptr ? *found : unstyled;
+    const UiMedallionStyle &medallion = theme_medallion(state_key(mission_.state));
     const GColor color = UiThemeProvider::color(medallion.color_role);
     frame_->add_theme_stylebox_override("panel", frame_style(color, selected_));
     selection_ring_->add_theme_stylebox_override("panel", outline_style(color, UiThemeProvider::shape("border_width")));
     selection_ring_->set_visible(selected_);
-    const real_t medallion_size = metric("medallion_size", 38);
-    medallion_->set_position({metric("medallion_offset_x", -5), metric("medallion_offset_y", -4)});
-    medallion_->set_size({medallion_size, medallion_size});
-    medallion_->add_theme_stylebox_override("panel", medallion_style_box(color));
-    medallion_mark_->set_texture(mark_texture(medallion.mark));
-    medallion_mark_->set_modulate(color);
+    medallion_.plate->set_position({metric("medallion_offset_x", -5), metric("medallion_offset_y", -4)});
+    apply_icon_medallion(medallion_, medallion, color);
     preview_->set_modulate(mission_.state == CampaignNodeState::LOCKED ? UiThemeProvider::color("locked_tint") : GColor(1, 1, 1, 1));
 }
 

@@ -221,6 +221,7 @@ UiThemeData UiThemeLoader::load_from_data(const Dictionary &data) {
     parse_named_entries(data.get("buttons", Dictionary()), theme.buttons, parse_button);
     parse_named_entries(data.get("text_styles", Dictionary()), theme.text_styles, parse_text_style);
     parse_named_entries(data.get("medallions", Dictionary()), theme.medallions, parse_medallion);
+    parse_named_entries(data.get("hud_icons", Dictionary()), theme.hud_icons, parse_medallion);
     const Dictionary metrics = data.get("metrics", Dictionary());
     for (const Variant &name_variant : Array(metrics.keys())) {
         const String name = name_variant;

@@ -62,7 +62,6 @@ class GameManager : public Node2D {
     Unit *materialize_spawn_intent(const SpawnUnitIntent &intent);
     void add_friendly_unit(Unit *unit);
     void add_enemy_unit(Unit *unit);
-    void refresh_resource_ui(int energy);
     void apply_match_update(const MatchUpdate &update);
     void setup_match_result_cutscene_timer();
     void setup_match_result_reveal_timer();

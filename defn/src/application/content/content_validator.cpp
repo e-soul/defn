@@ -275,6 +275,21 @@ void validate_ui_theme(const UiThemeData &theme, const std::vector<std::string> 
         }
     }
 
+    static const std::array<std::string, 5> required_hud_icons = {"energy", "integrity", "level", "score", "wave"};
+    for (const std::string &required_hud_icon : required_hud_icons) {
+        if (theme.find_hud_icon(required_hud_icon) == nullptr) {
+            push_issue(issues, "ui_theme.json missing required hud icon " + quoted(required_hud_icon));
+        }
+    }
+
+    for (const auto &[name, hud_icon] : theme.hud_icons) {
+        const std::string owner = "hud icon " + quoted(name);
+        require_color_role(theme, hud_icon.color_role, owner, issues);
+        if (hud_icon.mark.empty()) {
+            push_issue(issues, "ui_theme.json " + owner + " is missing a mark");
+        }
+    }
+
     for (const std::string &asset : missing_assets) {
         push_issue(issues, "ui_theme.json resource does not exist: " + quoted(asset));
     }

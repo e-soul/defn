@@ -4,6 +4,7 @@
 #include "progression_stat_meter.h"
 
 #include "godot_string.h"
+#include "meter_geometry.h"
 #include "ui_theme_provider.h"
 
 #include <godot_cpp/classes/global_constants.hpp>
@@ -25,35 +26,13 @@ namespace {
 
 constexpr float ICON_WIDTH = 30.0F;
 constexpr float SEGMENT_GAP = 5.0F;
-constexpr float SEGMENT_SLOPE = 5.0F;
+constexpr float OUTLINE_WIDTH = 1.5F;
 
 godot::Color tier_color(int tier, bool neutral) {
     const std::array<const char *, 4> neutral_roles = {"meter_neutral_0", "meter_neutral_1", "meter_neutral_2", "meter_neutral_3"};
     const std::array<const char *, 4> power_roles = {"meter_power_0", "meter_power_1", "meter_power_2", "meter_power_3"};
     const auto &roles = neutral ? neutral_roles : power_roles;
     return UiThemeProvider::color(roles[std::min(static_cast<std::size_t>(std::max(tier, 0)), roles.size() - 1)]);
-}
-
-godot::PackedVector2Array segment_polygon(float left, float top, float width, float height) {
-    godot::PackedVector2Array polygon;
-    polygon.push_back({left + SEGMENT_SLOPE, top});
-    polygon.push_back({left + width, top});
-    polygon.push_back({left + width - SEGMENT_SLOPE, top + height});
-    polygon.push_back({left, top + height});
-    return polygon;
-}
-
-godot::PackedVector2Array partial_segment_polygon(float left, float top, float width, float height, double fraction) {
-    const float right = left + std::max(0.0F, width * static_cast<float>(std::clamp(fraction, 0.0, 1.0)));
-    if (fraction >= 1.0) {
-        return segment_polygon(left, top, width, height);
-    }
-    godot::PackedVector2Array polygon;
-    polygon.push_back({left + std::min(SEGMENT_SLOPE, right - left), top});
-    polygon.push_back({right, top});
-    polygon.push_back({right, top + height});
-    polygon.push_back({left, top + height});
-    return polygon;
 }
 
 void draw_icon(ProgressionStatMeter &meter, ProgressionStatIcon icon, const godot::Color &color, float center_y) {
@@ -167,8 +146,7 @@ void ProgressionStatMeter::_draw() {
             draw_colored_polygon(partial_segment_polygon(left, top, segment_width, height, segment.promotion_fraction),
                                  tier_color(segment.promoted_tier, neutral));
         }
-        draw_polyline(outline, outline_color, 1.5F, true);
-        draw_line(outline[3], outline[0], outline_color, 1.5F, true);
+        draw_segment_outline(*this, outline, outline_color, OUTLINE_WIDTH);
 
         const int visible_tier = segment.promotion_fraction > 0.35 ? segment.promoted_tier : segment.foundation_tier;
         const int mark_count = std::clamp(visible_tier, 0, 4);

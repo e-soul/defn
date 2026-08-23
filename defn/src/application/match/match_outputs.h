@@ -34,7 +34,8 @@ struct ResourceChanged {
 };
 
 struct IntegrityChanged {
-    int hearts = 0;
+    int health = 0;
+    int max_health = 0;
 };
 
 struct WaveChanged {

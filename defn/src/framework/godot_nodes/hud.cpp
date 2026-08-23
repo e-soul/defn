@@ -9,13 +9,128 @@
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
+#include <algorithm>
 #include <godot_cpp/classes/box_container.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
-#include <utility>
 
 namespace defn {
+
+namespace {
+
+real_t metric(const char *name, int fallback) { return static_cast<real_t>(UiThemeProvider::data().metric(name, fallback)); }
+
+/// The palette role each integrity band adopts. Both the shield tint and the meter fill read from here, so the
+/// two never disagree about how badly the base is hurt.
+std::string_view integrity_color_role(IntegrityTier tier) {
+    switch (tier) {
+    case IntegrityTier::INTACT:
+        return "state_success";
+    case IntegrityTier::DAMAGED:
+        return "state_warning";
+    case IntegrityTier::CRITICAL:
+        return "integrity_critical";
+    }
+    return "state_success";
+}
+
+/// Mixed type sizes have no shared baseline inside a BoxContainer, so each part of a readout row is centred
+/// against the row instead of resting wherever its own height leaves it.
+Label *make_row_label(const String &text, std::string_view text_style) {
+    Label *label = make_label(text, text_style);
+    label->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
+    return label;
+}
+
+/// One reading: a medallion followed by its label and value. The medallion comes back with the row because the
+/// integrity reading re-tints its own as the base takes damage.
+struct ReadoutGroup {
+    HBoxContainer *row = nullptr;
+    IconMedallionNodes medallion;
+};
+
+/// Every icon on the bar is the same object: a medallion at `hud_icon_size`, tinted from its `hud_icons` entry.
+/// Sharing one construction is what makes the three plates read as one instrument row. Parts sit close together
+/// so the group reads as a unit against the wider gaps separating it from its neighbours.
+ReadoutGroup make_readout_group(std::string_view icon_key) {
+    ReadoutGroup group;
+
+    group.row = memnew(HBoxContainer);
+    group.row->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
+    group.row->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
+
+    group.medallion = make_icon_medallion(metric("hud_icon_size", 38));
+    group.medallion.plate->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
+    const UiMedallionStyle &style = theme_hud_icon(icon_key);
+    apply_icon_medallion(group.medallion, style, UiThemeProvider::color(style.color_role));
+    group.row->add_child(group.medallion.plate);
+
+    return group;
+}
+
+/// The reserved digit floor every plain numeric readout starts from.
+int value_digit_floor() { return UiThemeProvider::data().metric("hud_min_value_digits", 3); }
+
+/// How far a plate sits from the edge it is anchored to, and which way it grows from there. Deriving both from
+/// the preset is what keeps a right-anchored plate from ever being told to grow rightwards off the screen.
+struct PodAnchor {
+    real_t left;
+    Control::GrowDirection horizontal;
+};
+
+PodAnchor pod_anchor(Control::LayoutPreset preset) {
+    const real_t margin = metric("hud_margin", 24);
+    switch (preset) {
+    case Control::PRESET_TOP_LEFT:
+        return {.left = margin, .horizontal = Control::GROW_DIRECTION_END};
+    case Control::PRESET_TOP_RIGHT:
+        return {.left = -margin, .horizontal = Control::GROW_DIRECTION_BEGIN};
+    default:
+        return {.left = 0.0F, .horizontal = Control::GROW_DIRECTION_BOTH};
+    }
+}
+
+/// Anchors a plate so it grows from its own corner: the rect stays zero-width and Godot clamps it up to the
+/// content's minimum size, which is what stops neighbours from shifting when a digit is added. The floor on
+/// height is what keeps all three plates level with each other however much each one carries.
+void anchor_pod(Control *pod, Control::LayoutPreset preset) {
+    const PodAnchor anchor = pod_anchor(preset);
+    const real_t top = metric("hud_margin", 24);
+
+    pod->set_custom_minimum_size({0.0F, metric("hud_plate_height", 64)});
+    pod->set_anchors_preset(preset);
+    pod->set_h_grow_direction(anchor.horizontal);
+    pod->set_v_grow_direction(Control::GROW_DIRECTION_END);
+    pod->set_offset(Side::SIDE_LEFT, anchor.left);
+    pod->set_offset(Side::SIDE_RIGHT, anchor.left);
+    pod->set_offset(Side::SIDE_TOP, top);
+    pod->set_offset(Side::SIDE_BOTTOM, top);
+    pod->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
+}
+
+} // namespace
+
+void HudValueLabel::set_value(const String &text) {
+    label->set_text(text);
+
+    const int digits = std::max(floor_digits, static_cast<int>(text.length()));
+    const Ref<Font> font = label->get_theme_font("font");
+    if (digits <= reserved_digits || font.is_null()) {
+        return;
+    }
+    reserved_digits = digits;
+
+    // Measured from a repeated zero rather than the live text, so two values with the same digit count always
+    // reserve the same width even in a font whose digits are not uniform.
+    String sample;
+    for (int index = 0; index < digits; ++index) {
+        sample += "0";
+    }
+
+    const float needed = font->get_string_size(sample, HORIZONTAL_ALIGNMENT_LEFT, -1, label->get_theme_font_size("font_size")).x;
+    const godot::Vector2 reserved = label->get_custom_minimum_size();
+    label->set_custom_minimum_size({std::max(reserved.x, needed), reserved.y});
+}
 
 HUD::HUD() = default;
 
@@ -37,50 +152,9 @@ void HUD::_ready() {
 }
 
 void HUD::build_ui() {
-    // ==========================================================
-    // Top bar
-    // ==========================================================
-    auto *top_bar = memnew(HBoxContainer);
-    top_bar->set_anchors_preset(Control::PRESET_TOP_WIDE);
-    top_bar->set_offset(Side::SIDE_LEFT, 16.0);
-    top_bar->set_offset(Side::SIDE_RIGHT, -16.0);
-    top_bar->set_offset(Side::SIDE_TOP, 8.0);
-    top_bar->set_offset(Side::SIDE_BOTTOM, 56.0);
-    top_bar->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    add_child(top_bar);
-
-    // Energy label (left)
-    core_resource_label = make_label(String::utf8("\u26A1 Energy: 100"), "hud_resource");
-    core_resource_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    top_bar->add_child(core_resource_label);
-
-    // Score label
-    score_label = make_label("Score: 0", "hud_score");
-    score_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    score_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    top_bar->add_child(score_label);
-
-    // Wave label (center)
-    wave_label = make_label("WAVE 1 / 3", "hud_wave");
-    wave_label->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    wave_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    top_bar->add_child(wave_label);
-
-    // Hearts container (right)
-    hearts_container = memnew(HBoxContainer);
-    hearts_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    hearts_container->set_alignment(BoxContainer::ALIGNMENT_END);
-    top_bar->add_child(hearts_container);
-    ensure_heart_icons(3);
-
-    level_label = make_label("LEVEL", "hud_level");
-    level_label->set_anchors_preset(Control::PRESET_TOP_WIDE);
-    level_label->set_offset(Side::SIDE_LEFT, 16.0);
-    level_label->set_offset(Side::SIDE_RIGHT, -16.0);
-    level_label->set_offset(Side::SIDE_TOP, 52.0);
-    level_label->set_offset(Side::SIDE_BOTTOM, 78.0);
-    level_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    add_child(level_label);
+    build_energy_plate();
+    build_info_plate();
+    build_integrity_plate();
 
     // ==========================================================
     // Deploy card container (bottom center)
@@ -96,7 +170,72 @@ void HUD::build_ui() {
     card_container->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
     add_child(card_container);
 
-    render(HudPresenter::build(hud_input_));
+    refresh();
+}
+
+PanelContainer *HUD::build_plate(const char *name, std::string_view surface, Control::LayoutPreset preset) {
+    auto *plate = make_surface(surface);
+    plate->set_name(name);
+    anchor_pod(plate, preset);
+    add_child(plate);
+    return plate;
+}
+
+void HUD::build_energy_plate() {
+    PanelContainer *plate = build_plate("EnergyPlate", "hud_pod", Control::PRESET_TOP_LEFT);
+
+    const ReadoutGroup group = make_readout_group("energy");
+    group.row->add_child(make_row_label("ENERGY", "hud_label"));
+    energy_value_label = {.label = make_row_label("0", "hud_value"), .floor_digits = value_digit_floor()};
+    group.row->add_child(energy_value_label.label);
+    plate->add_child(group.row);
+}
+
+void HUD::build_info_plate() {
+    PanelContainer *plate = build_plate("InfoPlate", "hud_tag", Control::PRESET_CENTER_TOP);
+
+    // Level, wave and score sit on one line; the wide gap between groups is what keeps them legible as
+    // three separate readings rather than one run-on string.
+    auto *row = memnew(HBoxContainer);
+    row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    row->add_theme_constant_override("separation", UiThemeProvider::spacing("xl"));
+    plate->add_child(row);
+
+    // The level has no label: the name is the reading, and the flag already says what kind of reading it is.
+    level_group = make_readout_group("level").row;
+    level_group->set_name("LevelGroup");
+    level_label = make_row_label("", "hud_level");
+    level_group->add_child(level_label);
+    row->add_child(level_group);
+
+    const ReadoutGroup wave_group = make_readout_group("wave");
+    wave_group.row->add_child(make_row_label("WAVE", "hud_label"));
+    // A wave counter has no floor worth reserving: it starts at one digit and only ever widens if a level runs long.
+    wave_current_label = {.label = make_row_label("1", "hud_wave")};
+    wave_group.row->add_child(wave_current_label.label);
+    wave_total_label = make_row_label("/ 3", "hud_wave_total");
+    wave_group.row->add_child(wave_total_label);
+    row->add_child(wave_group.row);
+
+    const ReadoutGroup score_group = make_readout_group("score");
+    score_group.row->add_child(make_row_label("SCORE", "hud_label"));
+    score_label = {.label = make_row_label("0", "hud_score"), .floor_digits = value_digit_floor()};
+    score_group.row->add_child(score_label.label);
+    row->add_child(score_group.row);
+}
+
+void HUD::build_integrity_plate() {
+    PanelContainer *plate = build_plate("IntegrityPlate", "hud_pod", Control::PRESET_TOP_RIGHT);
+
+    const ReadoutGroup group = make_readout_group("integrity");
+    integrity_medallion = group.medallion;
+    integrity_medallion.plate->set_name("IntegrityMedallion");
+    group.row->add_child(make_row_label("INTEGRITY", "hud_label"));
+
+    integrity_meter = memnew(HudIntegrityMeter);
+    integrity_meter->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
+    group.row->add_child(integrity_meter);
+    plate->add_child(group.row);
 }
 
 void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
@@ -106,36 +245,45 @@ void HUD::set_friendly_units(const std::vector<UnitConfig> &units) {
         hud_input_.deploy_cards.push_back(build_deploy_card_presentation_input(cfg));
     }
 
-    render(HudPresenter::build(hud_input_));
+    refresh();
 }
 
-void HUD::set_level(int level_number, const String &level_name) {
-    hud_input_.level_number = level_number;
+void HUD::set_level(const String &level_name) {
     hud_input_.level_name = level_name.utf8().get_data();
-    render(HudPresenter::build(hud_input_));
+    refresh();
+}
+
+void HUD::refresh() {
+    // The readouts are built together in `build_ui`, so one check stands in for all of them and keeps every
+    // render path free of per-node guards.
+    if (card_container != nullptr) {
+        render(HudPresenter::build(hud_input_));
+    }
 }
 
 void HUD::render(const HudModel &model) {
-    if (core_resource_label != nullptr) {
-        core_resource_label->set_text(to_godot_string(model.energy_text));
-    }
-    if (score_label != nullptr) {
-        score_label->set_text(to_godot_string(model.score_text));
-    }
-    if (wave_label != nullptr) {
-        wave_label->set_text(to_godot_string(model.wave_text));
-    }
-    if (level_label != nullptr) {
-        level_label->set_text(to_godot_string(model.level_text));
-        level_label->set_visible(model.level_visible);
-    }
+    energy_value_label.set_value(to_godot_string(model.energy_text));
+    wave_current_label.set_value(to_godot_string(model.wave.current_text));
+    score_label.set_value(to_godot_string(model.score_text));
+    wave_total_label->set_text(to_godot_string(model.wave.total_text));
 
-    ensure_heart_icons(model.visible_hearts);
-    for (int i = 0; std::cmp_less(i, heart_icons.size()); ++i) {
-        heart_icons[i]->set_visible(i < model.visible_hearts);
-    }
+    level_label->set_text(to_godot_string(model.level_text));
+    level_group->set_visible(model.level_visible);
 
+    render_integrity(model.integrity);
     render_deploy_cards(model.deploy_cards);
+}
+
+void HUD::render_integrity(const HudIntegrityModel &integrity) {
+    const godot::Color color = UiThemeProvider::color(integrity_color_role(integrity.tier));
+
+    // Re-tinting the shield rebuilds a style box and reloads its mark, so it only happens when the band actually
+    // changes; the meter itself takes every reading and decides for itself whether it has to redraw.
+    if (integrity_tier != integrity.tier) {
+        integrity_tier = integrity.tier;
+        apply_icon_medallion(integrity_medallion, theme_hud_icon("integrity"), color);
+    }
+    integrity_meter->configure(integrity, color);
 }
 
 void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
@@ -162,13 +310,14 @@ void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
         }
     }
 
+    // Affordability is recomputed on every energy tick, but restyling a card is only worth it when it flips.
     for (size_t index = 0; index < cards.size(); ++index) {
-        Button *button = deploy_cards[index].button;
-        if (button == nullptr) {
+        DeployCardUI &card = deploy_cards[index];
+        if (card.button == nullptr || card.enabled == cards[index].enabled) {
             continue;
         }
-        const bool enabled = cards[index].enabled;
-        apply_enabled(button, enabled);
+        card.enabled = cards[index].enabled;
+        apply_enabled(card.button, *card.enabled);
     }
 }
 
@@ -183,44 +332,28 @@ void HUD::clear_deploy_cards() {
     deploy_cards.clear();
 }
 
-void HUD::ensure_heart_icons(int count) {
-    if (hearts_container == nullptr) {
-        return;
-    }
-
-    while (std::cmp_less(heart_icons.size(), count)) {
-        auto *heart = make_label(String::utf8("\u2665"), "hud_heart");
-        hearts_container->add_child(heart);
-        heart_icons.push_back(heart);
-    }
-}
-
 void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_requested", unit_type); }
 
 void HUD::update_core_resource(int value) {
     hud_input_.energy = value;
-    render(HudPresenter::build(hud_input_));
+    refresh();
 }
 
 void HUD::update_wave(int current, int total) {
     hud_input_.current_wave = current;
     hud_input_.total_waves = total;
-    render(HudPresenter::build(hud_input_));
+    refresh();
 }
 
-void HUD::update_hearts(int integrity) {
-    hud_input_.hearts = integrity;
-    render(HudPresenter::build(hud_input_));
-}
-
-void HUD::update_card_affordability(int energy) {
-    hud_input_.energy = energy;
-    render(HudPresenter::build(hud_input_));
+void HUD::update_integrity(int health, int max_health) {
+    hud_input_.base_health = health;
+    hud_input_.base_max_health = max_health;
+    refresh();
 }
 
 void HUD::update_score(int score) {
     hud_input_.score = score;
-    render(HudPresenter::build(hud_input_));
+    refresh();
 }
 
 void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {

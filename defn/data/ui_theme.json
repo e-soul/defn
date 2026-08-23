@@ -19,6 +19,7 @@
         "state_danger":   [1.000, 0.200, 0.200, 1.0],
         "state_locked":   [0.349, 0.392, 0.424, 1.0],
         "energy":         [0.300, 0.700, 1.000, 1.0],
+        "integrity_critical": [1.000, 0.500, 0.500, 1.0],
         "victory":        [0.200, 1.000, 0.300, 1.0],
         "defeat":         [1.000, 0.200, 0.200, 1.0],
         "overlay_victory":[0.030, 0.120, 0.080, 0.42],
@@ -76,6 +77,9 @@
         "card_copy":     [0.820, 0.850, 0.900, 1.0],
         "option_label":  [0.850, 0.850, 0.900, 1.0],
         "option_value":  [0.700, 0.800, 1.000, 1.0],
+        "hud_plate":      [0.039, 0.047, 0.086, 0.82],
+        "hud_edge":       [0.588, 0.651, 0.824, 0.45],
+        "hud_ink":        [0.020, 0.027, 0.055, 0.90],
         "transparent":    [0.000, 0.000, 0.000, 0.0]
     },
     "typography": {
@@ -115,6 +119,8 @@
         "chip":      { "bg": "button_normal",  "border": "border",        "shape": "corner_sm", "content_margin": "xs" },
         "map_node":  { "bg": "card_normal",    "border": "border",        "shape": "corner_md", "shadow_size": 8, "shadow": "surface_sunken" },
         "medallion": { "bg": "surface_sunken", "border": "border_strong", "shape": "corner_pill", "shadow_size": 5, "shadow": "surface_sunken" },
+        "hud_pod":   { "bg": "hud_plate",     "border": "hud_edge",      "shape": "corner_lg", "content_margin": "sm", "shadow_size": 6, "shadow": "surface_sunken" },
+        "hud_tag":   { "bg": "hud_plate",     "border": "hud_edge",      "shape": "corner_lg", "content_margin": "md", "shadow_size": 6, "shadow": "surface_sunken" },
         "outline":   { "bg": "transparent",    "border": "border",        "shape": "corner_md" },
         "backplate": { "bg": "surface_sunken", "border": "transparent",   "shape": "corner_sm", "border_width": "border_width" },
         "dossier":   { "bg": "surface",        "border": "border",        "shape": "corner_lg", "content_margin": "section_gap" }
@@ -138,11 +144,12 @@
         "stat_value":     { "font_size": "subheading",  "color": "text_primary" },
         "stat_name":      { "font_size": "micro",       "color": "text_muted" },
         "banner":         { "font_size": "banner",      "color": "text_primary", "outline_size": 6, "outline": "surface_sunken" },
-        "hud_resource":   { "font_size": "heading",     "color": "accent_strong" },
-        "hud_score":      { "font_size": "heading",     "color": "accent" },
-        "hud_wave":       { "font_size": "heading",     "color": "text_primary" },
-        "hud_level":      { "font_size": "subheading",  "color": "text_secondary" },
-        "hud_heart":      { "font_size": "title",       "color": "state_danger" },
+        "hud_value":      { "font_size": "title",       "color": "text_primary",   "outline_size": 4, "outline": "hud_ink" },
+        "hud_wave":       { "font_size": "stat",        "color": "accent",         "outline_size": 4, "outline": "hud_ink" },
+        "hud_wave_total": { "font_size": "caption",     "color": "text_muted",     "outline_size": 3, "outline": "hud_ink" },
+        "hud_label":      { "font_size": "micro",       "color": "text_muted",     "outline_size": 3, "outline": "hud_ink" },
+        "hud_level":      { "font_size": "stat",        "color": "text_secondary", "outline_size": 4, "outline": "hud_ink" },
+        "hud_score":      { "font_size": "stat",        "color": "text_secondary", "outline_size": 4, "outline": "hud_ink" },
         "entity_name":    { "font_size": "section",     "color": "accent" },
         "portrait_fallback": { "font_size": "banner",   "color": "text_secondary" },
         "subsection":     { "font_size": "body",        "color": "accent" },
@@ -163,6 +170,13 @@
         "available": { "mark": "res://assets/ui/medallions/diamond_hollow.svg", "color": "accent" },
         "frontier":  { "mark": "res://assets/ui/medallions/diamond.svg",        "color": "accent" },
         "locked":    { "mark": "res://assets/ui/medallions/lock.svg",           "color": "state_locked" }
+    },
+    "hud_icons": {
+        "energy":       { "mark": "res://assets/ui/hud/bolt.svg",                  "color": "energy" },
+        "wave":         { "mark": "res://assets/ui/hud/wave.svg",                  "color": "accent" },
+        "integrity":    { "mark": "res://assets/ui/hud/shield.svg",                "color": "state_success" },
+        "level":        { "mark": "res://assets/ui/hud/flag.svg",                  "color": "text_muted" },
+        "score":        { "mark": "res://assets/ui/hud/star.svg",                  "color": "accent" }
     },
     "buttons": {
         "menu": {
@@ -275,6 +289,14 @@
         "medallion_size": 38,
         "medallion_offset_x": -5,
         "medallion_offset_y": -4,
+        "meter_segment_slope": 5,
+        "hud_margin": 24,
+        "hud_plate_height": 64,
+        "hud_icon_size": 38,
+        "hud_segment_width": 26,
+        "hud_segment_height": 15,
+        "hud_segment_outline_width": 1,
+        "hud_min_value_digits": 3,
         "option_label_width": 250,
         "option_value_width": 60,
         "menu_button_separation": 16,

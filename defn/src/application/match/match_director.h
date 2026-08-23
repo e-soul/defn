@@ -37,9 +37,8 @@ class MatchDirector {
 
     bool is_game_over() const { return match_session_.is_game_over(); }
     int get_core_resource() const { return match_session_.get_core_resource(); }
-    int get_base_integrity() const { return match_session_.get_base_integrity(); }
+    int get_base_health() const { return match_session_.get_base_health(); }
     int get_base_max_health() const { return match_session_.get_base_max_health(); }
-    int get_level_number() const { return spawn_scheduler_.get_level_number(); }
     const std::string &get_level_name() const { return spawn_scheduler_.get_level_name(); }
     int get_total_waves() const { return spawn_scheduler_.get_total_waves(); }
     Vector2 get_base_position_ratio() const { return spawn_scheduler_.get_base_position_ratio(); }
@@ -54,7 +53,8 @@ class MatchDirector {
   private:
     MatchUpdate finish_match(bool victory);
     MatchUpdate make_resource_update() const;
-    MatchUpdate make_hearts_update() const;
+    MatchUpdate make_integrity_update() const;
+    IntegrityChanged make_integrity_reading() const;
     MatchRewardOptions build_reward_options(const ProgressionRewardDraft &draft) const;
 
     ProgressionService *campaign_ = nullptr;

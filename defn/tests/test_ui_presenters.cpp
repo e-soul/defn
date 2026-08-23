@@ -17,6 +17,7 @@
 #include "grid_manager.h"
 #include "health_component.h"
 #include "hud.h"
+#include "hud_meters.h"
 #include "match_result_cutscene_view_model.h"
 #include "menu_manager.h"
 #include "pause_menu.h"
@@ -177,23 +178,25 @@ UnitConfig make_presenter_unit_config(const std::string &name, int cost) {
     return config;
 }
 
-bool has_node_named(Node *root, const String &name) {
+Node *find_node_named(Node *root, const String &name) {
     if (root == nullptr) {
-        return false;
+        return nullptr;
     }
     if (String(root->get_name()) == name) {
-        return true;
+        return root;
     }
 
     const int child_count = root->get_child_count();
     for (int child_index = 0; child_index < child_count; ++child_index) {
-        if (has_node_named(root->get_child(child_index), name)) {
-            return true;
+        if (Node *found = find_node_named(root->get_child(child_index), name); found != nullptr) {
+            return found;
         }
     }
 
-    return false;
+    return nullptr;
 }
+
+bool has_node_named(Node *root, const String &name) { return find_node_named(root, name) != nullptr; }
 
 bool has_all_buttons(Node *root, std::initializer_list<const char *> labels) {
     return std::ranges::all_of(labels, [root](const char *label) { return find_button_by_text(root, String(label)) != nullptr; });
@@ -279,10 +282,41 @@ bool score_screen_has_disabled_primary_actions(Node *overlay) {
            campaign_button->is_disabled();
 }
 
-bool hud_has_initial_state(HUD *hud) { return has_label_containing(hud, "Energy: 100") && has_all_labels(hud, {"Score: 0", "WAVE 1 / 3"}); }
+bool hud_has_instrument_plates(HUD *hud) {
+    return has_all_named_nodes(hud, {"EnergyPlate", "InfoPlate", "IntegrityPlate", "IntegrityMedallion", "IntegrityMeter"});
+}
 
-bool hud_has_updated_match_state(HUD *hud) {
-    return has_label_containing(hud, "Energy: 42") && has_all_labels(hud, {"Score: 125", "WAVE 2 / 5", "LEVEL 3 - Factory"});
+/// The three plates must sit level with each other, which the shared minimum height is what guarantees.
+bool hud_plates_are_level(HUD *hud) {
+    float shared = -1.0F;
+    for (const char *name : {"EnergyPlate", "InfoPlate", "IntegrityPlate"}) {
+        auto *plate = Object::cast_to<Control>(find_node_named(hud, String(name)));
+        if (plate == nullptr) {
+            return false;
+        }
+        const float height = plate->get_combined_minimum_size().y;
+        if (shared < 0.0F) {
+            shared = height;
+        } else if (std::abs(shared - height) > 0.01F) {
+            return false;
+        }
+    }
+    return shared > 0.0F;
+}
+
+bool hud_has_initial_state(HUD *hud) { return has_all_labels(hud, {"ENERGY", "100", "WAVE", "1", "/ 3", "SCORE", "0", "INTEGRITY"}); }
+
+bool hud_has_updated_match_state(HUD *hud) { return has_all_labels(hud, {"42", "125", "2", "/ 5", "FACTORY"}); }
+
+template <typename MeterType> MeterType *find_meter(HUD *hud) {
+    std::vector<MeterType *> meters;
+    collect_nodes(hud, meters);
+    return meters.empty() ? nullptr : meters.front();
+}
+
+bool hud_integrity_meter_shows(HUD *hud, int expected_segments) {
+    auto *meter = find_meter<HudIntegrityMeter>(hud);
+    return meter != nullptr && meter->get_segment_count() == expected_segments;
 }
 
 Button *find_deploy_card_button(Node *root) {
@@ -295,10 +329,10 @@ Button *find_deploy_card_button(Node *root) {
     return nullptr;
 }
 
-bool hud_has_hearts_and_operator_card(HUD *hud) { return collect_labels(hud).size() >= static_cast<size_t>(5) && has_label_text(hud, "Operator"); }
+bool hud_has_operator_card(HUD *hud) { return has_label_text(hud, "Operator"); }
 
 bool hud_deploy_card_disabled_for_resource(HUD *hud, int core_resource, bool expected_disabled) {
-    hud->update_card_affordability(core_resource);
+    hud->update_core_resource(core_resource);
     Button *deploy_button = find_deploy_card_button(hud);
     return deploy_button != nullptr && deploy_button->is_disabled() == expected_disabled;
 }
@@ -574,27 +608,79 @@ DEFN_TEST(score_screen_presenter_handles_null_parent_and_defeat_without_next_lev
     memdelete(parent);
 }
 
-DEFN_TEST(hud_builds_and_updates_core_labels_cards_and_score_screen) {
+DEFN_TEST(hud_builds_instrument_pods_and_tracks_match_state) {
     const TreeMountedNode<HUD> owner;
     HUD *hud = owner.get();
 
+    DEFN_CHECK(hud_has_instrument_plates(hud));
+    DEFN_CHECK(hud_plates_are_level(hud));
     DEFN_CHECK(hud_has_initial_state(hud));
 
     hud->update_core_resource(42);
     hud->update_score(125);
     hud->update_wave(2, 5);
-    hud->set_level(3, "Factory");
+    hud->set_level("Factory");
     DEFN_CHECK(hud_has_updated_match_state(hud));
 
-    hud->set_level(4, {});
-    DEFN_CHECK(has_label_text(hud, "LEVEL 4"));
-    hud->set_level(0, "Challenge");
-    DEFN_CHECK(has_label_text(hud, "Challenge"));
+    hud->update_integrity(450, 500);
+    DEFN_CHECK(hud_integrity_meter_shows(hud, 5));
+}
 
-    hud->update_hearts(5);
+DEFN_TEST(hud_plate_widths_hold_still_as_values_gain_digits) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
+    auto plate_width = [hud](const char *name) {
+        auto *plate = Object::cast_to<Control>(find_node_named(hud, String(name)));
+        return plate == nullptr ? -1.0F : plate->get_combined_minimum_size().x;
+    };
+
+    hud->set_level("Desert Outpost");
+    hud->update_core_resource(5);
+    hud->update_score(0);
+    const float energy_width = plate_width("EnergyPlate");
+    const float info_width = plate_width("InfoPlate");
+    DEFN_REQUIRE(energy_width > 0.0F);
+    DEFN_REQUIRE(info_width > 0.0F);
+
+    // One, two and three digits all fit the reserved room, so neither plate moves.
+    for (const int energy : {5, 42, 100}) {
+        hud->update_core_resource(energy);
+        DEFN_CHECK_CLOSE(plate_width("EnergyPlate"), energy_width, 0.01);
+    }
+    for (const int score : {0, 40, 480}) {
+        hud->update_score(score);
+        DEFN_CHECK_CLOSE(plate_width("InfoPlate"), info_width, 0.01);
+    }
+
+    // Past the floor a plate widens once and keeps the room, rather than shrinking back on the next tick.
+    hud->update_core_resource(1000);
+    const float widened = plate_width("EnergyPlate");
+    DEFN_CHECK(widened > energy_width);
+    hud->update_core_resource(7);
+    DEFN_CHECK_CLOSE(plate_width("EnergyPlate"), widened, 0.01);
+}
+
+DEFN_TEST(hud_hides_the_level_reading_when_there_is_no_name) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
+    hud->set_level("Challenge");
+    DEFN_CHECK(has_label_text(hud, "CHALLENGE"));
+
+    hud->set_level({});
+    Node *level_group = find_node_named(hud, "LevelGroup");
+    DEFN_REQUIRE(level_group != nullptr);
+    DEFN_CHECK(!Object::cast_to<Control>(level_group)->is_visible());
+}
+
+DEFN_TEST(hud_builds_deploy_cards_and_score_screen) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
     UnitConfig operator_config = make_presenter_unit_config("operator", 25);
     hud->set_friendly_units({operator_config});
-    DEFN_CHECK(hud_has_hearts_and_operator_card(hud));
+    DEFN_CHECK(hud_has_operator_card(hud));
 
     DEFN_CHECK(hud_deploy_card_disabled_for_resource(hud, 10, true));
     DEFN_CHECK(hud_deploy_card_disabled_for_resource(hud, 30, false));

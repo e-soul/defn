@@ -141,7 +141,7 @@ MatchUpdate MatchDirector::handle_enemy_defeated(const EnemyDefeatedReport &repo
 
 MatchUpdate MatchDirector::handle_base_durability_changed(int current_hp) {
     match_session_.set_base_health(current_hp);
-    return make_hearts_update();
+    return make_integrity_update();
 }
 
 MatchUpdate MatchDirector::handle_base_destroyed() {
@@ -210,7 +210,7 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
         .owned_upgrades = to_match_upgrade_options(campaign_->build_owned_upgrade_cards()),
     };
 
-    update_result.integrity_changed = IntegrityChanged{.hearts = match_session_.get_base_integrity()};
+    update_result.integrity_changed = make_integrity_reading();
     update_result.match_ended = pending_match_end_;
     return update_result;
 }
@@ -221,9 +221,13 @@ MatchUpdate MatchDirector::make_resource_update() const {
     return update_result;
 }
 
-MatchUpdate MatchDirector::make_hearts_update() const {
+IntegrityChanged MatchDirector::make_integrity_reading() const {
+    return {.health = match_session_.get_base_health(), .max_health = match_session_.get_base_max_health()};
+}
+
+MatchUpdate MatchDirector::make_integrity_update() const {
     MatchUpdate update_result;
-    update_result.integrity_changed = IntegrityChanged{.hearts = match_session_.get_base_integrity()};
+    update_result.integrity_changed = make_integrity_reading();
     return update_result;
 }
 
