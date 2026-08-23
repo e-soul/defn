@@ -38,7 +38,7 @@ struct UpgradeCardDefinition {
     String id;
     String name;
     String description;
-    String emoji;
+    String icon;
     String category;
     int minimum_completed_levels = 0;
     int weight = 1;

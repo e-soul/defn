@@ -7,6 +7,7 @@
 #include "ui_theme_models.h"
 
 #include <godot_cpp/classes/panel.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/variant/color.hpp>
 
@@ -23,7 +24,11 @@ struct IconMedallionNodes {
 
 /// Theme lookups that never borrow another entry's look: an unknown key yields the neutral model default.
 [[nodiscard]] const UiMedallionStyle &theme_medallion(std::string_view key);
-[[nodiscard]] const UiMedallionStyle &theme_hud_icon(std::string_view key);
+[[nodiscard]] const UiMedallionStyle &theme_icon(std::string_view key);
+
+/// The mark itself, untinted. Callers that want it on a plate use `make_icon_medallion`; callers that want it
+/// inline beside text use `ui_widgets::make_icon`.
+[[nodiscard]] godot::Ref<godot::Texture2D> theme_mark_texture(const UiMedallionStyle &style);
 
 /// Builds the plate and its mark. The pair carries no look until `apply_icon_medallion` tints it.
 [[nodiscard]] IconMedallionNodes make_icon_medallion(float size);

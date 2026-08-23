@@ -21,7 +21,7 @@ ProgressionOverviewSnapshot sample_snapshot() {
                                     {.id = "mobility", .base_value = 58.0, .effective_value = 66.0},
                                     {.id = "deploy_cost", .base_value = 20.0, .effective_value = 20.0},
                                     {.id = "ignored", .effective_value = 99.0}},
-                          .contributing_upgrades = {{.presentation = {.id = "plating", .name = "Plating", .description = "More health.", .emoji = "+"},
+                          .contributing_upgrades = {{.presentation = {.id = "plating", .name = "Plating", .description = "More health.", .icon = "+"},
                                                      .owned_count = 2}}},
                          {.id = "marksman", .kind = ProgressionEntityKind::UNIT, .unlocked = false, .unlock_upgrade_name = "Sharpshooter Contract"},
                          {.id = "operations",

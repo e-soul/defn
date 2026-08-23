@@ -9,6 +9,11 @@
 
 #include <godot_cpp/variant/array.hpp>
 
+#include <map>
+#include <optional>
+#include <utility>
+#include <vector>
+
 namespace defn {
 
 using namespace godot;
@@ -16,6 +21,10 @@ using namespace godot;
 namespace {
 
 constexpr float DEFAULT_ALPHA = 1.0F;
+
+/// How many references one palette entry may follow before the chain is treated as broken. Chains in practice
+/// are one hop deep; the limit only exists so a cycle cannot hang the load.
+constexpr int MAX_PALETTE_REFERENCE_DEPTH = 8;
 
 Color parse_color(const Array &values, const Color &fallback) {
     if (values.size() >= 3) {
@@ -34,46 +43,118 @@ std::string parse_role(const Dictionary &source, const char *key, const std::str
     return value.is_empty() ? fallback : to_std_string(value);
 }
 
-UiPalette parse_palette(const Dictionary &source, UiPalette palette) {
-    palette.surface = parse_color(source.get("surface", Array()), palette.surface);
-    palette.surface_raised = parse_color(source.get("surface_raised", Array()), palette.surface_raised);
-    palette.surface_sunken = parse_color(source.get("surface_sunken", Array()), palette.surface_sunken);
-    palette.overlay_scrim = parse_color(source.get("overlay_scrim", Array()), palette.overlay_scrim);
-    palette.border = parse_color(source.get("border", Array()), palette.border);
-    palette.border_strong = parse_color(source.get("border_strong", Array()), palette.border_strong);
-    palette.border_focus = parse_color(source.get("border_focus", Array()), palette.border_focus);
-    palette.accent = parse_color(source.get("accent", Array()), palette.accent);
-    palette.accent_strong = parse_color(source.get("accent_strong", Array()), palette.accent_strong);
-    palette.text_primary = parse_color(source.get("text_primary", Array()), palette.text_primary);
-    palette.text_secondary = parse_color(source.get("text_secondary", Array()), palette.text_secondary);
-    palette.text_muted = parse_color(source.get("text_muted", Array()), palette.text_muted);
-    palette.text_inverse = parse_color(source.get("text_inverse", Array()), palette.text_inverse);
-    palette.state_success = parse_color(source.get("state_success", Array()), palette.state_success);
-    palette.state_warning = parse_color(source.get("state_warning", Array()), palette.state_warning);
-    palette.state_danger = parse_color(source.get("state_danger", Array()), palette.state_danger);
-    palette.state_locked = parse_color(source.get("state_locked", Array()), palette.state_locked);
-    palette.energy = parse_color(source.get("energy", Array()), palette.energy);
-    palette.victory = parse_color(source.get("victory", Array()), palette.victory);
-    palette.defeat = parse_color(source.get("defeat", Array()), palette.defeat);
-    palette.overlay_victory = parse_color(source.get("overlay_victory", Array()), palette.overlay_victory);
-    palette.overlay_defeat = parse_color(source.get("overlay_defeat", Array()), palette.overlay_defeat);
-    palette.backdrop = parse_color(source.get("backdrop", Array()), palette.backdrop);
-    palette.scrim_soft = parse_color(source.get("scrim_soft", Array()), palette.scrim_soft);
-    palette.scrim_panel = parse_color(source.get("scrim_panel", Array()), palette.scrim_panel);
-    palette.route_locked = parse_color(source.get("route_locked", Array()), palette.route_locked);
-    palette.locked_tint = parse_color(source.get("locked_tint", Array()), palette.locked_tint);
-    palette.ambience_dust = parse_color(source.get("ambience_dust", Array()), palette.ambience_dust);
-    palette.ambience_spores = parse_color(source.get("ambience_spores", Array()), palette.ambience_spores);
-    palette.ambience_mist = parse_color(source.get("ambience_mist", Array()), palette.ambience_mist);
-    palette.ambience_snow = parse_color(source.get("ambience_snow", Array()), palette.ambience_snow);
-    palette.ambience_embers = parse_color(source.get("ambience_embers", Array()), palette.ambience_embers);
-    palette.transparent = parse_color(source.get("transparent", Array()), palette.transparent);
+/// One palette entry exactly as written, before references are resolved. A literal entry carries its own
+/// colour; a reference entry names the role it borrows from, optionally at a different opacity.
+struct PaletteEntry {
+    Color literal;
+    std::string reference;
+    std::optional<float> alpha_override;
+};
 
-    const Array keys = source.keys();
-    for (const Variant &raw_key : keys) {
-        const String key = raw_key;
-        palette.extra[to_std_string(key)] = parse_color(source.get(key, Array()), Color{});
+/// A palette entry is either a literal `[r, g, b, a]`, a reference `"other_role"`, or a reference at a new
+/// opacity `["other_role", alpha]`. References are what let the semantic names sit on top of one ramp
+/// instead of restating its values, so a change to the ramp reaches every name that borrows from it.
+PaletteEntry parse_palette_entry(const Variant &value) {
+    PaletteEntry entry;
+    if (value.get_type() == Variant::STRING) {
+        entry.reference = to_std_string(String(value));
+        return entry;
     }
+
+    const Array values = value;
+    if (!values.is_empty() && values[0].get_type() == Variant::STRING) {
+        entry.reference = to_std_string(String(values[0]));
+        if (values.size() >= 2) {
+            entry.alpha_override = VariantTools::as_float(values[1]);
+        }
+        return entry;
+    }
+
+    entry.literal = parse_color(values, Color{});
+    return entry;
+}
+
+/// Follows every reference chain down to the literal it ends at. The nearest opacity override on the way
+/// wins, so `["neutral_ink", 0.72]` reads as "the ink colour, at 72% opacity".
+///
+/// A role whose chain is broken or circular is left out of the result rather than resolved to black:
+/// `ContentValidator` then reports each place that names it, which is where the mistake actually is.
+std::map<std::string, Color, std::less<>> resolve_palette(const Dictionary &source) {
+    std::map<std::string, PaletteEntry, std::less<>> entries;
+    for (const Variant &raw_key : Array(source.keys())) {
+        const String key = raw_key;
+        entries.insert_or_assign(to_std_string(key), parse_palette_entry(source[key]));
+    }
+
+    std::map<std::string, Color, std::less<>> resolved;
+    for (const auto &[name, entry] : entries) {
+        const PaletteEntry *current = &entry;
+        std::optional<float> alpha;
+        for (int depth = 0; current != nullptr && !current->reference.empty() && depth < MAX_PALETTE_REFERENCE_DEPTH; ++depth) {
+            if (!alpha.has_value()) {
+                alpha = current->alpha_override;
+            }
+            const auto target = entries.find(current->reference);
+            current = target == entries.end() ? nullptr : &target->second;
+        }
+
+        if (current == nullptr || !current->reference.empty()) {
+            continue;
+        }
+
+        Color color = current->literal;
+        if (alpha.has_value()) {
+            color.a = *alpha;
+        }
+        resolved.insert_or_assign(name, color);
+    }
+    return resolved;
+}
+
+UiPalette parse_palette(const Dictionary &source, UiPalette palette) {
+    std::map<std::string, Color, std::less<>> resolved = resolve_palette(source);
+
+    const auto assign = [&resolved](Color &target, std::string_view role) {
+        if (const auto found = resolved.find(role); found != resolved.end()) {
+            target = found->second;
+        }
+    };
+
+    assign(palette.surface, "surface");
+    assign(palette.surface_raised, "surface_raised");
+    assign(palette.surface_sunken, "surface_sunken");
+    assign(palette.overlay_scrim, "overlay_scrim");
+    assign(palette.border, "border");
+    assign(palette.border_strong, "border_strong");
+    assign(palette.border_focus, "border_focus");
+    assign(palette.accent, "accent");
+    assign(palette.accent_strong, "accent_strong");
+    assign(palette.text_primary, "text_primary");
+    assign(palette.text_secondary, "text_secondary");
+    assign(palette.text_muted, "text_muted");
+    assign(palette.text_inverse, "text_inverse");
+    assign(palette.state_success, "state_success");
+    assign(palette.state_warning, "state_warning");
+    assign(palette.state_danger, "state_danger");
+    assign(palette.state_locked, "state_locked");
+    assign(palette.energy, "energy");
+    assign(palette.victory, "victory");
+    assign(palette.defeat, "defeat");
+    assign(palette.overlay_victory, "overlay_victory");
+    assign(palette.overlay_defeat, "overlay_defeat");
+    assign(palette.backdrop, "backdrop");
+    assign(palette.scrim_soft, "scrim_soft");
+    assign(palette.scrim_panel, "scrim_panel");
+    assign(palette.route_locked, "route_locked");
+    assign(palette.locked_tint, "locked_tint");
+    assign(palette.ambience_dust, "ambience_dust");
+    assign(palette.ambience_spores, "ambience_spores");
+    assign(palette.ambience_mist, "ambience_mist");
+    assign(palette.ambience_snow, "ambience_snow");
+    assign(palette.ambience_embers, "ambience_embers");
+    assign(palette.transparent, "transparent");
+
+    palette.extra = std::move(resolved);
     return palette;
 }
 
@@ -102,6 +183,13 @@ UiSpacing parse_spacing(const Dictionary &source, UiSpacing spacing) {
     spacing.screen_margin = VariantTools::as_int(source.get("screen_margin", spacing.screen_margin));
     spacing.section_gap = VariantTools::as_int(source.get("section_gap", spacing.section_gap));
     return spacing;
+}
+
+UiMotion parse_motion(const Dictionary &source, UiMotion motion) {
+    motion.fast = VariantTools::as_float(source.get("fast", motion.fast));
+    motion.base = VariantTools::as_float(source.get("base", motion.base));
+    motion.slow = VariantTools::as_float(source.get("slow", motion.slow));
+    return motion;
 }
 
 UiShape parse_shape(const Dictionary &source, UiShape shape) {
@@ -135,6 +223,19 @@ UiButtonState parse_button_state(const Dictionary &source, const char *key, cons
     return state;
 }
 
+std::optional<UiSelectionStyle> parse_selection(const Dictionary &source) {
+    if (!source.has("selected")) {
+        return std::nullopt;
+    }
+    const Dictionary selected = source.get("selected", Dictionary());
+    UiSelectionStyle selection;
+    selection.bg_role = parse_role(selected, "bg", selection.bg_role);
+    selection.hover_bg_role = parse_role(selected, "hover", selection.hover_bg_role);
+    selection.border_role = parse_role(selected, "border", selection.border_role);
+    selection.border_width_role = parse_role(selected, "border_width", selection.border_width_role);
+    return selection;
+}
+
 UiButtonVariant parse_button(const Dictionary &source) {
     UiButtonVariant button;
     const Array min_size = source.get("min_size", Array());
@@ -142,9 +243,12 @@ UiButtonVariant parse_button(const Dictionary &source) {
         button.min_width = VariantTools::as_int(min_size[0]);
         button.min_height = VariantTools::as_int(min_size[1]);
     }
+    button.sfx_role = parse_role(source, "sfx", button.sfx_role);
     button.font_size_role = parse_role(source, "font_size", button.font_size_role);
     button.shape_role = parse_role(source, "shape", button.shape_role);
+    button.border_width_role = parse_role(source, "border_width", button.border_width_role);
     button.content_margin_role = parse_role(source, "content_margin", button.content_margin_role);
+    button.selected = parse_selection(source);
     button.normal = parse_button_state(source, "normal", {.bg_role = "surface", .border_role = "border", .font_role = "text_primary"});
     button.hover = parse_button_state(source, "hover", button.normal);
     button.pressed = parse_button_state(source, "pressed", button.normal);
@@ -195,6 +299,21 @@ UiSfxData parse_sfx(const Dictionary &source) {
     };
 }
 
+/// A variant that declares a `selected` block gains a derived `<name>_selected` sibling. Deriving it here
+/// leaves one representation downstream: the provider, `find_button` and `ContentValidator` all see an
+/// ordinary variant rather than each having to know that selection is a thing.
+void derive_selected_variants(std::map<std::string, UiButtonVariant, std::less<>> &buttons) {
+    std::vector<std::pair<std::string, UiButtonVariant>> derived;
+    for (const auto &[name, variant] : buttons) {
+        if (variant.selected.has_value()) {
+            derived.emplace_back(name + "_selected", apply_selection(variant, *variant.selected));
+        }
+    }
+    for (auto &[name, variant] : derived) {
+        buttons.insert_or_assign(name, std::move(variant));
+    }
+}
+
 template <typename Parser, typename Map> void parse_named_entries(const Dictionary &source, Map &target, Parser parser) {
     const Array names = source.keys();
     for (const Variant &name_variant : names) {
@@ -217,11 +336,14 @@ UiThemeData UiThemeLoader::load_from_data(const Dictionary &data) {
     theme.typography = parse_typography(data.get("typography", Dictionary()), theme.typography);
     theme.spacing = parse_spacing(data.get("spacing", Dictionary()), theme.spacing);
     theme.shape = parse_shape(data.get("shape", Dictionary()), theme.shape);
+    theme.motion = parse_motion(data.get("motion", Dictionary()), theme.motion);
     parse_named_entries(data.get("surfaces", Dictionary()), theme.surfaces, parse_surface);
     parse_named_entries(data.get("buttons", Dictionary()), theme.buttons, parse_button);
+    derive_selected_variants(theme.buttons);
     parse_named_entries(data.get("text_styles", Dictionary()), theme.text_styles, parse_text_style);
     parse_named_entries(data.get("medallions", Dictionary()), theme.medallions, parse_medallion);
-    parse_named_entries(data.get("hud_icons", Dictionary()), theme.hud_icons, parse_medallion);
+    parse_named_entries(data.get("icons", Dictionary()), theme.icons, parse_medallion);
+    parse_named_entries(data.get("control_icons", Dictionary()), theme.control_icons, parse_medallion);
     const Dictionary metrics = data.get("metrics", Dictionary());
     for (const Variant &name_variant : Array(metrics.keys())) {
         const String name = name_variant;

@@ -42,7 +42,7 @@ Control *OwnedUpgradesPanel::build(const std::vector<UpgradeCardViewModel> &owne
         scroll->add_child(card_grid);
 
         for (const auto &card : owned_upgrades) {
-            card_grid->add_child(UpgradeCardPresenter::create(card, false, false, Callable()));
+            card_grid->add_child(UpgradeCardPresenter::create(card, false, false, Callable(), false));
         }
 
         return scroll;
@@ -56,7 +56,7 @@ Control *OwnedUpgradesPanel::build(const std::vector<UpgradeCardViewModel> &owne
     scroll->add_child(card_row);
 
     for (const auto &card : owned_upgrades) {
-        card_row->add_child(UpgradeCardPresenter::create(card, false, false, Callable()));
+        card_row->add_child(UpgradeCardPresenter::create(card, false, false, Callable(), false));
     }
 
     return scroll;

@@ -65,7 +65,10 @@ UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
     }
     scaffold.root->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
     // Keeps the chrome from collapsing when the root is laid out by a container parent instead of anchors.
-    scaffold.root->set_custom_minimum_size(max_content_size);
+    // A content-fitted screen has no such floor to impose: its size is whatever its controls need.
+    if (!spec.fit_content) {
+        scaffold.root->set_custom_minimum_size(max_content_size);
+    }
     scaffold.root->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     scaffold.root->set_v_size_flags(Control::SIZE_EXPAND_FILL);
     parent->add_child(scaffold.root);
@@ -83,7 +86,9 @@ UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
     if (spec.panelled_body) {
         auto *panel = make_surface(screen.panel_surface);
         panel->set_name("ScreenPanel");
-        panel->set_custom_minimum_size({max_content_size.x, spec.constrain_height ? max_content_size.y : 0.0F});
+        if (!spec.fit_content) {
+            panel->set_custom_minimum_size({max_content_size.x, spec.constrain_height ? max_content_size.y : 0.0F});
+        }
         center->add_child(panel);
         scaffold.panel = panel;
         content_host = panel;

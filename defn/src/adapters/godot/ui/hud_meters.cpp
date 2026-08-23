@@ -25,8 +25,8 @@ struct SegmentMetrics {
         return {
             .width = UiThemeProvider::metric("hud_segment_width", 26),
             .height = UiThemeProvider::metric("hud_segment_height", 15),
-            .gap = static_cast<real_t>(UiThemeProvider::spacing("xs")),
-            .outline_width = UiThemeProvider::metric("hud_segment_outline_width", 1),
+            .gap = UiThemeProvider::metric("meter_segment_gap", 4),
+            .outline_width = UiThemeProvider::metric("meter_outline_width", 1),
         };
     }
 

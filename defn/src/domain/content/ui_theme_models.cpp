@@ -17,6 +17,26 @@ template <typename Map> const typename Map::mapped_type *find_entry(const Map &e
 
 } // namespace
 
+UiButtonVariant apply_selection(UiButtonVariant variant, const UiSelectionStyle &selection) {
+    const std::array<UiButtonState *, 5> states = {&variant.normal, &variant.hover, &variant.pressed, &variant.disabled, &variant.focus};
+    for (UiButtonState *state : states) {
+        if (!selection.bg_role.empty()) {
+            state->bg_role = selection.bg_role;
+        }
+        if (!selection.border_role.empty()) {
+            state->border_role = selection.border_role;
+        }
+    }
+    if (!selection.hover_bg_role.empty()) {
+        variant.hover.bg_role = selection.hover_bg_role;
+    }
+    if (!selection.border_width_role.empty()) {
+        variant.border_width_role = selection.border_width_role;
+    }
+    variant.selected.reset();
+    return variant;
+}
+
 const UiSurfaceStyle *UiThemeData::find_surface(std::string_view name) const { return find_entry(surfaces, name); }
 
 const UiButtonVariant *UiThemeData::find_button(std::string_view name) const { return find_entry(buttons, name); }
@@ -25,7 +45,9 @@ const UiTextStyle *UiThemeData::find_text_style(std::string_view name) const { r
 
 const UiMedallionStyle *UiThemeData::find_medallion(std::string_view name) const { return find_entry(medallions, name); }
 
-const UiMedallionStyle *UiThemeData::find_hud_icon(std::string_view name) const { return find_entry(hud_icons, name); }
+const UiMedallionStyle *UiThemeData::find_icon(std::string_view name) const { return find_entry(icons, name); }
+
+const UiMedallionStyle *UiThemeData::find_control_icon(std::string_view name) const { return find_entry(control_icons, name); }
 
 int UiThemeData::metric(std::string_view name, int fallback) const {
     const auto found = metrics.find(name);
@@ -113,6 +135,21 @@ std::optional<int> UiThemeData::find_spacing_role(std::string_view role) const {
         {"xl", spacing.xl},
         {"screen_margin", spacing.screen_margin},
         {"section_gap", spacing.section_gap},
+    }};
+
+    for (const auto &[name, value] : roles) {
+        if (name == role) {
+            return value;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<float> UiThemeData::find_motion_role(std::string_view role) const {
+    const std::array<std::pair<std::string_view, float>, 3> roles = {{
+        {"fast", motion.fast},
+        {"base", motion.base},
+        {"slow", motion.slow},
     }};
 
     for (const auto &[name, value] : roles) {

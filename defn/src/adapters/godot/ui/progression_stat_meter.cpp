@@ -6,6 +6,7 @@
 #include "godot_string.h"
 #include "meter_geometry.h"
 #include "ui_theme_provider.h"
+#include "ui_widgets.h"
 
 #include <godot_cpp/classes/global_constants.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
@@ -19,14 +20,15 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <string_view>
 
 namespace defn {
 
 namespace {
 
-constexpr float ICON_WIDTH = 30.0F;
-constexpr float SEGMENT_GAP = 5.0F;
-constexpr float OUTLINE_WIDTH = 1.5F;
+/// Floors that keep the strip drawable when the row is squeezed below its minimum size.
+constexpr float MIN_STRIP_WIDTH = 100.0F;
+constexpr float MIN_STRIP_HEIGHT = 16.0F;
 
 godot::Color tier_color(int tier, bool neutral) {
     const std::array<const char *, 4> neutral_roles = {"meter_neutral_0", "meter_neutral_1", "meter_neutral_2", "meter_neutral_3"};
@@ -35,66 +37,36 @@ godot::Color tier_color(int tier, bool neutral) {
     return UiThemeProvider::color(roles[std::min(static_cast<std::size_t>(std::max(tier, 0)), roles.size() - 1)]);
 }
 
-void draw_icon(ProgressionStatMeter &meter, ProgressionStatIcon icon, const godot::Color &color, float center_y) {
-    const godot::Vector2 center(15.0F, center_y);
+/// The mark each stat draws, named in the theme's shared `icons` map. A stat and the HUD plate that means the
+/// same thing therefore draw the same shape, which nine hand-drawn shapes in this file could never guarantee.
+std::string_view stat_icon_key(ProgressionStatIcon icon) {
     switch (icon) {
-    case ProgressionStatIcon::SHIELD: {
-        godot::PackedVector2Array shield;
-        shield.push_back({8.0F, center_y - 9.0F});
-        shield.push_back({22.0F, center_y - 9.0F});
-        shield.push_back({21.0F, center_y + 3.0F});
-        shield.push_back({15.0F, center_y + 10.0F});
-        shield.push_back({9.0F, center_y + 3.0F});
-        meter.draw_polyline(shield, color, 2.0F, true);
-        meter.draw_line(shield[4], shield[0], color, 2.0F, true);
-        break;
-    }
+    case ProgressionStatIcon::SHIELD:
+        return "plating";
     case ProgressionStatIcon::RETICLE:
-        meter.draw_arc(center, 8.0F, 0.0F, 6.2831853F, 20, color, 2.0F, true);
-        meter.draw_line({4.0F, center_y}, {26.0F, center_y}, color, 2.0F, true);
-        meter.draw_line({15.0F, center_y - 11.0F}, {15.0F, center_y + 11.0F}, color, 2.0F, true);
-        break;
+        return "target";
     case ProgressionStatIcon::MOBILITY:
-        meter.draw_line({5.0F, center_y - 7.0F}, {13.0F, center_y}, color, 2.0F, true);
-        meter.draw_line({13.0F, center_y}, {5.0F, center_y + 7.0F}, color, 2.0F, true);
-        meter.draw_line({14.0F, center_y - 7.0F}, {22.0F, center_y}, color, 2.0F, true);
-        meter.draw_line({22.0F, center_y}, {14.0F, center_y + 7.0F}, color, 2.0F, true);
-        break;
+        return "speed";
     case ProgressionStatIcon::BATTERY:
-    case ProgressionStatIcon::ENERGY:
-        meter.draw_rect({{6.0F, center_y - 8.0F}, {17.0F, 16.0F}}, color, false, 2.0F, true);
-        meter.draw_rect({{23.0F, center_y - 3.0F}, {3.0F, 6.0F}}, color, true);
-        if (icon == ProgressionStatIcon::ENERGY) {
-            meter.draw_line({16.0F, center_y - 6.0F}, {11.0F, center_y + 1.0F}, color, 2.0F, true);
-            meter.draw_line({11.0F, center_y + 1.0F}, {17.0F, center_y}, color, 2.0F, true);
-            meter.draw_line({17.0F, center_y}, {13.0F, center_y + 6.0F}, color, 2.0F, true);
-        }
-        break;
+        return "battery";
     case ProgressionStatIcon::FIRE_RATE:
-        for (float offset : {7.0F, 14.0F, 21.0F}) {
-            meter.draw_line({offset, center_y - 7.0F}, {offset + 4.0F, center_y + 7.0F}, color, 2.0F, true);
-        }
-        break;
+        return "cadence";
     case ProgressionStatIcon::INTEGRITY:
-        meter.draw_circle(center, 8.0F, color, false, 2.0F, true);
-        meter.draw_line({15.0F, center_y - 5.0F}, {15.0F, center_y + 5.0F}, color, 2.0F, true);
-        meter.draw_line({10.0F, center_y}, {20.0F, center_y}, color, 2.0F, true);
-        break;
+        return "bulwark";
+    case ProgressionStatIcon::ENERGY:
+        return "energy";
     case ProgressionStatIcon::BOUNTY:
-        meter.draw_circle(center, 9.0F, color, false, 2.0F, true);
-        meter.draw_circle(center, 4.0F, color, false, 1.5F, true);
-        break;
+        return "salvage";
     case ProgressionStatIcon::GENERIC:
-        meter.draw_rect({{7.0F, center_y - 8.0F}, {16.0F, 16.0F}}, color, false, 2.0F, true);
-        meter.draw_line({11.0F, center_y}, {19.0F, center_y}, color, 2.0F, true);
-        break;
+        return "generic";
     }
+    return "generic";
 }
 
 } // namespace
 
 ProgressionStatMeter::ProgressionStatMeter() {
-    set_custom_minimum_size({255.0F, 36.0F});
+    set_custom_minimum_size({UiThemeProvider::metric("meter_min_width", 255), UiThemeProvider::metric("meter_height", 36)});
     set_focus_mode(FOCUS_ALL);
     set_mouse_filter(MOUSE_FILTER_STOP);
     connect("mouse_entered", callable_mp(this, &ProgressionStatMeter::show_detail));
@@ -112,6 +84,7 @@ void ProgressionStatMeter::_bind_methods() {
 
 void ProgressionStatMeter::configure(const ProgressionStatVisualViewModel &model) {
     model_ = model;
+    build_icon();
     set_name(to_godot_string("StatMeter_" + model_.stat_id));
     set_tooltip_text(to_godot_string(model_.exact_detail));
     set_accessibility_name(to_godot_string(model_.stat_id));
@@ -119,14 +92,31 @@ void ProgressionStatMeter::configure(const ProgressionStatVisualViewModel &model
     queue_redraw();
 }
 
+void ProgressionStatMeter::build_icon() {
+    if (icon_ != nullptr) {
+        remove_child(icon_);
+        icon_->queue_free();
+    }
+
+    const godot::real_t size = UiThemeProvider::metric("meter_icon_size", 22);
+    icon_ = make_icon(stat_icon_key(model_.icon), size);
+    icon_->set_modulate(UiThemeProvider::color("meter_icon"));
+    const real_t column = UiThemeProvider::metric("meter_icon_column", 30);
+    icon_->set_position({(column - size) * 0.5F, (get_custom_minimum_size().y - size) * 0.5F});
+    icon_->set_size({size, size});
+    add_child(icon_);
+}
+
 void ProgressionStatMeter::_draw() {
     const godot::Vector2 size = get_size();
-    const float top = 7.0F;
-    const float height = std::max(16.0F, size.y - 14.0F);
-    const float available_width = std::max(100.0F, size.x - ICON_WIDTH);
-    const float segment_width = (available_width - SEGMENT_GAP * 4.0F) / 5.0F;
+    const float icon_column = UiThemeProvider::metric("meter_icon_column", 30);
+    const float gap = UiThemeProvider::metric("meter_segment_gap", 4);
+    const float top = UiThemeProvider::metric("meter_inset_y", 7);
+    const float height = std::max(MIN_STRIP_HEIGHT, size.y - (top * 2.0F));
+    const auto segment_count = static_cast<float>(PROGRESSION_STAT_SEGMENT_COUNT);
+    const float available_width = std::max(MIN_STRIP_WIDTH, size.x - icon_column);
+    const float segment_width = (available_width - (gap * (segment_count - 1.0F))) / segment_count;
     const bool neutral = model_.direction == ProgressionStatDirection::MORE_IS_EXPENSIVE;
-    draw_icon(*this, model_.icon, UiThemeProvider::color("meter_icon"), size.y / 2.0F);
 
     const godot::Color track_color = UiThemeProvider::color("meter_track");
     const godot::Color outline_color = UiThemeProvider::color("meter_outline");
@@ -135,7 +125,7 @@ void ProgressionStatMeter::_draw() {
 
     for (std::size_t index = 0; index < model_.segments.size(); ++index) {
         const auto &segment = model_.segments[index];
-        const float left = ICON_WIDTH + (static_cast<float>(index) * (segment_width + SEGMENT_GAP));
+        const float left = icon_column + (static_cast<float>(index) * (segment_width + gap));
         const float center_x = left + (segment_width * 0.5F);
         const auto outline = segment_polygon(left, top, segment_width, height);
         draw_colored_polygon(outline, track_color);
@@ -146,7 +136,7 @@ void ProgressionStatMeter::_draw() {
             draw_colored_polygon(partial_segment_polygon(left, top, segment_width, height, segment.promotion_fraction),
                                  tier_color(segment.promoted_tier, neutral));
         }
-        draw_segment_outline(*this, outline, outline_color, OUTLINE_WIDTH);
+        draw_segment_outline(*this, outline, outline_color, UiThemeProvider::metric("meter_outline_width", 1));
 
         const int visible_tier = segment.promotion_fraction > 0.35 ? segment.promoted_tier : segment.foundation_tier;
         const int mark_count = std::clamp(visible_tier, 0, 4);

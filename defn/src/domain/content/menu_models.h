@@ -4,8 +4,6 @@
 #ifndef MENU_MODELS_H
 #define MENU_MODELS_H
 
-#include "content_values.h"
-
 #include <optional>
 #include <string>
 #include <vector>
@@ -42,8 +40,9 @@ struct MenuSetting {
 
 struct MenuDefinition {
     std::string name;
+    /// Shown as the screen heading. Content owns what a menu is called; the theme owns how the heading looks.
+    std::string title;
     MenuDefinitionType type = MenuDefinitionType::BUTTONS;
-    Color overlay_color = {0.0F, 0.0F, 0.0F, 0.6F};
     std::vector<MenuAction> entries;
     std::vector<MenuSetting> settings;
     std::optional<MenuAction> back;

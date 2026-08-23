@@ -7,7 +7,7 @@
 #include "menu_models.h"
 
 #include <godot_cpp/classes/canvas_layer.hpp>
-#include <godot_cpp/classes/color_rect.hpp>
+#include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -38,7 +38,7 @@ class PauseMenu : public CanvasLayer {
     MenuContentData menu_data_;
     bool paused_ = false;
 
-    ColorRect *overlay_ = nullptr;
+    Control *screen_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
     class UiSfxPlayer *ui_sfx_player_ = nullptr;
 };

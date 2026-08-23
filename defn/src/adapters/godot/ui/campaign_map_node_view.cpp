@@ -36,10 +36,12 @@ std::string_view state_key(CampaignNodeState state) {
     return "locked";
 }
 
+/// A selected node wears the same treatment as a selected card: the accent on the frame at the heavier border
+/// width. The ring and the lift below are what a marker on a map needs on top of that to carry at map scale.
 Ref<StyleBoxFlat> frame_style(const GColor &border, bool selected) {
     Ref<StyleBoxFlat> style = UiThemeProvider::surface("map_node");
     style->set_border_width_all(UiThemeProvider::shape(selected ? "border_width_strong" : "border_width"));
-    style->set_border_color(selected ? UiThemeProvider::color("border_focus") : border);
+    style->set_border_color(selected ? UiThemeProvider::color("accent") : border);
     return style;
 }
 
@@ -50,6 +52,12 @@ Ref<StyleBoxFlat> outline_style(const GColor &color, int width) {
     return style;
 }
 
+/// Places a child centred inside `outer`, inset by the same margin on each axis.
+void inset_within(Control *child, const GVector2 &outer, const GVector2 &inset) {
+    child->set_position(inset);
+    child->set_size(outer - (inset * 2.0F));
+}
+
 } // namespace
 
 CampaignMapNodeView::CampaignMapNodeView() {
@@ -58,24 +66,27 @@ CampaignMapNodeView::CampaignMapNodeView() {
     set_size(node_size);
     set_mouse_filter(MOUSE_FILTER_PASS);
 
+    // Three concentric boxes: the ring sits just inside the node, the postcard frame inside that, and the
+    // preview inside the frame. Each inset comes from the theme so the whole marker scales together.
+    const GVector2 ring_inset{UiThemeProvider::metric("map_node_ring_inset_x", 7), UiThemeProvider::metric("map_node_ring_inset_y", 4)};
+    const GVector2 frame_inset{UiThemeProvider::metric("map_node_frame_inset_x", 12), UiThemeProvider::metric("map_node_frame_inset_y", 9)};
+    const real_t preview_inset = UiThemeProvider::metric("map_node_preview_inset", 4);
+
     selection_ring_ = memnew(Panel);
     selection_ring_->set_name("SelectionRing");
-    selection_ring_->set_position({7.0F, 4.0F});
-    selection_ring_->set_size({174.0F, 126.0F});
+    inset_within(selection_ring_, node_size, ring_inset);
     selection_ring_->set_mouse_filter(MOUSE_FILTER_IGNORE);
     selection_ring_->set_visible(false);
     add_child(selection_ring_);
 
     frame_ = memnew(Panel);
     frame_->set_name("PostcardFrame");
-    frame_->set_position({12.0F, 9.0F});
-    frame_->set_size({164.0F, 116.0F});
+    inset_within(frame_, node_size, frame_inset);
     frame_->set_mouse_filter(MOUSE_FILTER_IGNORE);
     add_child(frame_);
 
     preview_ = memnew(CampaignPreviewView);
-    preview_->set_position({4.0F, 4.0F});
-    preview_->set_size({156.0F, 108.0F});
+    inset_within(preview_, frame_->get_size(), {preview_inset, preview_inset});
     frame_->add_child(preview_);
 
     medallion_ = make_icon_medallion(UiThemeProvider::metric("medallion_size", 38));
@@ -113,8 +124,11 @@ void CampaignMapNodeView::configure(const CampaignMissionViewModel &mission, con
 
 void CampaignMapNodeView::set_selected(bool selected) {
     selected_ = selected;
+    // A card lifts a step up the neutral ramp to show it is chosen; a marker on a map lifts by growing, since
+    // it has artwork rather than a background to change.
+    const real_t lift = UiThemeProvider::metric("map_node_selected_scale_percent", 104) / 100.0F;
     set_pivot_offset(get_size() * 0.5F);
-    set_scale(selected ? GVector2(1.04F, 1.04F) : GVector2(1.0F, 1.0F));
+    set_scale(selected ? GVector2(lift, lift) : GVector2(1.0F, 1.0F));
     set_z_index(selected ? 2 : 0);
     update_style();
 }

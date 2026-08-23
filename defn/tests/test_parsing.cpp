@@ -490,7 +490,7 @@ DEFN_TEST(menu_data_loader_maps_actions_to_plain_models) {
 
     Dictionary main_menu;
     main_menu["entries"] = make_array({entry});
-    main_menu["overlay_color"] = make_array({0.1, 0.2, 0.3, 0.4});
+    main_menu["title"] = "DEFN";
 
     Dictionary menus;
     menus["main_menu"] = main_menu;
@@ -506,7 +506,7 @@ DEFN_TEST(menu_data_loader_maps_actions_to_plain_models) {
     DEFN_CHECK_EQ(loaded->background, std::string("res://background.png"));
     DEFN_CHECK_EQ(loaded->menus[0].entries[0].action_type, MenuActionType::START_GAME);
     DEFN_CHECK_EQ(loaded->menus[0].entries[0].target, std::string("level_01"));
-    check_content_color_close(loaded->menus[0].overlay_color, {.r = 0.1F, .g = 0.2F, .b = 0.3F, .a = 0.4F});
+    DEFN_CHECK_EQ(loaded->menus[0].title, std::string("DEFN"));
 }
 
 DEFN_TEST(unit_side_and_rounding_parsers_return_expected_values) {

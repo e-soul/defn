@@ -44,7 +44,7 @@ ProgressionUpgradePresentation to_progression_upgrade_presentation(const Upgrade
         .id = to_std_string(card.id),
         .name = to_std_string(card.name),
         .description = to_std_string(card.description),
-        .emoji = to_std_string(card.emoji),
+        .icon = to_std_string(card.icon),
         .category = to_std_string(card.category),
     };
 }
@@ -127,7 +127,7 @@ bool UpgradeCatalog::load_from_data(const Dictionary &data) {
         card.id = String(card_dict.get("id", ""));
         card.name = String(card_dict.get("name", ""));
         card.description = String(card_dict.get("description", ""));
-        card.emoji = String(card_dict.get("emoji", ""));
+        card.icon = String(card_dict.get("icon", ""));
         card.category = String(card_dict.get("category", ""));
         card.minimum_completed_levels = VariantTools::as_int(card_dict.get("minimum_completed_levels", 0));
         card.weight = std::max(1, VariantTools::as_int(card_dict.get("weight", 1)));

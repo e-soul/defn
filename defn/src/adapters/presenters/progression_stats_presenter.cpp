@@ -179,7 +179,7 @@ ProgressionStatsScreenViewModel ProgressionStatsPresenter::present(const Progres
         if (source.owned_count > 1) {
             label += " x" + std::to_string(source.owned_count);
         }
-        result.upgrades.push_back({.id = presentation.id, .label = label, .description = presentation.description, .emoji = presentation.emoji});
+        result.upgrades.push_back({.id = presentation.id, .label = label, .description = presentation.description, .icon = presentation.icon});
     }
     if (result.upgrades.empty()) {
         result.empty_upgrade_message = "No owned upgrades affect this selection.";

@@ -116,6 +116,7 @@ std::vector<CampaignRouteViewModel> build_routes(const std::vector<CampaignMissi
 
 CampaignMapViewModel CampaignMapPresenter::present(const CampaignMapDefinition &map, const std::vector<CampaignLevelPresentationSource> &levels) {
     CampaignMapViewModel result;
+    result.title = map.title;
     result.background = map.background;
     result.missions.reserve(map.missions.size());
 

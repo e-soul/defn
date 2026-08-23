@@ -11,13 +11,12 @@
 #include "scene_navigator.h"
 #include "settings_runtime.h"
 #include "settings_use_case.h"
+#include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
 #include "variant_tools.h"
 #include <cmath>
-#include <godot_cpp/classes/center_container.hpp>
-#include <godot_cpp/classes/check_button.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
@@ -115,6 +114,7 @@ MenuSettingPresentationInput to_setting_input(const MenuSetting &setting) {
 MenuScreenPresentationInput to_screen_input(const MenuDefinition &menu) {
     MenuScreenPresentationInput input;
     input.name = menu.name;
+    input.title = menu.title;
     input.type = to_screen_view_type(menu.type);
     input.entries.reserve(menu.entries.size());
     for (const auto &entry : menu.entries) {
@@ -246,18 +246,21 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     return true;
 }
 
-bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setting, bool vsync_on, MenuManager *manager) {
+/// A themed toggle rather than a `CheckButton`: the engine draws that one's switch graphic from its own icon
+/// set, which is the only thing on this screen the palette cannot reach. Wearing `option_control` also puts it
+/// on the same footprint as the dropdowns it sits under.
+bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setting, bool vsync_on, MenuManager *manager, Button *&vsync_toggle) {
     if (setting.kind != MenuSettingViewKind::Vsync) {
         return false;
     }
 
-    auto *check_button = memnew(CheckButton);
-    check_button->set_custom_minimum_size(option_control_size());
-    check_button->set_focus_mode(Control::FOCUS_NONE);
-    check_button->set_pressed(vsync_on);
-    manager->connect_menu_sfx(check_button);
-    check_button->connect("toggled", callable_mp(manager, &MenuManager::on_vsync_toggled));
-    row->add_child(check_button);
+    auto *toggle = make_button(vsync_on ? "On" : "Off", "option_control", {}, manager->sfx_player());
+    toggle->set_toggle_mode(true);
+    toggle->set_custom_minimum_size(option_control_size());
+    toggle->set_pressed_no_signal(vsync_on);
+    toggle->connect("toggled", callable_mp(manager, &MenuManager::on_vsync_toggled));
+    vsync_toggle = toggle;
+    row->add_child(toggle);
     return true;
 }
 
@@ -300,12 +303,16 @@ void add_menu_button(MenuManager *manager, VBoxContainer *button_container, cons
     button_container->add_child(button);
 }
 
-void add_back_button(MenuManager *manager, VBoxContainer *button_container, const std::optional<MenuButtonViewModel> &back) {
+void add_back_button(MenuManager *manager, HBoxContainer *footer, const std::optional<MenuButtonViewModel> &back) {
     if (!back.has_value()) {
         return;
     }
 
-    add_menu_button(manager, button_container, *back);
+    const Callable pressed =
+        callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(back->intent.type), to_godot_string(back->intent.target));
+    auto *button = make_button(to_godot_string(back->label), "secondary", pressed, manager->sfx_player());
+    apply_enabled(button, back->enabled);
+    footer->add_child(button);
 }
 
 } // namespace
@@ -332,26 +339,7 @@ void MenuManager::_ready() {
     add_child(ui_layer_);
 
     setup_background();
-
-    // Total score label (top right)
-    auto *progression = CampaignService::get_singleton();
-    total_score_label_ = make_label(vformat("Career Score: %d", progression->get_total_score()), "career_score");
-    total_score_label_->set_anchors_preset(Control::PRESET_TOP_RIGHT);
-    total_score_label_->set_offset(Side::SIDE_RIGHT, -UiThemeProvider::metric("career_score_right_margin", 24));
-    total_score_label_->set_offset(Side::SIDE_TOP, UiThemeProvider::metric("career_score_top_margin", 16));
-    total_score_label_->set_offset(Side::SIDE_LEFT, -UiThemeProvider::metric("career_score_width"));
-    total_score_label_->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
-    ui_layer_->add_child(total_score_label_);
-
-    // Center container spanning the full viewport
-    auto *center = memnew(CenterContainer);
-    center->set_anchors_preset(Control::PRESET_FULL_RECT);
-    center->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    ui_layer_->add_child(center);
-
-    button_container_ = memnew(VBoxContainer);
-    button_container_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-    center->add_child(button_container_);
+    build_career_score();
 
     if (SceneNavigator::consume_campaign_map_request()) {
         show_level_select();
@@ -395,38 +383,52 @@ void MenuManager::setup_background() {
     ui_layer_->move_child(background_, 0);
 }
 
-void MenuManager::clear_buttons() {
+/// The career score is the same instrument the HUD carries: an `hud_pod` plate holding a score readout. Sharing
+/// the plate is what ties the menu to the match screen rather than leaving a bare label over the artwork.
+void MenuManager::build_career_score() {
+    auto *plate = make_surface("hud_pod");
+    plate->set_name("CareerScorePlate");
+    anchor_hud_pod(plate, Control::PRESET_TOP_RIGHT);
+
+    const ReadoutRow readout = make_readout("score");
+    readout.row->add_child(make_readout_label("CAREER", "hud_label"));
+
+    auto *progression = CampaignService::get_singleton();
+    total_score_label_ = make_readout_label(String::num_int64(progression == nullptr ? 0 : progression->get_total_score()), "hud_score");
+    readout.row->add_child(total_score_label_);
+
+    plate->add_child(readout.row);
+    ui_layer_->add_child(plate);
+    career_score_plate_ = plate;
+}
+
+void MenuManager::clear_active_screen() {
     resolution_dropdown_ = nullptr;
+    vsync_toggle_ = nullptr;
     volume_labels_.clear();
     display_mode_values_.clear();
     resolution_values_.clear();
-    if (!button_container_) {
+
+    if (active_screen_ == nullptr) {
         return;
     }
-    while (button_container_->get_child_count() > 0) {
-        Node *child = button_container_->get_child(0);
-        button_container_->remove_child(child);
-        child->queue_free();
-    }
+    Control *screen = active_screen_;
+    active_screen_ = nullptr;
+    screen->queue_free();
 }
 
-void MenuManager::clear_active_view() {
-    if (active_fullscreen_view_ == nullptr) {
-        return;
+void MenuManager::mount_screen(Control *screen) {
+    active_screen_ = screen;
+    if (career_score_plate_ != nullptr) {
+        // The campaign map carries its own header and fills the viewport, so the plate would collide with it.
+        career_score_plate_->set_visible(screen == nullptr || Object::cast_to<CampaignMapView>(screen) == nullptr);
+        ui_layer_->move_child(career_score_plate_, ui_layer_->get_child_count() - 1);
     }
-
-    Control *view = active_fullscreen_view_;
-    active_fullscreen_view_ = nullptr;
-    view->queue_free();
 }
 
 void MenuManager::show_menu(const String &menu_name) {
-    clear_active_view();
-    clear_buttons();
+    clear_active_screen();
     current_menu_ = menu_name;
-    if (total_score_label_ != nullptr) {
-        total_score_label_->set_visible(true);
-    }
 
     const MenuDefinition *menu = menu_data_.find_menu(to_std_string(menu_name));
     if (menu == nullptr) {
@@ -435,17 +437,26 @@ void MenuManager::show_menu(const String &menu_name) {
     }
 
     const MenuScreenViewModel view_model = build_menu_screen_view_model(to_screen_input(*menu));
+    const UiScreenScaffold scaffold = build_screen(ui_layer_, {
+                                                                  .title = to_godot_string(view_model.title),
+                                                                  // The menu background art is the backdrop; a scrim on top of it would only mute it.
+                                                                  .show_backdrop = false,
+                                                                  .scrollable_body = false,
+                                                                  .fit_content = true,
+                                                              });
+    if (scaffold.root == nullptr) {
+        return;
+    }
+    mount_screen(scaffold.root);
 
     if (view_model.type == MenuScreenType::Options) {
-        build_options_ui(view_model);
+        build_options_ui(view_model, scaffold);
         return;
     }
 
-    button_container_->add_theme_constant_override("separation",
-                                                   UiThemeProvider::data().metric("menu_button_separation", UiThemeProvider::spacing("section_gap")));
-
+    scaffold.body->add_theme_constant_override("separation", UiThemeProvider::data().metric("menu_button_separation", UiThemeProvider::spacing("section_gap")));
     for (const auto &button_model : view_model.buttons) {
-        add_menu_button(this, button_container_, button_model);
+        add_menu_button(this, scaffold.body, button_model);
     }
 }
 
@@ -474,8 +485,7 @@ void MenuManager::apply_menu_flow_result(const MenuFlowResult &result) {
 }
 
 void MenuManager::show_level_select() {
-    clear_active_view();
-    clear_buttons();
+    clear_active_screen();
     current_menu_ = "level_select";
     auto *progression = CampaignService::get_singleton();
     if (progression == nullptr) {
@@ -489,11 +499,8 @@ void MenuManager::show_level_select() {
     const Callable deploy_action = callable_mp(this, &MenuManager::on_level_selected);
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed).bind(static_cast<int>(MenuIntentType::GotoMenu), String("game_menu"));
     ui_layer_->add_child(map_view);
-    active_fullscreen_view_ = map_view;
+    mount_screen(map_view);
     map_view->configure(progression, deploy_action, back_action, ui_sfx_player_);
-    if (total_score_label_ != nullptr) {
-        total_score_label_->set_visible(false);
-    }
 }
 
 void MenuManager::on_level_selected(const String &level_id) {
@@ -501,25 +508,24 @@ void MenuManager::on_level_selected(const String &level_id) {
 }
 
 void MenuManager::show_progression() {
-    clear_active_view();
-    clear_buttons();
+    clear_active_screen();
     current_menu_ = "progression";
-    if (total_score_label_ != nullptr) {
-        total_score_label_->set_visible(true);
-    }
 
     const ProgressionScreenViewModel view_model = build_progression_screen_view_model();
     auto *progression = CampaignService::get_singleton();
     auto *screen = memnew(ProgressionStatsScreenView);
+    screen->set_anchors_preset(Control::PRESET_FULL_RECT);
     screen->set_custom_minimum_size(get_progression_screen_size(this));
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed)
                                      .bind(static_cast<int>(view_model.back_button.intent.type), to_godot_string(view_model.back_button.intent.target));
+    ui_layer_->add_child(screen);
+    mount_screen(screen);
     screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action, ui_sfx_player_);
-    button_container_->add_child(screen);
 }
 
-void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
-    button_container_->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
+void MenuManager::build_options_ui(const MenuScreenViewModel &view_model, const UiScreenScaffold &scaffold) {
+    scaffold.body->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
+    scaffold.footer->set_alignment(BoxContainer::ALIGNMENT_CENTER);
 
     const auto current_mode = static_cast<DisplayServer::WindowMode>(settings_state_.display_mode);
     const Vector2i current_size(settings_state_.resolution.width, settings_state_.resolution.height);
@@ -527,24 +533,25 @@ void MenuManager::build_options_ui(const MenuScreenViewModel &view_model) {
 
     for (const auto &setting : view_model.settings) {
         if (setting.kind == MenuSettingViewKind::Section) {
-            add_section_label(button_container_, setting);
+            add_section_label(scaffold.body, setting);
             continue;
         }
 
         auto *row = create_option_row(setting);
         const bool handled = try_add_display_mode_control(this, row, setting, current_mode, display_mode_values_) ||
                              try_add_resolution_control(this, row, setting, current_mode, current_size, resolution_dropdown_, resolution_values_) ||
-                             try_add_vsync_control(row, setting, vsync_on, this) || try_add_volume_control(this, row, setting, settings_state_, volume_labels_);
+                             try_add_vsync_control(row, setting, vsync_on, this, vsync_toggle_) ||
+                             try_add_volume_control(this, row, setting, settings_state_, volume_labels_);
 
         if (handled) {
-            button_container_->add_child(row);
+            scaffold.body->add_child(row);
         } else {
             row->queue_free();
             UtilityFunctions::printerr("MenuManager: Unknown option setting: ", to_godot_string(setting.setting_id));
         }
     }
 
-    add_back_button(this, button_container_, view_model.back_button);
+    add_back_button(this, scaffold.footer, view_model.back_button);
 }
 
 SettingsRuntime *MenuManager::settings_runtime_for_change() {
@@ -621,6 +628,10 @@ void MenuManager::on_vsync_toggled(bool toggled) {
 
     const bool persisted = runtime->set_vsync(toggled);
     refresh_settings_snapshot();
+    if (vsync_toggle_ != nullptr) {
+        vsync_toggle_->set_text(settings_state_.vsync_enabled ? "On" : "Off");
+        vsync_toggle_->set_pressed_no_signal(settings_state_.vsync_enabled);
+    }
     if (!persisted) {
         UtilityFunctions::printerr("MenuManager: Failed to persist VSync setting");
     }
@@ -648,10 +659,6 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
     }
 }
 
-void MenuManager::connect_menu_sfx(BaseButton *button) {
-    if (ui_sfx_player_ != nullptr) {
-        ui_sfx_player_->connect_menu_button(button);
-    }
-}
+void MenuManager::connect_menu_sfx(BaseButton *button) { connect_sfx(ui_sfx_player_, button, "option_control"); }
 
 } // namespace defn

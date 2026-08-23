@@ -41,6 +41,7 @@ struct MenuSettingPresentationInput {
 
 struct MenuScreenPresentationInput {
     std::string name;
+    std::string title;
     MenuScreenType type = MenuScreenType::Buttons;
     std::vector<MenuActionPresentationInput> entries;
     std::vector<MenuSettingPresentationInput> settings;
@@ -73,6 +74,7 @@ struct MenuSettingViewModel {
 
 struct MenuScreenViewModel {
     std::string name;
+    std::string title;
     MenuScreenType type = MenuScreenType::Buttons;
     std::vector<MenuButtonViewModel> buttons;
     std::vector<MenuSettingViewModel> settings;

@@ -13,11 +13,12 @@
 #include "ui_widgets.h"
 
 #include <godot_cpp/classes/button.hpp>
+#include <godot_cpp/classes/flow_container.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
+#include <godot_cpp/classes/h_flow_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
-#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -133,33 +134,34 @@ void ProgressionStatsScreenView::rebuild() {
         return;
     }
 
-    auto *selector_scroll = memnew(godot::ScrollContainer);
-    selector_scroll->set_name("EntitySelectorScroll");
-    selector_scroll->set_horizontal_scroll_mode(godot::ScrollContainer::SCROLL_MODE_AUTO);
-    selector_scroll->set_vertical_scroll_mode(godot::ScrollContainer::SCROLL_MODE_DISABLED);
-    auto *selector_row = memnew(godot::HBoxContainer);
-    selector_row->set_alignment(godot::BoxContainer::ALIGNMENT_CENTER);
-    selector_row->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
-    selector_scroll->add_child(selector_row);
+    // The roster wraps rather than scrolls: a chip pushed off the edge of a scroller is a chip the player
+    // never finds, and the panel has the height to spare.
+    auto *selector_row = memnew(godot::HFlowContainer);
+    selector_row->set_name("EntitySelectorRow");
+    selector_row->set_alignment(godot::FlowContainer::ALIGNMENT_CENTER);
+    selector_row->add_theme_constant_override("h_separation", UiThemeProvider::spacing("sm"));
+    selector_row->add_theme_constant_override("v_separation", UiThemeProvider::spacing("sm"));
     for (const auto &selector : model.selectors) {
         godot::Callable pressed;
         if (selector.unlocked) {
             pressed = callable_mp(this, &ProgressionStatsScreenView::select_entity).bind(to_godot_string(selector.id));
         }
-        auto *button = make_button(to_godot_string(selector.label), selector.selected ? "roster_selected" : "roster", pressed, ui_sfx_player_);
-        button->set_name(to_godot_string("Selector_" + selector.id));
-        button->set_focus_mode(godot::Control::FOCUS_ALL);
-        apply_enabled(button, selector.unlocked);
+        // A roster chip is the same card the deploy bar and the upgrade picker use, wearing its own variant:
+        // portrait on the left, name beside it, and the shared selected treatment on the frame.
+        const CardNodes card = make_card({.variant = "roster", .layout = CardLayout::Horizontal, .selected = selector.selected}, pressed, ui_sfx_player_);
+        card.button->set_name(to_godot_string("Selector_" + selector.id));
+        card.button->set_focus_mode(godot::Control::FOCUS_ALL);
+        apply_enabled(card.button, selector.unlocked);
         if (!selector.locked_message.empty()) {
-            button->set_tooltip_text(to_godot_string(selector.locked_message));
+            card.button->set_tooltip_text(to_godot_string(selector.locked_message));
         }
         if (const auto texture = load_portrait(selector.portrait_path_template); texture.is_valid()) {
-            button->set_button_icon(texture);
-            button->set_expand_icon(true);
+            add_card_icon(card, make_card_portrait(texture, UiThemeProvider::metric("roster_portrait_size", 48)));
         }
-        selector_row->add_child(button);
+        card.text->add_child(make_card_title(to_godot_string(selector.label)));
+        selector_row->add_child(card.button);
     }
-    scaffold.body->add_child(selector_scroll);
+    scaffold.body->add_child(selector_row);
 
     auto *dossier = make_surface("dossier");
     dossier->set_name("EntityDossier");
@@ -222,7 +224,11 @@ void ProgressionStatsScreenView::rebuild() {
         stats_column->add_child(make_label(to_godot_string(model.empty_upgrade_message), "muted"));
     } else {
         for (const auto &upgrade : model.upgrades) {
-            stats_column->add_child(make_label(to_godot_string(upgrade.emoji + " " + upgrade.label), "body"));
+            auto *source_row = memnew(godot::HBoxContainer);
+            source_row->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
+            source_row->add_child(make_icon(upgrade.icon.empty() ? "generic" : upgrade.icon, UiThemeProvider::metric("card_icon_size", 20)));
+            source_row->add_child(make_label(to_godot_string(upgrade.label), "body"));
+            stats_column->add_child(source_row);
         }
     }
     columns->add_child(stats_column);

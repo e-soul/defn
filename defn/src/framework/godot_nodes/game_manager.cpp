@@ -58,7 +58,7 @@ UpgradeCardViewModel to_upgrade_card_view_model(const MatchUpgradeOption &option
         .id = option.id,
         .name = option.name,
         .description = option.description,
-        .emoji = option.emoji,
+        .icon = option.icon,
         .category = option.category,
         .owned_count = option.owned_count,
     };

@@ -79,7 +79,7 @@ ProgressionUpgradeCardViewModel ProgressionPresentation::build_upgrade_card_view
         .id = card.id,
         .name = card.name,
         .description = card.description,
-        .emoji = card.emoji,
+        .icon = card.icon,
         .category = card.category,
         .owned_count = owned_count,
     };

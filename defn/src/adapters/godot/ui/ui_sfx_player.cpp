@@ -17,27 +17,39 @@ namespace defn {
 
 void UiSfxPlayer::_bind_methods() {}
 
+namespace {
+
+/// Held as an instance id rather than a pointer: a scene change frees the player that set it, and a raw pointer
+/// would outlive it.
+uint64_t g_active_id = 0;
+
+} // namespace
+
+UiSfxPlayer *UiSfxPlayer::active() {
+    if (g_active_id == 0) {
+        return nullptr;
+    }
+    auto *player = godot::Object::cast_to<UiSfxPlayer>(godot::UtilityFunctions::instance_from_id(static_cast<int64_t>(g_active_id)));
+    return player != nullptr && player->is_inside_tree() ? player : nullptr;
+}
+
 void UiSfxPlayer::configure(const UiSfxData &config) {
     hover_player_ = create_player("UiHoverSfxPlayer", config.hover);
     click_player_ = create_player("UiClickSfxPlayer", config.click);
     deploy_card_player_ = create_player("DeployCardSfxPlayer", config.deploy_card);
+    g_active_id = get_instance_id();
 }
 
-void UiSfxPlayer::connect_menu_button(godot::BaseButton *button) {
+void UiSfxPlayer::connect_button(godot::BaseButton *button, std::string_view press_role) {
     if (button == nullptr) {
         return;
     }
     if (hover_player_ != nullptr) {
         button->connect("mouse_entered", callable_mp(this, &UiSfxPlayer::play_hover).bind(button));
     }
-    if (click_player_ != nullptr) {
-        button->connect("button_down", callable_mp(this, &UiSfxPlayer::play_click).bind(button));
-    }
-}
-
-void UiSfxPlayer::connect_deploy_card(godot::BaseButton *button) {
-    if (button != nullptr && deploy_card_player_ != nullptr) {
-        button->connect("button_down", callable_mp(this, &UiSfxPlayer::play_deploy_card).bind(button));
+    const bool deploy_card = press_role == "deploy_card";
+    if ((deploy_card ? deploy_card_player_ : click_player_) != nullptr) {
+        button->connect("button_down", callable_mp(this, &UiSfxPlayer::play_press).bind(button, deploy_card));
     }
 }
 
@@ -66,15 +78,10 @@ void UiSfxPlayer::play_hover(godot::BaseButton *button) {
     }
 }
 
-void UiSfxPlayer::play_click(godot::BaseButton *button) {
-    if (button != nullptr && !button->is_disabled() && click_player_ != nullptr && click_player_->is_inside_tree()) {
-        click_player_->play();
-    }
-}
-
-void UiSfxPlayer::play_deploy_card(godot::BaseButton *button) {
-    if (button != nullptr && !button->is_disabled() && deploy_card_player_ != nullptr && deploy_card_player_->is_inside_tree()) {
-        deploy_card_player_->play();
+void UiSfxPlayer::play_press(godot::BaseButton *button, bool deploy_card) {
+    godot::AudioStreamPlayer *player = deploy_card ? deploy_card_player_ : click_player_;
+    if (button != nullptr && !button->is_disabled() && player != nullptr && player->is_inside_tree()) {
+        player->play();
     }
 }
 

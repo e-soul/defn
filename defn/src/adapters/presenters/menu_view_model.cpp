@@ -58,6 +58,7 @@ MenuIntent build_menu_intent(MenuIntentType intent_type, const std::string &targ
 MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input) {
     MenuScreenViewModel view_model;
     view_model.name = input.name;
+    view_model.title = input.title;
     view_model.type = input.type;
     view_model.buttons.reserve(input.entries.size());
     for (const auto &entry : input.entries) {

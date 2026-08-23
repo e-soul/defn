@@ -8,6 +8,7 @@
 
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/string.hpp>
 
@@ -20,6 +21,7 @@ class ProgressionStatMeter : public godot::Control {
     ProgressionStatMeter();
 
     void configure(const ProgressionStatVisualViewModel &model);
+
     void _draw() override;
     void _gui_input(const godot::Ref<godot::InputEvent> &event) override;
 
@@ -30,12 +32,14 @@ class ProgressionStatMeter : public godot::Control {
     static void _bind_methods();
 
   private:
+    void build_icon();
     void show_detail();
     void hide_detail();
     void on_focus_entered();
     void on_focus_exited();
 
     ProgressionStatVisualViewModel model_;
+    godot::TextureRect *icon_ = nullptr;
     bool pointer_active_ = false;
 };
 

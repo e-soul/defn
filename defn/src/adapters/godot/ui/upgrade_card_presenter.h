@@ -17,7 +17,8 @@ class UpgradeCardPresenter {
   public:
     UpgradeCardPresenter() = delete;
 
-    static Button *create(const UpgradeCardViewModel &upgrade_card, bool selected, bool disabled, const Callable &pressed_action);
+    /// `interactive` is false for a card that is only on display, such as an upgrade the player already owns.
+    static Button *create(const UpgradeCardViewModel &upgrade_card, bool selected, bool disabled, const Callable &pressed_action, bool interactive = true);
 };
 
 } // namespace defn

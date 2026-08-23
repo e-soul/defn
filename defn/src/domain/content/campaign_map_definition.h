@@ -35,6 +35,8 @@ struct CampaignMapMissionDefinition {
 };
 
 struct CampaignMapDefinition {
+    /// Shown as the map's heading. Content owns what the campaign is called; the theme owns how it reads.
+    std::string title;
     CampaignTextureDefinition background;
     std::vector<CampaignMapMissionDefinition> missions;
 };

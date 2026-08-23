@@ -161,6 +161,18 @@ Button *find_button_by_text(Node *root, const String &text) {
     return nullptr;
 }
 
+/// A card carries its title in a label inside the frame rather than as the button's own text, so it is found
+/// by what it says rather than by a property Godot happens to draw.
+Button *find_card_by_title(Node *root, const String &title) {
+    for (auto *button : collect_buttons(root)) {
+        if (has_label_text(button, title)) {
+            return button;
+        }
+    }
+
+    return nullptr;
+}
+
 Callable make_valid_callable(Object *receiver) { return {receiver, "queue_free"}; }
 
 UnitConfig make_presenter_unit_config(const std::string &name, int cost) {
@@ -234,19 +246,30 @@ bool roster_button_uses_variation(Button *button, const char *variation) {
     return button != nullptr && button->get_theme_type_variation() == StringName(variation);
 }
 
-bool selected_upgrade_button_matches(Button *button) {
-    return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 180.0, 220.0) &&
-           button->get_theme_type_variation() == StringName("DefnCardSelectedButton") &&
-           has_all_labels(button, {"+", "x2", "Rapid Reload", "Shoot more often."});
+/// A card names its subject with a tinted theme mark, not a glyph from the machine's colour emoji font. An
+/// unknown key still has to draw something, which is what `generic` is for.
+bool card_shows_a_tinted_mark(Button *button) {
+    std::vector<TextureRect *> marks;
+    collect_nodes(button, marks);
+    const auto is_icon = [](TextureRect *mark) { return mark->get_name() == StringName("Icon") && mark->get_texture().is_valid(); };
+    return std::ranges::any_of(marks, is_icon);
 }
 
-bool fallback_upgrade_button_matches(Button *button) { return button != nullptr && !button->is_disabled() && has_all_labels(button, {"?", "Upgrade"}); }
+bool selected_upgrade_button_matches(Button *button) {
+    return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 180.0, 220.0) &&
+           button->get_theme_type_variation() == StringName("DefnCardSelectedButton") && card_shows_a_tinted_mark(button) &&
+           has_all_labels(button, {"x2", "Rapid Reload", "Shoot more often."});
+}
+
+bool fallback_upgrade_button_matches(Button *button) {
+    return button != nullptr && !button->is_disabled() && card_shows_a_tinted_mark(button) && has_all_labels(button, {"Upgrade"});
+}
 
 bool progression_view_has_initial_entity_state(ProgressionStatsScreenView *view) {
-    Button *selected_button = find_button_by_text(view, "Breacher");
-    Button *locked_button = find_button_by_text(view, "Marksman [Locked]");
+    Button *selected_button = find_card_by_title(view, "Breacher");
+    Button *locked_button = find_card_by_title(view, "Marksman [Locked]");
     return has_label_text(view, "Breacher") && view->find_child("EntityPortraitFallback", true, false) != nullptr && selected_button != nullptr &&
-           button_minimum_size_is(selected_button, 150.0, 74.0) && roster_button_uses_variation(selected_button, "DefnRosterSelectedButton") &&
+           button_minimum_size_is(selected_button, 210.0, 74.0) && roster_button_uses_variation(selected_button, "DefnRosterSelectedButton") &&
            locked_button != nullptr && locked_button->is_disabled() && roster_button_uses_variation(locked_button, "DefnRosterButton");
 }
 
@@ -353,14 +376,29 @@ MenuManager *ready_menu_manager(const TreeMountedNode<MenuManager> &owner) {
     return menu_manager;
 }
 
-bool menu_manager_shows_main_menu(MenuManager *menu_manager) {
-    return has_label_containing(menu_manager, "Career Score:") && has_all_buttons(menu_manager, {"Play", "Options", "Quit"});
+/// The career score rides an `hud_pod` plate carrying a score readout, the same instrument the match HUD uses.
+bool menu_manager_shows_career_score(MenuManager *menu_manager) {
+    return has_node_named(menu_manager, "CareerScorePlate") && has_label_containing(menu_manager, "CAREER");
 }
 
-bool menu_manager_shows_game_menu(MenuManager *menu_manager) { return has_all_buttons(menu_manager, {"New/Continue Game", "Progress", "Main Menu"}); }
+/// Every menu is built by `build_screen`, so it carries the same backdrop, panel and heading as the score and
+/// progression screens rather than a bare stack of buttons.
+bool menu_manager_screen_has_chrome(MenuManager *menu_manager, const char *title) {
+    return has_node_named(menu_manager, "ScreenPanel") && has_node_named(menu_manager, "ScreenFooter") && has_all_labels(menu_manager, {title});
+}
+
+bool menu_manager_shows_main_menu(MenuManager *menu_manager) {
+    return menu_manager_shows_career_score(menu_manager) && menu_manager_screen_has_chrome(menu_manager, "DEFN") &&
+           has_all_buttons(menu_manager, {"Play", "Options", "Quit"});
+}
+
+bool menu_manager_shows_game_menu(MenuManager *menu_manager) {
+    return menu_manager_screen_has_chrome(menu_manager, "CAMPAIGN") && has_all_buttons(menu_manager, {"New/Continue Game", "Progress", "Main Menu"});
+}
 
 bool menu_manager_shows_options_menu(MenuManager *menu_manager) {
-    return has_all_labels(menu_manager, {"Video", "Display Mode", "Resolution", "VSync", "Audio", "Master Volume"}) && has_all_buttons(menu_manager, {"Back"});
+    return menu_manager_screen_has_chrome(menu_manager, "OPTIONS") &&
+           has_all_labels(menu_manager, {"Video", "Display Mode", "Resolution", "VSync", "Audio", "Master Volume"}) && has_all_buttons(menu_manager, {"Back"});
 }
 
 bool menu_manager_shows_level_select(MenuManager *menu_manager) {
@@ -517,11 +555,12 @@ DEFN_TEST(deploy_card_presenter_builds_card_content_from_unit_config) {
     DEFN_CHECK_CLOSE(button->get_custom_minimum_size().y, 110.0, 0.001);
     DEFN_CHECK(button->get_theme_type_variation() == StringName("DefnDeployCardButton"));
     DEFN_CHECK(has_label_text(button, "Operator"));
-    DEFN_CHECK(has_label_containing(button, "25"));
+    DEFN_CHECK(has_label_text(button, "25"));
+    DEFN_CHECK(card_shows_a_tinted_mark(button));
 
     Label *title = find_label_by_text(button, "Operator");
     DEFN_REQUIRE(title != nullptr);
-    DEFN_CHECK(title->get_theme_type_variation() == StringName("DefnDeployCardTitleLabel"));
+    DEFN_CHECK(title->get_theme_type_variation() == StringName("DefnCardTitleLabel"));
 
     memdelete(button);
     memdelete(receiver);
@@ -534,7 +573,7 @@ DEFN_TEST(upgrade_card_presenter_builds_selected_disabled_and_fallback_cards) {
     upgrade.id = "rapid_reload";
     upgrade.name = "Rapid Reload";
     upgrade.description = "Shoot more often.";
-    upgrade.emoji = "+";
+    upgrade.icon = "target";
     upgrade.owned_count = 2;
 
     auto *selected_button = UpgradeCardPresenter::create(upgrade, true, true, make_valid_callable(receiver));
@@ -569,8 +608,8 @@ DEFN_TEST(score_screen_presenter_builds_victory_screen_with_rewards_and_disabled
     model.new_unlocks.emplace_back("NEW UNLOCK: Level 02!");
     model.reward.title = "FIRST CLEAR UPGRADE: Level 01";
     model.reward.subtitle = "Level 01 cleared for the first time.";
-    model.reward.available_upgrades.push_back({.id = "rapid_reload", .name = "Rapid Reload", .description = "Shoot more often.", .emoji = "+"});
-    model.owned_upgrades.push_back({.id = "owned", .name = "Owned Upgrade", .description = "Already claimed.", .emoji = "*", .owned_count = 1});
+    model.reward.available_upgrades.push_back({.id = "rapid_reload", .name = "Rapid Reload", .description = "Shoot more often.", .icon = "target"});
+    model.owned_upgrades.push_back({.id = "owned", .name = "Owned Upgrade", .description = "Already claimed.", .icon = "salvage", .owned_count = 1});
 
     const Callable action = make_valid_callable(parent);
     const ScoreScreenViewNodes view =

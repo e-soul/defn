@@ -56,6 +56,7 @@ struct CampaignRouteViewModel {
 };
 
 struct CampaignMapViewModel {
+    std::string title;
     CampaignTextureDefinition background;
     std::vector<CampaignMissionViewModel> missions;
     std::vector<CampaignRouteViewModel> routes;

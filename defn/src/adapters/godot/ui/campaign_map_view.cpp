@@ -16,6 +16,7 @@
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
 
+#include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
 #include <godot_cpp/classes/canvas_item.hpp>
@@ -43,10 +44,17 @@ using GVector2 = godot::Vector2;
 
 namespace {
 
-constexpr float REFERENCE_WIDTH = 1920.0F;
-constexpr float REFERENCE_HEIGHT = 1080.0F;
+/// How far the dossier starts faded when the selection moves, so the swap reads as a change rather than a jump.
+constexpr float DOSSIER_FADE_FROM_ALPHA = 0.82F;
 
-GVector2 mission_center(const CampaignMissionViewModel &mission) { return {mission.position_x * REFERENCE_WIDTH, mission.position_y * REFERENCE_HEIGHT}; }
+/// The map is composed against a fixed reference resolution and then scaled to fit the window, so every `map_*`
+/// metric is expressed in this space and means nothing without it.
+GVector2 reference_size() { return {UiThemeProvider::metric("map_reference_width", 1920), UiThemeProvider::metric("map_reference_height", 1080)}; }
+
+GVector2 mission_center(const CampaignMissionViewModel &mission) {
+    const GVector2 reference = reference_size();
+    return {mission.position_x * reference.x, mission.position_y * reference.y};
+}
 
 GColor route_color(CampaignRouteState state) {
     switch (state) {
@@ -78,11 +86,15 @@ GColor ambience_color(CampaignMapAmbience ambience) {
     return UiThemeProvider::color("ambience_dust");
 }
 
+/// A route bows away from the straight line by a fraction of its own length, clamped so a short hop still
+/// curves and a long one does not swing out across the map.
 PackedVector2Array route_points(const GVector2 &start, const GVector2 &end) {
     const GVector2 delta = end - start;
     GVector2 perpendicular(-delta.y, delta.x);
     if (perpendicular.length_squared() > 0.0F) {
-        perpendicular = perpendicular.normalized() * std::clamp(delta.length() * 0.06F, 18.0F, 32.0F);
+        const real_t bow = delta.length() * (UiThemeProvider::metric("map_route_bow_percent", 6) / 100.0F);
+        perpendicular =
+            perpendicular.normalized() * std::clamp(bow, UiThemeProvider::metric("map_route_bow_min", 18), UiThemeProvider::metric("map_route_bow_max", 32));
     }
     PackedVector2Array points;
     points.push_back(start);
@@ -305,7 +317,7 @@ void CampaignMapView::complete_loading() {
     loading_state_ = LoadingState::Ready;
     set_process(false);
     Ref<Tween> tween = create_tween();
-    tween->tween_property(loading_overlay_, "modulate:a", 0.0F, 0.22F);
+    tween->tween_property(loading_overlay_, "modulate:a", 0.0F, UiThemeProvider::motion("slow"));
     tween->tween_callback(callable_mp(this, &CampaignMapView::finish_overlay_fade));
 }
 
@@ -359,9 +371,10 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     backdrop->set_mouse_filter(MOUSE_FILTER_IGNORE);
     add_child(backdrop);
 
+    const GVector2 reference = reference_size();
     reference_surface_ = memnew(Control);
     reference_surface_->set_name("ReferenceSurface");
-    reference_surface_->set_size({REFERENCE_WIDTH, REFERENCE_HEIGHT});
+    reference_surface_->set_size(reference);
     reference_surface_->set_clip_contents(true);
     reference_surface_->set_mouse_filter(MOUSE_FILTER_PASS);
     add_child(reference_surface_);
@@ -374,28 +387,28 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     panorama_view->set_position({0.0F, 0.0F});
     panorama_view->set_texture_filter(CanvasItem::TEXTURE_FILTER_LINEAR_WITH_MIPMAPS);
     if (panorama.is_valid() && panorama->get_width() > 0 && panorama->get_height() > 0) {
-        panorama_view->set_scale({REFERENCE_WIDTH / static_cast<float>(panorama->get_width()), REFERENCE_HEIGHT / static_cast<float>(panorama->get_height())});
+        panorama_view->set_scale({reference.x / static_cast<float>(panorama->get_width()), reference.y / static_cast<float>(panorama->get_height())});
     }
     reference_surface_->add_child(panorama_view);
 
     auto *vignette = memnew(ColorRect);
     vignette->set_color(UiThemeProvider::color("scrim_soft"));
     vignette->set_position({0.0F, 0.0F});
-    vignette->set_size({REFERENCE_WIDTH, REFERENCE_HEIGHT});
+    vignette->set_size(reference);
     vignette->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(vignette);
 
     auto *map_layer = memnew(Control);
     map_layer->set_name("MapInteractionLayer");
     map_layer->set_position({0.0F, 0.0F});
-    map_layer->set_size({REFERENCE_WIDTH, REFERENCE_HEIGHT});
+    map_layer->set_size(reference);
     map_layer->set_mouse_filter(MOUSE_FILTER_PASS);
     reference_surface_->add_child(map_layer);
 
     auto *route_layer = memnew(Control);
     route_layer->set_name("RouteLayer");
     route_layer->set_position({0.0F, 0.0F});
-    route_layer->set_size({REFERENCE_WIDTH, REFERENCE_HEIGHT});
+    route_layer->set_size(reference);
     route_layer->set_mouse_filter(MOUSE_FILTER_IGNORE);
     map_layer->add_child(route_layer);
     build_routes(route_layer);
@@ -420,32 +433,42 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     auto *node_layer = memnew(Control);
     node_layer->set_name("MissionNodes");
     node_layer->set_position({0.0F, 0.0F});
-    node_layer->set_size({REFERENCE_WIDTH, REFERENCE_HEIGHT});
+    node_layer->set_size(reference);
     node_layer->set_mouse_filter(MOUSE_FILTER_PASS);
     map_layer->add_child(node_layer);
     build_nodes(node_layer, ui_sfx_player);
 
-    auto *header_backplate = memnew(ColorRect);
+    const real_t header_height = UiThemeProvider::metric("map_header_height", 104);
+    const real_t header_margin = UiThemeProvider::metric("map_header_margin", 64);
+
+    auto *header_backplate = make_surface("map_header");
     header_backplate->set_name("HeaderBackplate");
-    header_backplate->set_color(UiThemeProvider::color("scrim_panel"));
     header_backplate->set_position({0.0F, 0.0F});
-    header_backplate->set_size({REFERENCE_WIDTH, UiThemeProvider::metric("map_header_height", 104)});
+    header_backplate->set_size({reference.x, header_height});
     header_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(header_backplate);
 
-    auto *breadcrumb = make_label("CAMPAIGN / THE EASTERN EXPEDITION", "screen_heading");
+    // Both readings sit on the header's centre line and stop the same distance in from its edges, so the row
+    // stays balanced whatever the reference width becomes.
+    auto *header_row = memnew(HBoxContainer);
+    header_row->set_name("HeaderRow");
+    header_row->set_position({header_margin, 0.0F});
+    header_row->set_size({reference.x - (header_margin * 2.0F), header_height});
+    header_row->set_mouse_filter(MOUSE_FILTER_IGNORE);
+    reference_surface_->add_child(header_row);
+
+    auto *breadcrumb = make_label(to_godot_string(view_model_.title), "screen_heading");
     breadcrumb->set_name("Breadcrumb");
-    breadcrumb->set_position({64.0F, 34.0F});
-    breadcrumb->set_size({900.0F, 48.0F});
-    reference_surface_->add_child(breadcrumb);
+    breadcrumb->set_h_size_flags(SIZE_EXPAND_FILL);
+    breadcrumb->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
+    header_row->add_child(breadcrumb);
 
     auto *secured = make_label(vformat("%d / %d SECURED", view_model_.completed_count, view_model_.missions.size()), "screen_heading");
     secured->set_name("SecuredCount");
     set_state_tint(secured, "state_success");
-    secured->set_position({1150.0F, 40.0F});
-    secured->set_size({220.0F, 40.0F});
+    secured->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
     secured->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
-    reference_surface_->add_child(secured);
+    header_row->add_child(secured);
 
     dossier_ = memnew(OperationDossierView);
     dossier_->set_name("OperationDossier");
@@ -467,7 +490,7 @@ void CampaignMapView::build_routes(Control *route_layer) {
         auto *shadow = memnew(Line2D);
         shadow->set_name(vformat("RouteShadow%d", route.from_index));
         shadow->set_points(points);
-        shadow->set_width(8.0F);
+        shadow->set_width(UiThemeProvider::metric("map_route_shadow_width", 8));
         shadow->set_default_color(UiThemeProvider::color("route_shadow"));
         shadow->set_antialiased(true);
         route_layer->add_child(shadow);
@@ -475,7 +498,7 @@ void CampaignMapView::build_routes(Control *route_layer) {
         auto *line = memnew(Line2D);
         line->set_name(vformat("RouteSegment%d", route.from_index));
         line->set_points(points);
-        line->set_width(route.state == CampaignRouteState::LOCKED ? 3.0F : 4.0F);
+        line->set_width(UiThemeProvider::metric(route.state == CampaignRouteState::LOCKED ? "map_route_width_locked" : "map_route_width", 4));
         line->set_default_color(route_color(route.state));
         line->set_antialiased(true);
         route_layer->add_child(line);
@@ -487,12 +510,13 @@ void CampaignMapView::build_nodes(Control *node_layer, UiSfxPlayer *ui_sfx_playe
     for (const CampaignMissionViewModel &mission : view_model_.missions) {
         auto *node = memnew(CampaignMapNodeView);
         node->set_name(to_godot_string(mission.level_id));
-        node->set_position(mission_center(mission) - GVector2(94.0F, 67.0F));
+        // A node is placed by its centre, which is where the map's normalized coordinates put it.
+        node->set_position(mission_center(mission) - (node->get_size() * 0.5F));
         node->configure(mission, texture_for(mission.preview.texture));
         node->connect("selected", callable_mp(this, &CampaignMapView::select_level));
         node->connect("activated", callable_mp(this, &CampaignMapView::activate_level));
         if (ui_sfx_player != nullptr) {
-            ui_sfx_player->connect_menu_button(node->button());
+            connect_sfx(ui_sfx_player, node->button());
         }
         node_layer->add_child(node);
         node_views_.push_back(node);
@@ -514,9 +538,9 @@ void CampaignMapView::select_level(const String &level_id) {
     }
     dossier_->configure(*mission, texture_for(mission->preview.texture));
     configure_ambience(*mission);
-    dossier_->set_modulate(GColor(1, 1, 1, 0.82F));
+    dossier_->set_modulate(GColor(1, 1, 1, DOSSIER_FADE_FROM_ALPHA));
     Ref<Tween> tween = create_tween();
-    tween->tween_property(dossier_, "modulate:a", 1.0F, 0.16F);
+    tween->tween_property(dossier_, "modulate:a", 1.0F, UiThemeProvider::motion("fast"));
 }
 
 void CampaignMapView::activate_level(const String &level_id) {
@@ -542,9 +566,10 @@ void CampaignMapView::layout_reference_surface() {
     if (reference_surface_ == nullptr || get_size().x <= 0.0F || get_size().y <= 0.0F) {
         return;
     }
-    const float scale = std::min(get_size().x / REFERENCE_WIDTH, get_size().y / REFERENCE_HEIGHT);
+    const GVector2 reference = reference_size();
+    const float scale = std::min(get_size().x / reference.x, get_size().y / reference.y);
     reference_surface_->set_scale({scale, scale});
-    reference_surface_->set_position((get_size() - GVector2(REFERENCE_WIDTH * scale, REFERENCE_HEIGHT * scale)) * 0.5F);
+    reference_surface_->set_position((get_size() - (reference * scale)) * 0.5F);
 }
 
 void CampaignMapView::configure_ambience(const CampaignMissionViewModel &mission) {

@@ -23,18 +23,18 @@ const UiMedallionStyle &or_neutral(const UiMedallionStyle *found) {
     return found != nullptr ? *found : unstyled;
 }
 
-Ref<Texture2D> mark_texture(const std::string &mark) {
-    if (mark.empty()) {
-        return {};
-    }
-    return ResourceLoader::get_singleton()->load(to_godot_string(mark));
-}
-
 } // namespace
 
 const UiMedallionStyle &theme_medallion(std::string_view key) { return or_neutral(UiThemeProvider::data().find_medallion(key)); }
 
-const UiMedallionStyle &theme_hud_icon(std::string_view key) { return or_neutral(UiThemeProvider::data().find_hud_icon(key)); }
+const UiMedallionStyle &theme_icon(std::string_view key) { return or_neutral(UiThemeProvider::data().find_icon(key)); }
+
+Ref<Texture2D> theme_mark_texture(const UiMedallionStyle &style) {
+    if (style.mark.empty()) {
+        return {};
+    }
+    return ResourceLoader::get_singleton()->load(to_godot_string(style.mark));
+}
 
 IconMedallionNodes make_icon_medallion(float size) {
     IconMedallionNodes nodes;
@@ -67,7 +67,7 @@ void apply_icon_medallion(const IconMedallionNodes &nodes, const UiMedallionStyl
     plate_style->set_border_color(tint);
     nodes.plate->add_theme_stylebox_override("panel", plate_style);
 
-    nodes.mark->set_texture(mark_texture(style.mark));
+    nodes.mark->set_texture(theme_mark_texture(style));
     nodes.mark->set_modulate(tint);
 }
 

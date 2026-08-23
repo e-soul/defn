@@ -9,7 +9,10 @@
 #include "ui_theme_loader.h"
 
 #include <godot_cpp/classes/font.hpp>
+#include <godot_cpp/classes/image.hpp>
+#include <godot_cpp/classes/image_texture.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -89,7 +92,7 @@ Ref<StyleBoxFlat> build_button_state_style(const UiThemeData &theme_data, const 
     style.instantiate();
     style->set_bg_color(role_color(theme_data, state.bg_role));
     style->set_border_color(role_color(theme_data, state.border_role));
-    style->set_border_width_all(theme_data.shape.border_width);
+    style->set_border_width_all(role_shape(theme_data, button.border_width_role, theme_data.shape.border_width));
     style->set_corner_radius_all(role_shape(theme_data, button.shape_role, theme_data.shape.corner_md));
     if (!button.content_margin_role.empty()) {
         style->set_content_margin_all(static_cast<float>(role_spacing(theme_data, button.content_margin_role, theme_data.spacing.md)));
@@ -118,6 +121,68 @@ void register_label_type(const Ref<Theme> &theme, const UiThemeData &theme_data,
     if (text_style.outline_size > 0) {
         theme->set_color("font_outline_color", type_name, role_color(theme_data, text_style.outline_role));
     }
+}
+
+/// A white mark recoloured into a texture at the size the theme asks for. The medallion marks the views build
+/// are tinted live through `modulate`, but Godot draws most of a control's own icons unmodulated, so those have
+/// to arrive already in the palette.
+Ref<Texture2D> build_control_icon(const UiThemeData &theme_data, std::string_view name) {
+    const UiMedallionStyle *style = theme_data.find_control_icon(name);
+    if (style == nullptr || style->mark.empty()) {
+        return {};
+    }
+
+    const Ref<Texture2D> source = ResourceLoader::get_singleton()->load(to_godot_string(style->mark));
+    if (source.is_null()) {
+        UtilityFunctions::printerr("UiThemeProvider: Failed to load control icon ", to_godot_string(style->mark));
+        return {};
+    }
+
+    Ref<Image> image = source->get_image();
+    if (image.is_null()) {
+        return {};
+    }
+    image = image->duplicate();
+    image->convert(Image::FORMAT_RGBA8);
+    if (const int size = theme_data.metric("control_icon_size", 0); size > 0) {
+        image->resize(size, size, Image::INTERPOLATE_LANCZOS);
+    }
+
+    // The marks are solid white with a shaped alpha channel, so recolouring is a straight channel swap that
+    // leaves every edge exactly as the SVG anti-aliased it.
+    const godot::Color tint = role_color(theme_data, style->color_role);
+    for (int row = 0; row < image->get_height(); ++row) {
+        for (int column = 0; column < image->get_width(); ++column) {
+            const godot::Color pixel = image->get_pixel(column, row);
+            image->set_pixel(column, row, godot::Color(tint.r, tint.g, tint.b, pixel.a * tint.a));
+        }
+    }
+    return ImageTexture::create_from_image(image);
+}
+
+/// Replaces the marks Godot's own controls draw for themselves. Without these a slider knob, a dropdown arrow
+/// and a popup's selection dot render in the engine's stock greys, which is the one place the palette cannot
+/// reach through styleboxes alone.
+void register_control_icons(const Ref<Theme> &theme, const UiThemeData &theme_data) {
+    const Ref<Texture2D> knob = build_control_icon(theme_data, "slider_knob");
+    const Ref<Texture2D> knob_hot = build_control_icon(theme_data, "slider_knob_hot");
+    const Ref<Texture2D> knob_off = build_control_icon(theme_data, "slider_knob_disabled");
+    for (const char *slider : {"HSlider", "VSlider"}) {
+        theme->set_icon("grabber", slider, knob);
+        theme->set_icon("grabber_highlight", slider, knob_hot);
+        theme->set_icon("grabber_disabled", slider, knob_off);
+    }
+
+    const Ref<Texture2D> chosen = build_control_icon(theme_data, "choice_on");
+    const Ref<Texture2D> unchosen = build_control_icon(theme_data, "choice_off");
+    theme->set_icon("radio_checked", "PopupMenu", chosen);
+    theme->set_icon("radio_unchecked", "PopupMenu", unchosen);
+    theme->set_icon("checked", "PopupMenu", chosen);
+    theme->set_icon("unchecked", "PopupMenu", unchosen);
+
+    // Godot only tints the dropdown arrow with the button's font colours when asked to; left off it stays the
+    // engine's own grey next to text that is not.
+    theme->set_constant("modulate_arrow", "OptionButton", 1);
 }
 
 void register_base_types(const Ref<Theme> &theme, const UiThemeData &theme_data) {
@@ -195,6 +260,7 @@ Ref<Theme> build_theme(const UiThemeData &theme_data) {
     theme->set_default_font_size(theme_data.typography.body);
 
     register_base_types(theme, theme_data);
+    register_control_icons(theme, theme_data);
 
     for (const auto &[name, text_style] : theme_data.text_styles) {
         const StringName type_name = variation_name(name, "Label");
@@ -264,6 +330,8 @@ int UiThemeProvider::font_size(std::string_view role) { return role_font_size(da
 int UiThemeProvider::spacing(std::string_view role) { return role_spacing(data(), role, data().spacing.md); }
 
 int UiThemeProvider::shape(std::string_view role) { return role_shape(data(), role, data().shape.corner_md); }
+
+double UiThemeProvider::motion(std::string_view role) { return data().find_motion_role(role).value_or(data().motion.base); }
 
 Ref<StyleBoxFlat> UiThemeProvider::surface(std::string_view name) {
     const UiThemeData &theme_data = data();

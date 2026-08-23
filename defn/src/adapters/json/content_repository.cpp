@@ -42,12 +42,15 @@ std::vector<std::string> campaign_asset_paths(const CampaignMapDefinition &map) 
 
 std::vector<std::string> theme_mark_paths(const UiThemeData &theme) {
     std::vector<std::string> paths;
-    paths.reserve(theme.medallions.size() + theme.hud_icons.size());
+    paths.reserve(theme.medallions.size() + theme.icons.size() + theme.control_icons.size());
     for (const auto &[name, medallion] : theme.medallions) {
         paths.push_back(medallion.mark);
     }
-    for (const auto &[name, hud_icon] : theme.hud_icons) {
-        paths.push_back(hud_icon.mark);
+    for (const auto &[name, icon] : theme.icons) {
+        paths.push_back(icon.mark);
+    }
+    for (const auto &[name, control_icon] : theme.control_icons) {
+        paths.push_back(control_icon.mark);
     }
     return paths;
 }

@@ -31,7 +31,7 @@ UpgradeCardViewModel to_godot_upgrade_card(const ProgressionUpgradeCardViewModel
         .id = card.id,
         .name = card.name,
         .description = card.description,
-        .emoji = card.emoji,
+        .icon = card.icon,
         .category = card.category,
         .owned_count = card.owned_count,
     };

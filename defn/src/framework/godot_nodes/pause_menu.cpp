@@ -3,14 +3,13 @@
 
 #include "pause_menu.h"
 #include "data_paths.h"
-#include "godot_color.h"
 #include "godot_string.h"
 #include "menu_data_loader.h"
+#include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
 #include <godot_cpp/classes/button.hpp>
-#include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -68,22 +67,19 @@ void PauseMenu::build_ui() {
     add_child(ui_sfx_player_);
     ui_sfx_player_->configure(UiThemeProvider::data().sfx);
 
-    // Dark overlay
-    overlay_ = memnew(ColorRect);
-    overlay_->set_anchors_preset(Control::PRESET_FULL_RECT);
-    overlay_->set_color(to_godot_color(pause_menu->overlay_color));
-    overlay_->set_mouse_filter(Control::MOUSE_FILTER_STOP);
-    add_child(overlay_);
-
-    // Center container
-    auto *center = memnew(CenterContainer);
-    center->set_anchors_preset(Control::PRESET_FULL_RECT);
-    center->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    add_child(center);
-
-    button_container_ = memnew(VBoxContainer);
-    button_container_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
-    center->add_child(button_container_);
+    // The scrim, the panel and the heading all come from the shared chrome, so pausing looks like every other
+    // screen the game puts in front of the player rather than a bare stack of buttons.
+    const UiScreenScaffold scaffold = build_screen(this, {
+                                                             .title = to_godot_string(pause_menu->title),
+                                                             .show_backdrop = true,
+                                                             .scrollable_body = false,
+                                                             .fit_content = true,
+                                                         });
+    if (scaffold.root == nullptr) {
+        return;
+    }
+    screen_ = scaffold.root;
+    button_container_ = scaffold.body;
 
     button_container_->add_theme_constant_override("separation",
                                                    UiThemeProvider::data().metric("menu_button_separation", UiThemeProvider::spacing("section_gap")));
@@ -107,13 +103,9 @@ void PauseMenu::set_paused(bool paused) {
     paused_ = paused;
     get_tree()->set_pause(paused_);
 
-    if (overlay_) {
-        overlay_->set_visible(paused_);
-    }
-    if (button_container_ && button_container_->get_parent()) {
-        auto *center = Object::cast_to<Node>(button_container_->get_parent());
-        center->set_process_mode(paused_ ? PROCESS_MODE_ALWAYS : PROCESS_MODE_DISABLED);
-        button_container_->set_visible(paused_);
+    if (screen_ != nullptr) {
+        screen_->set_visible(paused_);
+        screen_->set_process_mode(paused_ ? PROCESS_MODE_ALWAYS : PROCESS_MODE_DISABLED);
     }
 }
 

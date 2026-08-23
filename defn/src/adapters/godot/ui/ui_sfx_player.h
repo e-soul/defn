@@ -9,6 +9,8 @@
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
+#include <string_view>
+
 namespace defn {
 
 struct UiSfxData;
@@ -19,8 +21,12 @@ class UiSfxPlayer : public godot::Node {
 
   public:
     void configure(const UiSfxData &config);
-    void connect_menu_button(godot::BaseButton *button);
-    void connect_deploy_card(godot::BaseButton *button);
+    /// Hover plus the press sound the variant named. One entry point, so a control cannot end up silent because
+    /// its call site forgot which of the two wiring calls applied to it.
+    void connect_button(godot::BaseButton *button, std::string_view press_role);
+
+    /// The player the UI wires new controls to. Set when one is configured; narrow to this one purpose.
+    static UiSfxPlayer *active();
 
   protected:
     static void _bind_methods();
@@ -28,8 +34,7 @@ class UiSfxPlayer : public godot::Node {
   private:
     godot::AudioStreamPlayer *create_player(const char *name, const UiSoundData &sound);
     void play_hover(godot::BaseButton *button);
-    void play_click(godot::BaseButton *button);
-    void play_deploy_card(godot::BaseButton *button);
+    void play_press(godot::BaseButton *button, bool deploy_card);
 
     godot::AudioStreamPlayer *hover_player_ = nullptr;
     godot::AudioStreamPlayer *click_player_ = nullptr;

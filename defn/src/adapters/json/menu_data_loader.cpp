@@ -13,23 +13,7 @@
 
 namespace defn {
 
-namespace {
-
-constexpr float DEFAULT_ALPHA = 1.0F;
-
-Color parse_content_color(const Array &arr, const Color &fallback) {
-    if (arr.size() >= 3) {
-        return {
-            .r = VariantTools::as_float(arr[0]),
-            .g = VariantTools::as_float(arr[1]),
-            .b = VariantTools::as_float(arr[2]),
-            .a = arr.size() >= 4 ? VariantTools::as_float(arr[3]) : DEFAULT_ALPHA,
-        };
-    }
-    return fallback;
-}
-
-} // namespace
+namespace {} // namespace
 
 MenuDefinitionType parse_menu_type(const Dictionary &menu_dict) {
     return String(menu_dict.get("type", "buttons")) == "options" ? MenuDefinitionType::OPTIONS : MenuDefinitionType::BUTTONS;
@@ -119,7 +103,7 @@ MenuDefinition parse_menu_definition(const String &menu_name, const Dictionary &
     MenuDefinition definition;
     definition.name = to_std_string(menu_name);
     definition.type = parse_menu_type(menu_dict);
-    definition.overlay_color = parse_content_color(menu_dict.get("overlay_color", Array()), definition.overlay_color);
+    definition.title = to_std_string(String(menu_dict.get("title", "")));
 
     const Array entry_array = menu_dict.get("entries", Array());
     definition.entries.reserve(entry_array.size());

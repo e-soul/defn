@@ -33,7 +33,7 @@ struct ProgressionUpgradeChipViewModel {
     std::string id;
     std::string label;
     std::string description;
-    std::string emoji;
+    std::string icon;
 };
 
 struct ProgressionStatsScreenViewModel {

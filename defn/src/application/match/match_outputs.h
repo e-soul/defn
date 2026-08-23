@@ -53,7 +53,7 @@ struct MatchUpgradeOption {
     std::string id;
     std::string name;
     std::string description;
-    std::string emoji;
+    std::string icon;
     std::string category;
     int owned_count = 0;
 };

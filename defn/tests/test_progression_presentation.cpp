@@ -29,12 +29,12 @@ DEFN_TEST(progression_presentation_describes_new_unlock_ids) {
 
 DEFN_TEST(progression_presentation_builds_upgrade_card_view_model) {
     const ProgressionUpgradeCardViewModel view_model = ProgressionPresentation::build_upgrade_card_view_model(
-        {.id = "hp", .name = "Extra Plating", .description = "More health.", .emoji = "+", .category = "defense"}, 2);
+        {.id = "hp", .name = "Extra Plating", .description = "More health.", .icon = "+", .category = "defense"}, 2);
 
     DEFN_CHECK_EQ(view_model.id, std::string("hp"));
     DEFN_CHECK_EQ(view_model.name, std::string("Extra Plating"));
     DEFN_CHECK_EQ(view_model.description, std::string("More health."));
-    DEFN_CHECK_EQ(view_model.emoji, std::string("+"));
+    DEFN_CHECK_EQ(view_model.icon, std::string("+"));
     DEFN_CHECK_EQ(view_model.category, std::string("defense"));
     DEFN_CHECK_EQ(view_model.owned_count, 2);
 }
@@ -42,7 +42,7 @@ DEFN_TEST(progression_presentation_builds_upgrade_card_view_model) {
 DEFN_TEST(progression_presentation_builds_reward_view_model_from_draft_ids) {
     const ProgressionRewardViewModel view_model = ProgressionPresentation::build_reward_view_model(
         {.source = ProgressionRewardSource::FIRST_CLEAR, .level_id = "level_01", .upgrade_ids = {"hp", "missing"}},
-        {{.id = "hp", .name = "Extra Plating", .description = "More health.", .emoji = "+", .category = "defense"}});
+        {{.id = "hp", .name = "Extra Plating", .description = "More health.", .icon = "+", .category = "defense"}});
 
     DEFN_CHECK_EQ(view_model.source, std::string("first_clear"));
     DEFN_CHECK_EQ(view_model.level_id, std::string("level_01"));

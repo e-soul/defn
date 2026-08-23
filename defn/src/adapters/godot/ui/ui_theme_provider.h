@@ -35,6 +35,8 @@ class UiThemeProvider {
     static int font_size(std::string_view role);
     static int spacing(std::string_view role);
     static int shape(std::string_view role);
+    /// A named transition length in seconds, so no two animations in the game drift onto different durations.
+    static double motion(std::string_view role);
     static godot::Ref<godot::StyleBoxFlat> surface(std::string_view name);
 
     /// JSON entry key (`screen_title`) to the registered theme type variation (`ScreenTitleLabel`).

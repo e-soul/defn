@@ -26,6 +26,9 @@ struct ScreenSpec {
     bool scrollable_body = true;
     /// Keeps the panel inside max_content_size and lets a scrollable body absorb overflow.
     bool constrain_height = false;
+    /// Lets the panel shrink around its content instead of filling the content box. Menus and dialogs carry a
+    /// handful of controls and look wrong stretched to the width a data-heavy screen wants.
+    bool fit_content = false;
     /// Overrides the viewport-derived content box when both axes are positive.
     godot::Vector2 max_content_size;
 };

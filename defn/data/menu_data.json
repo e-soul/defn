@@ -2,6 +2,7 @@
     "background": "res://assets/backgrounds/menu_background.png",
     "menus": {
         "main_menu": {
+            "title": "DEFN",
             "entries": [
                 { "id": "play", "label": "Play", "action": "goto_menu", "target": "game_menu" },
                 { "id": "options", "label": "Options", "action": "goto_menu", "target": "options_menu" },
@@ -9,6 +10,7 @@
             ]
         },
         "game_menu": {
+            "title": "CAMPAIGN",
             "entries": [
                 { "id": "new_continue", "label": "New/Continue Game", "action": "level_select" },
                 { "id": "progression", "label": "Progress", "action": "progression" },
@@ -16,6 +18,7 @@
             ]
         },
         "options_menu": {
+            "title": "OPTIONS",
             "type": "options",
             "settings": [
                 { "type": "section", "label": "Video" },
@@ -64,7 +67,7 @@
             "back": { "label": "Back", "action": "goto_menu", "target": "main_menu" }
         },
         "pause_menu": {
-            "overlay_color": [0, 0, 0, 0.6],
+            "title": "PAUSED",
             "entries": [
                 { "id": "resume", "label": "Resume", "action": "resume" },
                 { "id": "main_menu", "label": "Main Menu", "action": "main_menu" }

@@ -101,6 +101,7 @@ std::optional<CampaignMapDefinition> CampaignMapDataLoader::load(const String &p
 
 std::optional<CampaignMapDefinition> CampaignMapDataLoader::load_from_data(const Dictionary &data) {
     CampaignMapDefinition result;
+    result.title = to_std_string(String(data.get("title", "")));
     const Dictionary background = data.get("background", Dictionary());
     result.background = parse_texture(background);
 

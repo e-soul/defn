@@ -1,251 +1,335 @@
 {
-  "draft_size": 3,
-  "reserve_unit_slot": true,
-  "base_units": ["breacher"],
-  "cards": [
-    {
-      "id": "battery_pack",
-      "name": "Battery Pack",
-      "description": "+15 starting energy next mission.",
-      "emoji": "🔋",
-      "category": "economy",
-      "minimum_completed_levels": 0,
-      "weight": 3,
-      "max_picks": 1,
-      "effects": [
-        { "type": "starting_energy_delta", "value": 15 }
-      ]
-    },
-    {
-      "id": "reinforced_plating",
-      "name": "Reinforced Plating",
-      "description": "Breachers gain +50 HP.",
-      "emoji": "🦾",
-      "category": "unit",
-      "minimum_completed_levels": 0,
-      "weight": 3,
-      "max_picks": 1,
-      "effects": [
-        { "type": "unit_hp_delta", "unit_id": "breacher", "value": 50 }
-      ]
-    },
-    {
-      "id": "breach_drills",
-      "name": "Breach Drills",
-      "description": "Breachers gain +8 move speed.",
-      "emoji": "🥾",
-      "category": "unit",
-      "minimum_completed_levels": 0,
-      "weight": 2,
-      "max_picks": 1,
-      "effects": [
-        { "type": "unit_move_speed_delta", "unit_id": "breacher", "value": 8 }
-      ]
-    },
-    {
-      "id": "sharpshooter_contract",
-      "name": "Sharpshooter Contract",
-      "description": "Unlock the Marksman deploy card.",
-      "emoji": "🎯",
-      "category": "unit",
-      "minimum_completed_levels": 0,
-      "weight": 4,
-      "max_picks": 1,
-      "effects": [
-        { "type": "unit_unlock", "unit_id": "marksman" }
-      ]
-    },
-    {
-      "id": "precision_ammo",
-      "name": "Precision Ammo",
-      "description": "Marksmen deal +2 ranged damage.",
-      "emoji": "🎯",
-      "category": "unit",
-      "minimum_completed_levels": 1,
-      "weight": 2,
-      "max_picks": 1,
-      "prerequisites": ["sharpshooter_contract"],
-      "effects": [
-        { "type": "unit_ranged_damage_delta", "unit_id": "marksman", "value": 2 }
-      ]
-    },
-    {
-      "id": "field_boots",
-      "name": "Field Boots",
-      "description": "Marksmen gain +10 move speed.",
-      "emoji": "🥾",
-      "category": "unit",
-      "minimum_completed_levels": 1,
-      "weight": 2,
-      "max_picks": 1,
-      "prerequisites": ["sharpshooter_contract"],
-      "effects": [
-        { "type": "unit_move_speed_delta", "unit_id": "marksman", "value": 10 }
-      ]
-    },
-    {
-      "id": "reinforced_bulkhead",
-      "name": "Reinforced Bulkhead",
-      "description": "+1 base integrity next mission.",
-      "emoji": "🧱",
-      "category": "defense",
-      "minimum_completed_levels": 0,
-      "weight": 2,
-      "max_picks": 1,
-      "effects": [
-        { "type": "base_integrity_delta", "value": 1 }
-      ]
-    },
-    {
-      "id": "overclocked_capacitors",
-      "name": "Overclocked Capacitors",
-      "description": "+1 energy regen every second.",
-      "emoji": "⚡",
-      "category": "economy",
-      "minimum_completed_levels": 2,
-      "weight": 1,
-      "max_picks": 1,
-      "prerequisites": ["battery_pack"],
-      "effects": [
-        { "type": "energy_regen_delta", "value": 1 }
-      ]
-    },
-    {
-      "id": "demolition_permit",
-      "name": "Demolition Permit",
-      "description": "Unlock the Impact deploy card.",
-      "emoji": "💥",
-      "category": "unit",
-      "minimum_completed_levels": 1,
-      "weight": 3,
-      "max_picks": 1,
-      "effects": [
-        { "type": "unit_unlock", "unit_id": "impact" }
-      ]
-    },
-    {
-      "id": "combat_veteran",
-      "name": "Combat Veteran",
-      "description": "Impacts gain +35 HP.",
-      "emoji": "🪖",
-      "category": "unit",
-      "minimum_completed_levels": 1,
-      "weight": 2,
-      "max_picks": 1,
-      "prerequisites": ["demolition_permit"],
-      "effects": [
-        { "type": "unit_hp_delta", "unit_id": "impact", "value": 35 }
-      ]
-    },
-    {
-      "id": "accelerated_gearing",
-      "name": "Accelerated Gearing",
-      "description": "Impacts gain +12 move speed.",
-      "emoji": "⚙️",
-      "category": "unit",
-      "minimum_completed_levels": 1,
-      "weight": 2,
-      "max_picks": 1,
-      "prerequisites": ["demolition_permit"],
-      "effects": [
-        { "type": "unit_move_speed_delta", "unit_id": "impact", "value": 12 }
-      ]
-    },
-    {
-      "id": "salvage_rights",
-      "name": "Salvage Rights",
-      "description": "Enemies drop 20% more energy.",
-      "emoji": "💰",
-      "category": "economy",
-      "minimum_completed_levels": 1,
-      "weight": 2,
-      "max_picks": 1,
-      "effects": [
-        { "type": "bounty_multiplier_delta", "value": 0.2 }
-      ]
-    },
-    {
-      "id": "reserve_cells",
-      "name": "Reserve Cells",
-      "description": "+20 starting energy next mission.",
-      "emoji": "🔋",
-      "category": "economy",
-      "minimum_completed_levels": 2,
-      "weight": 1,
-      "max_picks": 1,
-      "prerequisites": ["battery_pack"],
-      "effects": [
-        { "type": "starting_energy_delta", "value": 20 }
-      ]
-    },
-    {
-      "id": "hardened_bulkhead",
-      "name": "Hardened Bulkhead",
-      "description": "+1 base integrity next mission.",
-      "emoji": "🛡️",
-      "category": "defense",
-      "minimum_completed_levels": 2,
-      "weight": 1,
-      "max_picks": 1,
-      "prerequisites": ["reinforced_bulkhead"],
-      "effects": [
-        { "type": "base_integrity_delta", "value": 1 }
-      ]
-    },
-    {
-      "id": "command_uplink",
-      "name": "Command Uplink",
-      "description": "Unlock the Operator deploy card.",
-      "emoji": "🛰️",
-      "category": "unit",
-      "minimum_completed_levels": 2,
-      "weight": 2,
-      "max_picks": 1,
-      "effects": [
-        { "type": "unit_unlock", "unit_id": "operator" }
-      ]
-    },
-    {
-      "id": "targeting_suite",
-      "name": "Targeting Suite",
-      "description": "Operators deal +2 ranged damage.",
-      "emoji": "🎛️",
-      "category": "unit",
-      "minimum_completed_levels": 2,
-      "weight": 2,
-      "max_picks": 1,
-      "prerequisites": ["command_uplink"],
-      "effects": [
-        { "type": "unit_ranged_damage_delta", "unit_id": "operator", "value": 2 }
-      ]
-    },
-    {
-      "id": "rapid_response",
-      "name": "Rapid Response",
-      "description": "Operators gain +10 move speed.",
-      "emoji": "🏃",
-      "category": "unit",
-      "minimum_completed_levels": 2,
-      "weight": 2,
-      "max_picks": 1,
-      "prerequisites": ["command_uplink"],
-      "effects": [
-        { "type": "unit_move_speed_delta", "unit_id": "operator", "value": 10 }
-      ]
-    },
-    {
-      "id": "war_chest",
-      "name": "War Chest",
-      "description": "Enemies drop 30% more energy.",
-      "emoji": "💵",
-      "category": "economy",
-      "minimum_completed_levels": 2,
-      "weight": 1,
-      "max_picks": 1,
-      "prerequisites": ["salvage_rights"],
-      "effects": [
-        { "type": "bounty_multiplier_delta", "value": 0.3 }
-      ]
-    }
-  ]
+    "draft_size": 3,
+    "reserve_unit_slot": true,
+    "base_units": [
+        "breacher"
+    ],
+    "cards": [
+        {
+            "id": "battery_pack",
+            "name": "Battery Pack",
+            "description": "+15 starting energy next mission.",
+            "icon": "battery",
+            "category": "economy",
+            "minimum_completed_levels": 0,
+            "weight": 3,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "starting_energy_delta",
+                    "value": 15
+                }
+            ]
+        },
+        {
+            "id": "reinforced_plating",
+            "name": "Reinforced Plating",
+            "description": "Breachers gain +50 HP.",
+            "icon": "plating",
+            "category": "unit",
+            "minimum_completed_levels": 0,
+            "weight": 3,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "unit_hp_delta",
+                    "unit_id": "breacher",
+                    "value": 50
+                }
+            ]
+        },
+        {
+            "id": "breach_drills",
+            "name": "Breach Drills",
+            "description": "Breachers gain +8 move speed.",
+            "icon": "speed",
+            "category": "unit",
+            "minimum_completed_levels": 0,
+            "weight": 2,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "unit_move_speed_delta",
+                    "unit_id": "breacher",
+                    "value": 8
+                }
+            ]
+        },
+        {
+            "id": "sharpshooter_contract",
+            "name": "Sharpshooter Contract",
+            "description": "Unlock the Marksman deploy card.",
+            "icon": "recruit",
+            "category": "unit",
+            "minimum_completed_levels": 0,
+            "weight": 4,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "unit_unlock",
+                    "unit_id": "marksman"
+                }
+            ]
+        },
+        {
+            "id": "precision_ammo",
+            "name": "Precision Ammo",
+            "description": "Marksmen deal +2 ranged damage.",
+            "icon": "target",
+            "category": "unit",
+            "minimum_completed_levels": 1,
+            "weight": 2,
+            "max_picks": 1,
+            "prerequisites": [
+                "sharpshooter_contract"
+            ],
+            "effects": [
+                {
+                    "type": "unit_ranged_damage_delta",
+                    "unit_id": "marksman",
+                    "value": 2
+                }
+            ]
+        },
+        {
+            "id": "field_boots",
+            "name": "Field Boots",
+            "description": "Marksmen gain +10 move speed.",
+            "icon": "speed",
+            "category": "unit",
+            "minimum_completed_levels": 1,
+            "weight": 2,
+            "max_picks": 1,
+            "prerequisites": [
+                "sharpshooter_contract"
+            ],
+            "effects": [
+                {
+                    "type": "unit_move_speed_delta",
+                    "unit_id": "marksman",
+                    "value": 10
+                }
+            ]
+        },
+        {
+            "id": "reinforced_bulkhead",
+            "name": "Reinforced Bulkhead",
+            "description": "+1 base integrity next mission.",
+            "icon": "bulwark",
+            "category": "defense",
+            "minimum_completed_levels": 0,
+            "weight": 2,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "base_integrity_delta",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "id": "overclocked_capacitors",
+            "name": "Overclocked Capacitors",
+            "description": "+1 energy regen every second.",
+            "icon": "energy",
+            "category": "economy",
+            "minimum_completed_levels": 2,
+            "weight": 1,
+            "max_picks": 1,
+            "prerequisites": [
+                "battery_pack"
+            ],
+            "effects": [
+                {
+                    "type": "energy_regen_delta",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "id": "demolition_permit",
+            "name": "Demolition Permit",
+            "description": "Unlock the Impact deploy card.",
+            "icon": "recruit",
+            "category": "unit",
+            "minimum_completed_levels": 1,
+            "weight": 3,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "unit_unlock",
+                    "unit_id": "impact"
+                }
+            ]
+        },
+        {
+            "id": "combat_veteran",
+            "name": "Combat Veteran",
+            "description": "Impacts gain +35 HP.",
+            "icon": "plating",
+            "category": "unit",
+            "minimum_completed_levels": 1,
+            "weight": 2,
+            "max_picks": 1,
+            "prerequisites": [
+                "demolition_permit"
+            ],
+            "effects": [
+                {
+                    "type": "unit_hp_delta",
+                    "unit_id": "impact",
+                    "value": 35
+                }
+            ]
+        },
+        {
+            "id": "accelerated_gearing",
+            "name": "Accelerated Gearing",
+            "description": "Impacts gain +12 move speed.",
+            "icon": "speed",
+            "category": "unit",
+            "minimum_completed_levels": 1,
+            "weight": 2,
+            "max_picks": 1,
+            "prerequisites": [
+                "demolition_permit"
+            ],
+            "effects": [
+                {
+                    "type": "unit_move_speed_delta",
+                    "unit_id": "impact",
+                    "value": 12
+                }
+            ]
+        },
+        {
+            "id": "salvage_rights",
+            "name": "Salvage Rights",
+            "description": "Enemies drop 20% more energy.",
+            "icon": "salvage",
+            "category": "economy",
+            "minimum_completed_levels": 1,
+            "weight": 2,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "bounty_multiplier_delta",
+                    "value": 0.2
+                }
+            ]
+        },
+        {
+            "id": "reserve_cells",
+            "name": "Reserve Cells",
+            "description": "+20 starting energy next mission.",
+            "icon": "battery",
+            "category": "economy",
+            "minimum_completed_levels": 2,
+            "weight": 1,
+            "max_picks": 1,
+            "prerequisites": [
+                "battery_pack"
+            ],
+            "effects": [
+                {
+                    "type": "starting_energy_delta",
+                    "value": 20
+                }
+            ]
+        },
+        {
+            "id": "hardened_bulkhead",
+            "name": "Hardened Bulkhead",
+            "description": "+1 base integrity next mission.",
+            "icon": "bulwark",
+            "category": "defense",
+            "minimum_completed_levels": 2,
+            "weight": 1,
+            "max_picks": 1,
+            "prerequisites": [
+                "reinforced_bulkhead"
+            ],
+            "effects": [
+                {
+                    "type": "base_integrity_delta",
+                    "value": 1
+                }
+            ]
+        },
+        {
+            "id": "command_uplink",
+            "name": "Command Uplink",
+            "description": "Unlock the Operator deploy card.",
+            "icon": "recruit",
+            "category": "unit",
+            "minimum_completed_levels": 2,
+            "weight": 2,
+            "max_picks": 1,
+            "effects": [
+                {
+                    "type": "unit_unlock",
+                    "unit_id": "operator"
+                }
+            ]
+        },
+        {
+            "id": "targeting_suite",
+            "name": "Targeting Suite",
+            "description": "Operators deal +2 ranged damage.",
+            "icon": "target",
+            "category": "unit",
+            "minimum_completed_levels": 2,
+            "weight": 2,
+            "max_picks": 1,
+            "prerequisites": [
+                "command_uplink"
+            ],
+            "effects": [
+                {
+                    "type": "unit_ranged_damage_delta",
+                    "unit_id": "operator",
+                    "value": 2
+                }
+            ]
+        },
+        {
+            "id": "rapid_response",
+            "name": "Rapid Response",
+            "description": "Operators gain +10 move speed.",
+            "icon": "speed",
+            "category": "unit",
+            "minimum_completed_levels": 2,
+            "weight": 2,
+            "max_picks": 1,
+            "prerequisites": [
+                "command_uplink"
+            ],
+            "effects": [
+                {
+                    "type": "unit_move_speed_delta",
+                    "unit_id": "operator",
+                    "value": 10
+                }
+            ]
+        },
+        {
+            "id": "war_chest",
+            "name": "War Chest",
+            "description": "Enemies drop 30% more energy.",
+            "icon": "salvage",
+            "category": "economy",
+            "minimum_completed_levels": 2,
+            "weight": 1,
+            "max_picks": 1,
+            "prerequisites": [
+                "salvage_rights"
+            ],
+            "effects": [
+                {
+                    "type": "bounty_multiplier_delta",
+                    "value": 0.3
+                }
+            ]
+        }
+    ]
 }

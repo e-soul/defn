@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <array>
+#include <map>
+#include <span>
 #include <unordered_set>
 
 namespace defn {
@@ -222,6 +224,26 @@ void require_shape_role(const UiThemeData &theme, const std::string &role, const
     }
 }
 
+/// The three mark maps share one contract: the set the code depends on must be complete, and every entry has to
+/// name a resolvable colour role and ship a mark. A missing mark renders as an empty rect, which is the kind of
+/// gap that only shows up on the screen it belongs to.
+void validate_mark_set(const UiThemeData &theme, const std::map<std::string, UiMedallionStyle, std::less<>> &marks, std::span<const std::string> required,
+                       const std::string &kind, std::vector<std::string> &issues) {
+    for (const std::string &name : required) {
+        if (!marks.contains(name)) {
+            push_issue(issues, "ui_theme.json missing required " + kind + " " + quoted(name));
+        }
+    }
+
+    for (const auto &[name, style] : marks) {
+        const std::string owner = kind + " " + quoted(name);
+        require_color_role(theme, style.color_role, owner, issues);
+        if (style.mark.empty()) {
+            push_issue(issues, "ui_theme.json " + owner + " is missing a mark");
+        }
+    }
+}
+
 void validate_button_state(const UiThemeData &theme, const UiButtonState &state, const std::string &owner, std::vector<std::string> &issues) {
     require_color_role(theme, state.bg_role, owner, issues);
     require_color_role(theme, state.border_role, owner, issues);
@@ -261,34 +283,16 @@ void validate_ui_theme(const UiThemeData &theme, const std::vector<std::string> 
     }
 
     static const std::array<std::string, 4> required_medallions = {"available", "completed", "frontier", "locked"};
-    for (const std::string &required_medallion : required_medallions) {
-        if (theme.find_medallion(required_medallion) == nullptr) {
-            push_issue(issues, "ui_theme.json missing required medallion " + quoted(required_medallion));
-        }
-    }
+    validate_mark_set(theme, theme.medallions, required_medallions, "medallion", issues);
 
-    for (const auto &[name, medallion] : theme.medallions) {
-        const std::string owner = "medallion " + quoted(name);
-        require_color_role(theme, medallion.color_role, owner, issues);
-        if (medallion.mark.empty()) {
-            push_issue(issues, "ui_theme.json " + owner + " is missing a mark");
-        }
-    }
+    // Everything the UI tints live shares one map: the HUD instruments, the stat meter's marks and the icons
+    // an upgrade card names. A stat and a plate that both mean "integrity" then draw the same shape.
+    static const std::array<std::string, 14> required_icons = {"battery", "bulwark", "cadence", "energy", "generic", "integrity", "level",
+                                                               "plating", "recruit", "salvage", "score",  "speed",   "target",    "wave"};
+    validate_mark_set(theme, theme.icons, required_icons, "icon", issues);
 
-    static const std::array<std::string, 5> required_hud_icons = {"energy", "integrity", "level", "score", "wave"};
-    for (const std::string &required_hud_icon : required_hud_icons) {
-        if (theme.find_hud_icon(required_hud_icon) == nullptr) {
-            push_issue(issues, "ui_theme.json missing required hud icon " + quoted(required_hud_icon));
-        }
-    }
-
-    for (const auto &[name, hud_icon] : theme.hud_icons) {
-        const std::string owner = "hud icon " + quoted(name);
-        require_color_role(theme, hud_icon.color_role, owner, issues);
-        if (hud_icon.mark.empty()) {
-            push_issue(issues, "ui_theme.json " + owner + " is missing a mark");
-        }
-    }
+    static const std::array<std::string, 5> required_control_icons = {"choice_off", "choice_on", "slider_knob", "slider_knob_disabled", "slider_knob_hot"};
+    validate_mark_set(theme, theme.control_icons, required_control_icons, "control icon", issues);
 
     for (const std::string &asset : missing_assets) {
         push_issue(issues, "ui_theme.json resource does not exist: " + quoted(asset));
