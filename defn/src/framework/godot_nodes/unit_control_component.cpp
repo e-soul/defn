@@ -74,7 +74,7 @@ void UnitControlComponent::apply_request_intents(const RepositionIntents &intent
             animation_->set_facing(FacingDirection::BACKWARD);
         }
         if (intents.walk) {
-            animation_->set_anim_state(AnimState::WALK);
+            animation_->set_anim_state(UnitPose::WALK);
         }
     }
 }

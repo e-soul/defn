@@ -9,6 +9,8 @@ namespace defn {
 
 StdRandomSource::StdRandomSource() : rng_(std::random_device{}()) {}
 
+StdRandomSource::StdRandomSource(std::uint32_t seed) : rng_(seed) {}
+
 int StdRandomSource::range_int(int inclusive_min, int inclusive_max) {
     if (inclusive_min > inclusive_max) {
         std::swap(inclusive_min, inclusive_max);

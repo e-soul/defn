@@ -28,6 +28,13 @@ def parse_bool_arg(value):
 with_hosted_tests_arg = parse_bool_arg(ARGUMENTS.pop("with_hosted_tests", ""))
 godot_bin_arg = ARGUMENTS.pop("godot_bin", "")
 with_tidy_arg = parse_bool_arg(ARGUMENTS.pop("with_tidy", ""))
+scenario_arg = ARGUMENTS.pop("scenario", "")
+seeds_arg = ARGUMENTS.pop("seeds", "")
+out_arg = ARGUMENTS.pop("out", "")
+
+sim_scenario_arg = ["--scenario", scenario_arg] if scenario_arg else []
+sim_seeds_arg = ["--seeds", seeds_arg] if seeds_arg else []
+sim_out_arg = ["--out", out_arg] if out_arg else []
 
 
 # 1. Setup the basic SCons environment
@@ -62,6 +69,8 @@ env.Append(CPPPATH=[
     "src/application/menu/",
     "src/application/match/",
     "src/application/ports/",
+    "src/application/simulation/",
+    "src/application/simulation/policies/",
     "src/application/progression/",
     "src/application/settings/",
     "src/adapters/godot/",
@@ -98,7 +107,7 @@ coverage_hosted_requested = "coverage_hosted" in requested_targets
 coverage_merged_requested = "coverage" in requested_targets
 coverage_targets_requested = coverage_native_requested or coverage_hosted_requested or coverage_merged_requested
 coverage_extension_requested = coverage_hosted_requested or coverage_merged_requested
-hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all"})) or coverage_extension_requested
+hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all", "sim", "conformance", "balance"})) or coverage_extension_requested
 
 env["DEFN_GODOT_BIN"] = godot_bin_arg
 
@@ -151,7 +160,7 @@ extension_sources = [
     "src/adapters/godot/content_startup_validator.cpp",
     "src/framework/godot_nodes/hitbox_component.cpp",
     "src/adapters/json/level_loader.cpp",
-    "src/adapters/godot/camera_scroll_controller.cpp",
+    "src/domain/match/camera_scroll_controller.cpp",
     "src/adapters/godot/game_background_builder.cpp",
     "src/adapters/json/menu_data_loader.cpp",
     "src/domain/content/ui_theme_models.cpp",
@@ -202,6 +211,7 @@ extension_sources = [
     "src/framework/godot_nodes/combat_component.cpp",
     "src/domain/content/unit_runtime_profile.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
+    "src/domain/content/unit_animation_state.cpp",
     "src/framework/godot_nodes/unit.cpp",
     "src/framework/godot_nodes/unit_factory.cpp",
     "src/adapters/json/unit_data.cpp",
@@ -214,6 +224,19 @@ extension_sources = [
 
 if debug_rendering_enabled:
     extension_sources.append("src/framework/godot_nodes/belt_debug_overlay.cpp")
+
+sim_sources = [
+    "src/framework/testing/defn_sim_runner.cpp",
+    "src/framework/testing/defn_conformance_runner.cpp",
+    "src/framework/testing/defn_balance_runner.cpp",
+    "src/application/simulation/sim_world.cpp",
+    "src/application/simulation/sim_camera.cpp",
+    "src/application/simulation/sim_progression.cpp",
+    "src/application/simulation/sim_scenario.cpp",
+    "src/application/simulation/sim_report.cpp",
+    "src/application/simulation/sim_match.cpp",
+    "src/application/simulation/policies/sim_policies.cpp",
+]
 
 hosted_test_sources = [
     "src/framework/testing/defn_hosted_test_runner.cpp",
@@ -232,7 +255,11 @@ hosted_test_sources = [
 test_support_sources = [
     "src/application/ports/random_source.cpp",
     "src/domain/match/match_session.cpp",
+    "src/domain/match/camera_scroll_controller.cpp",
     "src/domain/match/spawn_timeline.cpp",
+    "src/application/match/match_director.cpp",
+    "src/application/match/spawn_scheduler.cpp",
+    "src/application/match/deployment_service.cpp",
     "src/domain/combat/combat_logic.cpp",
     "src/domain/combat/projectile_rules.cpp",
     "src/domain/combat/field_promotion.cpp",
@@ -257,11 +284,25 @@ test_support_sources = [
     "src/adapters/presenters/campaign_map_view_model.cpp",
     "src/adapters/presenters/score_screen_view_model.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
+    "src/domain/content/unit_runtime_profile.cpp",
+    "src/domain/content/unit_animation_state.cpp",
     "src/domain/content/ui_theme_models.cpp",
+    "src/application/simulation/sim_world.cpp",
+    "src/application/simulation/sim_camera.cpp",
+    "src/application/simulation/sim_progression.cpp",
+    "src/application/simulation/sim_scenario.cpp",
+    "src/application/simulation/sim_report.cpp",
+    "src/application/simulation/sim_match.cpp",
+    "src/application/simulation/policies/sim_policies.cpp",
 ]
 
 unit_test_sources = [
     "tests/test_main.cpp",
+    "tests/test_animation_clock.cpp",
+    "tests/test_projectile_flight.cpp",
+    "tests/test_unit_animation_state.cpp",
+    "tests/test_sim_world.cpp",
+    "tests/test_sim_match.cpp",
     "tests/test_match_session_core.cpp",
     "tests/test_combat_logic.cpp",
     "tests/test_field_promotion.cpp",
@@ -287,7 +328,7 @@ unit_test_sources = [
 coverage_report_sources = list(extension_sources)
 
 if hosted_tests_enabled:
-    extension_sources += hosted_test_sources
+    extension_sources += hosted_test_sources + sim_sources
 
 
 def object_target_for(source_path, prefix=""):
@@ -689,11 +730,107 @@ def run_hosted_tests(target, source, env):
     return result.returncode
 
 
+def run_simulation(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run the simulator.")
+        return 1
+
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_sim_runner.gd"
+    run_env = make_hosted_test_environment("sim")
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
+    if prepare_result != 0:
+        return prepare_result
+
+    command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
+    sim_args = [argument for argument in [sim_scenario_arg, sim_seeds_arg, sim_out_arg] if argument]
+    if sim_args:
+        command.append("--")
+        for argument in sim_args:
+            command.extend(argument)
+
+    result = subprocess.run(command, check=False, cwd=project_dir, env=run_env)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
+def run_conformance(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run the conformance harness.")
+        return 1
+
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_conformance_runner.gd"
+    run_env = make_hosted_test_environment("conformance")
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
+    if prepare_result != 0:
+        return prepare_result
+
+    # The real side needs real frames for Area2D overlaps, and a fixed frame rate so both sides advance identically.
+    result = subprocess.run(
+        [godot_executable, "--headless", "--fixed-fps", "60", "--path", str(project_dir), "--script", str(script_path)],
+        check=False,
+        cwd=project_dir,
+        env=run_env,
+    )
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
+def run_balance(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run the balance measurement.")
+        return 1
+
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_balance_runner.gd"
+    run_env = make_hosted_test_environment("balance")
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
+    if prepare_result != 0:
+        return prepare_result
+
+    command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
+    balance_args = [argument for argument in [sim_seeds_arg, sim_out_arg] if argument]
+    if balance_args:
+        command.append("--")
+        for argument in balance_args:
+            command.extend(argument)
+
+    result = subprocess.run(command, check=False, cwd=project_dir, env=run_env)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
+balance_script = os.path.join("tests", "godot_balance_runner.gd")
+balance_stamp = env.Command(os.path.join("build", "defn_balance.stamp"), [library, balance_script], run_balance)
+AlwaysBuild(balance_stamp)
+env.Alias("balance", balance_stamp)
+
+conformance_script = os.path.join("tests", "godot_conformance_runner.gd")
+conformance_stamp = env.Command(os.path.join("build", "defn_conformance.stamp"), [library, conformance_script], run_conformance)
+AlwaysBuild(conformance_stamp)
+env.Alias("conformance", conformance_stamp)
+
+sim_script = os.path.join("tests", "godot_sim_runner.gd")
+sim_stamp = env.Command(os.path.join("build", "defn_sim.stamp"), [library, sim_script], run_simulation)
+AlwaysBuild(sim_stamp)
+env.Alias("sim", sim_stamp)
+
 hosted_test_script = os.path.join("tests", "godot_hosted_runner.gd")
 hosted_test_stamp = env.Command(os.path.join("build", "defn_hosted_tests.stamp"), [library, hosted_test_script], run_hosted_tests)
 AlwaysBuild(hosted_test_stamp)
 env.Alias("hosted_test", hosted_test_stamp)
-env.Alias("test_all", [test_stamp, hosted_test_stamp])
+# Conformance gates like any other correctness test: a failure means the kernel and the game disagree about a rule.
+env.Alias("test_all", [test_stamp, hosted_test_stamp, conformance_stamp])
 
 coverage_hosted_stamp = env.Command(os.path.join("build", "coverage", "hosted", "coverage.stamp"), [library, hosted_test_script], run_hosted_coverage)
 AlwaysBuild(coverage_hosted_stamp)

@@ -47,7 +47,10 @@
 #include "unit_selection_controller.h"
 
 #ifdef DEFN_HOSTED_TESTS_ENABLED
+#include "defn_balance_runner.h"
+#include "defn_conformance_runner.h"
 #include "defn_hosted_test_runner.h"
+#include "defn_sim_runner.h"
 #endif
 
 using namespace godot;
@@ -98,6 +101,9 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::PauseMenu>();
 #ifdef DEFN_HOSTED_TESTS_ENABLED
     ClassDB::register_class<defn::DefnHostedTestRunner>();
+    ClassDB::register_class<defn::DefnSimRunner>();
+    ClassDB::register_class<defn::DefnConformanceRunner>();
+    ClassDB::register_class<defn::DefnBalanceRunner>();
 #endif
 }
 

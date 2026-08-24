@@ -54,4 +54,26 @@ DEFN_TEST(std_random_source_returns_degenerate_bounds) {
     DEFN_CHECK_CLOSE(random.range_real(3.25F, 3.25F), 3.25F, 0.0001);
 }
 
+DEFN_TEST(seeded_std_random_sources_replay_the_same_sequence) {
+    StdRandomSource first(4242U);
+    StdRandomSource second(4242U);
+
+    for (int sample = 0; sample < 32; ++sample) {
+        DEFN_CHECK_EQ(first.range_int(0, 1000), second.range_int(0, 1000));
+        DEFN_CHECK_CLOSE(first.range_real(0.0F, 1.0F), second.range_real(0.0F, 1.0F), 0.0);
+    }
+}
+
+DEFN_TEST(different_seeds_diverge) {
+    StdRandomSource first(1U);
+    StdRandomSource second(2U);
+
+    bool diverged = false;
+    for (int sample = 0; sample < 32 && !diverged; ++sample) {
+        diverged = first.range_int(0, 1000000) != second.range_int(0, 1000000);
+    }
+
+    DEFN_CHECK(diverged);
+}
+
 } // namespace defn

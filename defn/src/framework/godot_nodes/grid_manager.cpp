@@ -6,16 +6,12 @@
 #include <algorithm>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/memory.hpp>
-#include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
-
-using godot::UtilityFunctions;
 
 GridManager *GridManager::singleton_ = nullptr;
 
 void GridManager::_bind_methods() {
-    ClassDB::bind_static_method(get_class_static(), D_METHOD("random_belt_y"), &GridManager::random_belt_y);
     ClassDB::bind_method(D_METHOD("deploy_x"), &GridManager::deploy_x);
     ClassDB::bind_method(D_METHOD("spawn_x"), &GridManager::spawn_x);
     ClassDB::bind_method(D_METHOD("set_world_width", "width"), &GridManager::set_world_width);
@@ -53,17 +49,13 @@ void GridManager::configure(const GameplayRules &rules, float belt_endpoint_a_ra
     camera_x_ = rules_.viewport_width / 2.0F;
 }
 
-real_t GridManager::random_belt_y() {
-    static const GameplayRules default_rules{};
-    const GameplayRules &rules = singleton_ != nullptr ? singleton_->rules_ : default_rules;
-    return static_cast<real_t>(UtilityFunctions::randf_range(rules.belt_top_y, rules.belt_bottom_y));
-}
+void GridManager::set_random_source(RandomSource *random) { random_ = random != nullptr ? random : &default_random_; }
 
 double GridManager::deploy_x() const { return camera_x_ - (rules_.viewport_width / 2.0F) - rules_.spawn_offset; }
 
 double GridManager::spawn_x() const { return camera_x_ + (rules_.viewport_width / 2.0F) + rules_.spawn_offset; }
 
-double GridManager::sample_belt_y() const { return random_belt_y(); }
+double GridManager::sample_belt_y() const { return random_->range_real(rules_.belt_top_y, rules_.belt_bottom_y); }
 
 void GridManager::set_world_width(real_t width) { world_width_ = width; }
 

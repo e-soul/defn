@@ -18,10 +18,18 @@
 
 namespace defn {
 
+namespace {
+
+constexpr std::string_view SHOOT_ANIMATION = "shoot";
+constexpr std::string_view DEATH_ANIMATION = "death";
+
+} // namespace
+
 void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite) {
     this->owner_node = Object::cast_to<Node2D>(owner_node);
+    state_.configure(cfg.animations);
     muzzle_offset = to_godot_vector(cfg.muzzle.offset);
     base_sprite_flip_h_ = cfg.sprite_flip_h;
     base_muzzle_flip_h_ = cfg.muzzle.flip_h;
@@ -33,14 +41,12 @@ void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, boo
         }
 
         owner_node->add_child(sprite);
-        setup_sprite_frames(owner_node, cfg);
+        setup_sprite_frames(cfg);
         original_modulate = sprite->get_modulate();
-        sprite->connect("animation_finished", callable_mp(this, &AnimationController::on_animation_finished));
-        sprite->connect("animation_changed", callable_mp(this, &AnimationController::on_animation_changed));
     }
 
     setup_muzzle_flash(owner_node, cfg);
-    set_anim_state(AnimState::WALK);
+    set_anim_state(UnitPose::WALK);
 }
 
 void AnimationController::_process(double delta) {
@@ -51,21 +57,20 @@ void AnimationController::_process(double delta) {
         }
     }
 
-    update_shoot_effect_state();
+    const UnitAnimationUpdate update = state_.advance(delta);
+    sync_presentation();
+    if (update.shoot_effect_fired) {
+        trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
+    }
+    update_death_presentation();
 }
 
-void AnimationController::setup_sprite_frames(Node * /*owner_node*/, const UnitConfig &cfg) {
+void AnimationController::setup_sprite_frames(const UnitConfig &cfg) {
     auto *loader = ResourceLoader::get_singleton();
     Ref<SpriteFrames> frames;
     frames.instantiate();
 
     for (const auto &[anim_name, anim_cfg] : cfg.animations) {
-        if (anim_name == "attack") {
-            attack_windup_frames_ = anim_cfg.windup_frames;
-        } else if (anim_name == "shoot") {
-            shoot_windup_frames_ = anim_cfg.windup_frames;
-        }
-
         const String animation_name = to_godot_string(anim_name);
         frames->add_animation(animation_name);
         frames->set_animation_speed(animation_name, anim_cfg.speed);
@@ -122,134 +127,87 @@ void AnimationController::setup_muzzle_flash(Node *owner_node, const UnitConfig 
     owner_node->add_child(muzzle_flash);
 }
 
-void AnimationController::set_anim_state(AnimState state) {
-    if (anim_state == AnimState::DEATH) {
-        return;
+void AnimationController::sync_presentation() {
+    const std::string &animation = state_.get_current_animation();
+    if (animation != presented_animation_) {
+        presented_animation_ = animation;
+        if (animation != SHOOT_ANIMATION) {
+            hide_muzzle_flash();
+        }
     }
-    anim_state = state;
 
-    if (!sprite) {
-        return;
-    }
-
-    switch (state) {
-    case AnimState::WALK:
-        sprite->play("walk");
-        break;
-    case AnimState::ATTACK:
-        sprite->play("attack");
-        break;
-    case AnimState::SHOOT:
-        sprite->play("shoot");
-        break;
-    case AnimState::DEATH:
-        sprite->play("death");
-        break;
-    }
+    show_state_frame_on_sprite();
 }
 
-void AnimationController::hold_anim_state(AnimState state) {
-    set_anim_state(state);
-    if (!sprite) {
+// The sprite never runs an animation of its own: it is parked on whichever frame the clock has reached, so the pose on
+// screen and the timing combat reasons about cannot drift apart.
+void AnimationController::show_state_frame_on_sprite() {
+    if (sprite == nullptr || presented_animation_.empty()) {
         return;
     }
 
-    sprite->set_frame_and_progress(0, 0.0);
+    const StringName animation_name = to_godot_string(presented_animation_);
+    const Ref<SpriteFrames> frames = sprite->get_sprite_frames();
+    if (!frames.is_valid() || !frames->has_animation(animation_name)) {
+        return;
+    }
+
+    const int frame_count = frames->get_frame_count(animation_name);
+    if (frame_count <= 0) {
+        return;
+    }
+
+    if (sprite->get_animation() != animation_name) {
+        sprite->set_animation(animation_name);
+    }
     sprite->stop();
+    sprite->set_frame_and_progress(std::min(state_.get_clock().frame(), frame_count - 1), 0.0);
+}
+
+void AnimationController::set_anim_state(UnitPose pose) {
+    state_.set_pose(pose);
+    sync_presentation();
+}
+
+void AnimationController::hold_anim_state(UnitPose pose) {
+    state_.hold_pose(pose);
+    sync_presentation();
 }
 
 bool AnimationController::play_named_animation(const StringName &animation_name, bool restart) {
-    if (sprite == nullptr) {
+    if (!state_.play_named(to_std_string(animation_name), restart)) {
         return false;
     }
 
-    Ref<SpriteFrames> frames = sprite->get_sprite_frames();
-    if (!frames.is_valid() || !frames->has_animation(animation_name) || frames->get_frame_count(animation_name) <= 0) {
-        return false;
-    }
-
-    shoot_effect_pending = false;
-    shoot_effect_ready = false;
     hide_muzzle_flash();
-    sprite->play(animation_name);
-    if (restart) {
-        sprite->set_frame_and_progress(0, 0.0);
-    }
+    sync_presentation();
     return true;
 }
 
 void AnimationController::play_attack_animation() {
-    set_anim_state(AnimState::ATTACK);
-    if (!sprite) {
-        return;
-    }
-
-    sprite->play("attack");
-    sprite->set_frame_and_progress(0, 0.0);
+    state_.play_attack();
+    sync_presentation();
 }
 
 void AnimationController::play_shoot_animation(bool show_muzzle_flash, int effect_frame) {
-    set_anim_state(AnimState::SHOOT);
     show_muzzle_flash_on_shoot_effect = show_muzzle_flash;
-    shoot_effect_ready = false;
-    shoot_effect_pending = false;
-
-    if (!sprite) {
-        shoot_effect_ready = true;
-        trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
-        return;
-    }
-
-    sprite->play("shoot");
-    sprite->set_frame_and_progress(0, 0.0);
-    shoot_effect_pending = true;
-
-    int max_effect_frame = 0;
-    Ref<SpriteFrames> frames = sprite->get_sprite_frames();
-    if (frames.is_valid() && frames->has_animation("shoot")) {
-        max_effect_frame = std::max(frames->get_frame_count("shoot") - 1, 0);
-    }
-    shoot_effect_frame = std::clamp(effect_frame, 0, max_effect_frame);
-
-    if (shoot_effect_frame == 0) {
-        shoot_effect_pending = false;
-        shoot_effect_ready = true;
+    const UnitAnimationUpdate update = state_.play_shoot(effect_frame);
+    sync_presentation();
+    if (update.shoot_effect_fired) {
         trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
     }
 }
 
-bool AnimationController::consume_shoot_effect_triggered() {
-    if (!shoot_effect_ready) {
-        return false;
-    }
+bool AnimationController::consume_shoot_effect_triggered() { return state_.consume_shoot_effect_triggered(); }
 
-    shoot_effect_ready = false;
-    return true;
-}
+bool AnimationController::is_attack_animation_playing() const { return state_.is_attack_animation_playing(); }
 
-bool AnimationController::is_attack_animation_playing() const {
-    if (sprite == nullptr || !sprite->is_playing()) {
-        return false;
-    }
-
-    const StringName animation_name = sprite->get_animation();
-    return animation_name == StringName("attack") || animation_name == StringName("shoot");
-}
-
-bool AnimationController::is_attack_windup_active() const {
-    if (!is_attack_animation_playing()) {
-        return false;
-    }
-
-    const int windup_frames = sprite->get_animation() == StringName("attack") ? attack_windup_frames_ : shoot_windup_frames_;
-    return sprite->get_frame() < windup_frames;
-}
+bool AnimationController::is_attack_windup_active() const { return state_.is_attack_windup_active(); }
 
 void AnimationController::cancel_pending_attack_presentation() {
-    shoot_effect_pending = false;
-    shoot_effect_ready = false;
+    state_.cancel_pending_attack();
     hide_muzzle_flash();
-    set_anim_state(AnimState::WALK);
+    sync_presentation();
 }
 
 void AnimationController::set_facing(FacingDirection direction) {
@@ -313,41 +271,18 @@ void AnimationController::hide_muzzle_flash() {
     }
 }
 
-void AnimationController::update_shoot_effect_state() {
-    if (!shoot_effect_pending || sprite == nullptr) {
+void AnimationController::update_death_presentation() {
+    if (death_fade_started_ || state_.get_pose() != UnitPose::DEATH || presented_animation_ != DEATH_ANIMATION || state_.get_clock().is_playing()) {
         return;
     }
 
-    if (sprite->get_animation() != StringName("shoot")) {
-        shoot_effect_pending = false;
-        return;
-    }
-
-    if (sprite->get_frame() < shoot_effect_frame) {
-        return;
-    }
-
-    shoot_effect_pending = false;
-    shoot_effect_ready = true;
-    trigger_shoot_effects(show_muzzle_flash_on_shoot_effect);
+    death_fade_started_ = true;
+    start_death_fade();
 }
 
 void AnimationController::on_muzzle_flash_finished() {
     if (muzzle_flash) {
         muzzle_flash->set_visible(false);
-    }
-}
-
-void AnimationController::on_animation_changed() {
-    if (sprite && sprite->get_animation() != StringName("shoot")) {
-        shoot_effect_pending = false;
-        hide_muzzle_flash();
-    }
-}
-
-void AnimationController::on_animation_finished() {
-    if (anim_state == AnimState::DEATH) {
-        start_death_fade();
     }
 }
 

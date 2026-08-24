@@ -1,0 +1,52 @@
+{
+  "seed": 2026,
+  "camera": "modelled",
+  "max_seconds": 400.0,
+  "policies": [
+    {
+      "kind": "greedy"
+    },
+    {
+      "kind": "defensive"
+    },
+    {
+      "kind": "composition"
+    }
+  ],
+  "runs": [
+    {
+      "level_id": "level_01",
+      "owned_upgrades": []
+    },
+    {
+      "level_id": "level_02",
+      "owned_upgrades": [
+        "sharpshooter_contract"
+      ]
+    },
+    {
+      "level_id": "level_03",
+      "owned_upgrades": [
+        "sharpshooter_contract",
+        "battery_pack"
+      ]
+    },
+    {
+      "level_id": "level_04",
+      "owned_upgrades": [
+        "sharpshooter_contract",
+        "battery_pack",
+        "demolition_permit"
+      ]
+    },
+    {
+      "level_id": "level_05",
+      "owned_upgrades": [
+        "sharpshooter_contract",
+        "battery_pack",
+        "demolition_permit",
+        "overclocked_capacitors"
+      ]
+    }
+  ]
+}

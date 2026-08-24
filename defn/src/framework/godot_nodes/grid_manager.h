@@ -5,6 +5,7 @@
 #define GRID_MANAGER_H
 
 #include "gameplay_rules.h"
+#include "random_source.h"
 #include "runtime_service_interfaces.h"
 
 #include <godot_cpp/classes/object.hpp>
@@ -28,7 +29,9 @@ class GridManager : public Object, public GridQueryService {
     void configure(const GameplayRules &rules, float belt_endpoint_a_ratio, float belt_endpoint_b_ratio);
     const GameplayRules &get_rules() const { return rules_; }
 
-    [[nodiscard]] static real_t random_belt_y();    // random Y within the belt area
+    // Belt-Y sampling is the one place the grid draws randomness. It goes through the port so a run can be seeded.
+    void set_random_source(RandomSource *random);
+
     [[nodiscard]] double deploy_x() const override; // friendly spawn: just left of camera
     [[nodiscard]] double spawn_x() const override;  // hostile spawn: just right of camera
     [[nodiscard]] double sample_belt_y() const override;
@@ -45,6 +48,8 @@ class GridManager : public Object, public GridQueryService {
     static GridManager *singleton_;
 
     GameplayRules rules_{};
+    StdRandomSource default_random_;
+    RandomSource *random_ = &default_random_;
     real_t world_width_ = rules_.viewport_width * static_cast<real_t>(rules_.world_multiplier);
     real_t camera_x_ = rules_.viewport_width / 2.0F;
 };

@@ -138,7 +138,7 @@ void Unit::on_died() {
         movement->stop();
     }
     if (animation) {
-        animation->set_anim_state(AnimState::DEATH);
+        animation->set_anim_state(UnitPose::DEATH);
     }
     emit_signal("unit_died", this);
 }

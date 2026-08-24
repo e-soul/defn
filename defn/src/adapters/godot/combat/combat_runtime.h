@@ -21,7 +21,6 @@ using namespace godot;
 class BattleEntity;
 class AnimationController;
 class HealthComponent;
-enum class AnimState : int;
 
 class CombatRuntime {
   public:
@@ -41,7 +40,6 @@ class CombatRuntime {
     void try_spawn_pending_projectile();
     void apply_commands(const AdvanceCombatOutput &output, double delta);
     void apply_command(const CombatCommand &command, double delta);
-    static CombatPoseState map_pose_state(AnimState state);
 
     BattleEntity *unit_ = nullptr;
     HealthComponent *health_ = nullptr;

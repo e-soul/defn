@@ -44,7 +44,6 @@ void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide 
     shooter_side_ = shooter_side;
     source_id_ = source_id;
     flash_color_ = flash_color;
-    target_global_position_ = target_global_position;
     fallback_damage_ = fallback_damage;
     direct_target_id_ = direct_target != nullptr ? direct_target->get_target_object_id() : ObjectID();
     const real_t projectile_scale = MAX(config_.projectile_scale_multiplier, 0.01F);
@@ -54,11 +53,7 @@ void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide 
     exploding_ = false;
     explosion_animation_finished_ = false;
     explosion_sfx_finished_ = !config_.explosion_sfx.has_value() || config_.explosion_sfx->path.empty();
-    travelled_distance_ = 0.0F;
-
-    const godot::Vector2 travel = target_global_position_ - start_global_position;
-    total_travel_distance_ = travel.length();
-    travel_direction_ = total_travel_distance_ > 0.0F ? travel / total_travel_distance_ : godot::Vector2();
+    flight_ = begin_projectile_flight(to_vector(start_global_position), to_vector(target_global_position), config_.speed_pixels_per_second);
 
     ensure_sprite();
     set_global_position(start_global_position);
@@ -66,7 +61,7 @@ void ProjectileAttack::configure(const ProjectileAttackConfig &config, UnitSide 
     start_flight_animation();
     set_process(true);
 
-    if (total_travel_distance_ <= 0.0F || config_.speed_pixels_per_second <= 0.0F) {
+    if (projectile_arrives_immediately(flight_)) {
         explode();
     }
 }
@@ -76,23 +71,11 @@ void ProjectileAttack::_process(double delta) {
         return;
     }
 
-    const auto delta_seconds = static_cast<real_t>(delta);
-    const real_t step_distance = config_.speed_pixels_per_second * delta_seconds;
-    if (step_distance <= 0.0F) {
+    const ProjectileFlightStep step = advance_projectile(flight_, delta);
+    set_global_position(to_godot_vector(flight_.position));
+    if (step.arrived) {
         explode();
-        return;
     }
-
-    const real_t remaining_distance = total_travel_distance_ - travelled_distance_;
-    if (step_distance >= remaining_distance) {
-        set_global_position(target_global_position_);
-        travelled_distance_ = total_travel_distance_;
-        explode();
-        return;
-    }
-
-    travelled_distance_ += step_distance;
-    set_global_position(get_global_position() + (travel_direction_ * step_distance));
 }
 
 Ref<SpriteFrames> ProjectileAttack::build_frames(const AnimConfig &animation) {
@@ -202,7 +185,7 @@ void ProjectileAttack::explode() {
 
     exploding_ = true;
     set_process(false);
-    set_global_position(target_global_position_);
+    set_global_position(to_godot_vector(flight_.target_position));
     set_scale(explosion_scale_);
     apply_splash_damage();
     play_explosion_sfx();
@@ -251,7 +234,7 @@ void ProjectileAttack::apply_splash_damage() {
     const std::vector<ProjectileDamageCommand> commands = resolve_projectile_impact({
         .config = to_projectile_damage_config(config_),
         .shooter_side = shooter_side_,
-        .impact_position = to_vector(target_global_position_),
+        .impact_position = flight_.target_position,
         .direct_target_id = direct_target != nullptr ? entity_id_for(*direct_target) : EntityId{},
         .fallback_damage = fallback_damage_,
         .targets = snapshots,

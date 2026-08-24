@@ -9,9 +9,12 @@
 #ifdef DEFN_DEBUG_RENDERING_ENABLED
 #include "belt_debug_overlay.h"
 #endif
+#include "animation_controller.h"
 #include "camera_scroll_controller.h"
 #include "campaign_map_view.h"
 #include "combat_component.h"
+#include "defn_balance_runner.h"
+#include "defn_sim_runner.h"
 #include "deploy_card_presenter.h"
 #include "game_background_builder.h"
 #include "grid_manager.h"
@@ -27,6 +30,7 @@
 #include "projectile_factory.h"
 #include "reposition_destination_marker.h"
 #include "score_screen_view.h"
+#include "scripted_random_source.h"
 #include "selection_indicator.h"
 #include "unit.h"
 #include "unit_factory.h"
@@ -39,6 +43,7 @@
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/label.hpp>
@@ -797,6 +802,145 @@ DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {
     memdelete(combat_unit);
 }
 
+namespace {
+
+// Ten frames at ten frames per second, so one frame lasts 0.1s. No sprite: the timing combat depends on comes from the
+// animation clock alone, which is exactly what these tests are pinning down.
+UnitConfig make_animation_timing_config() {
+    UnitConfig config;
+    config.name = "timing";
+    config.animations = {
+        {"walk", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = true, .windup_frames = 0}},
+        {"attack", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = false, .windup_frames = 3}},
+        {"shoot", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = false, .windup_frames = 2}},
+    };
+    return config;
+}
+
+AnimationController *add_test_animation_controller(Node2D *owner, const UnitConfig &config) {
+    auto *animation = memnew(AnimationController);
+    animation->set_name("AnimationController");
+    owner->add_child(animation);
+    animation->configure(owner, config, false);
+    return animation;
+}
+
+} // namespace
+
+DEFN_TEST(animation_controller_processes_every_frame_once_it_is_in_the_tree) {
+    // The animation clock only advances from _process, so combat timing silently stops if processing is ever off.
+    TreeMountedNode<Node2D> owner;
+    DEFN_REQUIRE(owner.get() != nullptr);
+    auto *animation = add_test_animation_controller(owner.get(), make_animation_timing_config());
+
+    DEFN_CHECK(animation->is_processing());
+}
+
+DEFN_TEST(animation_controller_derives_the_attack_windup_from_the_animation_clock) {
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, make_animation_timing_config());
+
+    DEFN_CHECK(!animation->is_attack_animation_playing());
+
+    animation->play_attack_animation();
+    DEFN_CHECK_EQ(static_cast<int>(animation->get_anim_state()), static_cast<int>(UnitPose::ATTACK));
+    DEFN_CHECK(animation->is_attack_windup_active());
+
+    animation->_process(0.25); // frame 2, the last committed frame
+    DEFN_CHECK(animation->is_attack_windup_active());
+
+    animation->_process(0.10); // frame 3, the cancelable backswing
+    DEFN_CHECK(!animation->is_attack_windup_active());
+
+    memdelete(owner);
+}
+
+DEFN_TEST(animation_controller_stops_reporting_an_attack_once_the_animation_plays_out) {
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, make_animation_timing_config());
+
+    animation->play_attack_animation();
+    animation->_process(0.95);
+    DEFN_CHECK(animation->is_attack_animation_playing());
+
+    animation->_process(0.10);
+    DEFN_CHECK(!animation->is_attack_animation_playing());
+
+    memdelete(owner);
+}
+
+DEFN_TEST(animation_controller_holds_a_pose_without_running_the_attack_animation) {
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, make_animation_timing_config());
+
+    animation->hold_anim_state(UnitPose::ATTACK);
+    DEFN_CHECK_EQ(static_cast<int>(animation->get_anim_state()), static_cast<int>(UnitPose::ATTACK));
+    DEFN_CHECK(!animation->is_attack_animation_playing());
+
+    animation->_process(1.0);
+    DEFN_CHECK(!animation->is_attack_animation_playing());
+
+    memdelete(owner);
+}
+
+DEFN_TEST(animation_controller_defers_the_shoot_effect_to_its_spawn_frame) {
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, make_animation_timing_config());
+
+    animation->play_shoot_animation(false, 4);
+    DEFN_CHECK(animation->is_attack_animation_playing());
+    DEFN_CHECK(!animation->consume_shoot_effect_triggered());
+
+    animation->_process(0.35); // frame 3
+    DEFN_CHECK(!animation->consume_shoot_effect_triggered());
+
+    animation->_process(0.10); // frame 4, the projectile leaves the muzzle
+    DEFN_CHECK(animation->consume_shoot_effect_triggered());
+    DEFN_CHECK(!animation->consume_shoot_effect_triggered());
+
+    memdelete(owner);
+}
+
+DEFN_TEST(animation_controller_triggers_a_frame_zero_shoot_effect_at_once) {
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, make_animation_timing_config());
+
+    animation->play_shoot_animation(false, 0);
+    DEFN_CHECK(animation->consume_shoot_effect_triggered());
+
+    memdelete(owner);
+}
+
+DEFN_TEST(animation_controller_drops_a_pending_shoot_effect_when_the_pose_changes) {
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, make_animation_timing_config());
+
+    animation->play_shoot_animation(false, 4);
+    animation->cancel_pending_attack_presentation();
+    DEFN_CHECK_EQ(static_cast<int>(animation->get_anim_state()), static_cast<int>(UnitPose::WALK));
+    DEFN_CHECK(!animation->is_attack_animation_playing());
+
+    animation->_process(1.0);
+    DEFN_CHECK(!animation->consume_shoot_effect_triggered());
+
+    memdelete(owner);
+}
+
+DEFN_TEST(animation_controller_reports_no_attack_timing_for_a_unit_without_attack_animations) {
+    UnitConfig config = make_animation_timing_config();
+    config.animations = {{"walk", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = true, .windup_frames = 0}}};
+
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, config);
+
+    // Nothing to time the shot against, so the effect fires immediately, as stationary objectives rely on.
+    animation->play_shoot_animation(false, 4);
+    DEFN_CHECK(animation->consume_shoot_effect_triggered());
+    DEFN_CHECK(!animation->is_attack_animation_playing());
+
+    memdelete(owner);
+}
+
 DEFN_TEST(health_component_reports_effective_damage_and_caps_overkill) {
     auto *health = memnew(HealthComponent);
     health->configure(20);
@@ -1239,25 +1383,78 @@ DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
     DEFN_CHECK(controller.advance_target());
     DEFN_CHECK_CLOSE(controller.get_camera_anchor_position().x, 750.0, 0.001);
 
-    auto *camera = memnew(Camera2D);
-    auto *grid = memnew(GridManager);
-    camera->set_position(godot::Vector2(500.0, 300.0));
-    controller.update_camera(camera, grid, 0.1);
-    DEFN_CHECK_CLOSE(camera->get_position().x, 575.0, 0.001);
-    DEFN_CHECK_CLOSE(grid->get_camera_x(), 575.0, 0.001);
+    Vector2 camera_position{.x = 500.0F, .y = 300.0F};
+    camera_position = controller.next_camera_position(camera_position, 0.1);
+    DEFN_CHECK_CLOSE(camera_position.x, 575.0, 0.001);
 
-    controller.update_camera(camera, grid, 1.0);
-    DEFN_CHECK_CLOSE(camera->get_position().x, 750.0, 0.001);
-    DEFN_CHECK_CLOSE(camera->get_position().y, 300.0, 0.001);
+    camera_position = controller.next_camera_position(camera_position, 1.0);
+    DEFN_CHECK_CLOSE(camera_position.x, 750.0, 0.001);
+    DEFN_CHECK_CLOSE(camera_position.y, 300.0, 0.001);
 
     DEFN_CHECK(controller.retreat_target());
     DEFN_CHECK_CLOSE(controller.get_camera_anchor_position().x, 500.0, 0.001);
     DEFN_CHECK(!controller.retreat_target());
-    controller.update_camera(nullptr, grid, 1.0);
-    controller.update_camera(camera, nullptr, 1.0);
+}
 
-    memdelete(camera);
-    memdelete(grid);
+// The kernel is covered natively; this covers the plumbing around it -- reading a checked-in scenario, loading the
+// shipped content through the real loaders, and writing one JSON line per seed.
+DEFN_TEST(defn_sim_runner_runs_a_checked_in_scenario_and_writes_jsonl) {
+    Dictionary args;
+    args["scenario"] = "res://scenarios/level_01_greedy.json";
+    args["seeds"] = 2;
+    args["out"] = "user://defn_sim_runner_test.jsonl";
+
+    const Dictionary result = DefnSimRunner::run_sweep(args);
+
+    DEFN_REQUIRE(bool(result.get("success", false)));
+    DEFN_CHECK_EQ(int(result.get("runs", 0)), 2);
+
+    const String written = FileAccess::get_file_as_string("user://defn_sim_runner_test.jsonl");
+    DEFN_CHECK(!written.is_empty());
+    DEFN_CHECK_EQ(int(written.strip_edges().split("\n").size()), 2);
+    DEFN_CHECK(written.contains("\"level_id\":\"level_01\""));
+    DEFN_CHECK(written.contains("\"policy\":\"greedy\""));
+    DEFN_CHECK(written.contains("\"peak_window_5s\":"));
+}
+
+// The measurement itself is a lab result, not a rule, so this only pins that it runs and stays discriminating: a
+// reference that takes no damage from anything would silently report every threat as zero, which is how the first
+// version of it was wrong.
+DEFN_TEST(defn_balance_runner_measures_a_discriminating_threat_ladder) {
+    Dictionary args;
+    args["seeds"] = 3;
+
+    const Dictionary result = DefnBalanceRunner::measure(args);
+    DEFN_REQUIRE(bool(result.get("success", false)));
+
+    const Array threat = result.get("threat", Array());
+    DEFN_CHECK_EQ(int(threat.size()), 4);
+
+    double baseline = 0.0;
+    double highest = 0.0;
+    for (const Variant &value : threat) {
+        const Dictionary row = value;
+        const auto cost = static_cast<double>(row["cost_per_kill"]);
+        DEFN_CHECK(cost > 0.0);
+        if (String(row["unit_id"]) == String("grime")) {
+            baseline = cost;
+        }
+        highest = std::max(highest, cost);
+    }
+
+    DEFN_CHECK(baseline > 0.0);
+    // Grime must remain the cheapest threat, and the spread wide enough to be worth reporting.
+    DEFN_CHECK(highest > baseline * 1.5);
+
+    const Array roster = result.get("roster", Array());
+    DEFN_CHECK_EQ(int(roster.size()), 4);
+}
+
+DEFN_TEST(defn_sim_runner_reports_a_missing_scenario) {
+    Dictionary args;
+    args["scenario"] = "res://scenarios/nosuchscenario.json";
+
+    DEFN_CHECK(!bool(DefnSimRunner::run_sweep(args).get("success", false)));
 }
 
 DEFN_TEST(grid_manager_resolves_level_belt_width_ratios_to_screen_coordinates) {
@@ -1269,6 +1466,30 @@ DEFN_TEST(grid_manager_resolves_level_belt_width_ratios_to_screen_coordinates) {
 
     DEFN_CHECK_CLOSE(grid->get_rules().belt_top_y, 200.0, 0.001);
     DEFN_CHECK_CLOSE(grid->get_rules().belt_bottom_y, 600.0, 0.001);
+    memdelete(grid);
+}
+
+DEFN_TEST(grid_manager_samples_belt_y_through_the_random_source_port) {
+    GameplayRules rules;
+    rules.viewport_height = 800.0F;
+
+    auto *grid = memnew(GridManager);
+    grid->configure(rules, 0.25F, 0.75F);
+
+    tests::ScriptedRandomSource random;
+    random.push_real(275.0F);
+    random.push_real(425.0F);
+    grid->set_random_source(&random);
+
+    DEFN_CHECK_CLOSE(grid->sample_belt_y(), 275.0, 0.001);
+    DEFN_CHECK_CLOSE(grid->sample_belt_y(), 425.0, 0.001);
+
+    // Clearing the override falls back to the built-in source, which must still stay inside the belt.
+    grid->set_random_source(nullptr);
+    const double fallback_y = grid->sample_belt_y();
+    DEFN_CHECK(fallback_y >= 200.0);
+    DEFN_CHECK(fallback_y <= 600.0);
+
     memdelete(grid);
 }
 

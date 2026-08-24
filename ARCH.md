@@ -129,6 +129,15 @@ Current boundary ownership:
   `std::vector<std::string>` issues. `JsonContentRepository` converts parsed
   Godot-backed catalog values into that input; `ContentStartupValidator` owns
   Godot logging.
+- `GridManager` answers the spawn-point queries and is the only grid code that
+  draws randomness. Belt-Y sampling goes through the injected `RandomSource`
+  rather than a Godot utility call, so a seeded source makes spawn placement
+  reproducible.
+- `CameraScrollController` is engine-neutral and lives in `domain/match`. Both
+  spawn positions are measured from where the camera is looking, so scrolling
+  is a gameplay rule rather than a view concern. `GameManager` keeps the Godot
+  half: it applies the returned position to a `Camera2D` and publishes it to
+  `GridManager`.
 - `GameManager` is the match-level composition and lifecycle entry point. It
   delegates camera movement to `CameraScrollController`, backgrounds to
   `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and
@@ -238,6 +247,7 @@ flowchart TB
         CombatStep[Combat step rules]
         DamageRules[Damage and projectile rules]
         RepositionRules[Reposition state and step rules]
+        AnimationState[UnitAnimationState and AnimationClock]
     end
 
     subgraph CombatUseCases[Combat Use Cases]
@@ -272,6 +282,7 @@ flowchart TB
     DetectionComponent -. implements .-> TargetSensorPort
     MovementComponent -. implements .-> EntityCommandPort
     AnimationController -. implements .-> EntityCommandPort
+    AnimationController --> AnimationState
     HealthComponent -. implements .-> EntityCommandPort
     ProjectileAttack -. implements .-> ProjectilePort
     UnitSelectionController --> UnitControlComponent
@@ -290,7 +301,12 @@ Target combat flow:
 3. The use case returns commands: stop, move, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
 4. The Godot component applies commands to `MovementComponent`, `AnimationController`, `HealthComponent`, `ProjectileAttack`, and VFX/audio adapters.
 
-Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. The presentation is read from the sprite rather than timed in the domain: `AnimationController` reports whether an attack or shoot animation is on screen and whether it is still inside the `windup_frames` its `AnimConfig` declares, and those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. The domain therefore holds no presentation timer, and the frame index stays the single source of truth for what the player sees.
+Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. Animation timing is owned by `UnitAnimationState`, an engine-free model of which animation is current and how far its `AnimationClock` has run, built from the `AnimConfig` a unit declares. It answers whether an attack or shoot animation is on screen, whether it is still inside its `windup_frames`, and when a shot leaves the muzzle; those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. `AnimationController` owns one such state and is pure presentation around it: the `AnimatedSprite2D` never runs an animation of its own, it is parked on whichever frame the state has reached. The frame index therefore remains the single source of truth for what the player sees, the same index is available without Godot, and the simulator drives the identical code rather than a second copy of it.
+
+Projectile flight is `ProjectileFlight`, an engine-free straight line at a fixed speed toward a position captured when
+the shot left the muzzle. There is no homing, so a target that keeps walking is missed by the blast -- though the direct
+target still takes impact damage, which `resolve_projectile_impact` applies by identity rather than by proximity.
+`ProjectileAttack` is the humble object around that model: sprite, explosion, audio and `queue_free`, nothing else.
 
 While an attack animation runs, the unit holds position and is never re-posed. Its windup frames always play. Past them the backswing is cancelable in exactly one case: nothing is in range and the last target is alive, which means it fled and must be chased. A target that died leaves nothing to chase, so the animation finishes before the unit walks on. Target selection re-engages any other target in range before the disengaged path is ever reached, so re-targeting mid-backswing needs no special handling, and a shorter attack period simply restarts the animation at frame 0. `CombatRuntime` remembers the last selected target so a target that flees during the windup is still recognised as a chase once the windup ends. Manual reposition remains the only override, cancelling the presentation outright while still preserving the cooldown.
 
@@ -303,6 +319,88 @@ Friendly fallback control follows the same ownership boundary:
 - `SelectionIndicator` provides controller-owned, code-drawn ground ellipses for selection and hover preview. Hover is suppressed for the selected unit and clears when the pointer leaves a selectable friendly. Deselect, death, tree exit, pause, and match-end paths do not leave stale indicators.
 - Accepted reposition orders create one short-lived `RepositionDestinationMarker` at the clicked X and the ground Y shared by the selected unit's selection ellipse. The view pulses three times, replaces prior destination feedback, and frees itself without entering domain state.
 - `data/unit_control.json` is the design-owned configuration surface for picking tolerance, selection/hover/destination marker geometry and RGBA colors (including alpha), pulse timing, and reposition arrival epsilon. `UnitControlConfigLoader` merges partial JSON over safe engine-neutral defaults before `GameManager` injects the result into `UnitSelectionController`; the Godot adapter uses the shared `godot_color.h` conversion boundary.
+
+### Simulation kernel
+
+`application/simulation` is a second driver for the combat rules, next to `CombatRuntime`. It runs a belt of entities
+on a fixed step with no Godot, no scene tree and no rendering, so balance questions can be answered by measurement
+instead of by formula. It is a lab tool: nothing in the build gates on what it reports.
+
+It is not a second implementation of the game. Every rule that decides an outcome is called, not restated:
+`advance_combat` drives the state machine, `select_target_from_snapshots` picks targets, `UnitAnimationState` times the
+swings, `advance_projectile` flies the shots, `resolve_projectile_impact` decides what they hit, `FieldPromotionRuntime`
+grants promotions, and `resolve_unit_runtime_config` varies attack ranges. What the kernel supplies is only the scene
+facts those rules would otherwise read off nodes:
+
+- `SimEntity` flattens what `Unit` spreads across health, movement, combat and animation components.
+- `SimWorld::build_snapshots` replaces the `Area2D` overlap query with a radius scan, and re-adds the retained target
+  the way `CombatTargetSelector` does, so the chase decision still sees a target that left the sensor.
+- `SimWorld::apply_commands` mirrors `CombatRuntime::apply_command` case for case; the presentation-only commands are
+  the only ones it drops.
+- Movement and damage are the ten-line equivalents of `MovementComponent::move`, `HealthComponent::take_damage` and
+  `DamageDispatcher::apply`.
+- `SimProjectile` carries what `ProjectileAttack` carries, and `SimWorld::build_impact_snapshots` gathers blast
+  candidates in the order the shipped game walks the entity container, direct target first. That order is
+  load-bearing: `resolve_projectile_impact` trims its candidate list from the back, so splash victims are chosen by
+  spawn order rather than by proximity.
+
+Entities step in ascending id, which is the order Godot walks the process group, and each entity advances its animation
+before its combat step, matching `AnimationController::_process` running ahead of `CombatComponent::_process` on the
+same unit. Projectiles step after every entity, matching `ProjectileAttack` nodes being appended to the entity
+container. A shot is committed by combat but released only when the shoot animation reaches its spawn frame, and its
+shooter is frozen meanwhile, so the animation clock and not the attack period is what paces a projectile unit. A run is reproducible from its seed: the fixed step is never wall-clock, and the only randomness is the
+per-spawn attack-range draw, taken through the `RandomSource` port.
+
+`SimRoster` implements the `UnitCatalog` port over an in-memory list, so native tests read fixtures and a Godot-hosted
+sweep can read the shipped JSON through the loader the game uses. Nothing in the kernel parses content.
+
+A whole match is `SimMatch`, the composition root that stands in for `GameManager`. It owns a real `MatchDirector` --
+economy, waves, scoring and end conditions unchanged -- and supplies the four things the scene tree would otherwise
+provide:
+
+- `SimGrid` implements `GridQueryService` over the same rules as `GridManager`, including the level's belt ratios.
+- `SimCamera` wraps the shared `CameraScrollController` and adds the one scene fact it needs: noticing that a unit's
+  hitbox has entered a trigger strip. `SimCameraMode::FIXED` pins the camera so scroll pacing can be isolated.
+- `SimProgression` implements `ProgressionService` for one hypothetical save. Every modifier a match reads goes
+  through the same `progression_rules` functions the campaign uses; only the reward and presentation half is stubbed.
+- `PlayerPolicy` decides deployments. Deployment is the whole player vocabulary: the camera is pushed by units
+  crossing triggers, never by the player, and manual repositioning arrives with the play harness. Four policies ship
+  -- scripted, greedy, defensive and composition -- because a single policy produces a single number with no meaning.
+  The spread is the point: on level 1 the defensive policy wins every seed while greedy loses every seed, on
+  identical content, so any verdict quoted from one policy alone is a verdict about that policy.
+
+The tick order mirrors the scene tree: the director runs first, then spawns land, then the player acts, then entities
+fight, then projectiles fly, then deaths are reported as bounty and base damage, then the camera moves. `SimWorld`
+records every point of damage in order, which is what turns deaths into bounty, base hits into leak events, and will
+feed the conformance trace.
+
+`SimScenario` is the run input and `SimMatchReport` the output, serialised as one JSON line per run. `DefnSimRunner`
+is the Godot-facing entry point, in the mould of `DefnHostedTestRunner`: it loads content through the real loaders,
+measures the world width from the background texture, hands plain structs to the kernel, and writes the JSONL. Sim
+sources reach the extension only under the hosted-tests flag, so nothing of it ships in a release export.
+
+`DefnBalanceRunner` answers the two roster questions `BALANCE.md` used to estimate -- what one hostile costs the
+player, and what one friendly buys for its energy -- by running each unit against a fixed reference force and
+averaging over seeds. The reference is the whole method: it has to beat every hostile and still bleed doing it, or the
+measurement silently reports zero.
+
+### Conformance
+
+`DefnConformanceRunner` is what makes the kernel trustworthy. It replays five scenarios twice -- once as real units in
+a real scene, once in the kernel -- and compares the traces: positions within a pixel, health, pose, engagement and
+attack mode exact, deaths within a tick, and shells in flight exact. A failure means the two disagree about a rule,
+which is a bug in one of them whether or not anyone is running a sweep, so it gates `test_all`.
+
+It is a node driven by `tests/godot_conformance_runner.gd` rather than a hosted test, because the real side needs real
+frames: `Area2D` overlaps, which target selection reads, are only refreshed by the physics server between them. Godot
+runs with `--fixed-fps 60` so both sides advance by the same delta, and the scenario is stepped by hand -- animation
+controller before combat component, units in container order, then projectiles -- so the comparison is of the rules
+rather than of the scheduler.
+
+Two rules the harness pinned down, both about *when* a new thing first acts. Godot walks a copy of the process group
+taken before the frame starts, so a node added during a frame does nothing until the next one. The kernel now matches:
+an entity or shell created during a tick waits for the following tick, and `SimWorld::begin_run` marks whatever was
+placed before the run as already present.
 
 ## Module 3: Progression and Rewards
 
@@ -570,7 +668,7 @@ High-value ports:
 | `ProgressionCatalog` | progression JSON repository | progression rules | Keeps unlock data data-driven. |
 | `UpgradeCatalog` | upgrades JSON repository | progression rules | Keeps upgrade definitions data-driven. |
 | `SpawnPointProvider` | `GridManager` adapter | deployment and spawn use cases | Keeps Godot/world geometry at the edge. |
-| `RandomSource` | Godot or standard RNG adapter | draft selection, resolved combat ranges | Enables deterministic tests. |
+| `RandomSource` | `StdRandomSource`, seeded or unseeded | draft selection, resolved combat ranges, belt-Y sampling | Enables deterministic tests and reproducible runs. |
 | `SceneNavigation` | `SceneNavigator` adapter | menu and post-match flow | Keeps `SceneTree` out of use cases. |
 | `SettingsStore` | `ConfigFileSettingsStore` | settings use case/session | Keeps save-file access at the edge. |
 | `DisplaySettings` | `GodotDisplaySettings` with an explicit runtime window ID, or `NoOpDisplaySettings` | settings use case/session | Keeps window capability and targeting at the edge. |

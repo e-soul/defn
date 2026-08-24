@@ -14,6 +14,7 @@
 #include "data_paths.h"
 #include "game_background_builder.h"
 #include "godot_string.h"
+#include "godot_vector.h"
 #include "grid_manager.h"
 #include "hud.h"
 #include "level_loader.h"
@@ -140,7 +141,7 @@ void GameManager::_ready() {
 
     if (auto *grid = GridManager::get_singleton()) {
         grid->configure(unit_data_.get_globals().gameplay_rules, loaded_level->belt_width_ratio.x, loaded_level->belt_width_ratio.y);
-        camera_scroll_controller_.configure(grid->get_rules(), grid->get_world_width());
+        camera_scroll_controller_.configure(grid->get_rules(), static_cast<float>(grid->get_world_width()));
     }
 
     match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
@@ -242,7 +243,7 @@ void GameManager::setup_background(const String &bg_path) {
     }
 
     grid->set_world_width(background.world_width);
-    camera_scroll_controller_.configure(rules, background.world_width);
+    camera_scroll_controller_.configure(rules, static_cast<float>(background.world_width));
     add_child(background.background);
 }
 
@@ -251,7 +252,7 @@ void GameManager::setup_camera() {
     camera = memnew(Camera2D);
     camera->set_name("Camera");
 
-    camera->set_position(camera_scroll_controller_.get_camera_anchor_position());
+    camera->set_position(to_godot_vector(camera_scroll_controller_.get_camera_anchor_position()));
 
     camera->set_limit(SIDE_LEFT, 0);
     camera->set_limit(SIDE_TOP, 0);
@@ -276,7 +277,16 @@ void GameManager::setup_belt_debug_overlay() {
 }
 #endif
 
-void GameManager::update_camera_scroll(double delta) { camera_scroll_controller_.update_camera(camera, GridManager::get_singleton(), delta); }
+void GameManager::update_camera_scroll(double delta) {
+    auto *grid = GridManager::get_singleton();
+    if (camera == nullptr || grid == nullptr) {
+        return;
+    }
+
+    const godot::Vector2 next_position = to_godot_vector(camera_scroll_controller_.next_camera_position(to_vector(camera->get_position()), delta));
+    camera->set_position(next_position);
+    grid->set_camera_x(next_position.x);
+}
 
 void GameManager::setup_base_objective() {
     if (entity_container == nullptr) {
@@ -303,7 +313,7 @@ Area2D *GameManager::create_scroll_trigger(const String &name, uint32_t collisio
     Ref<RectangleShape2D> rect;
     rect.instantiate();
     // Tall vertical strip covering well beyond the belt area
-    rect->set_size(godot::Vector2(20.0, camera_scroll_controller_.get_trigger_height()));
+    rect->set_size(godot::Vector2(CameraScrollController::TRIGGER_WIDTH, camera_scroll_controller_.get_trigger_height()));
     shape_node->set_shape(rect);
     trigger->add_child(shape_node);
 
@@ -323,11 +333,11 @@ void GameManager::setup_scroll_triggers() {
 
 void GameManager::update_scroll_trigger_positions() {
     if (right_scroll_trigger != nullptr) {
-        right_scroll_trigger->set_position(camera_scroll_controller_.get_right_trigger_position());
+        right_scroll_trigger->set_position(to_godot_vector(camera_scroll_controller_.get_right_trigger_position()));
     }
 
     if (left_scroll_trigger != nullptr) {
-        left_scroll_trigger->set_position(camera_scroll_controller_.get_left_trigger_position());
+        left_scroll_trigger->set_position(to_godot_vector(camera_scroll_controller_.get_left_trigger_position()));
     }
 }
 

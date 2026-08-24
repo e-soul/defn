@@ -5,6 +5,7 @@
 #define PROJECTILE_ATTACK_H
 
 #include "attack_target.h"
+#include "projectile_flight.h"
 #include "unit_definition.h"
 
 #include <godot_cpp/classes/animated_sprite2d.hpp>
@@ -18,6 +19,8 @@ namespace defn {
 
 using namespace godot;
 
+// Presentation and lifetime for one shot. The flight itself is `ProjectileFlight`, an engine-free model the simulator
+// runs too; this node only shows where that flight has got to, plays the explosion, and frees itself afterwards.
 class ProjectileAttack : public Node2D {
     GDCLASS(ProjectileAttack, Node2D)
 
@@ -26,6 +29,10 @@ class ProjectileAttack : public Node2D {
                    const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
 
     void _process(double delta) override;
+
+    // False once the shot has gone off. The node outlives that moment to play its explosion, but it has already
+    // applied its damage and stopped affecting the world.
+    [[nodiscard]] bool is_in_flight() const { return !exploding_; }
 
   protected:
     static void _bind_methods();
@@ -49,12 +56,9 @@ class ProjectileAttack : public Node2D {
     godot::Color flash_color_{};
     AnimatedSprite2D *sprite_ = nullptr;
     AudioStreamPlayer2D *explosion_player_ = nullptr;
-    godot::Vector2 target_global_position_{};
-    godot::Vector2 travel_direction_{};
+    ProjectileFlight flight_{};
     godot::Vector2 flight_scale_ = godot::Vector2(1.0, 1.0);
     godot::Vector2 explosion_scale_ = godot::Vector2(1.0, 1.0);
-    real_t total_travel_distance_ = 0.0F;
-    real_t travelled_distance_ = 0.0F;
     int fallback_damage_ = 0;
     ObjectID direct_target_id_{};
     ObjectID source_id_{};

@@ -1,0 +1,8 @@
+{
+  "level_id": "level_01",
+  "seed": 2026,
+  "policy": { "kind": "greedy" },
+  "owned_upgrades": [],
+  "camera": "modelled",
+  "max_seconds": 300.0
+}

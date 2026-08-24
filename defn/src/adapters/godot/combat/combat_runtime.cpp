@@ -42,7 +42,7 @@ void CombatRuntime::update(double delta) {
     CombatLogicInput input;
     input.state = state_;
     input.selection = selection_;
-    input.current_pose = animation_ != nullptr ? map_pose_state(animation_->get_anim_state()) : CombatPoseState::OTHER;
+    input.current_pose = animation_ != nullptr ? to_combat_pose_state(animation_->get_anim_state()) : CombatPoseState::OTHER;
     input.delta = delta;
     input.unit_dead = health_->is_dead();
     input.projectile_pending = pending_projectile_.active;
@@ -118,13 +118,13 @@ void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
         }
         switch (command.pose) {
         case CombatPoseIntent::WALK:
-            animation_->set_anim_state(AnimState::WALK);
+            animation_->set_anim_state(UnitPose::WALK);
             break;
         case CombatPoseIntent::ATTACK:
-            animation_->hold_anim_state(AnimState::ATTACK);
+            animation_->hold_anim_state(UnitPose::ATTACK);
             break;
         case CombatPoseIntent::SHOOT:
-            animation_->hold_anim_state(AnimState::SHOOT);
+            animation_->hold_anim_state(UnitPose::SHOOT);
             break;
         case CombatPoseIntent::NONE:
             break;
@@ -141,21 +141,6 @@ void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
         CombatAttackExecutor::apply_command(command, projectile_attack_, unit_, config_.side, animation_, pending_projectile_);
         break;
     }
-}
-
-CombatPoseState CombatRuntime::map_pose_state(AnimState state) {
-    switch (state) {
-    case AnimState::WALK:
-        return CombatPoseState::WALK;
-    case AnimState::ATTACK:
-        return CombatPoseState::ATTACK;
-    case AnimState::SHOOT:
-        return CombatPoseState::SHOOT;
-    case AnimState::DEATH:
-        return CombatPoseState::OTHER;
-    }
-
-    return CombatPoseState::OTHER;
 }
 
 } // namespace defn
