@@ -62,10 +62,7 @@ void PauseMenu::build_ui() {
         return;
     }
 
-    ui_sfx_player_ = memnew(UiSfxPlayer);
-    ui_sfx_player_->set_name("UiSfxPlayer");
-    add_child(ui_sfx_player_);
-    ui_sfx_player_->configure(UiThemeProvider::data().sfx);
+    UiSfxPlayer::install(this);
 
     // The scrim, the panel and the heading all come from the shared chrome, so pausing looks like every other
     // screen the game puts in front of the player rather than a bare stack of buttons.
@@ -92,7 +89,7 @@ void PauseMenu::build_ui() {
             pressed = callable_mp(this, &PauseMenu::on_main_menu);
         }
 
-        auto *btn = make_button(entry.label.empty() ? String("???") : to_godot_string(entry.label), "menu", pressed, ui_sfx_player_);
+        auto *btn = make_button(entry.label.empty() ? String("???") : to_godot_string(entry.label), "menu", pressed);
         button_container_->add_child(btn);
     }
 }

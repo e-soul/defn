@@ -17,7 +17,6 @@
 namespace defn {
 
 class CampaignPreviewView;
-class UiSfxPlayer;
 
 class OperationDossierView : public godot::PanelContainer {
     GDCLASS(OperationDossierView, godot::PanelContainer)
@@ -25,7 +24,6 @@ class OperationDossierView : public godot::PanelContainer {
   public:
     OperationDossierView();
     void configure(const CampaignMissionViewModel &mission, const godot::Ref<godot::Texture2D> &preview_texture);
-    void attach_sfx(UiSfxPlayer *ui_sfx_player);
     [[nodiscard]] godot::Button *deploy_button() const { return deploy_button_; }
     [[nodiscard]] godot::Button *back_button() const { return back_button_; }
 

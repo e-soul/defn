@@ -7,6 +7,7 @@
 #include "godot_string.h"
 #include "icon_medallion.h"
 #include "ui_theme_provider.h"
+#include "ui_widgets.h"
 
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/style_box_empty.hpp>
@@ -107,6 +108,9 @@ CampaignMapNodeView::CampaignMapNodeView() {
     interaction_->add_theme_stylebox_override("pressed", empty_button_style);
     interaction_->connect("gui_input", callable_mp(this, &CampaignMapNodeView::on_gui_input));
     interaction_->connect("pressed", callable_mp(this, &CampaignMapNodeView::on_pressed));
+    // The node builds this button itself rather than taking one from the widget factory, so it is also the one
+    // that gives it a voice.
+    connect_sfx(interaction_);
     add_child(interaction_);
 }
 

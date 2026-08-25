@@ -80,8 +80,6 @@ class HUD : public CanvasLayer {
     void on_campaign_pressed();
     void on_upgrade_card_pressed(const String &upgrade_id);
 
-    class UiSfxPlayer *ui_sfx_player_ = nullptr;
-
     // Energy plate
     HudValueLabel energy_value_label;
 

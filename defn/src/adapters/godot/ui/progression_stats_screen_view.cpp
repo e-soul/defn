@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "progression_stats_screen_view.h"
-#include "ui_sfx_player.h"
 
 #include "godot_string.h"
 #include "owned_upgrades_panel.h"
@@ -52,11 +51,10 @@ void ProgressionStatsScreenView::_bind_methods() {
 }
 
 void ProgressionStatsScreenView::configure(ProgressionOverviewSnapshot snapshot, std::vector<UpgradeCardViewModel> owned_upgrades,
-                                           const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player) {
+                                           const godot::Callable &back_action) {
     snapshot_ = std::move(snapshot);
     owned_upgrades_ = std::move(owned_upgrades);
     back_action_ = back_action;
-    ui_sfx_player_ = ui_sfx_player;
     selected_entity_id_ = ProgressionStatsPresenter::default_selection(snapshot_);
     showing_all_upgrades_ = false;
     set_name("ProgressionStatsScreen");
@@ -124,11 +122,10 @@ void ProgressionStatsScreenView::rebuild() {
         options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
         options.grid_columns = 4;
         scaffold.body->add_child(OwnedUpgradesPanel::build(owned_upgrades_, options));
-        auto *return_button =
-            make_button("Return to Command Roster", "secondary", callable_mp(this, &ProgressionStatsScreenView::show_dossier), ui_sfx_player_);
+        auto *return_button = make_button("Return to Command Roster", "secondary", callable_mp(this, &ProgressionStatsScreenView::show_dossier));
         return_button->set_name("ReturnToDossierButton");
         scaffold.footer->add_child(return_button);
-        auto *back = make_button(to_godot_string(model.back_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::go_back), ui_sfx_player_);
+        auto *back = make_button(to_godot_string(model.back_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::go_back));
         back->set_name("ProgressionBackButton");
         scaffold.footer->add_child(back);
         return;
@@ -148,7 +145,7 @@ void ProgressionStatsScreenView::rebuild() {
         }
         // A roster chip is the same card the deploy bar and the upgrade picker use, wearing its own variant:
         // portrait on the left, name beside it, and the shared selected treatment on the frame.
-        const CardNodes card = make_card({.variant = "roster", .layout = CardLayout::Horizontal, .selected = selector.selected}, pressed, ui_sfx_player_);
+        const CardNodes card = make_card({.variant = "roster", .layout = CardLayout::Horizontal, .selected = selector.selected}, pressed);
         card.button->set_name(to_godot_string("Selector_" + selector.id));
         card.button->set_focus_mode(godot::Control::FOCUS_ALL);
         apply_enabled(card.button, selector.unlocked);
@@ -234,11 +231,11 @@ void ProgressionStatsScreenView::rebuild() {
     columns->add_child(stats_column);
     scaffold.body->add_child(dossier);
 
-    auto *all_upgrades = make_button(to_godot_string(model.all_upgrades_label), "secondary",
-                                     callable_mp(this, &ProgressionStatsScreenView::show_owned_upgrades), ui_sfx_player_);
+    auto *all_upgrades =
+        make_button(to_godot_string(model.all_upgrades_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::show_owned_upgrades));
     all_upgrades->set_name("AllOwnedUpgradesButton");
     scaffold.footer->add_child(all_upgrades);
-    auto *back = make_button(to_godot_string(model.back_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::go_back), ui_sfx_player_);
+    auto *back = make_button(to_godot_string(model.back_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::go_back));
     back->set_name("ProgressionBackButton");
     scaffold.footer->add_child(back);
 }

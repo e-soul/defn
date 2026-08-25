@@ -22,8 +22,6 @@
 
 namespace defn {
 
-class UiSfxPlayer;
-
 /// One instrument reading: a tinted medallion followed by whatever the caller adds after it. The medallion
 /// comes back with the row because a reading such as base integrity re-tints its own as the value changes.
 struct ReadoutRow {
@@ -56,10 +54,10 @@ struct CardNodes {
 
 /// Shared control factories; every visual value comes from `UiThemeProvider`.
 godot::Label *make_label(const godot::String &text, std::string_view text_style = "body");
-godot::Button *make_button(const godot::String &text, std::string_view variant = "secondary", const godot::Callable &pressed = {}, UiSfxPlayer *sfx = nullptr);
+godot::Button *make_button(const godot::String &text, std::string_view variant = "secondary", const godot::Callable &pressed = {});
 /// Builds the shared card frame: a themed button, the padding its variant declares, and an icon-plus-text
 /// body inside it. Deploy cards, upgrade cards and roster chips differ only in what they put in the slots.
-CardNodes make_card(const CardSpec &spec, const godot::Callable &pressed = {}, UiSfxPlayer *sfx = nullptr);
+CardNodes make_card(const CardSpec &spec, const godot::Callable &pressed = {});
 /// Puts a card's icon ahead of its text column, whichever slot order the caller happened to fill first.
 void add_card_icon(const CardNodes &card, godot::Control *icon);
 /// The icon slot's usual filler: a texture scaled to fit a square without distorting it.
@@ -94,7 +92,7 @@ void set_state_tint(godot::Control *control, std::string_view color_role);
 void apply_enabled(godot::BaseButton *button, bool enabled);
 /// Wires hover and press sound. The variant names which press sound, and an absent player falls back to the
 /// active one, so no control can end up silent because its call site forgot.
-void connect_sfx(UiSfxPlayer *sfx, godot::BaseButton *button, std::string_view variant = "secondary");
+void connect_sfx(godot::BaseButton *button, std::string_view variant = "secondary");
 
 } // namespace defn
 

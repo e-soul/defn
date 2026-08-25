@@ -23,6 +23,7 @@
 #include "hud_meters.h"
 #include "match_result_cutscene_view_model.h"
 #include "menu_manager.h"
+#include "operation_dossier_view.h"
 #include "pause_menu.h"
 #include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
@@ -1182,7 +1183,7 @@ DEFN_TEST(campaign_map_mounts_loading_overlay_before_composing_content) {
 DEFN_TEST(campaign_map_loading_failure_shows_retry_and_back_actions) {
     GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
     CampaignMapView *campaign_map = campaign_map_owner.get();
-    campaign_map->configure(static_cast<ProgressionService *>(nullptr), {}, {}, nullptr);
+    campaign_map->configure(static_cast<ProgressionService *>(nullptr), {}, {});
 
     (void)pump_campaign_map_loading(campaign_map);
     DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Failed);
@@ -1201,7 +1202,7 @@ DEFN_TEST(campaign_map_loading_selects_the_presented_initial_mission) {
                      {.level_id = "level_02", .name = "Second", .preview = {.texture = texture}}},
         .initial_selected_level_id = "level_02",
     };
-    campaign_map->configure(std::move(view_model), {}, {}, nullptr);
+    campaign_map->configure(std::move(view_model), {}, {});
 
     DEFN_CHECK(pump_campaign_map_loading(campaign_map));
     DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Ready);
@@ -1252,7 +1253,7 @@ DEFN_TEST(campaign_map_preview_requires_click_and_double_click_deploys) {
                      {.level_id = "level_02", .name = "Second", .preview = {.texture = texture}, .state = CampaignNodeState::AVAILABLE}},
         .initial_selected_level_id = "level_02",
     };
-    campaign_map->configure(std::move(view_model), Callable(deployment_recorder.get(), "set_text"), {}, nullptr);
+    campaign_map->configure(std::move(view_model), Callable(deployment_recorder.get(), "set_text"), {});
 
     DEFN_REQUIRE(pump_campaign_map_loading(campaign_map));
     auto *first = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
@@ -1290,6 +1291,24 @@ DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
     DEFN_CHECK(!node_interaction->has_theme_stylebox_override("focus"));
     DEFN_CHECK(has_label_text(campaign_map, "Grime"));
     DEFN_CHECK(!has_label_text(campaign_map, "[Grime]"));
+}
+
+/// Sound reaches a control through the one player the screen installed, wired by whatever built the control:
+/// the dossier's buttons come from the widget factory, the map node builds its own. Each has to end up with
+/// exactly one wiring -- none means the screen went silent, two means a second caller wired it as well.
+DEFN_TEST(campaign_map_wires_every_control_to_the_installed_sfx_player_once) {
+    const TreeMountedNode<MenuManager> menu_manager_owner;
+    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
+
+    DEFN_REQUIRE(campaign_map != nullptr);
+    OperationDossierView *dossier = campaign_map->dossier();
+    DEFN_REQUIRE(dossier != nullptr);
+    auto *node_interaction = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
+    for (Button *button : {dossier->deploy_button(), dossier->back_button(), node_interaction}) {
+        DEFN_REQUIRE(button != nullptr);
+        DEFN_CHECK_EQ(button->get_signal_connection_list("mouse_entered").size(), static_cast<int64_t>(1));
+        DEFN_CHECK_EQ(button->get_signal_connection_list("button_down").size(), static_cast<int64_t>(1));
+    }
 }
 
 DEFN_TEST(progression_stats_screen_view_switches_dossiers_and_preserves_selection_across_owned_grid) {

@@ -40,7 +40,6 @@ class PauseMenu : public CanvasLayer {
 
     Control *screen_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
-    class UiSfxPlayer *ui_sfx_player_ = nullptr;
 };
 
 } // namespace defn

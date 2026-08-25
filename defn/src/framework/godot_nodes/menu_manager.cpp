@@ -203,7 +203,7 @@ bool try_add_display_mode_control(MenuManager *manager, HBoxContainer *row, cons
     }
 
     option_button->select(selected_index);
-    manager->connect_menu_sfx(option_button);
+    connect_sfx(option_button, "option_control");
     option_button->connect("item_selected", callable_mp(manager, &MenuManager::on_display_mode_changed));
     row->add_child(option_button);
     return true;
@@ -240,7 +240,7 @@ bool try_add_resolution_control(MenuManager *manager, HBoxContainer *row, const 
     apply_enabled(option_button, windowed);
 
     resolution_dropdown = option_button;
-    manager->connect_menu_sfx(option_button);
+    connect_sfx(option_button, "option_control");
     option_button->connect("item_selected", callable_mp(manager, &MenuManager::on_resolution_changed));
     row->add_child(option_button);
     return true;
@@ -254,7 +254,7 @@ bool try_add_vsync_control(HBoxContainer *row, const MenuSettingViewModel &setti
         return false;
     }
 
-    auto *toggle = make_button(vsync_on ? "On" : "Off", "option_control", {}, manager->sfx_player());
+    auto *toggle = make_button(vsync_on ? "On" : "Off", "option_control");
     toggle->set_toggle_mode(true);
     toggle->set_custom_minimum_size(option_control_size());
     toggle->set_pressed_no_signal(vsync_on);
@@ -298,7 +298,7 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
 void add_menu_button(MenuManager *manager, VBoxContainer *button_container, const MenuButtonViewModel &button_model) {
     const Callable pressed =
         callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target));
-    auto *button = make_button(to_godot_string(button_model.label), "menu", pressed, manager->sfx_player());
+    auto *button = make_button(to_godot_string(button_model.label), "menu", pressed);
     apply_enabled(button, button_model.enabled);
     button_container->add_child(button);
 }
@@ -310,7 +310,7 @@ void add_back_button(MenuManager *manager, HBoxContainer *footer, const std::opt
 
     const Callable pressed =
         callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(back->intent.type), to_godot_string(back->intent.target));
-    auto *button = make_button(to_godot_string(back->label), "secondary", pressed, manager->sfx_player());
+    auto *button = make_button(to_godot_string(back->label), "secondary", pressed);
     apply_enabled(button, back->enabled);
     footer->add_child(button);
 }
@@ -329,10 +329,7 @@ void MenuManager::_ready() {
 
     UiThemeProvider::install(get_tree());
 
-    ui_sfx_player_ = memnew(UiSfxPlayer);
-    ui_sfx_player_->set_name("UiSfxPlayer");
-    add_child(ui_sfx_player_);
-    ui_sfx_player_->configure(UiThemeProvider::data().sfx);
+    UiSfxPlayer::install(this);
 
     ui_layer_ = memnew(CanvasLayer);
     ui_layer_->set_name("UILayer");
@@ -500,7 +497,7 @@ void MenuManager::show_level_select() {
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed).bind(static_cast<int>(MenuIntentType::GotoMenu), String("game_menu"));
     ui_layer_->add_child(map_view);
     mount_screen(map_view);
-    map_view->configure(progression, deploy_action, back_action, ui_sfx_player_);
+    map_view->configure(progression, deploy_action, back_action);
 }
 
 void MenuManager::on_level_selected(const String &level_id) {
@@ -520,7 +517,7 @@ void MenuManager::show_progression() {
                                      .bind(static_cast<int>(view_model.back_button.intent.type), to_godot_string(view_model.back_button.intent.target));
     ui_layer_->add_child(screen);
     mount_screen(screen);
-    screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action, ui_sfx_player_);
+    screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action);
 }
 
 void MenuManager::build_options_ui(const MenuScreenViewModel &view_model, const UiScreenScaffold &scaffold) {
@@ -658,7 +655,5 @@ void MenuManager::on_volume_changed(double value, const String &bus_name) {
         UtilityFunctions::printerr("MenuManager: Failed to persist audio setting for bus ", bus_name);
     }
 }
-
-void MenuManager::connect_menu_sfx(BaseButton *button) { connect_sfx(ui_sfx_player_, button, "option_control"); }
 
 } // namespace defn

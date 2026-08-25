@@ -42,8 +42,6 @@ class MenuManager : public Node2D {
     void on_resolution_changed(int index);
     void on_vsync_toggled(bool toggled);
     void on_volume_changed(double value, const String &bus_name);
-    void connect_menu_sfx(BaseButton *button);
-    [[nodiscard]] class UiSfxPlayer *sfx_player() const { return ui_sfx_player_; }
 
   protected:
     static void _bind_methods();
@@ -73,7 +71,6 @@ class MenuManager : public Node2D {
     PanelContainer *career_score_plate_ = nullptr;
     Label *total_score_label_ = nullptr;
     Control *active_screen_ = nullptr;
-    class UiSfxPlayer *ui_sfx_player_ = nullptr;
 
     // Options-menu state (reset by clear_active_screen)
     OptionButton *resolution_dropdown_ = nullptr;

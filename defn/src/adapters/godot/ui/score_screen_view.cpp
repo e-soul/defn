@@ -7,7 +7,6 @@
 #include "owned_upgrades_panel.h"
 #include "score_screen_view_model.h"
 #include "ui_screen_scaffold.h"
-#include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
 #include "upgrade_card_presenter.h"
@@ -77,7 +76,7 @@ VBoxContainer *add_label_column(HBoxContainer *row) {
 }
 
 void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel &reward, const ScoreScreenViewModel &view_model,
-                           const Callable &on_select_upgrade, UiSfxPlayer *ui_sfx_player) {
+                           const Callable &on_select_upgrade) {
     if (content == nullptr || (reward.available_upgrades.empty() && view_model.new_unlocks.empty())) {
         return;
     }
@@ -124,7 +123,6 @@ void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel 
         }
 
         auto *card_button = UpgradeCardPresenter::create(card, selected, false, Callable());
-        connect_sfx(ui_sfx_player, card_button);
         connect_if_valid(card_button, pressed_action);
         card_row->add_child(card_button);
     }
@@ -154,15 +152,15 @@ void add_owned_upgrades_section(VBoxContainer *content, const std::vector<Upgrad
     owned_row->add_child(owned_panel);
 }
 
-void add_action_button(HBoxContainer *row, const String &text, const Callable &action, bool enabled, UiSfxPlayer *ui_sfx_player) {
-    auto *button = make_button(text, "secondary", action, ui_sfx_player);
+void add_action_button(HBoxContainer *row, const String &text, const Callable &action, bool enabled) {
+    auto *button = make_button(text, "secondary", action);
     apply_enabled(button, enabled);
     row->add_child(button);
 }
 
 } // namespace
 
-ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions, UiSfxPlayer *ui_sfx_player) {
+ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel &model, const ScoreScreenActions &actions) {
     if (parent == nullptr) {
         return {};
     }
@@ -208,7 +206,7 @@ ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel 
         add_stat_row(content, to_godot_string(presentation.stat_rows[index].first), to_godot_string(presentation.stat_rows[index].second));
     }
 
-    add_upgrade_selection(content, model.reward, presentation, actions.on_select_upgrade, ui_sfx_player);
+    add_upgrade_selection(content, model.reward, presentation, actions.on_select_upgrade);
 
     add_owned_upgrades_section(content, model.owned_upgrades);
 
@@ -216,11 +214,11 @@ ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel 
     button_row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
 
     if (presentation.next_level_button_visible) {
-        add_action_button(button_row, "Next Level", actions.on_next_level, presentation.next_level_button_enabled, ui_sfx_player);
+        add_action_button(button_row, "Next Level", actions.on_next_level, presentation.next_level_button_enabled);
     }
 
-    add_action_button(button_row, "Retry", actions.on_retry, presentation.retry_button_enabled, ui_sfx_player);
-    add_action_button(button_row, "Campaign", actions.on_campaign, presentation.campaign_button_enabled, ui_sfx_player);
+    add_action_button(button_row, "Retry", actions.on_retry, presentation.retry_button_enabled);
+    add_action_button(button_row, "Campaign", actions.on_campaign, presentation.campaign_button_enabled);
 
     return view;
 }

@@ -24,7 +24,6 @@ namespace defn {
 class CampaignMapNodeView;
 class OperationDossierView;
 class ProgressionService;
-class UiSfxPlayer;
 
 class CampaignMapView : public godot::Control {
     GDCLASS(CampaignMapView, godot::Control)
@@ -34,8 +33,8 @@ class CampaignMapView : public godot::Control {
 
     CampaignMapView();
     void _process(double delta) override;
-    void configure(ProgressionService *progression, const godot::Callable &deploy_action, const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player);
-    void configure(CampaignMapViewModel view_model, const godot::Callable &deploy_action, const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player);
+    void configure(ProgressionService *progression, const godot::Callable &deploy_action, const godot::Callable &back_action);
+    void configure(CampaignMapViewModel view_model, const godot::Callable &deploy_action, const godot::Callable &back_action);
     [[nodiscard]] LoadingState loading_state() const { return loading_state_; }
     [[nodiscard]] const std::string &selected_level_id() const { return selected_level_id_; }
     [[nodiscard]] OperationDossierView *dossier() const { return dossier_; }
@@ -45,7 +44,7 @@ class CampaignMapView : public godot::Control {
     void _notification(int what);
 
   private:
-    void configure_loading(const godot::Callable &deploy_action, const godot::Callable &back_action, UiSfxPlayer *ui_sfx_player);
+    void configure_loading(const godot::Callable &deploy_action, const godot::Callable &back_action);
     void build_loading_overlay();
     void begin_loading();
     [[nodiscard]] bool compose_view_model();
@@ -57,9 +56,9 @@ class CampaignMapView : public godot::Control {
     void finish_overlay_fade();
     void update_loading_animation(double delta);
     [[nodiscard]] godot::Ref<godot::Texture2D> texture_for(const CampaignTextureDefinition &definition) const;
-    void build_map_content(UiSfxPlayer *ui_sfx_player);
+    void build_map_content();
     void build_routes(godot::Control *route_layer);
-    void build_nodes(godot::Control *node_layer, UiSfxPlayer *ui_sfx_player);
+    void build_nodes(godot::Control *node_layer);
     void select_level(const godot::String &level_id);
     void activate_level(const godot::String &level_id);
     void deploy_selected();
@@ -74,7 +73,6 @@ class CampaignMapView : public godot::Control {
     std::string selected_level_id_;
     godot::Callable deploy_action_;
     godot::Callable back_action_;
-    UiSfxPlayer *ui_sfx_player_ = nullptr;
     LoadingState loading_state_ = LoadingState::WaitingToStart;
     godot::Control *loading_overlay_ = nullptr;
     godot::Label *loading_spinner_ = nullptr;

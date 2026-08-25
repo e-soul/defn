@@ -71,10 +71,7 @@ void HUD::_bind_methods() {
 
 void HUD::_ready() {
     UiThemeProvider::install(get_tree());
-    ui_sfx_player_ = memnew(UiSfxPlayer);
-    ui_sfx_player_->set_name("UiSfxPlayer");
-    add_child(ui_sfx_player_);
-    ui_sfx_player_->configure(UiThemeProvider::data().sfx);
+    UiSfxPlayer::install(this);
     build_ui();
 }
 
@@ -333,8 +330,7 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
                                   .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
                                   .on_campaign = callable_mp(this, &HUD::on_campaign_pressed),
                                   .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
-                              },
-                              ui_sfx_player_);
+                              });
 
     score_screen_overlay = view.overlay;
     score_screen_panel = view.panel;

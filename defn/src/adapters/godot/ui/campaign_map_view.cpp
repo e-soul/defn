@@ -12,7 +12,6 @@
 #include "operation_dossier_view.h"
 #include "progression_service.h"
 #include "ui_screen_scaffold.h"
-#include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
 
@@ -135,22 +134,21 @@ void CampaignMapView::_notification(int what) {
     }
 }
 
-void CampaignMapView::configure(ProgressionService *progression, const Callable &deploy_action, const Callable &back_action, UiSfxPlayer *ui_sfx_player) {
+void CampaignMapView::configure(ProgressionService *progression, const Callable &deploy_action, const Callable &back_action) {
     progression_ = progression;
     supplied_view_model_.reset();
-    configure_loading(deploy_action, back_action, ui_sfx_player);
+    configure_loading(deploy_action, back_action);
 }
 
-void CampaignMapView::configure(CampaignMapViewModel view_model, const Callable &deploy_action, const Callable &back_action, UiSfxPlayer *ui_sfx_player) {
+void CampaignMapView::configure(CampaignMapViewModel view_model, const Callable &deploy_action, const Callable &back_action) {
     progression_ = nullptr;
     supplied_view_model_ = std::move(view_model);
-    configure_loading(deploy_action, back_action, ui_sfx_player);
+    configure_loading(deploy_action, back_action);
 }
 
-void CampaignMapView::configure_loading(const Callable &deploy_action, const Callable &back_action, UiSfxPlayer *ui_sfx_player) {
+void CampaignMapView::configure_loading(const Callable &deploy_action, const Callable &back_action) {
     deploy_action_ = deploy_action;
     back_action_ = back_action;
-    ui_sfx_player_ = ui_sfx_player;
     view_model_ = {};
     selected_level_id_.clear();
     requested_texture_paths_.clear();
@@ -182,10 +180,10 @@ void CampaignMapView::build_loading_overlay() {
     loading_actions_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     loading_actions_->hide();
 
-    auto *retry = make_button("Retry", "secondary", callable_mp(this, &CampaignMapView::retry_loading), ui_sfx_player_);
+    auto *retry = make_button("Retry", "secondary", callable_mp(this, &CampaignMapView::retry_loading));
     loading_actions_->add_child(retry);
 
-    auto *back = make_button("Back", "secondary", callable_mp(this, &CampaignMapView::request_back), ui_sfx_player_);
+    auto *back = make_button("Back", "secondary", callable_mp(this, &CampaignMapView::request_back));
     loading_actions_->add_child(back);
 }
 
@@ -309,7 +307,7 @@ void CampaignMapView::poll_texture_requests() {
 }
 
 void CampaignMapView::complete_loading() {
-    build_map_content(ui_sfx_player_);
+    build_map_content();
     move_child(loading_overlay_, get_child_count() - 1);
     const std::string initial_selected_level_id = view_model_.initial_selected_level_id;
     select_level(to_godot_string(initial_selected_level_id));
@@ -364,7 +362,7 @@ Ref<Texture2D> CampaignMapView::texture_for(const CampaignTextureDefinition &def
     return found == loaded_textures_.end() ? Ref<Texture2D>() : found->second;
 }
 
-void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
+void CampaignMapView::build_map_content() {
     auto *backdrop = memnew(ColorRect);
     backdrop->set_color(UiThemeProvider::color("backdrop"));
     backdrop->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
@@ -436,7 +434,7 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     node_layer->set_size(reference);
     node_layer->set_mouse_filter(MOUSE_FILTER_PASS);
     map_layer->add_child(node_layer);
-    build_nodes(node_layer, ui_sfx_player);
+    build_nodes(node_layer);
 
     const real_t header_height = UiThemeProvider::metric("map_header_height", 104);
     const real_t header_margin = UiThemeProvider::metric("map_header_margin", 64);
@@ -476,7 +474,6 @@ void CampaignMapView::build_map_content(UiSfxPlayer *ui_sfx_player) {
     dossier_->set_size({UiThemeProvider::metric("operation_dossier_width", 464), UiThemeProvider::metric("operation_dossier_height", 866)});
     dossier_->connect("deploy_requested", callable_mp(this, &CampaignMapView::activate_level));
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
-    dossier_->attach_sfx(ui_sfx_player);
     reference_surface_->add_child(dossier_);
 }
 
@@ -505,7 +502,7 @@ void CampaignMapView::build_routes(Control *route_layer) {
     }
 }
 
-void CampaignMapView::build_nodes(Control *node_layer, UiSfxPlayer *ui_sfx_player) {
+void CampaignMapView::build_nodes(Control *node_layer) {
     node_views_.reserve(view_model_.missions.size());
     for (const CampaignMissionViewModel &mission : view_model_.missions) {
         auto *node = memnew(CampaignMapNodeView);
@@ -515,9 +512,6 @@ void CampaignMapView::build_nodes(Control *node_layer, UiSfxPlayer *ui_sfx_playe
         node->configure(mission, texture_for(mission.preview.texture));
         node->connect("selected", callable_mp(this, &CampaignMapView::select_level));
         node->connect("activated", callable_mp(this, &CampaignMapView::activate_level));
-        if (ui_sfx_player != nullptr) {
-            connect_sfx(ui_sfx_player, node->button());
-        }
         node_layer->add_child(node);
         node_views_.push_back(node);
     }

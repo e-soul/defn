@@ -5,7 +5,6 @@
 
 #include "campaign_preview_view.h"
 #include "godot_string.h"
-#include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
 
@@ -143,11 +142,6 @@ OperationDossierView::OperationDossierView() {
     back_button_->set_name("BackButton");
     back_button_->set_custom_minimum_size({0.0F, back_button_->get_custom_minimum_size().y});
     content->add_child(back_button_);
-}
-
-void OperationDossierView::attach_sfx(UiSfxPlayer *ui_sfx_player) {
-    connect_sfx(ui_sfx_player, deploy_button_);
-    connect_sfx(ui_sfx_player, back_button_);
 }
 
 void OperationDossierView::_bind_methods() {

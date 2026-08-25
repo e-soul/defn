@@ -85,7 +85,7 @@ Label *make_label(const String &text, std::string_view text_style) {
     return label;
 }
 
-Button *make_button(const String &text, std::string_view variant, const Callable &pressed, UiSfxPlayer *sfx) {
+Button *make_button(const String &text, std::string_view variant, const Callable &pressed) {
     auto *button = memnew(Button);
     button->set_text(text);
     // Every control takes focus, so the game is navigable by keyboard and pad. The theme gives focus its own
@@ -98,18 +98,18 @@ Button *make_button(const String &text, std::string_view variant, const Callable
         button->set_custom_minimum_size({static_cast<real_t>(button_style->min_width), static_cast<real_t>(button_style->min_height)});
     }
 
-    connect_sfx(sfx, button, variant);
+    connect_sfx(button, variant);
     if (pressed.is_valid()) {
         button->connect("pressed", pressed);
     }
     return button;
 }
 
-CardNodes make_card(const CardSpec &spec, const Callable &pressed, UiSfxPlayer *sfx) {
+CardNodes make_card(const CardSpec &spec, const Callable &pressed) {
     CardNodes card;
 
     const std::string variation = spec.selected ? std::string(spec.variant) + "_selected" : std::string(spec.variant);
-    card.button = make_button({}, variation, pressed, sfx);
+    card.button = make_button({}, variation, pressed);
     card.button->set_clip_text(true);
     if (!spec.interactive) {
         // A card that answers nothing should not hover, click or take focus as though it might.
@@ -301,10 +301,10 @@ void apply_enabled(BaseButton *button, bool enabled) {
     }
 }
 
-void connect_sfx(UiSfxPlayer *sfx, BaseButton *button, std::string_view variant) {
-    // Falling back to the active player is what keeps a control from ending up silent because the code that
-    // built it had no player to hand; the variant decides which sound it makes.
-    UiSfxPlayer *player = sfx != nullptr ? sfx : UiSfxPlayer::active();
+void connect_sfx(BaseButton *button, std::string_view variant) {
+    // Whatever builds a control wires it, and the player it wires to is the one the screen installed, so a
+    // control is never handed a player a second caller thinks is the right one. The variant picks the sound.
+    UiSfxPlayer *player = UiSfxPlayer::active();
     if (player == nullptr) {
         return;
     }

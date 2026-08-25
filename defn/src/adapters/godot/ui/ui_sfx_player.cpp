@@ -5,6 +5,7 @@
 
 #include "godot_string.h"
 #include "ui_theme_models.h"
+#include "ui_theme_provider.h"
 
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
@@ -24,6 +25,20 @@ namespace {
 uint64_t g_active_id = 0;
 
 } // namespace
+
+UiSfxPlayer *UiSfxPlayer::install(godot::Node *owner) {
+    if (owner == nullptr) {
+        return nullptr;
+    }
+    if (UiSfxPlayer *serving = active(); serving != nullptr && serving->get_tree() == owner->get_tree()) {
+        return serving;
+    }
+    auto *player = memnew(UiSfxPlayer);
+    player->set_name("UiSfxPlayer");
+    owner->add_child(player);
+    player->configure(UiThemeProvider::data().sfx);
+    return player;
+}
 
 UiSfxPlayer *UiSfxPlayer::active() {
     if (g_active_id == 0) {
