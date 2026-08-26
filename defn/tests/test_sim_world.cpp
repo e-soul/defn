@@ -105,13 +105,13 @@ SimRoster make_shipped_roster() {
     mason.projectile_attack = ProjectileAttackConfig{
         .speed_pixels_per_second = 1800.0F,
         .splash_radius = 140.0F,
-        .affected_fraction = 0.5F,
+        .affected_fraction = 1.0F,
         .min_affected_targets = 1,
         .spawn_animation_frame = 2,
         .affected_target_rounding = SplashTargetRoundingMode::NEAREST,
         .include_direct_target = true,
         .impact_damage = 10,
-        .splash_damage = 7,
+        .splash_damage = 12,
     };
     roster.add(mason);
 
@@ -714,7 +714,9 @@ int splash_damage_for_spacing(float spacing) {
 
 } // namespace
 
-// What mason is for, measured: standing together costs the group 70% more per shell than standing apart.
+// The splash rule itself, with spacing as the only variable: standing together costs a group 70% more per shell
+// than standing apart. The lobber carries its own numbers rather than the mason's, so this stays a test of the
+// rule -- including the `affected_fraction` below 1 that no shipped unit uses today.
 DEFN_TEST(sim_world_measures_the_splash_tax_on_a_clustered_group) {
     const int clustered = splash_damage_for_spacing(20.0F);
     const int spread = splash_damage_for_spacing(320.0F);

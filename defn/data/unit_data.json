@@ -407,13 +407,13 @@
       "projectile_attack": {
         "speed_pixels_per_second": 1800.0,
         "splash_radius": 140.0,
-        "affected_fraction": 0.5,
+        "affected_fraction": 1.0,
         "min_affected_targets": 1,
         "spawn_animation_frame": 2,
         "affected_target_rounding": "nearest",
         "include_direct_target": true,
         "impact_damage": 10,
-        "splash_damage": 7,
+        "splash_damage": 12,
         "projectile_scale_multiplier": 0.6,
         "explosion_scale_multiplier": 0.5,
         "explosion_sfx": {

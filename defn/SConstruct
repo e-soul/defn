@@ -255,6 +255,7 @@ hosted_test_sources = [
     "tests/test_parsing.cpp",
     "tests/test_progression_presentation.cpp",
     "tests/test_settings_adapters.cpp",
+    "tests/test_shipped_content.cpp",
     "tests/test_ui_presenters.cpp",
     "tests/test_ui_theme_provider.cpp",
     "tests/test_unit_profiles.cpp",
