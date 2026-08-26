@@ -20,6 +20,15 @@ what "threat points" measures) and the matchup interaction `R`, which is the des
 
     python scripts/analyze_matrix.py defn/build/matrix.jsonl
     python scripts/analyze_matrix.py defn/build/matrix.jsonl --transpose   # is the content diverse?
+    python scripts/analyze_matrix.py after.jsonl --baseline before.jsonl   # did a change earn its numbers?
+
+`--baseline` exists because **`SII` and the composition premium are both ratios, and a ratio improves when its
+denominator gets worse just as readily as when its numerator gets better.** Both have already been reported as wins
+here on the strength of a degradation: `SII` rose 16 points with `Var(R)` completely flat because a buff to the
+weakest unit compressed `Var(a)`; and the premium gate recorded its first PASS in a configuration where the best mix
+and the best mono had *both* got worse, the mono merely faster. Neither is visible in a single run, because in a
+single run both numbers are true. Pass a baseline and the script reports the numerator alongside the ratio, and
+refuses to count a premium column whose winning mix is itself degrading.
 
 `--transpose` flips the sign of M as well as the axes, so that "higher is better for the row player" holds in both
 directions: forward, a row is a friendly mix and winning cheaply is good; transposed, a row is a hostile mix and
@@ -55,7 +64,12 @@ NOISE_SHARE_GATE = 0.25
 def load_rows(paths):
     rows = []
     for path in paths:
-        for line_number, line in enumerate(pathlib.Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        try:
+            text = pathlib.Path(path).read_text(encoding="utf-8")
+        except OSError as error:
+            print(f"{path}: cannot read ({error.strerror})", file=sys.stderr)
+            continue
+        for line_number, line in enumerate(text.splitlines(), start=1):
             line = line.strip()
             if not line:
                 continue
@@ -225,7 +239,7 @@ def noise_variance(matrix, rows, cols):
     return statistics.fmean(matrix.stderr[(i, j)] ** 2 for i in rows for j in cols)
 
 
-def report_diversity(matrix, a, residual, rows, cols):
+def report_diversity(matrix, a, residual, rows, cols, baseline=None):
     var_a = variance(a.values())
     var_r = variance(residual.values())
     sii = var_r / (var_a + var_r) if var_a + var_r > 0.0 else 0.0
@@ -259,7 +273,36 @@ def report_diversity(matrix, a, residual, rows, cols):
     if noise_share > NOISE_SHARE_GATE:
         print(f"  !! over {NOISE_SHARE_GATE:.0%} of the interaction is seed noise, which inflates both ranks above.")
         print("     Raise the seed count before reading either as a count of strategies.")
+
+    if baseline is not None:
+        _report_diversity_drift(baseline, true_sii, true_a, true_r)
     return true_sii
+
+
+def _report_diversity_drift(baseline, sii, var_a, var_r):
+    """`SII` against its own numerator and denominator.
+
+    `SII = Var(R) / (Var(a) + Var(R))`, so it rises when the matchup term grows *or* when the power spread shrinks,
+    and the two mean opposite things: the first is a new matchup, the second is a flatter roster. Only the first is
+    the design target, and a single run cannot tell them apart because in a single run both are just numbers.
+    """
+    rows, cols = baseline.complete()
+    if len(rows) < 2 or len(cols) < 2:
+        print("    vs baseline        baseline has no complete rectangle to decompose")
+        return
+
+    _, base_a, _, base_residual = decompose(baseline, rows, cols)
+    sigma_squared = noise_variance(baseline, rows, cols)
+    row_count, column_count = len(rows), len(cols)
+    was_r = max(variance(base_residual.values()) - sigma_squared * (row_count - 1) * (column_count - 1) / (row_count * column_count), 0.0)
+    was_a = max(variance(base_a.values()) - sigma_squared * (row_count - 1) / (row_count * column_count), 0.0)
+    was_sii = was_r / (was_a + was_r) if was_a + was_r > 0.0 else 0.0
+
+    print(f"    vs baseline        SII {was_sii:.3f} -> {sii:.3f}   "
+          f"Var(R) {was_r:.4f} -> {var_r:.4f}   Var(a) {was_a:.4f} -> {var_a:.4f}")
+    if sii > was_sii + 1e-9 and var_r <= was_r + 1e-9:
+        print("  !! SII rose while Var(R) did not: the gain is the denominator, not new matchup. The roster got")
+        print("     flatter, which is not the same thing as the right answer changing with the question.")
 
 
 def report_depth(matrix, rows, cols):
@@ -289,8 +332,33 @@ def report_depth(matrix, rows, cols):
     return saved
 
 
-def report_premium(matrix, rows, cols):
-    """How much cheaper the best mix is than the best mono-stack. The most legible number for a non-analyst."""
+def budget(matrix, row, column):
+    """The cell back in energy. `m` is a signed log, so undo both the log and the row-player sign convention."""
+    return math.exp(matrix.sign * matrix.m[(row, column)])
+
+
+def drift(matrix, baseline, row, column, floor):
+    """How one cell moved against the baseline, from the row player's side.
+
+    Returns `(fraction, degraded)`, where `fraction` is the change in that row's own `B*` and `degraded` says the row
+    got worse by more than seed noise. `None` when either matrix has no such cell, which is not an error: a spec can
+    legitimately rename or drop a mix between runs.
+    """
+    key = (row, column)
+    if key not in baseline.m or key not in matrix.m:
+        return None
+    delta = matrix.m[key] - baseline.m[key]
+    return math.exp(matrix.sign * delta) - 1.0, delta < -floor
+
+
+def report_premium(matrix, rows, cols, floor, baseline=None):
+    """How much cheaper the best mix is than the best mono-stack. The most legible number for a non-analyst.
+
+    And the most easily faked. `premium = best_mix(j) / best_mono(j)` is a ratio with no floor under it, so making the
+    best single unit *worse* raises it exactly as reliably as making mixes better. A column therefore only counts as
+    **earned** when the winning mix has not itself degraded against a baseline; without one the script cannot tell,
+    and says so rather than printing a verdict it has not checked.
+    """
     monos = [i for i in rows if is_mono(matrix.weights.get(i, {}))]
     mixes = [i for i in rows if not is_mono(matrix.weights.get(i, {}))]
     print("\ncomposition premium -- what mixing is worth over the best single unit")
@@ -298,22 +366,55 @@ def report_premium(matrix, rows, cols):
         print("  the matrix has no mono/mix pair to compare; add mixed rows to the spec")
         return
 
-    print(f"{'hostile mix':<24} {'best mono':>16} {'best mix':>22} {'premium':>9}")
+    print(f"{'hostile mix':<24} {'best mono':>16} {'B*':>6} {'best mix':>22} {'B*':>6} {'premium':>9}")
     winners = set()
-    clearing = 0
+    clearing = []
     for j in cols:
         best_mono = max(monos, key=lambda i: matrix.m[(i, j)])
         best_mix = max(mixes, key=lambda i: matrix.m[(i, j)])
         premium = math.exp(matrix.m[(best_mix, j)] - matrix.m[(best_mono, j)]) - 1.0
         if premium >= PREMIUM_TARGET:
-            clearing += 1
+            clearing.append((j, best_mono, best_mix))
             winners.add(best_mix)
-        print(f"{j:<24} {best_mono:>16} {best_mix:>22} {premium * 100:>8.0f}%")
+        print(f"{j:<24} {best_mono:>16} {budget(matrix, best_mono, j):>6.0f} "
+              f"{best_mix:>22} {budget(matrix, best_mix, j):>6.0f} {premium * 100:>8.0f}%")
 
-    ok = clearing >= 2 and len(winners) >= 2
-    print(f"  columns clearing {PREMIUM_TARGET * 100:.0f}%: {clearing}, with {len(winners)} distinct winner(s)   {_verdict(ok)}")
-    if clearing >= 2 and len(winners) < 2:
+    print(f"  columns clearing {PREMIUM_TARGET * 100:.0f}%: {len(clearing)}, with {len(winners)} distinct winner(s)")
+    if len(clearing) >= 2 and len(winners) < 2:
         print("  one mix wins every fight: that is a recipe, not a decision")
+
+    if baseline is None:
+        print("  no --baseline given, so no column here can be shown to be *earned* rather than the best single")
+        print("  answer having got worse. The gate is not decided without one.")
+        return
+
+    if clearing:
+        print("\n  did the winning mix earn it, or did the best single answer get worse?")
+    earned_winners = set()
+    earned = 0
+    degraded_columns = 0
+    for j, best_mono, best_mix in clearing:
+        mix_drift = drift(matrix, baseline, best_mix, j, floor)
+        if mix_drift is None:
+            print(f"    {j:<22} {best_mix:<22} not in the baseline; cannot judge")
+            continue
+        mono_drift = drift(matrix, baseline, best_mono, j, floor)
+        mono_note = f", best mono {mono_drift[0] * 100:+.0f}%" if mono_drift else ""
+        change, degraded = mix_drift
+        if degraded:
+            degraded_columns += 1
+            print(f"    {j:<22} {best_mix:<22} its own B* moved {change * 100:+.0f}%{mono_note}   NOT EARNED")
+        else:
+            earned += 1
+            earned_winners.add(best_mix)
+            print(f"    {j:<22} {best_mix:<22} its own B* moved {change * 100:+.0f}%{mono_note}   earned")
+
+    ok = earned >= 2 and len(earned_winners) >= 2
+    print(f"  columns clearing {PREMIUM_TARGET * 100:.0f}% *and* earned: {earned}, "
+          f"with {len(earned_winners)} distinct winner(s)   {_verdict(ok)}")
+    if degraded_columns:
+        print("  a dropped column is one whose winning mix is itself worse off than it was in the baseline: the")
+        print("  ratio rose because the denominator fell, not because anything improved.")
 
 
 def _verdict(passed):
@@ -324,12 +425,22 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("paths", nargs="+", help="JSONL files written by `scons matrix out=...`")
     parser.add_argument("--transpose", action="store_true", help="decompose the other way round: are the hostile mixes asking different questions?")
+    parser.add_argument("--baseline", help="a matrix to compare against, so ratio metrics can be shown to have earned their movement")
     args = parser.parse_args()
 
     rows = load_rows(args.paths)
     if not rows:
         print("No matrix rows found.", file=sys.stderr)
         return 1
+
+    baseline = None
+    if args.baseline:
+        baseline_rows = load_rows([args.baseline])
+        if not baseline_rows:
+            print(f"No matrix rows found in the baseline {args.baseline}.", file=sys.stderr)
+            return 1
+        # Same orientation as the run under test, or the two are not comparable cell for cell.
+        baseline = Matrix(baseline_rows, args.transpose)
 
     matrix = Matrix(rows, args.transpose)
     complete_rows, complete_cols = matrix.complete()
@@ -339,6 +450,11 @@ def main():
 
     side = "hostile" if args.transpose else "friendly"
     print(f"{len(complete_rows)} {side} mix rows x {len(complete_cols)} columns, from {len(rows)} measurements")
+    if baseline is not None:
+        print(f"baseline:     {args.baseline}")
+        missing = [i for i in complete_rows if any((i, j) not in baseline.m for j in complete_cols)]
+        if missing:
+            print(f"              no baseline cells for {', '.join(missing)}; those rows cannot be judged as earned")
     if matrix.unbounded:
         print(f"unbounded:    {sum(matrix.unbounded.values())} measurement(s) still lost at the budget ceiling")
     dropped = matrix.dropped()
@@ -349,9 +465,9 @@ def main():
     _, a, b, residual = decompose(matrix, complete_rows, complete_cols)
     report_balance(matrix, a, complete_rows, complete_cols, floor)
     report_difficulty(matrix, b, complete_rows, complete_cols)
-    report_diversity(matrix, a, residual, complete_rows, complete_cols)
+    report_diversity(matrix, a, residual, complete_rows, complete_cols, baseline)
     report_depth(matrix, complete_rows, complete_cols)
-    report_premium(matrix, complete_rows, complete_cols)
+    report_premium(matrix, complete_rows, complete_cols, floor, baseline)
     return 0
 
 

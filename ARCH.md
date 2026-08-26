@@ -408,6 +408,12 @@ strictly in the off-diagonals. It emits one JSONL row per `(friendly mix, hostil
 separately so the spread is a real confidence interval, and `scripts/analyze_matrix.py` decomposes the result into
 unit power, content difficulty and matchup interaction.
 
+That script's headline numbers include two ratios -- `SII = Var(R) / (Var(a) + Var(R))` and the composition premium
+`best_mix(j) / best_mono(j)` -- and a ratio rises when its denominator falls just as readily as when its numerator
+rises. The two mean opposite things: a new matchup versus a flatter roster, or a better mix versus a nerfed best unit.
+A single run cannot distinguish them, so the script takes `--baseline <matrix>` and reports the numerator against it,
+counting a premium column only when the winning mix has not itself degraded.
+
 ### Conformance
 
 `DefnConformanceRunner` is what makes the kernel trustworthy. It replays five scenarios twice -- once as real units in

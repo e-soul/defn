@@ -44,6 +44,8 @@ Measure the two roster tables: `scons balance`
 
 Measure the payoff matrix of critical budgets, then decompose it: `scons matrix out=res://build/matrix.jsonl` followed by `python scripts/analyze_matrix.py defn/build/matrix.jsonl`. Pass `spec=res://scenarios/<file>.json` to name the compositions and `seeds=<n>` to change the seed count.
 
+When judging a change, pass the previous matrix as `--baseline`: `python scripts/analyze_matrix.py after.jsonl --baseline before.jsonl`. Both `SII` and the composition premium are ratios, so either can be improved by making its denominator worse rather than its numerator better; with a baseline the script prints the numerator alongside the ratio and will not count a premium column whose winning mix is itself degrading.
+
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
 
 Create a native release archive from the repository root: `python scripts/build.py --platform windows` or `python scripts/build.py --platform linux`.
