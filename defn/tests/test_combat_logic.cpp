@@ -151,6 +151,39 @@ DEFN_TEST(threat_weight_can_pull_a_shooter_off_its_current_target) {
     DEFN_CHECK_EQ(with_aggro.target_id.value, 2U);
 }
 
+// The base carries `threat_weight: 0.25` in the catalog, and the number is doing a job no other unit's weight does:
+// a weight below one is the only way to make a target *less* attractive than plain geometry says it is. Without it the
+// tower is a normal candidate, and against `farthest` it is the winning one by construction -- nothing on the field is
+// ever further away than the thing the hostiles are walking towards. A jackal that pushed the line to within its 620
+// reach would then camp the tower and ignore the defence entirely.
+//
+// One weight covers all four preferences because every one of them consumes it, two by dividing and two by
+// multiplying. This pins that: the same base loses to the same friendly under each rule.
+DEFN_TEST(a_light_target_loses_to_a_friendlier_candidate_under_every_preference) {
+    constexpr float BASE_THREAT_WEIGHT = 0.25F;
+
+    // The tower, far off and lightly weighted, against one defender that is nearer, frailer and closer to full.
+    const std::array<CombatTargetSnapshot, 2> field = {
+        CombatTargetSnapshot{
+            .id = {.value = 1}, .side = UnitSide::HOSTILE, .position = {.x = 100.0F, .y = 0.0F}, .threat_weight = BASE_THREAT_WEIGHT, .health = 300},
+        CombatTargetSnapshot{.id = {.value = 2}, .side = UnitSide::HOSTILE, .position = {.x = 60.0F, .y = 0.0F}, .threat_weight = 1.0F, .health = 180},
+    };
+
+    for (const TargetPreference preference :
+         {TargetPreference::NEAREST, TargetPreference::FARTHEST, TargetPreference::LOWEST_HP, TargetPreference::HIGHEST_HP}) {
+        const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_ranged_only_config(preference), {}, field);
+        DEFN_CHECK_EQ(selection.target_id.value, 2U);
+    }
+
+    // And at weight 1 the tower wins two of the four outright, which is what the catalog value is buying back.
+    std::array<CombatTargetSnapshot, 2> unweighted = field;
+    unweighted[0].threat_weight = 1.0F;
+
+    DEFN_CHECK_EQ(select_target_from_snapshots(Vector2{}, make_ranged_only_config(TargetPreference::FARTHEST), {}, unweighted).target_id.value, 1U);
+    DEFN_CHECK_EQ(select_target_from_snapshots(Vector2{}, make_ranged_only_config(TargetPreference::HIGHEST_HP), {}, unweighted).target_id.value, 1U);
+    DEFN_CHECK_EQ(select_target_from_snapshots(Vector2{}, make_ranged_only_config(TargetPreference::LOWEST_HP), {}, unweighted).target_id.value, 2U);
+}
+
 // A marksman shooting the backline does not drop it for whatever just walked into its face -- that is the job, and
 // the fight it is supposed to lose.
 DEFN_TEST(farthest_does_not_drop_the_backline_for_a_closer_target) {
@@ -159,6 +192,149 @@ DEFN_TEST(farthest_does_not_drop_the_backline_for_a_closer_target) {
     const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_ranged_only_config(TargetPreference::FARTHEST), {.value = 3}, field);
 
     DEFN_CHECK_EQ(selection.target_id.value, 3U);
+}
+
+// Pursuit. A shooter that prefers a role it can see but cannot yet reach declines the lesser target in front of it and
+// keeps walking. There is no steering anywhere in this: combat and movement are both forward-only, so "advance on the
+// target I want" is just "refuse to stop", and the existing disengaged path in advance_combat_logic does the rest.
+namespace {
+
+// Only the near candidate is shootable; the far one sits past the gun but inside the sensor. That gap is the mechanism.
+CombatConfig make_pursuit_config(float sniper_bias) {
+    CombatConfig config = make_ranged_only_config(TargetPreference::NEAREST);
+    config.ranged_range = 50.0F;
+    config.aggro_range = 150.0F;
+    config.role_bias.fill(1.0F);
+    config.role_bias.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))) = sniper_bias;
+    return config;
+}
+
+std::array<CombatTargetSnapshot, 3> make_role_field(UnitRole near_role, UnitRole far_role) {
+    auto field = make_preference_field();
+    field[0].role = near_role; // x = 30, inside the 50 gun
+    field[2].role = far_role;  // x = 100, outside the gun and inside the 150 sensor
+    return field;
+}
+
+} // namespace
+
+DEFN_TEST(a_preferred_role_out_of_reach_suppresses_a_lesser_target_in_reach) {
+    const auto field = make_role_field(UnitRole::ASSAULT, UnitRole::SNIPER);
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_pursuit_config(3.0F), {}, field);
+
+    DEFN_CHECK(!selection.engaged);
+    DEFN_CHECK(selection.pursuing);
+    DEFN_CHECK(!selection.target_id.is_valid());
+}
+
+// The same field with the preference switched off has to engage, or the test above is measuring the range gate.
+DEFN_TEST(without_a_role_preference_the_lesser_target_is_taken_as_before) {
+    const auto field = make_role_field(UnitRole::ASSAULT, UnitRole::SNIPER);
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_pursuit_config(1.0F), {}, field);
+
+    DEFN_CHECK(selection.engaged);
+    DEFN_CHECK(!selection.pursuing);
+    DEFN_CHECK_EQ(selection.target_id.value, 1U);
+}
+
+// Nothing to walk towards once the preferred thing is already shootable, so the shooter stops and fires.
+DEFN_TEST(a_preferred_role_already_in_reach_ends_the_pursuit) {
+    const auto field = make_role_field(UnitRole::SNIPER, UnitRole::SNIPER);
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_pursuit_config(3.0F), {}, field);
+
+    DEFN_CHECK(selection.engaged);
+    DEFN_CHECK_EQ(selection.target_id.value, 1U);
+}
+
+// Sensed means sensed: past the aggro range the preferred target is not a reason to do anything, or a unit would walk
+// the length of the belt on the strength of something it cannot see.
+DEFN_TEST(a_preferred_role_beyond_the_aggro_range_does_not_suppress) {
+    const auto field = make_role_field(UnitRole::ASSAULT, UnitRole::SNIPER);
+    CombatConfig config = make_pursuit_config(3.0F);
+    config.aggro_range = 80.0F; // the far candidate is at 100
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK(selection.engaged);
+    DEFN_CHECK_EQ(selection.target_id.value, 1U);
+}
+
+// A rusher walking through the front line is the whole point, so a melee target it has not yet committed to is
+// suppressed exactly like a ranged one.
+DEFN_TEST(pursuit_walks_a_rusher_past_a_contact_it_has_not_committed_to) {
+    const auto field = make_role_field(UnitRole::TANK, UnitRole::SNIPER);
+    CombatConfig config = make_pursuit_config(3.0F);
+    config.attack_range = 40.0F; // the near candidate at 30 is in contact reach
+    config.ranged_range = -1.0F; // melee only, which is what a rusher is
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK(!selection.engaged);
+    DEFN_CHECK(selection.pursuing);
+}
+
+// But a fight already joined is not abandoned. Contact stickiness is checked before pursuit for the same reason it is
+// checked before the retarget margin: walking a unit out of a swing is a movement change, not a targeting one.
+DEFN_TEST(pursuit_never_pulls_a_unit_out_of_a_contact_it_is_already_in) {
+    const auto field = make_role_field(UnitRole::TANK, UnitRole::SNIPER);
+    CombatConfig config = make_pursuit_config(3.0F);
+    config.attack_range = 40.0F;
+    config.ranged_range = -1.0F;
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {.value = 1}, field);
+
+    DEFN_CHECK(selection.engaged);
+    DEFN_CHECK_EQ(selection.attack_mode, AttackMode::MELEE);
+    DEFN_CHECK_EQ(selection.target_id.value, 1U);
+}
+
+// The hound's catalog numbers, pinned as a pair, because neither is meaningful without the other. `aggro_range: 600`
+// against a `melee_attack_range` of 128 is the whole dive: it has to see a sniper from well outside contact to have
+// anything to decline. And both are read against the *friendly line's* spacing -- at the engagement lab's 70px default
+// the back rank is already inside 128px when the front rank is, so there is no backline to reach and the mechanism
+// measures as a flat null. See 2.11.
+DEFN_TEST(the_hound_senses_a_sniper_far_outside_the_reach_it_kills_with) {
+    constexpr float HOUND_AGGRO_RANGE = 600.0F;
+    constexpr float HOUND_MELEE_RANGE = 128.0F;
+    constexpr float LAB_FRIENDLY_SPACING = 70.0F;
+
+    // The dive only exists in the gap between the two.
+    DEFN_CHECK(HOUND_AGGRO_RANGE > HOUND_MELEE_RANGE * 4.0F);
+
+    // And that gap is only reachable when the line it walks into is looser than its own reach.
+    DEFN_CHECK(LAB_FRIENDLY_SPACING < HOUND_MELEE_RANGE); // the default lab cannot show a dive
+    DEFN_CHECK(200.0F > HOUND_MELEE_RANGE);               // the spacing the measurement in 2.11 had to use
+}
+
+// The sensor can never be tighter than the gun, so an unset aggro range means "no pursuit" rather than "blind".
+DEFN_TEST(aggro_range_is_floored_at_the_ranged_range) {
+    CombatConfig config = make_combat_config();
+    config.ranged_range = 300.0F;
+
+    DEFN_CHECK_EQ(resolve_aggro_range(config), 300.0F); // unset
+    config.aggro_range = 120.0F;
+    DEFN_CHECK_EQ(resolve_aggro_range(config), 300.0F); // narrower than the gun, and ignored
+    config.aggro_range = 700.0F;
+    DEFN_CHECK_EQ(resolve_aggro_range(config), 700.0F);
+}
+
+// Role and threat weight multiply rather than replace, so a tank still drags a role-preferring shooter -- just not as
+// far. 60 away at weight 3 scores 20 against the preferred sniper's 100 away at bias 2, which is 50.
+DEFN_TEST(a_role_preference_and_a_threat_weight_compose) {
+    auto field = make_preference_field();
+    field[1].threat_weight = 3.0F;
+    field[2].role = UnitRole::SNIPER;
+
+    CombatConfig config = make_ranged_only_config(TargetPreference::NEAREST);
+    config.role_bias.fill(1.0F);
+    config.role_bias.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))) = 2.0F;
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK_EQ(selection.target_id.value, 2U);
 }
 
 // Contact is exempt: a unit in melee stays in melee whatever is shouting for attention further out.
@@ -235,6 +411,61 @@ DEFN_TEST(jackal_is_exactly_four_marksman_shots) {
     DEFN_CHECK_EQ(shots_to_kill(JACKAL_HP, 19) * 19, JACKAL_HP);
     DEFN_CHECK(shots_to_kill(JACKAL_HP, 8) * 8 > JACKAL_HP);
     DEFN_CHECK(shots_to_kill(JACKAL_HP, 6) * 6 > JACKAL_HP);
+}
+
+// Impact's contact profile, pinned, because the numbers only make sense against a *hound's transit time* and nothing
+// in the catalog says so. Melee was byte-identical 15/1.0s across the whole roster before this; impact is the first
+// unit whose job is the fight everyone else has no opinion about.
+//
+// The mechanism is a toll, not a wall. A diving hound declines impact -- it prefers snipers -- so impact never gets a
+// stand-up fight. What it gets is the seconds the hound spends crossing its 128px reach, and the damage in that window
+// is what decides whether the marksman behind it survives. Two impacts in the line is the threshold, which is what
+// makes the value non-additive rather than a flat buff.
+DEFN_TEST(impact_taxes_a_diver_for_roughly_half_its_health_on_the_way_past) {
+    constexpr float IMPACT_MELEE_REACH = 128.0F;
+    constexpr int IMPACT_MELEE_DAMAGE = 30;
+    constexpr double IMPACT_MELEE_PERIOD = 1.0;
+    constexpr float HOUND_SPEED = 120.0F;
+    constexpr int HOUND_HP = 110;
+
+    // In and out the far side of the band, at a sprint.
+    const double transit_seconds = (2.0 * IMPACT_MELEE_REACH) / HOUND_SPEED;
+    const int swings = static_cast<int>(transit_seconds / IMPACT_MELEE_PERIOD);
+    DEFN_CHECK_EQ(swings, 2);
+
+    // One impact cannot kill it in the window; two can. That threshold is the composition, stated as arithmetic.
+    DEFN_CHECK(swings * IMPACT_MELEE_DAMAGE < HOUND_HP);
+    DEFN_CHECK(2 * swings * IMPACT_MELEE_DAMAGE > HOUND_HP);
+
+    // And it has to out-hit the thing it is taxing, or the trade is the wrong way round.
+    DEFN_CHECK(IMPACT_MELEE_DAMAGE > 20); // the hound's own melee
+}
+
+// The mason's reach, pinned against the friendly roster rather than as a number on its own, because the *ordering* is
+// the design and 400 is already exactly right:
+//
+//     breacher 245  <  impact 320  <  operator 380  <  MASON 400  <  marksman 650
+//
+// It out-ranges every friendly it is meant to punish, and is out-ranged by the one that is meant to answer it. The
+// 250px gap to the marksman is not a shortfall -- it is what makes the counter clean: the mason spends 5.2s walking
+// into its own range under fire and dies first, taking a measured **zero** off a marksman at every force size.
+//
+// A previous pass raised this to 600 on the strength of a probe that only ever tested the mason against a marksman.
+// That is benchmarking a unit against its own counter: 600 does make it hurt marksmen, and in doing so deletes the
+// matchup. Against the mass it is actually for, the shipped 400 already scales -- 102 damage per mason against two
+// breachers, 263 against eight.
+DEFN_TEST(mason_out_ranges_what_it_punishes_and_is_out_ranged_by_what_answers_it) {
+    constexpr float MASON_REACH = 400.0F;
+
+    DEFN_CHECK(MASON_REACH > 245.0F); // breacher
+    DEFN_CHECK(MASON_REACH > 320.0F); // impact
+    DEFN_CHECK(MASON_REACH > 380.0F); // operator
+    DEFN_CHECK(MASON_REACH < 650.0F); // marksman -- the answer, and the only one
+
+    // And the gap has to be wide enough to be a real counter rather than a trade: at the mason's 48px/s it is over
+    // five seconds of free fire, which is more than its 82hp survives.
+    constexpr float FREE_WINDOW_SECONDS = (650.0F - MASON_REACH) / 48.0F;
+    DEFN_CHECK(FREE_WINDOW_SECONDS > 5.0F);
 }
 
 // Minimum range: the first rule that charges a unit for an advantage rather than handing it one.

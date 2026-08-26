@@ -10,10 +10,10 @@
     {
       "wave_number": 1,
       "spawns": [
-        {"time": 3.0, "type": "grime"},
-        {"time": 4.3, "type": "grime"},
-        {"time": 5.6, "type": "grime"},
-        {"time": 6.0, "type": "grime"}
+        {"time": 3.0, "type": "hound"},
+        {"time": 4.3, "type": "hound"},
+        {"time": 5.6, "type": "hound"},
+        {"time": 6.0, "type": "hound"}
       ]
     },
     {
@@ -22,6 +22,7 @@
         {"time": 13.5, "type": "grime"},
         {"time": 14.8, "type": "grime"},
         {"time": 15.1, "type": "grime"},
+        {"time": 16.0, "type": "hound"},
         {"time": 16.4, "type": "grime"},
         {"time": 17.7, "type": "grime"}
       ]
@@ -33,6 +34,7 @@
         {"time": 33.4, "type": "grime"},
         {"time": 34.3, "type": "grime"},
         {"time": 35.2, "type": "grime"},
+        {"time": 35.7, "type": "hound"},
         {"time": 36.1, "type": "grime"},
         {"time": 37.0, "type": "grime"},
         {"time": 38.2, "type": "grime"}

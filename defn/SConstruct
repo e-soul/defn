@@ -31,6 +31,7 @@ with_tidy_arg = parse_bool_arg(ARGUMENTS.pop("with_tidy", ""))
 scenario_arg = ARGUMENTS.pop("scenario", "")
 spec_arg = ARGUMENTS.pop("spec", "")
 separation_arg = ARGUMENTS.pop("separation", "")
+friendly_spacing_arg = ARGUMENTS.pop("spacing", "")
 seeds_arg = ARGUMENTS.pop("seeds", "")
 out_arg = ARGUMENTS.pop("out", "")
 
@@ -39,6 +40,7 @@ sim_seeds_arg = ["--seeds", seeds_arg] if seeds_arg else []
 sim_out_arg = ["--out", out_arg] if out_arg else []
 matrix_spec_arg = ["--spec", spec_arg] if spec_arg else []
 matrix_separation_arg = ["--separation", separation_arg] if separation_arg else []
+matrix_spacing_arg = ["--friendly-spacing", friendly_spacing_arg] if friendly_spacing_arg else []
 
 
 # 1. Setup the basic SCons environment
@@ -832,7 +834,7 @@ def run_matrix(target, source, env):
         return prepare_result
 
     command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
-    matrix_args = [argument for argument in [matrix_spec_arg, matrix_separation_arg, sim_seeds_arg, sim_out_arg] if argument]
+    matrix_args = [argument for argument in [matrix_spec_arg, matrix_separation_arg, matrix_spacing_arg, sim_seeds_arg, sim_out_arg] if argument]
     if matrix_args:
         command.append("--")
         for argument in matrix_args:

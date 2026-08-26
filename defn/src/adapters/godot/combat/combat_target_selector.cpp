@@ -47,6 +47,7 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
             .position = to_vector(target->get_target_global_position()),
             .threat_weight = target->get_threat_weight(),
             .health = target->get_current_health(),
+            .role = target->get_role(),
         });
     }
 
@@ -62,6 +63,7 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
                 .position = to_vector(current_target->get_target_global_position()),
                 .threat_weight = current_target->get_threat_weight(),
                 .health = current_target->get_current_health(),
+                .role = current_target->get_role(),
             });
         }
     }

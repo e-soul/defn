@@ -199,6 +199,16 @@ DEFN_TEST(sim_world_carries_a_threat_weight_from_the_catalog) {
     DEFN_CHECK_EQ(first_target_of_sniper(roster), std::string("defender"));
 }
 
+// The other direction, which is what the base's `threat_weight: 0.25` relies on and which nothing exercised before:
+// a weight below one has to make a target *less* attractive than plain geometry says it is. Nearest would take the
+// defender at 300 over the backline at 700; at quarter weight the defender scores 1200 and loses to the backline's
+// 700. A multiplier that silently clamped at one would leave the tower a normal candidate and this test would fail.
+DEFN_TEST(sim_world_carries_a_threat_weight_below_one_from_the_catalog) {
+    SimRoster roster = make_preference_roster(TargetPreference::NEAREST, 0.25F);
+
+    DEFN_CHECK_EQ(first_target_of_sniper(roster), std::string("backline"));
+}
+
 namespace {
 
 // Armour reaches the kernel's damage path from the catalog, and applies to every source rather than only to shots.
@@ -284,6 +294,62 @@ DEFN_TEST(sim_world_carries_a_minimum_range_from_the_catalog) {
     DEFN_CHECK(without_dead_zone > 0);
     DEFN_CHECK_EQ(inside_dead_zone, 0); // too close to shoot, and no melee to fall back on
     DEFN_CHECK(outside_dead_zone > 0);
+}
+
+namespace {
+
+// The pursuit gate, end to end. The rule is tested directly in test_combat_logic; this asks whether the catalog
+// reaches it -- UnitConfig -> CombatConfig -> sensor radius -> snapshot -> selection -> movement is five hand-offs, and
+// a role that got dropped at any one of them would leave the unit stopping at the first thing it can shoot while the
+// catalog says otherwise. The observable is deliberately the shooter's *position*: nothing else proves the declined
+// target turned into forward movement rather than into standing still.
+float shooter_x_after_pursuit(float sniper_bias) {
+    SimRoster roster;
+    UnitConfig shooter = make_unit("shooter", UnitSide::FRIENDLY, 500, 0);
+    shooter.ranged_damage = 20;
+    shooter.ranged_attack_period_seconds = 1.0;
+    shooter.ranged_attack_range = 400.0F; // reaches the blocker at 300, not the sniper at 700
+    shooter.aggro_range = 800.0F;         // but senses the sniper, which is the gap pursuit lives in
+    shooter.melee_attack_range = 0.0F;
+    shooter.move_speed_pixels_per_second = 100.0F;
+    shooter.preferred_roles.fill(1.0F);
+    shooter.preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))) = sniper_bias;
+    roster.add(shooter);
+
+    UnitConfig blocker = make_dummy("blocker", UnitSide::HOSTILE, 100000);
+    blocker.role = UnitRole::TANK;
+    roster.add(blocker);
+
+    UnitConfig sniper = make_dummy("sniper", UnitSide::HOSTILE, 100000);
+    sniper.role = UnitRole::SNIPER;
+    roster.add(sniper);
+
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    world.spawn("shooter", UnitSide::FRIENDLY, {.x = 0.0F, .y = BELT_Y});
+    world.spawn("blocker", UnitSide::HOSTILE, {.x = 300.0F, .y = BELT_Y});
+    world.spawn("sniper", UnitSide::HOSTILE, {.x = 700.0F, .y = BELT_Y});
+    world.begin_run();
+    run_engagement(world, 1.0);
+
+    for (const SimEntity &entity : world.get_entities()) {
+        if (entity.unit_id == "shooter") {
+            return entity.position.x;
+        }
+    }
+    return -1.0F;
+}
+
+} // namespace
+
+DEFN_TEST(sim_world_carries_a_role_preference_and_aggro_range_from_the_catalog) {
+    const float held_by_the_blocker = shooter_x_after_pursuit(1.0F);
+    const float walked_past_it = shooter_x_after_pursuit(3.0F);
+
+    // Same field, same ranges, same second of simulation: only the bias differs.
+    DEFN_CHECK(walked_past_it > held_by_the_blocker);
+    DEFN_CHECK(held_by_the_blocker < 1.0F); // stopped on the target it could already shoot
+    DEFN_CHECK(walked_past_it > 50.0F);     // declined it and kept closing on the sniper
 }
 
 DEFN_TEST(sim_world_refuses_to_spawn_an_unknown_unit) {

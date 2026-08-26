@@ -9,6 +9,7 @@
 #include "field_promotion.h"
 #include "gameplay_rules.h"
 
+#include <array>
 #include <optional>
 #include <string>
 #include <utility>
@@ -111,6 +112,12 @@ struct UnitConfig {
     // value depend on what else is on the field; both default to no effect.
     float threat_weight = 1.0F;
     TargetPreference target_preference = TargetPreference::NEAREST;
+    // What this unit is, and what kinds of thing it goes out of its way for. `role` is read by *other* units off the
+    // snapshot; `preferred_roles` is read by this one. Zero aggro range means "see as far as you shoot", which is no
+    // pursuit at all.
+    UnitRole role = UnitRole::NONE;
+    std::array<float, UNIT_ROLE_COUNT> preferred_roles{};
+    float aggro_range = 0.0F;
     // Flat reduction applied to every point of damage this unit takes, from any source.
     int armour = 0;
     int cost = 0;

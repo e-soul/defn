@@ -35,10 +35,20 @@ using MixShape = std::vector<MixWeight>;
 // Where the two lines stand and how long the lab waits for a decision. Fixed for every measurement, because the only
 // thing that may differ between cells is the compositions.
 struct LabSetup {
-    float belt_y = 800.0F;
+    // The belt is a band, not a line, and units are dropped anywhere across it -- the same rule the real game uses
+    // in GridManager::sample_belt_y, and the same default numbers as GameplayRules. It matters for exactly one
+    // mechanic: splash is the only rule in the game that reads a 2-D distance, so a lab that stood every unit on
+    // one line was the only place where an area weapon could not miss.
+    float belt_top_y = 750.0F;
+    float belt_bottom_y = 850.0F;
     float friendly_front_x = 800.0F;
     // Friendlies fill backwards from the front, hostiles forwards from theirs: the two lines face each other.
-    float friendly_spacing = 70.0F;
+    //
+    // Spacing must stay **wider than the largest melee reach in the game** (128px), or the lab has no notion of a
+    // back rank: a unit arriving at the front rank finds the second rank already in contact, so anything that means
+    // to walk past the first to reach the second has nothing to walk past. The original 70px was chosen for a purely
+    // ranged, 1-D roster and silently measured every positional mechanic as a flat null. See 2.11.
+    float friendly_spacing = 200.0F;
     float hostile_front_x = 1600.0F;
     float hostile_spacing = 110.0F;
     double max_seconds = 180.0;

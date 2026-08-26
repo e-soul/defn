@@ -15,10 +15,12 @@ struct CombatTargetSnapshot {
     UnitSide side = UnitSide::FRIENDLY;
     bool dead = false;
     Vector2 position;
-    // What the shooter needs about this candidate beyond where it stands: how hard it pulls fire, and how much of it
-    // is left. Both default to "makes no difference", so a snapshot builder that ignores them selects as before.
+    // What the shooter needs about this candidate beyond where it stands: how hard it pulls fire, how much of it is
+    // left, and what kind of thing it is. All three default to "makes no difference", so a snapshot builder that
+    // ignores them selects as before.
     float threat_weight = 1.0F;
     int health = 0;
+    UnitRole role = UnitRole::NONE;
 };
 
 struct CombatTargetSelection {
@@ -26,6 +28,10 @@ struct CombatTargetSelection {
     AttackMode attack_mode = AttackMode::NONE;
     EntityId target_id;
     Vector2 target_position;
+    // Set when the shooter deliberately declined a target it could have attacked, because something it prefers is
+    // sensed further ahead. `engaged` is false either way and the caller walks forward regardless -- this only exists
+    // so a test, or a debug overlay, can tell "nothing to shoot" apart from "not stopping for that".
+    bool pursuing = false;
 };
 
 enum class CombatMovementIntent { NONE, MOVE, STOP };
@@ -67,6 +73,10 @@ struct CombatLogicStep {
 };
 
 float get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &target_position);
+
+// How far this unit senses, which is its aggro range floored at its ranged range. The detection sensor on both the
+// real unit and the kernel is built from this, so widening aggro widens what target selection is even shown.
+float resolve_aggro_range(const CombatConfig &config);
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance);
 CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
                                                    std::span<const CombatTargetSnapshot> targets);

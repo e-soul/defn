@@ -3,6 +3,7 @@
     "base": {
       "description": "Friendly base. Can shoot.",
       "side": "friendly",
+      "role": "structure",
       "hp": 300,
       "melee_damage": 0,
       "melee_attack_period_seconds": 1.0,
@@ -11,6 +12,7 @@
       "ranged_attack_period_seconds": 1.2,
       "ranged_attack_range": 520.0,
       "move_speed_pixels_per_second": 0.0,
+      "threat_weight": 0.25,
       "cost": 0,
       "bounty": 0,
       "scale": 0.55,
@@ -43,6 +45,7 @@
     "breacher": {
       "description": "Frontline anchor. Cheapest friendly, highest durability, and a short-range rifle make the breacher the safest first deployment.",
       "side": "friendly",
+      "role": "tank",
       "hp": 400,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -109,6 +112,7 @@
     "marksman": {
       "description": "Dedicated counter-sniper. Extreme reach and heavy shots make the marksman the best answer to exposed specials.",
       "side": "friendly",
+      "role": "sniper",
       "hp": 180,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -174,17 +178,18 @@
       }
     },
     "impact": {
-      "description": "Fast flanker. High speed and aggressive mid-range fire let impact collapse exposed lanes before they stabilize.",
+      "description": "Counter-puncher. Middling fire at range, but it hits far harder in contact than anything else on the field, so whatever closes on the line pays for it.",
       "side": "friendly",
+      "role": "assault",
       "hp": 245,
-      "melee_damage": 15,
+      "melee_damage": 30,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 128.0,
       "ranged_damage": 8,
       "ranged_attack_period_seconds": 0.48,
       "ranged_attack_range": 320.0,
       "move_speed_pixels_per_second": 98.0,
-      "target_preference": "highest_hp",
+      "target_preference": "nearest",
       "cost": 23,
       "bounty": 0,
       "scale": 0.27,
@@ -242,6 +247,7 @@
     "operator": {
       "description": "Flexible skirmisher. Reliable sustained fire makes the operator the best general-purpose cleaner once a lane is stabilized.",
       "side": "friendly",
+      "role": "specialist",
       "hp": 225,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -307,6 +313,7 @@
     "grime": {
       "description": "Rifle grunt. Weak alone, fast enough to pressure a lane, and still dangerous when multiple grimes stack their fire.",
       "side": "hostile",
+      "role": "assault",
       "hp": 96,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -372,6 +379,7 @@
     "mason": {
       "description": "Rocket support. Direct damage is modest, but any clustered defense will feel the splash immediately.",
       "side": "hostile",
+      "role": "splash",
       "hp": 82,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -468,6 +476,7 @@
     "wrecker": {
       "description": "Bruiser. Slow, sturdy, and brutally efficient once he gets a clean firing lane.",
       "side": "hostile",
+      "role": "assault",
       "hp": 180,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -534,6 +543,7 @@
     "jackal": {
       "description": "Backline sniper. Jackal opens fights from extreme range, but folds quickly if a diver reaches him.",
       "side": "hostile",
+      "role": "sniper",
       "hp": 76,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
@@ -600,6 +610,11 @@
     "hound": {
       "description": "Rusher. No gun at all: it closes at a sprint and fights in contact, which is the one place a marksman cannot shoot.",
       "side": "hostile",
+      "role": "diver",
+      "aggro_range": 600.0,
+      "preferred_roles": {
+        "sniper": 3.0
+      },
       "hp": 110,
       "melee_damage": 20,
       "melee_attack_period_seconds": 0.8,
@@ -609,36 +624,42 @@
       "move_speed_pixels_per_second": 120.0,
       "cost": 0,
       "bounty": 5,
-      "scale": 0.247,
+      "scale": 0.285,
       "sprite_flip_h": true,
       "health_bar_offset": [
         30,
-        -270
+        -240
       ],
       "animations": {
         "idle": {
-          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
           "loop": true
         },
         "walk": {
-          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Run__%03d.png",
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Run__%03d.png",
           "frame_count": 10,
           "speed": 12.0,
           "loop": true
         },
         "attack": {
-          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Melee__%03d.png",
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
           "frame_count": 10,
           "speed": 12.0,
           "loop": false
         },
         "death": {
-          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Dead__%03d.png",
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
           "loop": false
+        },
+        "happy": {
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
         }
       }
     }

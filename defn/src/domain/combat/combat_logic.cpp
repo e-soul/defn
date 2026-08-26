@@ -17,6 +17,11 @@ float get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &
     return origin.x - target_position.x;
 }
 
+// A sensor is never allowed to be tighter than the gun. An `aggro_range` left at its default of zero therefore means
+// "see exactly as far as you shoot", which is every unit shipped before pursuit existed and is why turning the
+// mechanism on changes nothing until a catalog entry widens it.
+float resolve_aggro_range(const CombatConfig &config) { return config.aggro_range > config.ranged_range ? config.aggro_range : config.ranged_range; }
+
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance) {
     if (distance < 0.0F) {
         return AttackMode::NONE;
@@ -43,8 +48,16 @@ namespace {
 //
 // The range gate is deliberately not part of this. A unit still cannot shoot what it cannot reach; only the choice
 // among the things it *can* reach is what a preference changes.
-float ranged_target_score(const CombatConfig &config, const CombatTargetSnapshot &snapshot, float distance) {
+// A candidate's pull, as the shooter sees it: what the target broadcasts, times what this shooter thinks that kind of
+// target is worth. The two compose rather than override, so a tank's aggro still drags a role-preferring shooter --
+// just less far.
+float effective_weight(const CombatConfig &config, const CombatTargetSnapshot &snapshot) {
     const float weight = snapshot.threat_weight > 0.0F ? snapshot.threat_weight : 1.0F;
+    return weight * config.bias_for_role(snapshot.role);
+}
+
+float ranged_target_score(const CombatConfig &config, const CombatTargetSnapshot &snapshot, float distance) {
+    const float weight = effective_weight(config, snapshot);
     const auto health = static_cast<float>(snapshot.health);
     switch (config.target_preference) {
     case TargetPreference::FARTHEST:
@@ -77,12 +90,17 @@ struct BestTargets {
     EntityId ranged_id;
     Vector2 ranged_position;
     float ranged_score = std::numeric_limits<float>::max();
+    // A preferred-role candidate that is sensed but cannot be attacked from here yet. The reason to keep walking.
+    bool preferred_ahead = false;
+    // Whether the best thing that *can* be attacked is itself preferred, which is when there is nothing to wait for.
+    bool best_is_preferred = false;
 };
 
 BestTargets scan_targets(const Vector2 &origin, const CombatConfig &config, std::span<const CombatTargetSnapshot> targets) {
     BestTargets best;
     float closest_melee_distance = std::numeric_limits<float>::max();
     float best_ranged_score = std::numeric_limits<float>::max();
+    bool best_is_preferred = false;
 
     for (const CombatTargetSnapshot &snapshot : targets) {
         if (!snapshot.id.is_valid() || snapshot.dead || snapshot.side == config.side) {
@@ -109,7 +127,22 @@ BestTargets scan_targets(const Vector2 &origin, const CombatConfig &config, std:
             best.ranged_id = snapshot.id;
             best.ranged_position = snapshot.position;
         }
+
+        if (!config.prefers_role(snapshot.role)) {
+            continue;
+        }
+
+        // Preferred and reachable settles it; preferred and merely sensed is the reason not to settle for anything
+        // else. The dead zone counts as unreachable on purpose -- walking into a target you cannot shoot yet is what
+        // a minimum range is for.
+        if (classify_target_by_distance(config, distance) != AttackMode::NONE) {
+            best_is_preferred = true;
+        } else if (distance <= resolve_aggro_range(config)) {
+            best.preferred_ahead = true;
+        }
     }
+
+    best.best_is_preferred = best_is_preferred;
 
     best.ranged_score = best_ranged_score;
     return best;
@@ -168,6 +201,16 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
     }
 
     const BestTargets best = scan_targets(origin, config, targets);
+
+    // Pursuit. Something this shooter prefers is sensed ahead but cannot be hit from here, and nothing it *can* hit is
+    // preferred -- so it declines to engage and the caller walks it forward, which is the only steering a lane needs.
+    //
+    // Deliberately after the melee-retention check above: a unit already in contact has stopped choosing, and pulling
+    // it out of a fight it is in the middle of is a movement change rather than a targeting one. Nothing declares a
+    // preferred role in the shipped catalog yet, so `preferred_ahead` is false everywhere and this never fires.
+    if (best.preferred_ahead && !best.best_is_preferred) {
+        return {.pursuing = true};
+    }
 
     // Ranged fire re-asks the question, but only answers differently when the answer is clearly better. Below the
     // margin the unit keeps firing at what it already had.

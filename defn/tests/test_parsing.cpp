@@ -627,6 +627,52 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     check_content_color_close(friendly->health_bar_color, {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F});
 }
 
+// The catalog key names, pinned. A role that silently stopped parsing would not fail a build or a rule test -- every
+// unit would just quietly go back to NONE, nothing would prefer anything, and the next matrix run would read as "the
+// mechanism does nothing" rather than "the mechanism was not loaded". That is exactly the ambiguity the wiring tests
+// exist to remove, and it starts here at the JSON key.
+DEFN_TEST(unit_data_loader_reads_roles_preferences_and_aggro_range) {
+    UnitDataLoader loader;
+    Dictionary units;
+    Dictionary hound;
+    hound["side"] = "hostile";
+    hound["role"] = "diver";
+    hound["aggro_range"] = 600.0;
+    Dictionary preferred;
+    preferred["sniper"] = 3.0;
+    hound["preferred_roles"] = preferred;
+    units["hound"] = hound;
+    Dictionary data;
+    data["units"] = units;
+
+    DEFN_REQUIRE(loader.load_from_data(data, Dictionary()));
+    const auto parsed = loader.get_unit("hound");
+    DEFN_REQUIRE(parsed.has_value());
+
+    DEFN_CHECK_EQ(parsed->role, UnitRole::DIVER);
+    DEFN_CHECK_EQ(parsed->aggro_range, 600.0F);
+    DEFN_CHECK_EQ(parsed->preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))), 3.0F);
+    // Everything not named keeps its multiplier at one, which is what makes an empty table the old behaviour.
+    DEFN_CHECK_EQ(parsed->preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::TANK))), 1.0F);
+}
+
+// An unreadable role is not a load failure: the unit keeps playing, visibly wrong, rather than taking the game down.
+DEFN_TEST(unit_data_loader_falls_back_to_no_role_for_an_unknown_name) {
+    UnitDataLoader loader;
+    Dictionary units;
+    Dictionary ghost;
+    ghost["side"] = "hostile";
+    ghost["role"] = "wizard";
+    units["ghost"] = ghost;
+    Dictionary data;
+    data["units"] = units;
+
+    DEFN_REQUIRE(loader.load_from_data(data, Dictionary()));
+    const auto parsed = loader.get_unit("ghost");
+    DEFN_REQUIRE(parsed.has_value());
+    DEFN_CHECK_EQ(parsed->role, UnitRole::NONE);
+}
+
 DEFN_TEST(unit_data_loader_uses_default_field_promotion_rules_when_absent) {
     UnitDataLoader loader;
     DEFN_CHECK(loader.load_from_data(make_unit_data(), Dictionary()));

@@ -173,6 +173,15 @@ MatrixPlan plan_matrix(const Dictionary &spec, const Dictionary &args) {
     const auto separation = static_cast<float>(static_cast<double>(spec.get("separation", args.get("separation", default_separation))));
     plan.setup.hostile_front_x = plan.setup.friendly_front_x + separation;
 
+    // How far apart the friendly line stands. Load-bearing for anything melee: the default 70px is *inside* a 128px
+    // melee reach, so a unit that means to walk past the front rank finds the back rank already in contact and has
+    // nothing to walk past. A lab that cannot separate a front line from a backline cannot measure a dive.
+    const auto friendly_spacing =
+        static_cast<float>(static_cast<double>(spec.get("friendly_spacing", args.get("friendly_spacing", plan.setup.friendly_spacing))));
+    if (friendly_spacing > 0.0F) {
+        plan.setup.friendly_spacing = friendly_spacing;
+    }
+
     plan.friendly_mixes = parse_friendly_mixes(spec.get("friendly_mixes", Array()));
     if (plan.friendly_mixes.empty()) {
         plan.friendly_mixes = default_friendly_mixes(DEFAULT_FRIENDLIES);
@@ -278,8 +287,8 @@ MatrixResult run_matrix(const UnitCatalog &catalog, const GlobalUnitConfig &glob
     const std::vector<std::uint32_t> seeds = default_seeds(plan.seed_count);
 
     MatrixResult result;
-    result.table = to_godot_string(std::format("matrix: critical budget B*, {} friendly mixes x {} hostile mixes, {} seed(s), separation {:.0f}px\n", plan.friendly_mixes.size(),
-                                               plan.hostile_mixes.size(), plan.seed_count,
+    result.table = to_godot_string(std::format("matrix: critical budget B*, {} friendly mixes x {} hostile mixes, {} seed(s), separation {:.0f}px\n",
+                                               plan.friendly_mixes.size(), plan.hostile_mixes.size(), plan.seed_count,
                                                plan.setup.hostile_front_x - plan.setup.friendly_front_x));
     result.table += to_godot_string(std::format("{:<{}}", "friendly \\ hostile", LABEL_WIDTH));
     for (const HostileMix &hostile : plan.hostile_mixes) {

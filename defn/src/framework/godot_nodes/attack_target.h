@@ -4,6 +4,7 @@
 #ifndef ATTACK_TARGET_H
 #define ATTACK_TARGET_H
 
+#include "content_values.h"
 #include "unit_side.h"
 
 #include <godot_cpp/classes/node2d.hpp>
@@ -22,6 +23,9 @@ class AttackTarget {
     [[nodiscard]] virtual UnitSide get_side() const = 0;
     // Read by target selection, not by damage: how hard this target pulls fire, and how much of it is left.
     [[nodiscard]] virtual float get_threat_weight() const = 0;
+    // What kind of thing this is, for a shooter that prefers kinds. Defaulted rather than pure: a target that never
+    // says advertises NONE, which nothing prefers, so an implementer that ignores roles behaves exactly as before.
+    [[nodiscard]] virtual UnitRole get_role() const { return UnitRole::NONE; }
     [[nodiscard]] virtual int get_current_health() const = 0;
     [[nodiscard]] virtual int take_damage(int amount) = 0;
     virtual void flash_damage(const godot::Color &color) = 0;

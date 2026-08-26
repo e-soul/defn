@@ -2,7 +2,7 @@ extends SceneTree
 
 
 func _parse_args() -> Dictionary:
-	var parsed := {"spec": "", "seeds": 0, "separation": 0.0, "out": "res://build/matrix.jsonl"}
+	var parsed := {"spec": "", "seeds": 0, "separation": 0.0, "friendly_spacing": 0.0, "out": "res://build/matrix.jsonl"}
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var index := 0
 	while index < args.size():
@@ -18,6 +18,9 @@ func _parse_args() -> Dictionary:
 			"--separation":
 				parsed["separation"] = float(value)
 				index += 2
+			"--friendly-spacing":
+				parsed["friendly_spacing"] = float(value)
+				index += 2
 			"--out":
 				parsed["out"] = value
 				index += 2
@@ -27,6 +30,8 @@ func _parse_args() -> Dictionary:
 		parsed.erase("seeds")
 	if float(parsed["separation"]) <= 0.0:
 		parsed.erase("separation")
+	if float(parsed["friendly_spacing"]) <= 0.0:
+		parsed.erase("friendly_spacing")
 	return parsed
 
 

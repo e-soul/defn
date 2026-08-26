@@ -69,15 +69,20 @@ EngagementOutcome run_engagement_once(const UnitCatalog &catalog, const GlobalUn
     StdRandomSource random(seed);
     SimWorld world(catalog, globals, random);
 
+    // Deliberately a second stream. Drawing the spawn band from the world's own source would shift every range
+    // variation that follows it, so a measurement could not tell "the belt has depth now" from "the dice moved".
+    StdRandomSource layout(seed ^ 0x9E3779B9U);
+    const auto belt_y = [&layout, &setup]() { return layout.range_real(setup.belt_top_y, setup.belt_bottom_y); };
+
     float friendly_x = setup.friendly_front_x;
     for (const std::string &unit_id : expand_mix(friendlies)) {
-        world.spawn(unit_id, UnitSide::FRIENDLY, {.x = friendly_x, .y = setup.belt_y});
+        world.spawn(unit_id, UnitSide::FRIENDLY, {.x = friendly_x, .y = belt_y()});
         friendly_x -= setup.friendly_spacing;
     }
 
     float hostile_x = setup.hostile_front_x;
     for (const std::string &unit_id : expand_mix(hostiles)) {
-        world.spawn(unit_id, UnitSide::HOSTILE, {.x = hostile_x, .y = setup.belt_y});
+        world.spawn(unit_id, UnitSide::HOSTILE, {.x = hostile_x, .y = belt_y()});
         hostile_x += setup.hostile_spacing;
     }
     world.begin_run();

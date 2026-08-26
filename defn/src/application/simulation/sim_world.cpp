@@ -30,6 +30,9 @@ CombatConfig make_combat_config(const UnitConfig &config, const ResolvedUnitRunt
     combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
     combat_config.threat_weight = config.threat_weight;
     combat_config.target_preference = config.target_preference;
+    combat_config.role = config.role;
+    combat_config.role_bias = config.preferred_roles;
+    combat_config.aggro_range = config.aggro_range;
     combat_config.melee_flash_color = config.melee_flash_color;
     combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {
@@ -84,7 +87,9 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.spawn_time_seconds = elapsed_seconds_;
     entity.combat = make_combat_config(*config, resolved);
     entity.combat.side = side;
-    entity.detection_radius = resolved.ranged_attack_range;
+    // Mirrors the sensor radius in UnitFactory, and reads the *resolved catalog* range rather than the combat
+    // config's, because a melee-only unit carries -1 there and would end up sensing nothing at all.
+    entity.detection_radius = std::max(config->aggro_range, resolved.ranged_attack_range);
     entity.projectile_attack = config->projectile_attack;
     // AnimationController::get_muzzle_global_position resolves to owner->to_global(offset), and the unit's transform
     // carries its sprite scale.
@@ -176,7 +181,8 @@ void SimWorld::build_snapshots(const SimEntity &viewer) {
                               .dead = other.dead,
                               .position = other.position,
                               .threat_weight = other.combat.threat_weight,
-                              .health = other.hp});
+                              .health = other.hp,
+                              .role = other.combat.role});
     }
 
     // A target that walked out of the sensor is still readable through its retained id, so CombatTargetSelector adds it
@@ -198,6 +204,7 @@ void SimWorld::build_snapshots(const SimEntity &viewer) {
             .position = current_target->position,
             .threat_weight = current_target->combat.threat_weight,
             .health = current_target->hp,
+            .role = current_target->combat.role,
         });
     }
 }

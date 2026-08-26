@@ -7,6 +7,7 @@
 #include "variant_tools.h"
 
 #include <algorithm>
+#include <array>
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -152,6 +153,54 @@ TargetPreference parse_target_preference(const Dictionary &unit_dict) {
     return TargetPreference::NEAREST;
 }
 
+// Same forgiving policy as the preference above: an unrecognised role reads as NONE, which nothing prefers, so a typo
+// costs the unit its matchup in the next measurement rather than stopping the game.
+UnitRole parse_unit_role(const String &value) {
+    const String name = value.to_lower();
+    if (name == String("tank")) {
+        return UnitRole::TANK;
+    }
+    if (name == String("diver")) {
+        return UnitRole::DIVER;
+    }
+    if (name == String("sniper")) {
+        return UnitRole::SNIPER;
+    }
+    if (name == String("assault")) {
+        return UnitRole::ASSAULT;
+    }
+    if (name == String("splash")) {
+        return UnitRole::SPLASH;
+    }
+    if (name == String("specialist")) {
+        return UnitRole::SPECIALIST;
+    }
+    if (name == String("support")) {
+        return UnitRole::SUPPORT;
+    }
+    if (name == String("structure")) {
+        return UnitRole::STRUCTURE;
+    }
+    return UnitRole::NONE;
+}
+
+// `{"sniper": 3.0}` reads as "worth three times what its own threat weight says". A role left out of the table keeps
+// its multiplier at one, so an empty table is exactly the pre-role behaviour.
+std::array<float, UNIT_ROLE_COUNT> parse_preferred_roles(const Dictionary &unit_dict) {
+    std::array<float, UNIT_ROLE_COUNT> bias{};
+    bias.fill(1.0F);
+
+    const Dictionary preferred = unit_dict.get("preferred_roles", Dictionary());
+    for (const Variant &key : preferred.keys()) {
+        const UnitRole role = parse_unit_role(String(key));
+        if (role == UnitRole::NONE) {
+            continue;
+        }
+        bias.at(static_cast<std::size_t>(unit_role_index(role))) = VariantTools::as_float(preferred[key]);
+    }
+    return bias;
+}
+
 UnitSide parse_unit_side_impl(const Dictionary &unit_dict) {
     const String side_str = String(unit_dict.get("side", "friendly"));
     return side_str == "hostile" ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
@@ -277,6 +326,9 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     config.armour = VariantTools::as_int(unit_dict.get("armour", config.armour));
     config.threat_weight = VariantTools::as_real(unit_dict.get("threat_weight", config.threat_weight));
     config.target_preference = parse_target_preference(unit_dict);
+    config.role = parse_unit_role(String(unit_dict.get("role", "none")));
+    config.preferred_roles = parse_preferred_roles(unit_dict);
+    config.aggro_range = VariantTools::as_float(unit_dict.get("aggro_range", config.aggro_range));
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
     config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));
