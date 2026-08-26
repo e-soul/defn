@@ -25,6 +25,8 @@ class BattleEntity : public Node2D, public AttackTarget {
     [[nodiscard]] int take_damage(int amount) override;
     [[nodiscard]] bool is_dead() const override;
     [[nodiscard]] UnitSide get_side() const override { return side_; }
+    [[nodiscard]] float get_threat_weight() const override { return threat_weight_; }
+    [[nodiscard]] int get_current_health() const override { return get_current_hp(); }
     [[nodiscard]] Node2D *get_target_node() override { return target_anchor_ != nullptr ? target_anchor_ : this; }
     [[nodiscard]] const Node2D *get_target_node() const override { return target_anchor_ != nullptr ? target_anchor_ : this; }
     int get_current_hp() const;
@@ -36,6 +38,7 @@ class BattleEntity : public Node2D, public AttackTarget {
     static void _bind_methods();
 
     void set_side(UnitSide side) { side_ = side; }
+    void set_threat_weight(float threat_weight) { threat_weight_ = threat_weight; }
     void set_health_component(HealthComponent *health_component) { health_component_ = health_component; }
     void set_hitbox_component(HitboxComponent *hitbox_component) { hitbox_component_ = hitbox_component; }
     HealthComponent *get_health_component() const { return health_component_; }
@@ -45,6 +48,7 @@ class BattleEntity : public Node2D, public AttackTarget {
 
   private:
     UnitSide side_ = UnitSide::FRIENDLY;
+    float threat_weight_ = 1.0F;
     HealthComponent *health_component_ = nullptr;
     HitboxComponent *hitbox_component_ = nullptr;
     Node2D *target_anchor_ = nullptr;

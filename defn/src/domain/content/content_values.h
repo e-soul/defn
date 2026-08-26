@@ -18,6 +18,13 @@ struct Vector2 {
     float y = 0.0F;
 };
 
+// Which enemy a unit reaches for once more than one is in range. Lives here rather than beside `UnitConfig` because
+// both the content layer and the combat rules need it, and the combat rules must not depend on the catalog.
+//
+// This is one of the two places non-additivity enters the rules: what a unit is worth stops being a property of the
+// unit alone and starts depending on what else is on the field to shoot at.
+enum class TargetPreference { NEAREST, FARTHEST, LOWEST_HP, HIGHEST_HP };
+
 } // namespace defn
 
 #endif

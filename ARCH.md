@@ -364,10 +364,13 @@ provide:
 - `SimProgression` implements `ProgressionService` for one hypothetical save. Every modifier a match reads goes
   through the same `progression_rules` functions the campaign uses; only the reward and presentation half is stubbed.
 - `PlayerPolicy` decides deployments. Deployment is the whole player vocabulary: the camera is pushed by units
-  crossing triggers, never by the player, and manual repositioning arrives with the play harness. Four policies ship
-  -- scripted, greedy, defensive and composition -- because a single policy produces a single number with no meaning.
-  The spread is the point: on level 1 the defensive policy wins every seed while greedy loses every seed, on
+  crossing triggers, never by the player, and manual repositioning arrives with the play harness. Five policies ship
+  -- scripted, greedy, defensive, patience and mix -- because a single policy produces a single number with no
+  meaning. The spread is the point: on level 1 the defensive policy wins every seed while greedy loses every seed, on
   identical content, so any verdict quoted from one policy alone is a verdict about that policy.
+  `MixPolicy` is the only one that chooses *what* to buy: the rest all resolve to the most expensive affordable unit,
+  so a sweep of them can compare mono-stacks and nothing else. It plays a target composition, deploying whichever
+  named unit is furthest below its share of the field and banking when that unit is out of reach.
 
 The tick order mirrors the scene tree: the director runs first, then spawns land, then the player acts, then entities
 fight, then projectiles fly, then deaths are reported as bounty and base damage, then the camera moves. `SimWorld`
@@ -379,10 +382,31 @@ is the Godot-facing entry point, in the mould of `DefnHostedTestRunner`: it load
 measures the world width from the background texture, hands plain structs to the kernel, and writes the JSONL. Sim
 sources reach the extension only under the hosted-tests flag, so nothing of it ships in a release export.
 
+### The engagement lab
+
+`sim_engagement_lab` is the shared measurement kernel: it stands two explicit forces on a strip, runs the engagement
+and reports the outcome. A force is a `ForceMix` of unit ids and counts, interleaved round-robin when it takes the
+field so a 2:1 mix is not silently measured as "whichever unit was listed first is the front line". A `MixShape` is
+the same thing described by relative weights, which `allocate_budget` spends an energy budget along using
+largest-remainder apportionment -- naive flooring collapses a 2:1 mix into a mono-stack at small budgets.
+
+`critical_budget` bisects that budget for the smallest one at which a shape beats a force half the time, and reports
+`unbounded` when even the ceiling loses. It exists because win rate saturated: levels 2 to 5 read 100% at full
+integrity across every policy, and a saturated scale ranks nothing. Budget never saturates, is denominated in the
+energy the player actually spends, and `log B*` is approximately additive, which is what makes decomposing a matrix
+of these numbers mean anything.
+
 `DefnBalanceRunner` answers the two roster questions `BALANCE.md` used to estimate -- what one hostile costs the
 player, and what one friendly buys for its energy -- by running each unit against a fixed reference force and
 averaging over seeds. The reference is the whole method: it has to beat every hostile and still bleed doing it, or the
 measurement silently reports zero.
+
+`DefnMatrixRunner` measures the payoff matrix `M[friendly mix][hostile mix]` of critical budgets. Every other number
+in the project is one row or one column of it -- the threat table fixes the defence, the roster table fixes the
+attacker, the campaign sweep compares mono-stacks -- so none of them can see an off-diagonal, and diversity lives
+strictly in the off-diagonals. It emits one JSONL row per `(friendly mix, hostile mix, seed)`, each seed bisected
+separately so the spread is a real confidence interval, and `scripts/analyze_matrix.py` decomposes the result into
+unit power, content difficulty and matchup interaction.
 
 ### Conformance
 

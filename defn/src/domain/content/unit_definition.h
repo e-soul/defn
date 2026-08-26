@@ -103,8 +103,16 @@ struct UnitConfig {
     int ranged_damage = 8;
     double ranged_attack_period_seconds = 2.0 / 3.0;
     float ranged_attack_range = 384.0F;
+    // Below this distance the ranged attack is unavailable, leaving the unit to close to melee or reposition.
+    float minimum_ranged_attack_range = 0.0F;
     RangeVariationConfig ranged_attack_range_variation;
     float move_speed_pixels_per_second = 64.0F;
+    // How hard this unit pulls enemy fire, and which enemy it reaches for itself. The two levers that make a unit's
+    // value depend on what else is on the field; both default to no effect.
+    float threat_weight = 1.0F;
+    TargetPreference target_preference = TargetPreference::NEAREST;
+    // Flat reduction applied to every point of damage this unit takes, from any source.
+    int armour = 0;
     int cost = 0;
     int bounty = 0;
     float scale = 0.27F;

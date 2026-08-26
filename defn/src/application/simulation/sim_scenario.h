@@ -8,6 +8,7 @@
 #include "sim_camera.h"
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -16,10 +17,12 @@
 namespace defn {
 
 struct SimPolicySpec {
-    // "scripted", "greedy", "defensive" or "composition".
+    // "scripted", "greedy", "defensive", "patience" or "mix".
     std::string kind = "greedy";
     std::vector<ScriptedCommand> script;
     int energy_reserve = 15;
+    // "mix" only: the composition to play, as relative weights per unit id.
+    std::map<std::string, double> weights;
 };
 
 // Everything a run needs, and everything it is reproducible from. `(scenario, seed)` decides the outcome completely.

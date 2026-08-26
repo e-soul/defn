@@ -256,11 +256,12 @@ DEFN_TEST(sim_match_holds_every_deployment_until_the_enemy_is_in_reach) {
 }
 
 DEFN_TEST(sim_match_runs_every_policy) {
-    for (const char *kind : {"greedy", "composition", "scripted", "defensive"}) {
+    for (const char *kind : {"greedy", "patience", "scripted", "defensive", "mix"}) {
         SimScenario scenario;
         scenario.seed = 11U;
         scenario.policy.kind = kind;
         scenario.policy.script = {{.time_seconds = 1.0, .unit_id = "breacher"}, {.time_seconds = 12.0, .unit_id = "breacher"}};
+        scenario.policy.weights = {{"breacher", 1.0}, {"marksman", 1.0}};
 
         const SimMatchReport report = run_match(scenario, make_test_level());
 
@@ -268,6 +269,58 @@ DEFN_TEST(sim_match_runs_every_policy) {
         DEFN_CHECK(report.decided);
         DEFN_CHECK(report.clear_time_seconds > 0.0);
     }
+}
+
+// Every other policy ends in "the most expensive thing I can afford", so a sweep of them compares mono-stacks and
+// nothing else. This is the one that can play a composition, and the deployment counts are how you tell.
+DEFN_TEST(sim_match_mix_policy_deploys_toward_its_target_shape) {
+    SimScenario scenario;
+    scenario.seed = 17U;
+    scenario.policy.kind = "mix";
+    scenario.policy.weights = {{"breacher", 3.0}, {"marksman", 1.0}};
+
+    const SimMatchReport report = run_match(scenario, make_test_level(10));
+
+    const auto deployed = [&report](const std::string &unit_id) {
+        for (const SimDeploymentStat &deployment : report.deployments) {
+            if (deployment.unit_id == unit_id) {
+                return deployment.count;
+            }
+        }
+        return 0;
+    };
+
+    DEFN_CHECK(deployed("breacher") > 0);
+    DEFN_CHECK(deployed("marksman") > 0);
+    DEFN_CHECK(deployed("breacher") > deployed("marksman"));
+}
+
+// Greedy reaches for the top of the roster whenever it can afford it, so what it ends up buying is decided by the
+// price list. A mix that names only the breacher never buys a marksman, however much energy is banked.
+DEFN_TEST(sim_match_mix_policy_buys_what_it_was_told_rather_than_the_top_of_the_ladder) {
+    SimScenario greedy;
+    greedy.seed = 17U;
+    greedy.policy.kind = "greedy";
+
+    SimScenario mix = greedy;
+    mix.policy.kind = "mix";
+    mix.policy.weights = {{"breacher", 1.0}};
+
+    const SimMatchReport greedy_report = run_match(greedy, make_test_level(10));
+    const SimMatchReport mix_report = run_match(mix, make_test_level(10));
+
+    const auto deployed = [](const SimMatchReport &report, const std::string &unit_id) {
+        for (const SimDeploymentStat &deployment : report.deployments) {
+            if (deployment.unit_id == unit_id) {
+                return deployment.count;
+            }
+        }
+        return 0;
+    };
+
+    DEFN_CHECK(deployed(greedy_report, "marksman") > 0);
+    DEFN_CHECK_EQ(deployed(mix_report, "marksman"), 0);
+    DEFN_CHECK(deployed(mix_report, "breacher") > 0);
 }
 
 DEFN_TEST(sim_match_report_serializes_to_one_json_line) {

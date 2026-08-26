@@ -51,6 +51,7 @@
       "ranged_attack_period_seconds": 0.72,
       "ranged_attack_range": 245.0,
       "move_speed_pixels_per_second": 58.0,
+      "threat_weight": 2.0,
       "cost": 20,
       "bounty": 0,
       "scale": 0.27,
@@ -115,7 +116,9 @@
       "ranged_damage": 19,
       "ranged_attack_period_seconds": 1.05,
       "ranged_attack_range": 650.0,
+      "minimum_ranged_attack_range": 200.0,
       "move_speed_pixels_per_second": 74.0,
+      "target_preference": "farthest",
       "cost": 27,
       "bounty": 0,
       "scale": 0.27,
@@ -181,6 +184,7 @@
       "ranged_attack_period_seconds": 0.48,
       "ranged_attack_range": 320.0,
       "move_speed_pixels_per_second": 98.0,
+      "target_preference": "highest_hp",
       "cost": 23,
       "bounty": 0,
       "scale": 0.27,
@@ -303,7 +307,7 @@
     "grime": {
       "description": "Rifle grunt. Weak alone, fast enough to pressure a lane, and still dangerous when multiple grimes stack their fire.",
       "side": "hostile",
-      "hp": 95,
+      "hp": 96,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 128.0,
@@ -376,6 +380,7 @@
       "ranged_attack_period_seconds": 1.0,
       "ranged_attack_range": 400.0,
       "move_speed_pixels_per_second": 48.0,
+      "target_preference": "lowest_hp",
       "cost": 0,
       "bounty": 6,
       "scale": 0.247,
@@ -471,6 +476,7 @@
       "ranged_attack_period_seconds": 0.78,
       "ranged_attack_range": 330.0,
       "move_speed_pixels_per_second": 55.0,
+      "target_preference": "highest_hp",
       "cost": 0,
       "bounty": 7,
       "scale": 0.247,
@@ -528,7 +534,7 @@
     "jackal": {
       "description": "Backline sniper. Jackal opens fights from extreme range, but folds quickly if a diver reaches him.",
       "side": "hostile",
-      "hp": 80,
+      "hp": 76,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 128.0,
@@ -536,6 +542,7 @@
       "ranged_attack_period_seconds": 1.3,
       "ranged_attack_range": 620.0,
       "move_speed_pixels_per_second": 48.0,
+      "target_preference": "farthest",
       "cost": 0,
       "bounty": 6,
       "scale": 0.247,
@@ -587,6 +594,51 @@
           "frame_count": 10,
           "speed": 10.0,
           "loop": true
+        }
+      }
+    },
+    "hound": {
+      "description": "Rusher. No gun at all: it closes at a sprint and fights in contact, which is the one place a marksman cannot shoot.",
+      "side": "hostile",
+      "hp": 110,
+      "melee_damage": 20,
+      "melee_attack_period_seconds": 0.8,
+      "melee_attack_range": 128.0,
+      "ranged_damage": 0,
+      "ranged_attack_range": 400.0,
+      "move_speed_pixels_per_second": 120.0,
+      "cost": 0,
+      "bounty": 5,
+      "scale": 0.247,
+      "sprite_flip_h": true,
+      "health_bar_offset": [
+        30,
+        -270
+      ],
+      "animations": {
+        "idle": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true
+        },
+        "walk": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Run__%03d.png",
+          "frame_count": 10,
+          "speed": 12.0,
+          "loop": true
+        },
+        "attack": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Melee__%03d.png",
+          "frame_count": 10,
+          "speed": 12.0,
+          "loop": false
+        },
+        "death": {
+          "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Dead__%03d.png",
+          "frame_count": 10,
+          "speed": 8.0,
+          "loop": false
         }
       }
     }

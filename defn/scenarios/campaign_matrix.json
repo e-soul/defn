@@ -14,11 +14,19 @@
       "kind": "defensive"
     },
     {
-      "kind": "composition"
+      "kind": "patience"
+    },
+    {
+      "kind": "mix",
+      "weights": { "breacher": 2, "marksman": 1 }
     }
   ],
   "seed": 2026,
-  "owned_upgrades": [],
+  "owned_upgrades": [
+    "sharpshooter_contract",
+    "demolition_permit",
+    "command_uplink"
+  ],
   "camera": "modelled",
   "max_seconds": 400.0
 }

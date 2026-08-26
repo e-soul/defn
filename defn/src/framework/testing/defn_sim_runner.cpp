@@ -18,6 +18,7 @@
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <map>
 #include <string>
 #include <vector>
 
@@ -49,11 +50,21 @@ std::vector<ScriptedCommand> parse_script(const Array &entries) {
     return script;
 }
 
+std::map<std::string, double> parse_weights(const Dictionary &weights) {
+    std::map<std::string, double> parsed;
+    const Array unit_ids = weights.keys();
+    for (const Variant &unit_id : unit_ids) {
+        parsed.emplace(to_std_string(unit_id), static_cast<double>(weights[unit_id]));
+    }
+    return parsed;
+}
+
 SimPolicySpec parse_policy(const Dictionary &policy) {
     SimPolicySpec spec;
     spec.kind = to_std_string(policy.get("kind", String("greedy")));
     spec.energy_reserve = static_cast<int>(static_cast<int64_t>(policy.get("energy_reserve", 15)));
     spec.script = parse_script(policy.get("script", Array()));
+    spec.weights = parse_weights(policy.get("weights", Dictionary()));
     return spec;
 }
 

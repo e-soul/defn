@@ -29,7 +29,7 @@ HealthComponent *create_health_component(Unit *unit) {
     auto *health = memnew(HealthComponent);
     health->set_name("HealthComponent");
     unit->add_child(health);
-    health->configure(unit->get_unit_config().hp);
+    health->configure(unit->get_unit_config().hp, unit->get_unit_config().armour);
     return health;
 }
 
@@ -100,6 +100,9 @@ CombatComponent::Config make_combat_config(const Unit *unit) {
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? unit->get_attack_range() : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? unit->get_ranged_range() : -1.0F;
+    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
+    combat_config.threat_weight = config.threat_weight;
+    combat_config.target_preference = config.target_preference;
     combat_config.melee_flash_color = config.melee_flash_color;
     combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {

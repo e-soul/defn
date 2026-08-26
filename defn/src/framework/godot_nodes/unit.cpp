@@ -21,6 +21,7 @@ void Unit::_bind_methods() { ADD_SIGNAL(MethodInfo("unit_died", PropertyInfo(Var
 void Unit::set_unit_config(const UnitConfig &cfg) {
     unit_config_ = cfg;
     set_side(unit_config_.side);
+    set_threat_weight(unit_config_.threat_weight);
     attack_range = unit_config_.melee_attack_range;
     ranged_range = unit_config_.ranged_attack_range;
 }

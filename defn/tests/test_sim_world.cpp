@@ -118,7 +118,173 @@ SimRoster make_shipped_roster() {
     return roster;
 }
 
+// A shooter that reaches both hostiles from where it stands, so target selection has a real choice on the first
+// tick rather than acquiring whatever wanders into range first.
+SimRoster make_preference_roster(TargetPreference preference, float defender_threat_weight) {
+    SimRoster roster;
+
+    UnitConfig sniper = make_unit("sniper", UnitSide::FRIENDLY, 500, 0);
+    sniper.ranged_damage = 20;
+    sniper.ranged_attack_period_seconds = 1.0;
+    sniper.ranged_attack_range = 900.0F;
+    sniper.move_speed_pixels_per_second = 0.0F;
+    sniper.target_preference = preference;
+    roster.add(sniper);
+
+    UnitConfig defender = make_dummy("defender", UnitSide::HOSTILE, 300);
+    defender.threat_weight = defender_threat_weight;
+    roster.add(defender);
+
+    UnitConfig backline = make_dummy("backline", UnitSide::HOSTILE, 100);
+    roster.add(backline);
+
+    return roster;
+}
+
+std::string targeted_unit_id(SimWorld &world, EntityId target_id) {
+    for (const SimEntity &entity : world.get_entities()) {
+        if (entity.id == target_id) {
+            return entity.unit_id;
+        }
+    }
+    return "none";
+}
+
+// Runs one tick and reports what the sniper reached for. The point is the wiring, not the fight: UnitConfig ->
+// CombatConfig -> snapshot -> selection has three hand-offs and any one of them silently dropping the field would
+// leave a unit playing by the default rule while the catalog says otherwise.
+std::string first_target_of_sniper(SimRoster &roster) {
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    world.spawn("sniper", UnitSide::FRIENDLY, {.x = 0.0F, .y = BELT_Y});
+    world.spawn("defender", UnitSide::HOSTILE, {.x = 300.0F, .y = BELT_Y});
+    world.spawn("backline", UnitSide::HOSTILE, {.x = 700.0F, .y = BELT_Y});
+    world.begin_run();
+    world.tick();
+
+    for (const SimEntity &entity : world.get_entities()) {
+        if (entity.unit_id == "sniper") {
+            return targeted_unit_id(world, entity.combat_state.target_id);
+        }
+    }
+    return "none";
+}
+
 } // namespace
+
+DEFN_TEST(sim_world_targets_the_nearest_enemy_by_default) {
+    SimRoster roster = make_preference_roster(TargetPreference::NEAREST, 1.0F);
+
+    DEFN_CHECK_EQ(first_target_of_sniper(roster), std::string("defender"));
+}
+
+DEFN_TEST(sim_world_carries_a_farthest_preference_from_the_catalog) {
+    SimRoster roster = make_preference_roster(TargetPreference::FARTHEST, 1.0F);
+
+    DEFN_CHECK_EQ(first_target_of_sniper(roster), std::string("backline"));
+}
+
+DEFN_TEST(sim_world_carries_a_highest_hp_preference_from_the_catalog) {
+    // The defender has 300 hp to the backline's 100, and is also the nearer of the two: the preference has to be the
+    // reason it is chosen, so this pairs with the farthest case above to rule out "nearest happened to win".
+    SimRoster roster = make_preference_roster(TargetPreference::HIGHEST_HP, 1.0F);
+
+    DEFN_CHECK_EQ(first_target_of_sniper(roster), std::string("defender"));
+}
+
+DEFN_TEST(sim_world_carries_a_threat_weight_from_the_catalog) {
+    // Farthest would reach past the defender; a heavy enough defender pulls the shot back onto itself.
+    SimRoster roster = make_preference_roster(TargetPreference::FARTHEST, 4.0F);
+
+    DEFN_CHECK_EQ(first_target_of_sniper(roster), std::string("defender"));
+}
+
+namespace {
+
+// Armour reaches the kernel's damage path from the catalog, and applies to every source rather than only to shots.
+int damage_dealt_to_armoured_dummy(int shot_damage, int armour) {
+    SimRoster roster;
+    UnitConfig shooter = make_unit("shooter", UnitSide::FRIENDLY, 400, 0);
+    shooter.ranged_damage = shot_damage;
+    shooter.ranged_attack_period_seconds = 1.0;
+    shooter.ranged_attack_range = 500.0F;
+    shooter.move_speed_pixels_per_second = 0.0F;
+    roster.add(shooter);
+
+    UnitConfig dummy = make_dummy("dummy", UnitSide::HOSTILE, 5000);
+    dummy.armour = armour;
+    dummy.move_speed_pixels_per_second = 0.0F;
+    roster.add(dummy);
+
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    world.spawn("shooter", UnitSide::FRIENDLY, {.x = 0.0F, .y = BELT_Y});
+    world.spawn("dummy", UnitSide::HOSTILE, {.x = 300.0F, .y = BELT_Y});
+    world.begin_run();
+    run_engagement(world, 12.0);
+
+    return total_damage_taken(world, UnitSide::HOSTILE);
+}
+
+} // namespace
+
+DEFN_TEST(sim_world_applies_armour_from_the_catalog) {
+    const int bare = damage_dealt_to_armoured_dummy(19, 0);
+    const int armoured = damage_dealt_to_armoured_dummy(19, 6);
+
+    DEFN_CHECK(bare > 0);
+    // Same number of shots either way -- the shooter is stationary and the dummy cannot die -- so the ratio is the
+    // per-shot reduction: 13 of every 19.
+    DEFN_CHECK_EQ(armoured * 19, bare * 13);
+}
+
+DEFN_TEST(sim_world_never_lets_armour_block_a_shot_completely) {
+    const int chipped = damage_dealt_to_armoured_dummy(4, 50);
+
+    DEFN_CHECK(chipped > 0);
+}
+
+namespace {
+
+// Does a minimum range from the catalog actually reach the kernel's range gate? The rule is tested directly
+// elsewhere; this asks whether the plumbing carries it, which is a different question and the one that bit before.
+int damage_dealt_by_shooter_with_dead_zone(float minimum_range, float target_distance) {
+    SimRoster roster;
+    UnitConfig shooter = make_unit("shooter", UnitSide::FRIENDLY, 400, 0);
+    shooter.ranged_damage = 15;
+    shooter.ranged_attack_period_seconds = 1.0;
+    shooter.ranged_attack_range = 800.0F;
+    shooter.minimum_ranged_attack_range = minimum_range;
+    shooter.melee_damage = 0; // no fallback punch, so the dead zone is the whole story
+    shooter.move_speed_pixels_per_second = 0.0F;
+    roster.add(shooter);
+
+    UnitConfig dummy = make_dummy("dummy", UnitSide::HOSTILE, 4000);
+    dummy.move_speed_pixels_per_second = 0.0F;
+    roster.add(dummy);
+
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    world.spawn("shooter", UnitSide::FRIENDLY, {.x = 0.0F, .y = BELT_Y});
+    world.spawn("dummy", UnitSide::HOSTILE, {.x = target_distance, .y = BELT_Y});
+    world.begin_run();
+    run_engagement(world, 10.0);
+
+    return total_damage_taken(world, UnitSide::HOSTILE);
+}
+
+} // namespace
+
+DEFN_TEST(sim_world_carries_a_minimum_range_from_the_catalog) {
+    // Same target, same shooter, same distance: only the dead zone differs.
+    const int without_dead_zone = damage_dealt_by_shooter_with_dead_zone(0.0F, 150.0F);
+    const int inside_dead_zone = damage_dealt_by_shooter_with_dead_zone(300.0F, 150.0F);
+    const int outside_dead_zone = damage_dealt_by_shooter_with_dead_zone(300.0F, 500.0F);
+
+    DEFN_CHECK(without_dead_zone > 0);
+    DEFN_CHECK_EQ(inside_dead_zone, 0); // too close to shoot, and no melee to fall back on
+    DEFN_CHECK(outside_dead_zone > 0);
+}
 
 DEFN_TEST(sim_world_refuses_to_spawn_an_unknown_unit) {
     SimRoster roster = make_shipped_roster();

@@ -136,6 +136,22 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
     }
 }
 
+// An unknown name falls back to NEAREST rather than failing the load: a typo in the catalog should cost a unit its
+// job, visibly, in the next measurement -- not stop the game from starting.
+TargetPreference parse_target_preference(const Dictionary &unit_dict) {
+    const String value = String(unit_dict.get("target_preference", "nearest")).to_lower();
+    if (value == String("farthest")) {
+        return TargetPreference::FARTHEST;
+    }
+    if (value == String("lowest_hp")) {
+        return TargetPreference::LOWEST_HP;
+    }
+    if (value == String("highest_hp")) {
+        return TargetPreference::HIGHEST_HP;
+    }
+    return TargetPreference::NEAREST;
+}
+
 UnitSide parse_unit_side_impl(const Dictionary &unit_dict) {
     const String side_str = String(unit_dict.get("side", "friendly"));
     return side_str == "hostile" ? UnitSide::HOSTILE : UnitSide::FRIENDLY;
@@ -251,12 +267,16 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     config.ranged_damage = VariantTools::as_int(unit_dict.get("ranged_damage", 8));
     config.ranged_attack_period_seconds = VariantTools::as_double(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
     config.ranged_attack_range = VariantTools::as_real(unit_dict.get("ranged_attack_range", config.ranged_attack_range));
+    config.minimum_ranged_attack_range = VariantTools::as_real(unit_dict.get("minimum_ranged_attack_range", config.minimum_ranged_attack_range));
     config.ranged_attack_range_variation = globals.ranged_attack_range_variation;
     if (unit_dict.has("move_speed_pixels_per_second")) {
         config.move_speed_pixels_per_second = VariantTools::as_float(unit_dict.get("move_speed_pixels_per_second", config.move_speed_pixels_per_second));
     } else {
         config.move_speed_pixels_per_second = VariantTools::as_float(unit_dict.get("move_speed", 0.5)) * LEGACY_MOVE_SPEED_SCALE;
     }
+    config.armour = VariantTools::as_int(unit_dict.get("armour", config.armour));
+    config.threat_weight = VariantTools::as_real(unit_dict.get("threat_weight", config.threat_weight));
+    config.target_preference = parse_target_preference(unit_dict);
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
     config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));

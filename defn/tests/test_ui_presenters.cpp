@@ -1446,8 +1446,10 @@ DEFN_TEST(defn_balance_runner_measures_a_discriminating_threat_ladder) {
     const Dictionary result = DefnBalanceRunner::measure(args);
     DEFN_REQUIRE(bool(result.get("success", false)));
 
+    // One row per hostile in the default roster. A lower bound rather than an exact count: the roster grows as
+    // archetypes are added, and the count was never what this test was for -- the spread below is.
     const Array threat = result.get("threat", Array());
-    DEFN_CHECK_EQ(int(threat.size()), 4);
+    DEFN_CHECK(int(threat.size()) >= 4);
 
     double baseline = 0.0;
     double highest = 0.0;
@@ -1466,7 +1468,7 @@ DEFN_TEST(defn_balance_runner_measures_a_discriminating_threat_ladder) {
     DEFN_CHECK(highest > baseline * 1.5);
 
     const Array roster = result.get("roster", Array());
-    DEFN_CHECK_EQ(int(roster.size()), 4);
+    DEFN_CHECK(int(roster.size()) >= 4);
 }
 
 DEFN_TEST(defn_sim_runner_reports_a_missing_scenario) {

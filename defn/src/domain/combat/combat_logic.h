@@ -15,6 +15,10 @@ struct CombatTargetSnapshot {
     UnitSide side = UnitSide::FRIENDLY;
     bool dead = false;
     Vector2 position;
+    // What the shooter needs about this candidate beyond where it stands: how hard it pulls fire, and how much of it
+    // is left. Both default to "makes no difference", so a snapshot builder that ignores them selects as before.
+    float threat_weight = 1.0F;
+    int health = 0;
 };
 
 struct CombatTargetSelection {

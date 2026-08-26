@@ -191,8 +191,13 @@ Always read the spread.
 |---|---|
 | `greedy` | Deploys the best affordable unit the instant energy allows. The floor: no patience. |
 | `defensive` | Banks everything until the leading hostile is inside the base's own weapon range, then commits and keeps spending. This is how the game is actually played well. |
-| `composition` | Saves toward the top of the roster, keeps a reserve, spends immediately under pressure. |
+| `patience` | Saves toward the top of the roster, keeps a reserve, spends immediately under pressure. |
+| `mix` | Plays a target composition: `"weights": { "breacher": 2, "marksman": 1 }`. Deploys whichever named unit is furthest below its share of the field, and banks when that unit is out of reach. |
 | `scripted` | A fixed plan: `"script": [{ "time": 1.0, "unit_id": "breacher" }]`. Exact reproduction of one line of play. |
+
+`greedy`, `defensive` and `patience` all end in "the most expensive affordable unit" -- they vary *when* to spend,
+never *what* to buy, so a sweep of them compares mono-stacks and nothing else. `mix` is the only one that can express
+a composition, and it is what any level-scale claim about composition has to be measured with.
 
 The gap between `greedy` and `defensive` on the same content is usually the most informative number in a sweep. If a
 level is winnable only by `defensive`, it is asking for knowledge the game has not taught yet.
@@ -211,6 +216,53 @@ and looks like a working measurement.
 
 **Roster** spends a fixed 120 energy on each friendly against eight grime. Counts differ so that spend does not --
 comparing three cheap units with three expensive ones says nothing about whether either is worth its cost.
+
+Both rosters are arguments with defaults, so a driver can hand `measure` any slice of the catalog.
+
+### Asking a diversity question
+
+Both tables above are a single line through a much bigger object. The threat table fixes the defence at six breachers
+-- one row. The roster table fixes the enemy at eight grime -- one column. The campaign sweep compares mono-stacks.
+**No measurement in this document, taken on its own, can detect diversity in either direction**, because diversity
+lives strictly in the off-diagonals of
+
+    M[i][j] = -log B*(friendly mix i, hostile mix j)
+
+where `B*` is the *critical budget*: the smallest energy budget at which mix `i` beats hostile mix `j` half the time,
+found by bisection. Budget replaces win rate as the payoff scale because win rate has saturated -- levels 2 to 5 read
+100% at full integrity across every policy, so that entire table carries about one bit. A budget never saturates, is
+denominated in the same energy the player spends, and is approximately additive in the log, which is what makes the
+decomposition below mean something.
+
+```
+scons matrix out=res://build/matrix.jsonl
+python ../scripts/analyze_matrix.py build/matrix.jsonl
+```
+
+With no `spec=`, the matrix is every friendly mono-stack and every friendly pair against every hostile mono-stack and
+every hostile pair. A `spec=res://scenarios/matrix_smoke.json` file names the mixes explicitly, and sets the budget
+ceiling, tolerance, iteration cap and seed count.
+
+The analysis is a plain two-way decomposition, `M[i][j] = mu + a[i] + b[j] + R[i][j]`:
+
+| Term | Reads as |
+|---|---|
+| `a[i]` | Unit power. The transitive axis, and all the power formula at the top of this document can express. |
+| `b[j]` | Content difficulty. What "threat points" measures. |
+| `R[i][j]` | Matchup interaction. **This is diversity, and it is the design target.** |
+
+| Metric | Reads as | Target |
+|---|---|---|
+| `SII` = `Var(R) / (Var(a) + Var(R))` | Of the variation the roster choice explains, how much comes from *matching* rather than raw strength. Near zero means the roster is a power ladder. | >= 0.5 |
+| Effective rank | How many independent strategic axes exist. Rank 1 means one best unit per budget. | >= 2.5 |
+| Decision regret | What a pre-mission draft screen would be worth: the budget saved by knowing the enemy in advance. | 10-30% of budget |
+| Support size and usage | A unit in no argmax is a dead slot; a unit in every argmax at constant weight is an auto-include. Both are the same bug. | neither |
+| Composition premium | How much cheaper the best mix is than the best mono-stack. | >= 20% on two hostile mixes, with *different* winners |
+
+Two things the report will not let you skip. Every cell carries a seed-variance confidence interval, and a gap
+narrower than two sigma does not exist for the player either. And `--transpose` runs the same decomposition the other
+way round: composition is an *answer*, and identical questions cannot have distinct answers, so diversifying the
+friendly roster is wasted work until the hostile roster asks different things.
 
 ### Asking a one-off question
 
@@ -248,16 +300,18 @@ The loop:
 2. **Add the unit to `data/unit_data.json`** and give it animations. Nothing else is needed: the simulator reads the
    shipped catalog, so a new entry is immediately measurable.
 
-3. **Measure it against the whole hostile roster.** Add it to `FRIENDLIES` in `defn_balance_runner.cpp` and run
-   `scons balance`. Read the table for the fight you named. If it does not win that column, the stats do not match the
-   intent yet.
+3. **Measure it against the whole hostile roster.** Add it to `DEFAULT_FRIENDLIES` in `defn_balance_runner.cpp` and
+   run `scons balance`. Read the table for the fight you named. If it does not win that column, the stats do not
+   match the intent yet.
 
 4. **Check it is not dominated.** Compare its row against the others at equal energy. Losing on every axis to a
-   cheaper unit means the slot is dead. Winning on every axis means something else's slot is.
+   cheaper unit means the slot is dead. Winning on every axis means something else's slot is. `scons matrix` answers
+   this directly: a unit in no argmax is a dead slot, a unit in every argmax is an auto-include.
 
 5. **Check it does not trivialise a level.** Add it to a sweep and compare win rates and `remaining_integrity` with
    and without it unlocked. A unit that takes a level from 30% to 100% across every policy is not a new option, it is
-   a new difficulty setting.
+   a new difficulty setting. Include a `mix` policy that names it, or the sweep can only tell you whether it is the
+   most expensive thing on the roster.
 
 6. **Pin what you learned.** A test in `tests/test_sim_world.cpp` for the matchup that defines the job.
 

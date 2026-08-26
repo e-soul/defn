@@ -5,8 +5,8 @@
 
 #include "data_paths.h"
 #include "godot_string.h"
+#include "sim_engagement_lab.h"
 #include "sim_roster.h"
-#include "sim_world.h"
 #include "unit_data.h"
 
 #include <godot_cpp/classes/file_access.hpp>
@@ -22,95 +22,35 @@ namespace defn {
 
 namespace {
 
-constexpr float BELT_Y = 800.0F;
-constexpr double MAX_ENGAGEMENT_SECONDS = 180.0;
-
-// The hostile roster, and the one every threat number is expressed relative to.
+// The hostile roster, and the one every threat number is expressed relative to. Both lists are defaults: a caller
+// that wants a different slice of the catalog passes its own.
 constexpr auto BASELINE_HOSTILE = "grime";
-const std::vector<std::string> HOSTILES = {"grime", "mason", "wrecker", "jackal"};
-const std::vector<std::string> FRIENDLIES = {"breacher", "marksman", "impact", "operator"};
+const std::vector<std::string> DEFAULT_HOSTILES = {"grime", "mason", "wrecker", "jackal", "hound"};
+const std::vector<std::string> DEFAULT_FRIENDLIES = {"breacher", "marksman", "impact", "operator"};
 
-struct EngagementOutcome {
-    bool friendly_won = false;
-    double duration_seconds = 0.0;
-    int friendly_damage_taken = 0;
-    int hostiles_killed = 0;
-    int friendlies_lost = 0;
-};
-
-EngagementOutcome run_engagement_once(const SimRoster &roster, const GlobalUnitConfig &globals, const std::vector<std::string> &friendlies,
-                                      const std::vector<std::string> &hostiles, std::uint32_t seed) {
-    StdRandomSource random(seed);
-    SimWorld world(roster, globals, random);
-
-    float friendly_x = 800.0F;
-    for (const std::string &unit_id : friendlies) {
-        world.spawn(unit_id, UnitSide::FRIENDLY, {.x = friendly_x, .y = BELT_Y});
-        friendly_x -= 70.0F;
+std::vector<std::string> to_id_list(const Variant &value, const std::vector<std::string> &fallback) {
+    const Array entries = value;
+    if (entries.is_empty()) {
+        return fallback;
     }
 
-    float hostile_x = 1600.0F;
-    for (const std::string &unit_id : hostiles) {
-        world.spawn(unit_id, UnitSide::HOSTILE, {.x = hostile_x, .y = BELT_Y});
-        hostile_x += 110.0F;
+    std::vector<std::string> ids;
+    ids.reserve(entries.size());
+    for (const Variant &entry : entries) {
+        ids.push_back(to_std_string(entry));
     }
-    world.begin_run();
-
-    const SimEngagementReport report = run_engagement(world, MAX_ENGAGEMENT_SECONDS);
-
-    EngagementOutcome outcome;
-    outcome.friendly_won = report.winner.has_value() && *report.winner == UnitSide::FRIENDLY;
-    outcome.duration_seconds = report.duration_seconds;
-    for (const SimEntity &entity : world.get_entities()) {
-        if (entity.side == UnitSide::FRIENDLY) {
-            outcome.friendly_damage_taken += entity.damage_taken;
-            outcome.friendlies_lost += entity.dead ? 1 : 0;
-        } else if (entity.dead) {
-            ++outcome.hostiles_killed;
-        }
-    }
-
-    return outcome;
+    return ids;
 }
-
-struct Averaged {
-    double win_rate = 0.0;
-    double duration_seconds = 0.0;
-    double friendly_damage_taken = 0.0;
-    double hostiles_killed = 0.0;
-    double friendlies_lost = 0.0;
-};
-
-Averaged average_engagement(const SimRoster &roster, const GlobalUnitConfig &globals, const std::vector<std::string> &friendlies,
-                            const std::vector<std::string> &hostiles, int seeds) {
-    Averaged total;
-    for (int seed = 0; seed < seeds; ++seed) {
-        const EngagementOutcome outcome = run_engagement_once(roster, globals, friendlies, hostiles, static_cast<std::uint32_t>(2026 + seed));
-        total.win_rate += outcome.friendly_won ? 1.0 : 0.0;
-        total.duration_seconds += outcome.duration_seconds;
-        total.friendly_damage_taken += outcome.friendly_damage_taken;
-        total.hostiles_killed += outcome.hostiles_killed;
-        total.friendlies_lost += outcome.friendlies_lost;
-    }
-
-    const double count = std::max(seeds, 1);
-    total.win_rate /= count;
-    total.duration_seconds /= count;
-    total.friendly_damage_taken /= count;
-    total.hostiles_killed /= count;
-    total.friendlies_lost /= count;
-    return total;
-}
-
-std::vector<std::string> repeat(const std::string &unit_id, int count) { return std::vector<std::string>(static_cast<std::size_t>(count), unit_id); }
 
 } // namespace
 
 void DefnBalanceRunner::_bind_methods() { ClassDB::bind_static_method(get_class_static(), D_METHOD("measure", "args"), &DefnBalanceRunner::measure); }
 
 Dictionary DefnBalanceRunner::measure(const Dictionary &args) {
-    const int seeds = std::max(static_cast<int>(static_cast<int64_t>(args.get("seeds", 25))), 1);
+    const int seed_count = std::max(static_cast<int>(static_cast<int64_t>(args.get("seeds", 25))), 1);
     const String out_path = args.get("out", String());
+    const std::vector<std::string> hostiles = to_id_list(args.get("hostiles", Array()), DEFAULT_HOSTILES);
+    const std::vector<std::string> friendlies = to_id_list(args.get("friendlies", Array()), DEFAULT_FRIENDLIES);
 
     UnitDataLoader loader;
     if (!loader.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS)) {
@@ -121,28 +61,29 @@ Dictionary DefnBalanceRunner::measure(const Dictionary &args) {
     }
 
     SimRoster roster;
-    for (const std::string &unit_id : HOSTILES) {
+    for (const std::string &unit_id : hostiles) {
         if (const auto config = loader.get_unit(unit_id); config.has_value()) {
             roster.add(*config);
         }
     }
-    for (const std::string &unit_id : FRIENDLIES) {
+    for (const std::string &unit_id : friendlies) {
         if (const auto config = loader.get_unit(unit_id); config.has_value()) {
             roster.add(*config);
         }
     }
 
     const GlobalUnitConfig &globals = loader.get_globals();
+    const std::vector<std::uint32_t> seeds = default_seeds(seed_count);
     String report;
 
     // Threat: what the player pays per kill, which is what a threat point is trying to express. The reference has to
     // beat every hostile type and still bleed doing it -- a marksman wall out-ranges the whole roster and takes zero
     // damage, which measures nothing. Six breachers are out-ranged by everything, so they have to walk in and trade.
-    const std::vector<std::string> reference_defence = repeat("breacher", 6);
+    const ForceMix reference_defence = mono_mix("breacher", 6);
     Array threat_rows;
     double baseline_cost = 0.0;
-    for (const std::string &unit_id : HOSTILES) {
-        const Averaged result = average_engagement(roster, globals, reference_defence, repeat(unit_id, 4), seeds);
+    for (const std::string &unit_id : hostiles) {
+        const AveragedEngagement result = average_engagement(roster, globals, reference_defence, mono_mix(unit_id, 4), seeds);
         const double cost_per_kill = result.hostiles_killed > 0.0 ? result.friendly_damage_taken / result.hostiles_killed : 0.0;
         if (unit_id == BASELINE_HOSTILE) {
             baseline_cost = cost_per_kill;
@@ -172,15 +113,15 @@ Dictionary DefnBalanceRunner::measure(const Dictionary &args) {
     // Roster: what a fixed energy budget buys. Counts differ so that spend does not -- otherwise the comparison is
     // between three cheap units and three expensive ones, which says nothing about whether either is worth its cost.
     constexpr int ROSTER_ENERGY_BUDGET = 120;
-    const std::vector<std::string> reference_threat = repeat(BASELINE_HOSTILE, 8);
+    const ForceMix reference_threat = mono_mix(BASELINE_HOSTILE, 8);
     Array roster_rows;
     report += to_godot_string(std::format("\nroster: {} energy of each friendly against eight grime\n", ROSTER_ENERGY_BUDGET));
     report += "friendly  cost  bought  spent  win%   secs   hp lost  lost\n";
-    for (const std::string &unit_id : FRIENDLIES) {
+    for (const std::string &unit_id : friendlies) {
         const auto config = loader.get_unit(unit_id);
         const int unit_cost = config.has_value() ? config->cost : 0;
         const int bought = unit_cost > 0 ? std::max(ROSTER_ENERGY_BUDGET / unit_cost, 1) : 1;
-        const Averaged result = average_engagement(roster, globals, repeat(unit_id, bought), reference_threat, seeds);
+        const AveragedEngagement result = average_engagement(roster, globals, mono_mix(unit_id, bought), reference_threat, seeds);
 
         Dictionary row;
         row["unit_id"] = to_godot_string(unit_id);
@@ -209,7 +150,7 @@ Dictionary DefnBalanceRunner::measure(const Dictionary &args) {
 
     Dictionary result;
     result["success"] = true;
-    result["seeds"] = seeds;
+    result["seeds"] = seed_count;
     result["threat"] = threat_rows;
     result["roster"] = roster_rows;
     return result;

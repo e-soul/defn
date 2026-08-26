@@ -12,8 +12,11 @@ std::unique_ptr<PlayerPolicy> make_policy(const SimPolicySpec &spec) {
     if (spec.kind == "defensive") {
         return std::make_unique<DefensivePolicy>();
     }
-    if (spec.kind == "composition") {
-        return std::make_unique<CompositionPolicy>(spec.energy_reserve);
+    if (spec.kind == "patience") {
+        return std::make_unique<PatiencePolicy>(spec.energy_reserve);
+    }
+    if (spec.kind == "mix") {
+        return std::make_unique<MixPolicy>(spec.weights);
     }
 
     return std::make_unique<GreedyPolicy>();

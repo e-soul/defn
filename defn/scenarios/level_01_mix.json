@@ -1,0 +1,16 @@
+{
+  "level_id": "level_01",
+  "seed": 2026,
+  "policy": {
+    "kind": "mix",
+    "weights": {
+      "breacher": 2,
+      "marksman": 1
+    }
+  },
+  "owned_upgrades": [
+    "sharpshooter_contract"
+  ],
+  "camera": "modelled",
+  "max_seconds": 300.0
+}

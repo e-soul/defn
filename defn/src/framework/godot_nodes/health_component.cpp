@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "health_component.h"
+
+#include "damage_rules.h"
+
 #include <algorithm>
 
 namespace defn {
@@ -11,9 +14,10 @@ void HealthComponent::_bind_methods() {
     ADD_SIGNAL(MethodInfo("health_changed", PropertyInfo(Variant::INT, "current"), PropertyInfo(Variant::INT, "max")));
 }
 
-void HealthComponent::configure(int p_max_hp) {
+void HealthComponent::configure(int p_max_hp, int p_armour) {
     max_hp = p_max_hp;
     current_hp = max_hp;
+    armour = p_armour;
     emit_signal("health_changed", current_hp, max_hp);
 }
 
@@ -28,6 +32,9 @@ int HealthComponent::take_damage(int amount) {
     if (is_dead() || amount == 0) {
         return 0;
     }
+
+    // Same rule, same place in the sequence as SimWorld::take_damage. Conformance compares the two.
+    amount = damage_after_armour(amount, armour);
 
     const int previous_hp = current_hp;
     current_hp -= amount;
