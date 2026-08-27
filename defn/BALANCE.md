@@ -5,10 +5,15 @@
 Comparison formula inside each side of the roster:
 
 $$
-	ext{power} = \sqrt{\text{hp} \times \text{ranged dps}} \times \text{reach} \times \text{speed} \times \text{aoe}
+\text{power} = \sqrt{\text{hp} \times \text{ranged dps}} \times \text{reach} \times \text{speed}
 $$
 
 The multipliers should stay close to 1.0. Range and speed matter a lot, so small changes are enough.
+
+There is no `aoe` term, because there is no `aoe` field. What splash is worth depends on how tightly the *player*
+happens to be standing, so it is a free parameter of the engagement rather than a stat of the unit -- which is also
+why it is one of the few things in the game that can create a matchup rather than a ranking. Measure it; do not price
+it here.
 
 - Breacher: cheapest anchor, highest hp, shortest reach.
 - Marksman: longest range, best pick into jackal and mason.
@@ -483,7 +488,11 @@ Every row above is pinned as a test, so a rules change that moves them shows up 
 
 ## Checklist
 
-1. Compare units with the power formula, then check it against `scons balance`.
+**0. Sanity screen, before anything else:** compare units with the power formula above, then check it against
+`scons balance`. This step can only catch a unit that is obviously mispriced. The formula is a product, so it is
+scalar-valued and totally ordered, and it therefore *cannot* express a matchup however the numbers move -- it will
+never tell you whether the right answer changes with the question. Everything below is what does.
+
 1. Check that every unit still has a distinct job, and that the roster table shows it.
 1. Recompute total threat and peak 5-second spike from the measured coefficients.
 1. Re-run `scons sim scenario=res://scenarios/campaign_progression.json seeds=20` and confirm the curve still rises.
