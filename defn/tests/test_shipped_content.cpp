@@ -3,6 +3,7 @@
 
 #include "test_harness.h"
 
+#include "damage_rules.h"
 #include "data_paths.h"
 #include "sim_world.h"
 #include "unit_data.h"
@@ -77,12 +78,15 @@ std::vector<std::string> repeat(const std::string &unit_id, int total) { return 
 // The numbers are pinned because each is a design statement that nothing about `affected_fraction: 1.0` and
 // `splash_damage: 12` says out loud:
 //
-//   n=6   breacher 206 @ 4s   |   mixed 126 @ 3s   |   impact 92 @ 2s
+//   n=6   breacher 134 @ 4s   |   mixed 102 @ 3s   |   impact 92 @ 2s
 //
 // **The mason's output is set by how long it lives, not by how many bodies are in the blast.** An impact line closes
 // at 98px/s and kills it in two seconds, so it fires twice; a breacher line closes at 58 and gives it twice as long.
-// That is why the ordering is breacher > mixed > impact and why raising splash did not change the ordering: the
-// 0.5/7 roster measured 92 / 51 / 41 in the same three cells, a uniform 2.2-2.5x below these.
+// That is why the ordering is breacher > mixed > impact, and the ordering has survived two content changes that
+// moved every absolute number in it: the 0.5/7 mason measured 92 / 51 / 41 here, the 1.0/12 mason 206 / 126 / 92,
+// and the breacher's `armour: 4` then took the first two down to these by blunting splash 12 -> 8 and the direct
+// hit 10 -> 6. The impact column is untouched at 92 across that last change, because `impact` carries no armour --
+// which is the cleanest single demonstration in the suite that armour is what moved the other two.
 DEFN_TEST(shipped_mason_output_is_ordered_by_composition_not_by_body_count) {
     UnitDataLoader catalog;
     DEFN_REQUIRE(catalog.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
@@ -92,8 +96,8 @@ DEFN_TEST(shipped_mason_output_is_ordered_by_composition_not_by_body_count) {
     const MasonProbe impacts = mason_against(catalog, globals, repeat("impact", 6));
     const MasonProbe mixed = mason_against(catalog, globals, interleave("breacher", "impact", 6));
 
-    DEFN_CHECK_EQ(breachers.damage, 206);
-    DEFN_CHECK_EQ(mixed.damage, 126);
+    DEFN_CHECK_EQ(breachers.damage, 134);
+    DEFN_CHECK_EQ(mixed.damage, 102);
     DEFN_CHECK_EQ(impacts.damage, 92);
 
     // The ordering is the design; the absolutes above only pin where it currently sits. A mason that stopped caring
@@ -142,6 +146,52 @@ DEFN_TEST(shipped_marksman_answers_the_mason_for_free) {
     DEFN_REQUIRE(report.winner.has_value());
     DEFN_CHECK_EQ(static_cast<int>(*report.winner), static_cast<int>(UnitSide::FRIENDLY));
     DEFN_CHECK_EQ(total_damage_taken(world, UnitSide::FRIENDLY), 0);
+}
+
+// The armour profile, pinned as the counter-relationship it encodes rather than as four numbers.
+//
+// Armour subtracts flatly, so its value is set entirely by the *shot* it meets: it is worth little against a heavy
+// round and nearly everything against a stream of small ones. That is the only property in the catalog whose payoff
+// depends on which units are facing it, which is why it is the one lever that moved the matchup term `Var(R)` --
+// speed and health, tried on four units each, moved only the power term.
+//
+// Two relationships have to hold, and they run in opposite directions:
+//
+//   friendly armour answers volume  -- the breacher's 4 takes grime's rifle to the floor, which is what pays for
+//                                      grime's own armour on level 1, where grime is the entire threat
+//   hostile armour is answered by burst -- grime's 4 halves the operator's shot and costs the marksman a fifth of
+//                                      its own, so the marksman is the answer and the operator is the victim
+//
+// Both are breakpoints. Nothing about `4` says either of them, so they are said here.
+DEFN_TEST(shipped_armour_answers_volume_and_is_answered_by_burst) {
+    UnitDataLoader catalog;
+    DEFN_REQUIRE(catalog.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
+
+    const auto unit = [&catalog](const char *unit_id) {
+        const auto found = catalog.get_unit(unit_id);
+        DEFN_REQUIRE(found.has_value());
+        return *found;
+    };
+    const UnitConfig breacher = unit("breacher");
+    const UnitConfig marksman = unit("marksman");
+    const UnitConfig gunner = unit("operator");
+    const UnitConfig grime = unit("grime");
+
+    // A tank's armour is worth more than a sniper's, or armour is just health with extra steps.
+    DEFN_CHECK_EQ(breacher.armour, 4);
+    DEFN_CHECK_EQ(marksman.armour, 0);
+    DEFN_CHECK_EQ(grime.armour, 4);
+
+    // Friendly side: the breacher takes grime's rifle to the floor. This is the whole of the level-1 answer.
+    DEFN_CHECK_EQ(damage_after_armour(grime.ranged_damage, breacher.armour), 1);
+    DEFN_CHECK(damage_after_armour(grime.ranged_damage, marksman.armour) > damage_after_armour(grime.ranged_damage, breacher.armour));
+
+    // Hostile side: the same armour value costs the volume shooter far more of its shot than the burst one.
+    const double operator_kept = static_cast<double>(damage_after_armour(gunner.ranged_damage, grime.armour)) / gunner.ranged_damage;
+    const double marksman_kept = static_cast<double>(damage_after_armour(marksman.ranged_damage, grime.armour)) / marksman.ranged_damage;
+    DEFN_CHECK(operator_kept < 0.5);  // 6 -> 2
+    DEFN_CHECK(marksman_kept > 0.75); // 19 -> 15
+    DEFN_CHECK(marksman_kept > operator_kept * 2.0);
 }
 
 } // namespace defn
