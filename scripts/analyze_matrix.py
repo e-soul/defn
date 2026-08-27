@@ -22,13 +22,18 @@ what "threat points" measures) and the matchup interaction `R`, which is the des
     python scripts/analyze_matrix.py defn/build/matrix.jsonl --transpose   # is the content diverse?
     python scripts/analyze_matrix.py after.jsonl --baseline before.jsonl   # did a change earn its numbers?
 
-`--baseline` exists because **`SII` and the composition premium are both ratios, and a ratio improves when its
-denominator gets worse just as readily as when its numerator gets better.** Both have already been reported as wins
-here on the strength of a degradation: `SII` rose 16 points with `Var(R)` completely flat because a buff to the
-weakest unit compressed `Var(a)`; and the premium gate recorded its first PASS in a configuration where the best mix
-and the best mono had *both* got worse, the mono merely faster. Neither is visible in a single run, because in a
-single run both numbers are true. Pass a baseline and the script reports the numerator alongside the ratio, and
-refuses to count a premium column whose winning mix is itself degrading.
+**`SII` and the composition premium are both ratios, and a ratio improves when its denominator gets worse just as
+readily as when its numerator gets better.** Both have been reported as wins here on the strength of a degradation.
+The two are handled differently, because only one of them can be fixed within a single run:
+
+- **The premium decomposes, so it is fixed outright.** `log premium(j) = (a[mix] - a[mono]) + (R[mix][j] -
+  R[mono][j])`: `mu` and the column difficulty `b[j]` cancel, leaving a *level* term identical in every column and a
+  *structural* term specific to this one. Nerfing the best mono globally lands wholly in the level term, so the gate
+  counts structural columns only and needs no baseline. The `hound` column is the standing example -- a 19% raw
+  premium that is level +34% and structural -11%, which is why it never moved however the roster changed.
+- **`SII` cannot be, so it takes `--baseline`.** Whether `Var(R)` grew or `Var(a)` merely shrank is only visible
+  against a previous run, so with a baseline the script prints both terms and warns when the ratio moved and the
+  numerator did not.
 
 `--transpose` flips the sign of M as well as the axes, so that "higher is better for the row player" holds in both
 directions: forward, a row is a friendly mix and winning cheaply is good; transposed, a row is a hostile mix and
@@ -332,32 +337,19 @@ def report_depth(matrix, rows, cols):
     return saved
 
 
-def budget(matrix, row, column):
-    """The cell back in energy. `m` is a signed log, so undo both the log and the row-player sign convention."""
-    return math.exp(matrix.sign * matrix.m[(row, column)])
+def report_premium(matrix, a, residual, rows, cols, baseline=None):
+    """How much cheaper the best mix is than the best mono-stack, split into the half that means something.
 
+    The ratio on its own is the most easily faked number on the board: `best_mix(j) / best_mono(j)` has no floor under
+    it, so making the best single unit worse raises it exactly as reliably as making mixes better. But the premium
+    decomposes, and the decomposition separates the two:
 
-def drift(matrix, baseline, row, column, floor):
-    """How one cell moved against the baseline, from the row player's side.
+        log premium(j) = M[mix][j] - M[mono][j] = (a[mix] - a[mono]) + (R[mix][j] - R[mono][j])
 
-    Returns `(fraction, degraded)`, where `fraction` is the change in that row's own `B*` and `degraded` says the row
-    got worse by more than seed noise. `None` when either matrix has no such cell, which is not an error: a spec can
-    legitimately rename or drop a mix between runs.
-    """
-    key = (row, column)
-    if key not in baseline.m or key not in matrix.m:
-        return None
-    delta = matrix.m[key] - baseline.m[key]
-    return math.exp(matrix.sign * delta) - 1.0, delta < -floor
-
-
-def report_premium(matrix, rows, cols, floor, baseline=None):
-    """How much cheaper the best mix is than the best mono-stack. The most legible number for a non-analyst.
-
-    And the most easily faked. `premium = best_mix(j) / best_mono(j)` is a ratio with no floor under it, so making the
-    best single unit *worse* raises it exactly as reliably as making mixes better. A column therefore only counts as
-    **earned** when the winning mix has not itself degraded against a baseline; without one the script cannot tell,
-    and says so rather than printing a verdict it has not checked.
+    `mu` and the column difficulty `b[j]` cancel outright, leaving a **level** term -- how much stronger this mix is
+    than this mono on average, identical in every column -- and a **structural** term specific to this column. Only
+    the second is composition mattering. A globally nerfed mono lands wholly in the level term, and a column that
+    simply got harder cancels, so the structural premium is immune to both and needs no baseline to read.
     """
     monos = [i for i in rows if is_mono(matrix.weights.get(i, {}))]
     mixes = [i for i in rows if not is_mono(matrix.weights.get(i, {}))]
@@ -366,55 +358,57 @@ def report_premium(matrix, rows, cols, floor, baseline=None):
         print("  the matrix has no mono/mix pair to compare; add mixed rows to the spec")
         return
 
-    print(f"{'hostile mix':<24} {'best mono':>16} {'B*':>6} {'best mix':>22} {'B*':>6} {'premium':>9}")
+    print(f"{'hostile mix':<22} {'best mono':>14} {'best mix':>20} {'total':>7} {'level':>7} {'structural':>11}")
     winners = set()
-    clearing = []
+    structural_columns = 0
+    total_clearing = 0
     for j in cols:
         best_mono = max(monos, key=lambda i: matrix.m[(i, j)])
         best_mix = max(mixes, key=lambda i: matrix.m[(i, j)])
-        premium = math.exp(matrix.m[(best_mix, j)] - matrix.m[(best_mono, j)]) - 1.0
-        if premium >= PREMIUM_TARGET:
-            clearing.append((j, best_mono, best_mix))
+        total = math.exp(matrix.m[(best_mix, j)] - matrix.m[(best_mono, j)]) - 1.0
+        level = math.exp(a[best_mix] - a[best_mono]) - 1.0
+        structural = math.exp(residual[(best_mix, j)] - residual[(best_mono, j)]) - 1.0
+        total_clearing += total >= PREMIUM_TARGET
+        earned = structural >= PREMIUM_TARGET
+        if earned:
+            structural_columns += 1
             winners.add(best_mix)
-        print(f"{j:<24} {best_mono:>16} {budget(matrix, best_mono, j):>6.0f} "
-              f"{best_mix:>22} {budget(matrix, best_mix, j):>6.0f} {premium * 100:>8.0f}%")
+        print(f"{j:<22} {best_mono:>14} {best_mix:>20} {total * 100:>6.0f}% {level * 100:>+6.0f}% "
+              f"{structural * 100:>+10.0f}%{'   <-- earned' if earned else ''}")
 
-    print(f"  columns clearing {PREMIUM_TARGET * 100:.0f}%: {len(clearing)}, with {len(winners)} distinct winner(s)")
-    if len(clearing) >= 2 and len(winners) < 2:
+    ok = structural_columns >= 2 and len(winners) >= 2
+    print(f"  columns whose *structural* premium clears {PREMIUM_TARGET * 100:.0f}%: {structural_columns}, "
+          f"with {len(winners)} distinct winner(s)   {_verdict(ok)}")
+    if total_clearing != structural_columns:
+        print(f"  (the raw ratio clears in {total_clearing} column(s), the structural half in {structural_columns}. The two")
+        print("   differ wherever the level term carries a column, or cancels one the structure has earned.)")
+    if structural_columns >= 2 and len(winners) < 2:
         print("  one mix wins every fight: that is a recipe, not a decision")
 
-    if baseline is None:
-        print("  no --baseline given, so no column here can be shown to be *earned* rather than the best single")
-        print("  answer having got worse. The gate is not decided without one.")
-        return
+    if baseline is not None:
+        _report_premium_drift(matrix, baseline, monos, mixes, cols)
 
-    if clearing:
-        print("\n  did the winning mix earn it, or did the best single answer get worse?")
-    earned_winners = set()
-    earned = 0
-    degraded_columns = 0
-    for j, best_mono, best_mix in clearing:
-        mix_drift = drift(matrix, baseline, best_mix, j, floor)
-        if mix_drift is None:
-            print(f"    {j:<22} {best_mix:<22} not in the baseline; cannot judge")
+
+def _report_premium_drift(matrix, baseline, monos, mixes, cols):
+    """Absolute cost of each column's winning mix against the baseline.
+
+    Not part of the verdict -- the structural premium already strips level effects, and this is a *difficulty*
+    reading, not a structural one. It is printed because a change can raise the structural premium while making every
+    answer more expensive, and whether that is acceptable is a design call rather than a gate.
+    """
+    moved = []
+    for j in cols:
+        best_mix = max(mixes, key=lambda i: matrix.m[(i, j)])
+        if (best_mix, j) not in baseline.m:
             continue
-        mono_drift = drift(matrix, baseline, best_mono, j, floor)
-        mono_note = f", best mono {mono_drift[0] * 100:+.0f}%" if mono_drift else ""
-        change, degraded = mix_drift
-        if degraded:
-            degraded_columns += 1
-            print(f"    {j:<22} {best_mix:<22} its own B* moved {change * 100:+.0f}%{mono_note}   NOT EARNED")
-        else:
-            earned += 1
-            earned_winners.add(best_mix)
-            print(f"    {j:<22} {best_mix:<22} its own B* moved {change * 100:+.0f}%{mono_note}   earned")
-
-    ok = earned >= 2 and len(earned_winners) >= 2
-    print(f"  columns clearing {PREMIUM_TARGET * 100:.0f}% *and* earned: {earned}, "
-          f"with {len(earned_winners)} distinct winner(s)   {_verdict(ok)}")
-    if degraded_columns:
-        print("  a dropped column is one whose winning mix is itself worse off than it was in the baseline: the")
-        print("  ratio rose because the denominator fell, not because anything improved.")
+        change = math.exp(matrix.sign * (matrix.m[(best_mix, j)] - baseline.m[(best_mix, j)])) - 1.0
+        if abs(change) >= 0.05:
+            moved.append((j, best_mix, change))
+    if not moved:
+        return
+    print("\n  and what those winning mixes now cost against the baseline (difficulty, not structure):")
+    for j, best_mix, change in moved:
+        print(f"    {j:<22} {best_mix:<20} its own B* moved {change * 100:+.0f}%")
 
 
 def _verdict(passed):
@@ -467,7 +461,7 @@ def main():
     report_difficulty(matrix, b, complete_rows, complete_cols)
     report_diversity(matrix, a, residual, complete_rows, complete_cols, baseline)
     report_depth(matrix, complete_rows, complete_cols)
-    report_premium(matrix, complete_rows, complete_cols, floor, baseline)
+    report_premium(matrix, a, residual, complete_rows, complete_cols, baseline)
     return 0
 
 

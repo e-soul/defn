@@ -243,8 +243,9 @@ python ../scripts/analyze_matrix.py build/matrix.jsonl --baseline build/matrix_b
 The third form is the one to use when judging a change rather than taking a reading. `SII` and the composition
 premium are both ratios, and both can be moved by making the denominator worse instead of the numerator better --
 flattening the roster rather than creating a matchup, or nerfing the best single unit rather than improving mixes.
-With a baseline the script prints `Var(R)` next to `SII`, warns when the ratio moved without it, and counts a premium
-column only if the mix that won it has not itself got more expensive.
+The premium report splits each column into a **level** half (this mix is stronger everywhere) and a **structural**
+half (this mix answers *this* column), and the gate counts only the structural half; that needs no baseline. `SII`
+does: with one the script prints `Var(R)` beside it and warns when the ratio moved and the numerator did not.
 
 With no `spec=`, the matrix is every friendly mono-stack and every friendly pair against every hostile mono-stack and
 every hostile pair. A `spec=res://scenarios/matrix_smoke.json` file names the mixes explicitly, and sets the budget
