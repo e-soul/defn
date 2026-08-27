@@ -257,7 +257,7 @@
       "ranged_attack_period_seconds": 0.3,
       "ranged_attack_range": 380.0,
       "move_speed_pixels_per_second": 84.0,
-      "cost": 25,
+      "cost": 20,
       "bounty": 0,
       "scale": 0.27,
       "sprite_flip_h": false,
