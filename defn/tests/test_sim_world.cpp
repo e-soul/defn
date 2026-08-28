@@ -796,7 +796,7 @@ DEFN_TEST(sim_world_measures_marksman_clearing_three_grime) {
 }
 
 // The same breacher against the same count of a different threat. Masons kill it about 1.4 times faster than grime
-// do, which is the threat ratio BALANCE.md already estimates -- now measured rather than guessed.
+// do -- the threat ratio the design used to estimate, now measured rather than guessed.
 DEFN_TEST(sim_world_measures_breacher_losing_faster_to_three_mason_than_to_three_grime) {
     const SimEngagementReport versus_grime = run_versus_three("breacher", "grime");
     const SimEngagementReport versus_mason = run_versus_three("breacher", "mason");

@@ -42,13 +42,13 @@ Build and run both suites together: `scons test_all godot_bin=path/to/godot_exec
 
 Measure the two roster tables: `scons balance`
 
-Measure the payoff matrix of critical budgets, then decompose it: `scons matrix out=res://build/matrix.jsonl` followed by `python scripts/analyze_matrix.py defn/build/matrix.jsonl`. Pass `spec=res://scenarios/<file>.json` to name the compositions and `seeds=<n>` to change the seed count.
+Measure the payoff matrix of critical budgets, then decompose it: `scons matrix out=res://build/matrix.jsonl` followed by `python scripts/analyze_matrix.py defn/build/matrix.jsonl`. Pass `spec=res://scenarios/<file>.json` to name the compositions, `seeds=<n>` to change the seed count, and `--baseline before.jsonl` when judging a change rather than taking a reading.
 
-When judging a change, pass the previous matrix as `--baseline`: `python scripts/analyze_matrix.py after.jsonl --baseline before.jsonl`. Both `SII` and the composition premium are ratios, so either can be improved by making its denominator worse rather than its numerator better. The premium report splits each column into a level half and a structural half and gates on the structural one, which needs no baseline; `SII` is reported next to `Var(R)`, which does.
+Play whole matches headless: `scons sim scenario=res://scenarios/<file>.json seeds=<n> out=res://build/sweep.jsonl` followed by `python scripts/aggregate_sim.py defn/build/sweep.jsonl`.
 
-Because both runs use the same seed list, `--baseline` is a *paired* comparison: cells are differenced seed by seed, so the seed noise the two runs share cancels rather than adding. It resolves changes several times smaller than two independent means can, and it reports per row whether a shift was the same size in every column (a level move, absorbed into `a[i]`) or varied by column (structural, the only kind that can reach `Var(R)`).
+Check that the simulation kernel still agrees with the game: `scons conformance`. It runs as part of `scons test_all`.
 
-Every gated number also carries a bootstrap interval over resampled seeds, `--bootstrap N` to change the replicate count or `--bootstrap 0` to skip. The dead-slot count is reported both on the strict argmax and on rows inside the noise floor of a column's winner; the second is the one to gate on, because the strict count is discontinuous and cannot fall below `max(rows - columns, 0)` however good the design is.
+The balance and diversity instruments are documented in [defn/BALANCE_TOOLING.md](defn/BALANCE_TOOLING.md); what they currently say is in [defn/DIVERSITY_AND_BALANCE.md](defn/DIVERSITY_AND_BALANCE.md), and the model behind them in [defn/DIVERSITY_MODEL.md](defn/DIVERSITY_MODEL.md).
 
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
 

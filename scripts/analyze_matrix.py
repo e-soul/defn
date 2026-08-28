@@ -523,7 +523,7 @@ def report_paired_cells(matrix, baseline, rows, cols, floor=0.0):
         print(f"{i:<24} {shift:>+11.3f} {error:>7.3f} {structural:>14.3f}  {reads}")
     print("  a shift identical in every column is a level move and lands wholly in a[i]; only a shift that varies")
     print("  by column can reach Var(R). The structural sd is the column-to-column spread of the shift with the")
-    print("  seed noise taken back out, so it is zero for a pure level move. Cost is that pure case (see 1.7).")
+    print("  seed noise taken back out, so it is zero for a pure level move. Cost is that pure case.")
     if floor > 0.0:
         print(f"  'under the floor' means the spread is real but smaller than the {floor:.3f} noise floor the gates")
         print("  are read at, so it is below the resolution of every verdict above.")

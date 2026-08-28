@@ -293,9 +293,9 @@ DEFN_TEST(pursuit_never_pulls_a_unit_out_of_a_contact_it_is_already_in) {
 
 // The hound's catalog numbers, pinned as a pair, because neither is meaningful without the other. `aggro_range: 600`
 // against a `melee_attack_range` of 128 is the whole dive: it has to see a sniper from well outside contact to have
-// anything to decline. And both are read against the *friendly line's* spacing -- at the engagement lab's 70px default
+// anything to decline. And both are read against the *friendly line's* spacing -- at the lab's original 70px spacing
 // the back rank is already inside 128px when the front rank is, so there is no backline to reach and the mechanism
-// measures as a flat null. See 2.11.
+// measures as a flat null. See `BALANCE_TOOLING.md`.
 DEFN_TEST(the_hound_senses_a_sniper_far_outside_the_reach_it_kills_with) {
     constexpr float HOUND_AGGRO_RANGE = 600.0F;
     constexpr float HOUND_MELEE_RANGE = 128.0F;

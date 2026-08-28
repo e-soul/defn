@@ -396,7 +396,7 @@ integrity across every policy, and a saturated scale ranks nothing. Budget never
 energy the player actually spends, and `log B*` is approximately additive, which is what makes decomposing a matrix
 of these numbers mean anything.
 
-`DefnBalanceRunner` answers the two roster questions `BALANCE.md` used to estimate -- what one hostile costs the
+`DefnBalanceRunner` answers the two roster questions the design used to estimate -- what one hostile costs the
 player, and what one friendly buys for its energy -- by running each unit against a fixed reference force and
 averaging over seeds. The reference is the whole method: it has to beat every hostile and still bleed doing it, or the
 measurement silently reports zero.

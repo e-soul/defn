@@ -24,7 +24,8 @@ GameplayRules make_belt_rules(const GameplayRules &rules, const LevelDefinition 
     return adjusted;
 }
 
-// The most enemies that appeared inside any five-second window, which is the spike density BALANCE.md tunes against.
+// The most enemies that appeared inside any five-second window, which is the spike density levels are tuned against.
+// See `DIVERSITY_AND_BALANCE.md`, "Keeping a level honest".
 int peak_spawn_window(const std::vector<double> &spawn_times) {
     int peak = 0;
     for (std::size_t start = 0; start < spawn_times.size(); ++start) {

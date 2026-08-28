@@ -70,10 +70,10 @@ std::vector<std::string> repeat(const std::string &unit_id, int total) { return 
 
 // The mason's job, measured against **three** friendly compositions rather than one, out of the shipped catalog.
 //
-// Measuring it against a breacher line alone -- which is what every earlier probe did, including the table in
-// `DIVERSITY_AND_BALANCE.md` 2.13.1 -- reads its best matchup and calls it the unit. The `impact` line is the same
-// count of a faster, cheaper-to-lose unit, and the mixed line is the interleave of the two. Geometry, spacing, count
-// and seed are identical across all three, so composition is the only variable.
+// Measuring it against a breacher line alone -- which is what every earlier probe did -- reads its best matchup and
+// calls it the unit. The `impact` line is the same count of a faster, cheaper-to-lose unit, and the mixed line is the
+// interleave of the two. Geometry, spacing, count and seed are identical across all three, so composition is the only
+// variable.
 //
 // The numbers are pinned because each is a design statement that nothing about `affected_fraction: 1.0` and
 // `splash_damage: 12` says out loud:

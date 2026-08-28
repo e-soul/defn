@@ -47,7 +47,7 @@ struct LabSetup {
     // Spacing must stay **wider than the largest melee reach in the game** (128px), or the lab has no notion of a
     // back rank: a unit arriving at the front rank finds the second rank already in contact, so anything that means
     // to walk past the first to reach the second has nothing to walk past. The original 70px was chosen for a purely
-    // ranged, 1-D roster and silently measured every positional mechanic as a flat null. See 2.11.
+    // ranged, 1-D roster and silently measured every positional mechanic as a flat null. See `BALANCE_TOOLING.md`.
     float friendly_spacing = 200.0F;
     float hostile_front_x = 1600.0F;
     float hostile_spacing = 110.0F;

@@ -12,8 +12,8 @@ namespace defn {
 
 using namespace godot;
 
-// Measures the two roster numbers BALANCE.md has so far had to estimate: what one hostile costs the player, and what
-// one friendly buys for its energy.
+// Measures the two roster numbers the design used to estimate: what one hostile costs the player, and what one
+// friendly buys for its energy.
 //
 // Both are answered by putting the unit under test against a fixed reference force in the combat lab and averaging
 // over seeds, so the attack-range variation each spawn draws is smoothed out rather than pinned away. The reference
