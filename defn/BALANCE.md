@@ -1,5 +1,9 @@
 # Balance Strategy
 
+> For the maths behind the measurement -- what the payoff matrix is, why the power formula below cannot express a
+> matchup, and what `SII`, regret and the composition premium actually compute -- see
+> [`DIVERSITY_MODEL.md`](DIVERSITY_MODEL.md).
+
 ## Unit Budget
 
 Comparison formula inside each side of the roster:
