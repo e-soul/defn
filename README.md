@@ -46,6 +46,10 @@ Measure the payoff matrix of critical budgets, then decompose it: `scons matrix 
 
 When judging a change, pass the previous matrix as `--baseline`: `python scripts/analyze_matrix.py after.jsonl --baseline before.jsonl`. Both `SII` and the composition premium are ratios, so either can be improved by making its denominator worse rather than its numerator better. The premium report splits each column into a level half and a structural half and gates on the structural one, which needs no baseline; `SII` is reported next to `Var(R)`, which does.
 
+Because both runs use the same seed list, `--baseline` is a *paired* comparison: cells are differenced seed by seed, so the seed noise the two runs share cancels rather than adding. It resolves changes several times smaller than two independent means can, and it reports per row whether a shift was the same size in every column (a level move, absorbed into `a[i]`) or varied by column (structural, the only kind that can reach `Var(R)`).
+
+Every gated number also carries a bootstrap interval over resampled seeds, `--bootstrap N` to change the replicate count or `--bootstrap 0` to skip. The dead-slot count is reported both on the strict argmax and on rows inside the noise floor of a column's winner; the second is the one to gate on, because the strict count is discontinuous and cannot fall below `max(rows - columns, 0)` however good the design is.
+
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
 
 Create a native release archive from the repository root: `python scripts/build.py --platform windows` or `python scripts/build.py --platform linux`.
