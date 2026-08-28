@@ -8,6 +8,7 @@
 #include "sim_world.h"
 #include "unit_data.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,39 @@ std::vector<std::string> interleave(const std::string &first, const std::string 
 }
 
 std::vector<std::string> repeat(const std::string &unit_id, int total) { return std::vector<std::string>(static_cast<std::size_t>(total), unit_id); }
+
+// One friendly against three hostiles in a line. The geometry is the native suite's old probe, kept so the two are
+// comparable; what changed is that the units are now the shipped ones rather than a hand-written copy of them.
+struct LineProbe {
+    bool resolved = false;
+    std::optional<UnitSide> winner;
+    int friendly_alive = 0;
+    int friendly_hp_remaining = 0;
+    int friendly_damage_dealt = 0;
+    int hostile_alive = 0;
+    int hostile_damage_dealt = 0;
+    double seconds = 0.0;
+};
+
+LineProbe three_against(const UnitCatalog &catalog, const GlobalUnitConfig &globals, const std::string &friendly_id, const std::string &hostile_id) {
+    StdRandomSource random(2026U);
+    SimWorld world(catalog, globals, random);
+
+    world.spawn(friendly_id, UnitSide::FRIENDLY, {.x = FRIENDLY_FRONT_X, .y = BELT_Y});
+    world.spawn(hostile_id, UnitSide::HOSTILE, {.x = 1500.0F, .y = BELT_Y});
+    world.spawn(hostile_id, UnitSide::HOSTILE, {.x = 1650.0F, .y = BELT_Y});
+    world.spawn(hostile_id, UnitSide::HOSTILE, {.x = 1800.0F, .y = BELT_Y});
+
+    const SimEngagementReport report = run_engagement(world, 60.0);
+    return {.resolved = report.resolved,
+            .winner = report.winner,
+            .friendly_alive = report.friendly.alive,
+            .friendly_hp_remaining = report.friendly.hp_remaining,
+            .friendly_damage_dealt = report.friendly.damage_dealt,
+            .hostile_alive = report.hostile.alive,
+            .hostile_damage_dealt = report.hostile.damage_dealt,
+            .seconds = report.duration_seconds};
+}
 
 } // namespace
 
@@ -192,6 +226,72 @@ DEFN_TEST(shipped_armour_answers_volume_and_is_answered_by_burst) {
     DEFN_CHECK(operator_kept < 0.5);  // 6 -> 2
     DEFN_CHECK(marksman_kept > 0.75); // 19 -> 15
     DEFN_CHECK(marksman_kept > operator_kept * 2.0);
+}
+
+// The smallest question the engagement lab exists to answer: how does one roster entry fare against a known threat?
+//
+// It is pinned here, against the real catalog, because the native suite answered it **backwards** for as long as it
+// answered it at all. That suite cannot read `res://`, so it carried a hand-written roster which omitted `armour` --
+// and armour is the whole of this matchup. Grime's rifle does 5, so the breacher's 4 takes it to the floor of 1 and
+// three grime need four hundred shots to bring it down; the marksman carries no armour, takes the full 5 from each,
+// and dies with two of them still standing.
+//
+// So this is the level-1 answer stated as an outcome rather than as a damage formula: **the cheap anchor is the
+// counter to massed grime and the expensive sniper is not**, which is the reverse of what the old pins asserted.
+//
+// The breacher's match runs to 57.3s against a 60s cap. If a rules change pushes it past, this fails on `resolved`
+// rather than on the winner -- read that as the cap running out, not as the breacher losing.
+DEFN_TEST(shipped_breacher_answers_three_grime_and_the_marksman_does_not) {
+    UnitDataLoader catalog;
+    DEFN_REQUIRE(catalog.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
+    const GlobalUnitConfig &globals = catalog.get_globals();
+
+    const LineProbe breacher = three_against(catalog, globals, "breacher", "grime");
+    const LineProbe marksman = three_against(catalog, globals, "marksman", "grime");
+
+    DEFN_REQUIRE(breacher.resolved);
+    DEFN_REQUIRE(breacher.winner.has_value());
+    DEFN_CHECK_EQ(static_cast<int>(*breacher.winner), static_cast<int>(UnitSide::FRIENDLY));
+    DEFN_CHECK_EQ(breacher.hostile_alive, 0);
+    DEFN_CHECK_EQ(breacher.friendly_damage_dealt, 288); // three grime at 96 each, with nothing wasted on overkill
+    DEFN_CHECK_EQ(breacher.friendly_hp_remaining, 227); // and it clears them on more than half its pool
+    DEFN_CHECK_CLOSE(breacher.seconds, 57.3, 1.0);
+
+    DEFN_REQUIRE(marksman.resolved);
+    DEFN_REQUIRE(marksman.winner.has_value());
+    DEFN_CHECK_EQ(static_cast<int>(*marksman.winner), static_cast<int>(UnitSide::HOSTILE));
+    DEFN_CHECK_EQ(marksman.friendly_alive, 0);
+    DEFN_CHECK_EQ(marksman.hostile_alive, 2); // it trades itself for exactly one of them
+    DEFN_CHECK_CLOSE(marksman.seconds, 12.7, 1.0);
+
+    // The comparison is the design statement; the absolutes above only pin where it currently sits.
+    DEFN_CHECK(breacher.seconds > marksman.seconds * 3.0);
+}
+
+// The same breacher against the same count of a different threat. It clears both, so the comparable number is what
+// each one charged it: the mason takes roughly twice the health and settles the fight in half the time, because
+// splash 12 against armour 4 still lands 8 where grime's rifle lands the floor of 1. The threat ratio the design
+// used to estimate, measured -- and measured against a mason the breacher can actually be hurt by.
+DEFN_TEST(shipped_mason_costs_the_breacher_twice_what_grime_does) {
+    UnitDataLoader catalog;
+    DEFN_REQUIRE(catalog.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
+    const GlobalUnitConfig &globals = catalog.get_globals();
+
+    const LineProbe versus_grime = three_against(catalog, globals, "breacher", "grime");
+    const LineProbe versus_mason = three_against(catalog, globals, "breacher", "mason");
+
+    DEFN_REQUIRE(versus_grime.winner.has_value());
+    DEFN_REQUIRE(versus_mason.winner.has_value());
+    DEFN_CHECK_EQ(static_cast<int>(*versus_grime.winner), static_cast<int>(UnitSide::FRIENDLY));
+    DEFN_CHECK_EQ(static_cast<int>(*versus_mason.winner), static_cast<int>(UnitSide::FRIENDLY));
+
+    DEFN_CHECK_EQ(versus_grime.hostile_damage_dealt, 173);
+    DEFN_CHECK_EQ(versus_mason.hostile_damage_dealt, 336);
+    DEFN_CHECK(static_cast<double>(versus_mason.hostile_damage_dealt) > static_cast<double>(versus_grime.hostile_damage_dealt) * 1.5);
+
+    // And it gets there in half the time, off a body carrying 82hp against grime's 96.
+    DEFN_CHECK_CLOSE(versus_mason.seconds, 30.4, 1.0);
+    DEFN_CHECK(versus_mason.seconds < versus_grime.seconds);
 }
 
 } // namespace defn

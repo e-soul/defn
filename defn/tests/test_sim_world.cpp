@@ -68,52 +68,28 @@ GlobalUnitConfig make_globals() {
     return globals;
 }
 
-// The shipped roster.
-SimRoster make_shipped_roster() {
+// A two-sided fixture with enough asymmetry to make a long, eventful engagement: a durable short-ranged anchor
+// against faster raiders that out-range it. The numbers are the fixture's own. The native suite cannot read
+// `res://`, so nothing here is a claim about shipped content -- those live in `test_shipped_content.cpp`, where the
+// real catalog is available and a pin cannot quietly drift away from it.
+SimRoster make_duel_roster() {
     SimRoster roster;
 
-    UnitConfig breacher = make_unit("breacher", UnitSide::FRIENDLY, 400, 15);
-    breacher.melee_attack_range = 128.0F;
-    breacher.ranged_damage = 8;
-    breacher.ranged_attack_period_seconds = 0.72;
-    breacher.ranged_attack_range = 245.0F;
-    breacher.move_speed_pixels_per_second = 58.0F;
-    roster.add(breacher);
+    UnitConfig anchor = make_unit("anchor", UnitSide::FRIENDLY, 400, 15);
+    anchor.melee_attack_range = 128.0F;
+    anchor.ranged_damage = 8;
+    anchor.ranged_attack_period_seconds = 0.72;
+    anchor.ranged_attack_range = 245.0F;
+    anchor.move_speed_pixels_per_second = 58.0F;
+    roster.add(anchor);
 
-    UnitConfig marksman = make_unit("marksman", UnitSide::FRIENDLY, 180, 15);
-    marksman.melee_attack_range = 128.0F;
-    marksman.ranged_damage = 19;
-    marksman.ranged_attack_period_seconds = 1.05;
-    marksman.ranged_attack_range = 650.0F;
-    marksman.move_speed_pixels_per_second = 74.0F;
-    roster.add(marksman);
-
-    UnitConfig grime = make_unit("grime", UnitSide::HOSTILE, 95, 15);
-    grime.melee_attack_range = 128.0F;
-    grime.ranged_damage = 5;
-    grime.ranged_attack_period_seconds = 0.62;
-    grime.ranged_attack_range = 345.0F;
-    grime.move_speed_pixels_per_second = 72.0F;
-    roster.add(grime);
-
-    UnitConfig mason = make_unit("mason", UnitSide::HOSTILE, 82, 15);
-    mason.melee_attack_range = 128.0F;
-    mason.ranged_damage = 10;
-    mason.ranged_attack_period_seconds = 1.0;
-    mason.ranged_attack_range = 400.0F;
-    mason.move_speed_pixels_per_second = 48.0F;
-    mason.projectile_attack = ProjectileAttackConfig{
-        .speed_pixels_per_second = 1800.0F,
-        .splash_radius = 140.0F,
-        .affected_fraction = 1.0F,
-        .min_affected_targets = 1,
-        .spawn_animation_frame = 2,
-        .affected_target_rounding = SplashTargetRoundingMode::NEAREST,
-        .include_direct_target = true,
-        .impact_damage = 10,
-        .splash_damage = 12,
-    };
-    roster.add(mason);
+    UnitConfig raider = make_unit("raider", UnitSide::HOSTILE, 95, 15);
+    raider.melee_attack_range = 128.0F;
+    raider.ranged_damage = 5;
+    raider.ranged_attack_period_seconds = 0.62;
+    raider.ranged_attack_range = 345.0F;
+    raider.move_speed_pixels_per_second = 72.0F;
+    roster.add(raider);
 
     return roster;
 }
@@ -353,7 +329,7 @@ DEFN_TEST(sim_world_carries_a_role_preference_and_aggro_range_from_the_catalog) 
 }
 
 DEFN_TEST(sim_world_refuses_to_spawn_an_unknown_unit) {
-    SimRoster roster = make_shipped_roster();
+    SimRoster roster = make_duel_roster();
     StdRandomSource random(1U);
     SimWorld world(roster, make_globals(), random);
 
@@ -365,16 +341,23 @@ DEFN_TEST(sim_world_refuses_to_spawn_an_unknown_unit) {
 }
 
 DEFN_TEST(sim_world_spawns_a_unit_that_shoots_projectiles) {
-    SimRoster roster = make_shipped_roster();
+    SimRoster roster;
+    ProjectileAttackConfig projectile;
+    projectile.speed_pixels_per_second = 1800.0F;
+    projectile.splash_radius = 140.0F;
+    projectile.impact_damage = 10;
+    projectile.splash_damage = 12;
+    roster.add(make_lobber("lobber", UnitSide::HOSTILE, projectile));
+
     StdRandomSource random(1U);
     SimWorld world(roster, make_globals(), random);
 
-    const SimSpawnResult result = world.spawn("mason", UnitSide::HOSTILE, {.x = 0.0F, .y = BELT_Y});
+    const SimSpawnResult result = world.spawn("lobber", UnitSide::HOSTILE, {.x = 0.0F, .y = BELT_Y});
 
     DEFN_REQUIRE(result.succeeded());
-    const SimEntity *mason = world.find_entity(result.id);
-    DEFN_REQUIRE(mason != nullptr);
-    DEFN_CHECK(mason->projectile_attack.has_value());
+    const SimEntity *lobber = world.find_entity(result.id);
+    DEFN_REQUIRE(lobber != nullptr);
+    DEFN_CHECK(lobber->projectile_attack.has_value());
 }
 
 DEFN_TEST(sim_world_resolves_a_melee_duel_by_the_numbers) {
@@ -727,12 +710,12 @@ DEFN_TEST(sim_world_measures_the_splash_tax_on_a_clustered_group) {
 
 DEFN_TEST(sim_world_replays_identically_from_the_same_seed) {
     const auto run = [](uint32_t seed) {
-        SimRoster roster = make_shipped_roster();
+        SimRoster roster = make_duel_roster();
         StdRandomSource random(seed);
         SimWorld world(roster, make_globals(), random);
-        world.spawn("breacher", UnitSide::FRIENDLY, {.x = 1000.0F, .y = BELT_Y});
-        world.spawn("grime", UnitSide::HOSTILE, {.x = 1400.0F, .y = BELT_Y});
-        world.spawn("grime", UnitSide::HOSTILE, {.x = 1550.0F, .y = BELT_Y});
+        world.spawn("anchor", UnitSide::FRIENDLY, {.x = 1000.0F, .y = BELT_Y});
+        world.spawn("raider", UnitSide::HOSTILE, {.x = 1400.0F, .y = BELT_Y});
+        world.spawn("raider", UnitSide::HOSTILE, {.x = 1550.0F, .y = BELT_Y});
         return run_engagement(world, 60.0);
     };
 
@@ -744,73 +727,6 @@ DEFN_TEST(sim_world_replays_identically_from_the_same_seed) {
     DEFN_CHECK_EQ(first.friendly.hp_remaining, second.friendly.hp_remaining);
     DEFN_CHECK_EQ(first.friendly.damage_dealt, second.friendly.damage_dealt);
     DEFN_CHECK_EQ(first.hostile.damage_dealt, second.hostile.damage_dealt);
-}
-
-namespace {
-
-// The lab question Phase 2 exists to answer: how does one roster entry actually fare against a known threat?
-SimEngagementReport run_versus_three(const std::string &unit_id, const std::string &hostile_id) {
-    SimRoster roster = make_shipped_roster();
-    StdRandomSource random(2026U);
-    SimWorld world(roster, make_globals(), random);
-
-    world.spawn(unit_id, UnitSide::FRIENDLY, {.x = 1000.0F, .y = BELT_Y});
-    world.spawn(hostile_id, UnitSide::HOSTILE, {.x = 1500.0F, .y = BELT_Y});
-    world.spawn(hostile_id, UnitSide::HOSTILE, {.x = 1650.0F, .y = BELT_Y});
-    world.spawn(hostile_id, UnitSide::HOSTILE, {.x = 1800.0F, .y = BELT_Y});
-
-    return run_engagement(world, 60.0);
-}
-
-SimEngagementReport run_versus_three_grime(const std::string &unit_id) { return run_versus_three(unit_id, "grime"); }
-
-} // namespace
-
-// Measured, not assumed: the cheapest anchor is not an answer to three grime. It trades two for itself and leaves the
-// third alive on most of its health. Pinning it here turns a balance fact into a regression test on the combat rules.
-DEFN_TEST(sim_world_measures_breacher_losing_to_three_grime) {
-    const SimEngagementReport report = run_versus_three_grime("breacher");
-
-    DEFN_CHECK(report.resolved);
-    DEFN_REQUIRE(report.winner.has_value());
-    DEFN_CHECK_EQ(static_cast<int>(*report.winner), static_cast<int>(UnitSide::HOSTILE));
-    DEFN_CHECK_EQ(report.friendly.alive, 0);
-    DEFN_CHECK_EQ(report.hostile.alive, 1);
-    DEFN_CHECK_EQ(report.hostile.damage_dealt, 400); // exactly the breacher's health pool
-    DEFN_CHECK_CLOSE(report.duration_seconds, 24.9, 1.0);
-}
-
-// The long-range pick clears the same threat without moving a pixel: it engages at 650 and the grime stall at 345.
-DEFN_TEST(sim_world_measures_marksman_clearing_three_grime) {
-    const SimEngagementReport report = run_versus_three_grime("marksman");
-
-    DEFN_CHECK(report.resolved);
-    DEFN_REQUIRE(report.winner.has_value());
-    DEFN_CHECK_EQ(static_cast<int>(*report.winner), static_cast<int>(UnitSide::FRIENDLY));
-    DEFN_CHECK_EQ(report.friendly.alive, 1);
-    DEFN_CHECK_EQ(report.hostile.alive, 0);
-    DEFN_CHECK_EQ(report.friendly.damage_dealt, 285); // three grime, killed with overkill on the last blow of each
-    DEFN_CHECK(report.friendly.hp_remaining > 0);
-    DEFN_CHECK(report.friendly.hp_remaining < 90); // it survives, but on under half its health
-    DEFN_CHECK_CLOSE(report.duration_seconds, 14.7, 1.0);
-}
-
-// The same breacher against the same count of a different threat. Masons kill it about 1.4 times faster than grime
-// do -- the threat ratio the design used to estimate, now measured rather than guessed.
-DEFN_TEST(sim_world_measures_breacher_losing_faster_to_three_mason_than_to_three_grime) {
-    const SimEngagementReport versus_grime = run_versus_three("breacher", "grime");
-    const SimEngagementReport versus_mason = run_versus_three("breacher", "mason");
-
-    DEFN_REQUIRE(versus_grime.winner.has_value());
-    DEFN_REQUIRE(versus_mason.winner.has_value());
-    DEFN_CHECK_EQ(static_cast<int>(*versus_grime.winner), static_cast<int>(UnitSide::HOSTILE));
-    DEFN_CHECK_EQ(static_cast<int>(*versus_mason.winner), static_cast<int>(UnitSide::HOSTILE));
-
-    // Both kill the breacher outright, so the comparable number is how long it lasted and how much it took with it.
-    DEFN_CHECK_CLOSE(versus_mason.duration_seconds, 17.7, 1.0);
-    DEFN_CHECK(versus_mason.duration_seconds < versus_grime.duration_seconds);
-    DEFN_CHECK_EQ(versus_grime.hostile.alive, 1); // the breacher trades itself for two grime
-    DEFN_CHECK_EQ(versus_mason.hostile.alive, 2); // but only for one mason
 }
 
 DEFN_TEST(sim_world_reports_an_undecided_run_when_the_clock_runs_out) {

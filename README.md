@@ -48,7 +48,7 @@ Play whole matches headless: `scons sim scenario=res://scenarios/<file>.json see
 
 Check that the simulation kernel still agrees with the game: `scons conformance`. It runs as part of `scons test_all`.
 
-The balance and diversity instruments are documented in [defn/BALANCE_TOOLING.md](defn/BALANCE_TOOLING.md); what they currently say is in [defn/DIVERSITY_AND_BALANCE.md](defn/DIVERSITY_AND_BALANCE.md), and the model behind them in [defn/DIVERSITY_MODEL.md](defn/DIVERSITY_MODEL.md).
+The balance and diversity instruments are documented in [defn/BALANCE_TOOLING.md](defn/BALANCE_TOOLING.md); what they currently say is in [defn/DIVERSITY_AND_BALANCE.md](defn/DIVERSITY_AND_BALANCE.md), and the model behind them in [defn/DIVERSITY_MODEL.md](defn/DIVERSITY_MODEL.md). Every measured change, shipped or reverted, is logged in [defn/EXPERIMENT_LOG.md](defn/EXPERIMENT_LOG.md).
 
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
 

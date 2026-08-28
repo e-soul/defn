@@ -319,8 +319,9 @@ const SimEngagementReport report = run_engagement(world, 60.0);
 `tests/test_sim_world.cpp` is full of these. Pin the ones that matter: a measurement written down as a test fails when
 a rules change moves it, which is how a balance fact stops rotting.
 
-> **Put anything composition-sensitive in the hosted suite, not the native one.** The native suite cannot read
-> `res://`, so its `make_shipped_roster` is a hand-written copy of `unit_data.json` that nothing enforces and that has
-> already drifted — it omits `target_preference` among other fields, so a mixed-line pin written against it would
-> measure which unit was closest rather than which was weakest. `tests/test_shipped_content.cpp` is the pattern to
-> copy.
+> **Put anything that reads shipped stats in the hosted suite, not the native one.** The native suite cannot read
+> `res://`, so everything in it is a fixture and nothing in it is a claim about the catalog. It used to carry a
+> `make_shipped_roster`, a hand-written copy of `unit_data.json` that nothing enforced, and the copy drifted: it
+> omitted `armour` entirely, which silently **inverted** every matchup pinned against it — a breacher that beats
+> three grime in the game lost to them there, and a marksman that loses won. Those pins now live in
+> `tests/test_shipped_content.cpp`, which reads the real catalog and is the pattern to copy.
