@@ -14,6 +14,77 @@ against the baseline, decomposed both ways, unless the entry says otherwise.
 
 ---
 
+## 2026-08-28 — Giving the lab an economy: measured, then reverted
+
+**Reverted. The finding is kept and the code is not.** No content changed.
+
+Every matrix here is a *set-piece*: `allocate_budget` spends a lump sum and the whole friendly force stands on the
+belt at `t=0`. The player never receives a budget that way. `MatchSession::tick_energy` pays one energy per second,
+`record_enemy_died` pays a bounty back, and friendly costs are 20–27, so a composition is **delivered over a minute
+or more**, not fielded. A `B*` of 120 is 76 seconds of income at level 1.
+
+A prototype added three `LabSetup` fields modelling the discipline a player actually uses — bank until contact,
+commit the bank at once, then buy the next unit of the planned line as income and bounties allow. The mix bought at a
+given `B*` was identical either way and every unit kept its rank, so the two labs differed in *when a unit arrived*
+and nothing else. Six 51-seed matrices, paired.
+
+### What it found
+
+1. **Cost is a level lever only because the lab hands over a lump.** The one result worth the whole exercise. Same
+   `operator` 20 → 25, both labs, 51 seeds, paired, on the fifteen columns fully bounded in both:
+
+   | lab | `breacher+operator` shift | structural sd |
+   |---|---|---|
+   | lump sum | −0.099 | 0.012 (under the floor) |
+   | timed | −0.188 | **0.172** (structural) |
+
+   Fourteen times the column-to-column spread. The lump lab reproduces the published figure exactly (mono shift
+   −0.214 against a predicted −0.223, spread 0.006), so it is the economy, not a rebuild. **In the game a price is
+   also a delay, and a delay is conditional on what it is late against.** The supporting row does not survive the
+   same check — `marksman+operator` reads 0.026 lump against 0.021 timed — so this rests on one clean row plus the
+   `operator` mono row ceasing to be measurable at cost 25 at all.
+2. **`Var(R)` rose on every reading and the size was never resolved.** +0.0112 [+0.0088, +0.0139] across all cells,
+   +0.0011 (about +4%) on the sub-rectangle where every seed is bounded in both runs. The gap is censored cells, and
+   the rows that lose their reading are exactly the rows that censor (`marksman` 0.124 → 0.013).
+3. **Two explanations for that censoring were wrong, and both were cheap to falsify.** Not the clock: 117 censored
+   runs re-measured at a 1200s cap instead of 300s came back identical in kills, losses *and* damage taken — 117 of
+   117, no damage at all in the extra fifteen minutes. Not the ceiling: `impact` vs `jackal` reads win rates 0.00,
+   0.00, 0.13, 0.07, 0.20 at ceilings of 120 to 400.
+4. **The real cause is that the lab has no base.** `SimWorld::move` clamps a friendly at `world_width - margin` but
+   decrements a hostile's x with no lower bound, and targeting is forward-only, so a hostile that gets past the line
+   walks away for ever and neither side can re-acquire. In the game it would hit the base; here the engagement never
+   resolves, is recorded as undecided, and so reads as a loss at every budget. **This is true of the lump-sum lab
+   too** — it just almost never triggers, because the whole line is present at `t=0`. A timed line leaks constantly,
+   because the opening commitment is thin. It is the same forward-only problem as open problem 7.
+
+### Why it was reverted
+
+Not because it was wrong — because of what it would cost the instrument. The decomposition attributes everything it
+cannot explain to `R`, and the whole project reads `R` as *"the right answer changes with the question"*. An economy
+in the same instrument puts tempo, leaks and matchup into that one number. Fixing the censoring properly means a
+base, leak damage, `deploy_x` instead of fixed ranks, and a policy choosing between defence and pressure — at which
+point it is `scons sim` rebuilt in a second kernel, and two engagement models that are supposed to agree is the
+`make_shipped_roster` failure at a larger scale.
+
+**`scons matrix` measures composition. `scons sim` measures the game.** Keeping that line is worth more than the
+`Var(R)` this would have added.
+
+### What is now known, and does not depend on the code
+
+- **`scons matrix` cannot rank anything time-sensitive, and a price is the clearest case.** Validate repricings in
+  `scons sim`. Recorded against the cost section of [`DIVERSITY_AND_BALANCE.md`](DIVERSITY_AND_BALANCE.md).
+- **Raising `scons sim`'s resolution (open problem 4) is what closes that gap** — not a better matrix lab.
+- **A leaked hostile is unreachable for ever, and the lab silently reports it as an undecided run.** Rare today; it
+  would become the dominant failure of any future lab where friendlies arrive over time.
+- **Re-run any structural verdict on the uncensored sub-rectangle before believing its size.** A cell censored on
+  some seeds contributes only the seeds it won, which both truncates its shift and adds column-to-column spread that
+  reads as structure. Half the headline here was that.
+- **Suspect a mechanism you have not tested, however well it fits.** "The clock is the limit" fitted every censored
+  run sitting at exactly the cap, and was wrong. So was the ceiling. Both took one pass over existing JSONL or one
+  re-run to kill.
+
+---
+
 ## 2026-08-28 — The native "shipped" roster was not the shipped roster
 
 **No content change. An instrument correction — and it inverts two facts this suite had recorded as measured.**

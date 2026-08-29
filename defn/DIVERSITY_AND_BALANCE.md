@@ -94,6 +94,19 @@ Two consequences worth acting on:
 - **Repricing cannot create one either**, and it fakes `SII` more easily than any other lever, purely as a denominator
   effect. A cost cut also *lowers* regret, because cheapening the weakest row flattens the roster.
 
+> **All of this is a fact about the lab, and it does not transfer to the game.** The proof depends on the budget
+> arriving as a lump, so that cost decides only how many the budget buys. In the game energy arrives at one per
+> second, so a cost is also a *delay* — a 27-cost marksman is 27 seconds of tempo — and a delay pays differently
+> against an enemy that punishes arriving piecemeal than against one that does not. Measured once, with a throwaway
+> lab that delivered the same line out of a bank plus income: the same `operator` 20 → 25 that shifts
+> `breacher+operator` uniformly here (structural sd **0.012**, under the floor) shifts it by column there
+> (**0.172**, fourteen times the spread), on the same fifteen columns, 51 seeds, paired. **Price is a level lever
+> only for as long as the instrument hands the player the whole purse at once.**
+>
+> So: `scons matrix` cannot rank a price change against anything time-sensitive. **Validate repricings in
+> `scons sim`**, which has the clock, the bounties and the base. See the entry of 2026-08-28 in
+> [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md) for the measurement and for why the lab was left alone.
+
 The one exception is small: a *mix* row is not immune, because cheaper `u` buys more `u` for the same energy share and
 the realised composition drifts. Measured on `marksman+operator`, the per-column spread of the shift is 0.010 to
 0.060 — four to twelve times the mono row's, and still under the floor the gates are read at.
@@ -369,14 +382,27 @@ to a real level, where hostiles arrive over time and strung out, and the lab mod
 all. Doing it properly means widening the spacing **and** retuning against the new baseline, as one deliberate piece
 of work.
 
-**6. Divers bypass tanks completely, and nothing stops them.** Combat and movement are forward-only, so once a diver
+**6. The lab has no clock, so it cannot see tempo — and that is deliberate.** Every number above comes from a
+set-piece in which the friendly force is already standing on the belt, because the budget was handed over as a lump.
+The player never receives one that way: energy arrives at one per second, bounties pay back on kills, and a
+composition is *delivered* over a minute rather than fielded. A throwaway lab that modelled this raised `Var(R)` on
+every reading taken, and reclassified `cost` from a level lever to a structural one (above). It was **not** kept: the
+decomposition attributes everything it cannot explain to `R`, so an economy in the same instrument would put tempo,
+leaks and matchup into one number and call the total diversity. The realistic instrument already exists and is
+`scons sim`.
+
+What this costs, and it is a standing cost rather than a bug: **anything whose value depends on arriving early is
+invisible here**, and a price is the clearest case. Judge those in `scons sim` — which makes raising its resolution
+(problem 4) the thing that closes this gap, not another lab.
+
+**7. Divers bypass tanks completely, and nothing stops them.** Combat and movement are forward-only, so once a diver
 crosses a tank's x they are permanently invisible to each other, and `threat_weight` cannot help because a gunless
 unit never reads it. The breacher's counter to a hound — it wins in contact, 7.3s against 16s — disappears the moment
 the hound stops stopping. The counter-puncher taxes the pass rather than blocking it, which is the only answer that
 exists today. The hostile side also has no `TANK`, so a future friendly diver would have nothing to decline on its way
 to a jackal: the two dives are not symmetric.
 
-**7. Two game-feel changes are unreviewed on screen.** The retarget margin — ranged units now re-ask every tick and
+**8. Two game-feel changes are unreviewed on screen.** The retarget margin — ranged units now re-ask every tick and
 switch when a candidate beats the current target by 25%, where they previously held a target for as long as it stayed
 reachable — and `impact` fighting in melee. The hound and its dive have been played and approved. The rusher in level
 1 is a difficulty decision rather than a measurement result and is awaiting a play test: `DefensivePolicy` banks
