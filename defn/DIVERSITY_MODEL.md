@@ -226,6 +226,14 @@ what you lose by not knowing in advance what you would know in hindsight.
 The target is a **band — roughly 10% to 30%** — and the upper bound is the interesting half. Below the band the
 choice is decoration. Above it, a wrong choice is an unrecoverable loss, which reads as unfair rather than deep.
 
+> **Regret is a comparison against the blind pick, so it also rises when the blind pick gets worse.** It is read
+> first precisely because it is not a ratio, but it shares the weakness in a subtler form: buffing a row that
+> *already* wins columns, while the best fixed choice does not contain it, widens the gap mechanically. The decision
+> did not get richer; the default got relatively worse. Measured on the `marksman` at period 0.95, where regret rose
+> 14.0% → 15.8% resolved and `Var(R)` rose too, while **every one of the fifteen columns kept the winner it already
+> had** — the blind mix is `breacher+operator`, which carries no marksman. **A regret gain is only a result if the
+> set of per-column winners actually changed; check that table before believing it.**
+
 ### Dead slots and auto-includes
 
 A composition is a **dead slot** if it is never the best answer to any enemy: it has no job. Its mirror image is an

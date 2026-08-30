@@ -14,6 +14,124 @@ against the baseline, decomposed both ways, unless the entry says otherwise.
 
 ---
 
+## 2026-08-30 — Marksman rate of fire, swept: structure that moves no answers
+
+**Not shipped; `ranged_attack_period_seconds` stays at 1.05.** Six points swept, 51 seeds each, paired.
+
+Started as a diagnosis of a local edit — marksman period 1.05 → 1.38 with `cost` 31 → 30 — and turned into the
+sweep, because the two levers could not be separated while the catalog itself was wrong. See the entry below on the
+stat stowaways; every number here is measured at the intended catalog, `hp` 180 and `cost` 27.
+
+**Hypothesis.** Rate of fire ought to be structural. The marksman's whole relationship to a hostile is the *free
+approach window* — `(650 − where it stops) / its speed` of unanswered fire — and that window holds a different
+number of shots for each hostile, so a period change should be worth different amounts in different columns.
+
+### Result
+
+| period | `Var(R)` | `Var(a)` | `SII` | regret | dead | premium | mono shift | structural sd |
+|---|---|---|---|---|---|---|---|---|
+| 0.85 | 0.0374 | 0.0312 | 0.545 | 13.9% | 3 | 3/3 | +0.159 | 0.154 |
+| 0.95 | **0.0390** | 0.0232 | 0.627 | 15.8% | 3 | 3/3 | +0.067 | 0.101 |
+| **1.05 (shipped)** | 0.0367 | 0.0212 | 0.634 | 14.0% | 3 | 3/3 | — | — |
+| 1.15 | 0.0365 | 0.0205 | 0.640 | 12.4% | 3 | 3/3 | −0.031 | 0.052 |
+| 1.25 | 0.0367 | 0.0205 | 0.642 | 11.7% | 3 | 3/3 | −0.096 | 0.125 |
+| 1.38 | 0.0352 | 0.0211 | 0.626 | 9.9% MISS | 3 | 5/3 | −0.170 | 0.135 |
+
+The hypothesis is confirmed on classification and refuted on value. Every point reads `structural`, and the
+column-to-column spread is **as large as the mean shift or larger** — 79% to 168% of it, against roughly 2% for
+`cost`. On the test this project has used since the beginning, that is the most structural lever measured.
+
+It buys nothing. `Var(R)` spans 0.0352 to 0.0390 across a 62% swing in fire rate; only 0.95 is a resolved gain
+(+0.0023, 100%), and 1.38 is resolved the wrong way. The dead-slot count is **3 at every point**, never moving,
+only swapping identity (`operator` below 1.25, `marksman+operator` above).
+
+**0.95 was written up as a candidate and then withdrawn, which is the entry.** `Var(R)` 0.0390 is higher than any
+value previously recorded here, and regret rose 14.0% → 15.8% resolved — the two numbers `How to judge a change`
+says to read first, both moving the right way, neither a ratio. Then the winner-by-column table:
+
+| | 1.05 | 0.95 | 0.85 |
+|---|---|---|---|
+| `breacher` | 3 columns | 3 | **1** |
+| `breacher+marksman` | 4 | 4 | **6** |
+| `breacher+operator` | 3 | 3 | 3 |
+| `marksman` | 3 | 3 | 3 |
+| `marksman+impact` | 1 | 1 | 1 |
+| `impact+operator` | 1 | 1 | 1 |
+| distinct winners | 6 | 6 | 6 |
+
+**Not one of the fifteen columns changes hands at 0.95.** The residual grew; no matchup resolved differently. The
+regret rise has a mechanism that is worth naming on its own: the blind-best mix is `breacher+operator`, which
+carries no marksman, so buffing the marksman widens the gap between the default and the marksman-bearing column
+winners automatically. The decision did not get richer — the default got relatively worse.
+
+At 0.85 columns genuinely do change hands, and it is the failure mode: the blind-best mix itself becomes
+`breacher+marksman`, taking 6 of 15 while `breacher` collapses 3 → 1, `Var(a)` +47%, `SII` 0.545. The doc's own
+warning — a conditional buff reads as raw power when given to a unit that is already strong — with the
+qualification that in the lab the marksman is *not* strong: at cost 27 its mono row sits seventh of ten at
+`a[i]` = 0.019. Its in-game dominance is survival-shaped (it out-ranges the roster, takes zero from a mason, does
+not die) and `a[i]` is power per energy.
+
+### What is now known
+
+- **Structural classification is necessary, not sufficient.** The rule "a lever moves `Var(R)` iff its worth depends
+  on what it is facing" needs a qualifier: the dependence must differ in **sign or saturation**, not merely in
+  magnitude. Rate of fire is worth more against everything, just differently more, so its spread lands back in
+  `a[i]` and in the size of the residual — never in an argmax.
+- **Diff the winner-by-column table before believing any headline.** It is the only reading that separates "the
+  residual got bigger" from "the answer changed", it costs nothing, and here it contradicted `Var(R)`, regret and
+  the structural classification simultaneously.
+- **Regret is not immune to the denominator problem.** It is not a ratio, which is why it is read first, but it is a
+  comparison against the blind pick and inflates when that pick gets relatively worse. Recorded in
+  [`DIVERSITY_MODEL.md`](DIVERSITY_MODEL.md).
+- **The period's response is saturating, one-sided and quantised**, so no single pair of readings characterises it:
+  a dead zone from 1.05 to 1.25 where four of five columns move by exactly nothing, a mason column that is saturated
+  on the fast side (+0% at every speed-up), and a breakpoint at 1.38 where five free approach shots at 19 damage
+  stop killing an 82hp mason before contact. Damage taken from six masons runs 0 → 60 → 214 → **0** across
+  1.05/1.15/1.25/1.38 — the invariant erodes at constant budget, then is bought back by spending 49% more.
+- **A rate change is not a way to tune a level.** It moves all 150 matrix cells and every marksman cell in the tempo
+  lab to adjust one mission. Hostile volume in the level's own spawn table is the local lever; that is what levels
+  are tuned with.
+
+---
+
+## 2026-08-30 — Two stat stowaways, and the catalog the doc was measured at
+
+**Fixed by reverting the value; nothing else changed.** Found while diagnosing the rate sweep above.
+
+The scoreboard in [`DIVERSITY_AND_BALANCE.md`](DIVERSITY_AND_BALANCE.md) did not reproduce against `HEAD`: measured
+`SII` 0.653, regret 10.8%, `Var(a)` 0.0195, 2 friendly dead slots against a documented 0.633 / 14.0% / 0.0212 / 3.
+The doc was not stale. Two commits about other things had each carried a marksman stat:
+
+| commit | subject | stowaway |
+|---|---|---|
+| `c460d0c` | Fix animation transitions. | `hp` 180 → **580** |
+| `a2d1c13` | Fix export presets. | `hp` restored, `cost` 27 → **31** |
+
+Rebuilding the intended catalog (`hp` 180, `cost` 27, period 1.05) reproduced the scoreboard **exactly** — 0.634,
+14.0%, 0.0367, 0.0212, 3 dead, premium 3/3, every bootstrap interval matching.
+
+The cost stowaway is a textbook pure price move in the matrix — every marksman row `structural, under the floor`,
+`Var(R)` +0.0001 — and it still cost **regret 14.0% → 10.8%**, resolved, most of the margin above the band's floor.
+In the tempo lab, where price is not a level lever, four energy did this to the marksman mono's critical purse:
+
+| | rush | spike | grind | escalation |
+|---|---|---|---|---|
+| intended (27) | 66 | 100 | **26** | 62 |
+| `HEAD` (31) | 82 | 143 | **56** | 75 |
+
+### What is now known
+
+- **The scoreboard is a regression test that nobody runs.** It reproduces to three decimals and to the bootstrap
+  interval when the catalog is right, so a mismatch means the catalog moved — diff it against the last commit that
+  touched balance deliberately before concluding the document needs an update.
+- **`hp` 580 should have failed `shipped_breacher_answers_three_grime_and_the_marksman_does_not`**, which existed at
+  that commit; a 580hp marksman does not die at 12.7s to three grime. That commit went in red and the next one
+  healed it by accident. Nothing pinned `cost` at all.
+- **A one-line catalog value can be a large regression in an instrument the matrix cannot see.** +4 energy reads as
+  a harmless level move in the decomposition and as a 2.2x critical purse on the grind.
+
+---
+
 ## 2026-08-30 — The tempo lab, measured as a critical purse
 
 **Shipped.** `bisect=yes` on `scons sim`, `scripts/analyze_tempo.py`, three hosted tests.

@@ -15,6 +15,7 @@
         {"time": 6.2, "type": "grime"},
         {"time": 6.7, "type": "hound"},
         {"time": 7.3, "type": "mason"},
+        {"time": 7.7, "type": "hound"},
         {"time": 8.4, "type": "grime"}
       ]
     },
@@ -25,6 +26,7 @@
         {"time": 24.6, "type": "wrecker"},
         {"time": 25.7, "type": "mason"},
         {"time": 26.2, "type": "hound"},
+        {"time": 26.3, "type": "hound"},
         {"time": 26.8, "type": "grime"},
         {"time": 27.9, "type": "wrecker"}
       ]
@@ -38,6 +40,8 @@
         {"time": 47.2, "type": "hound"},
         {"time": 47.7, "type": "grime"},
         {"time": 48.6, "type": "mason"},
+        {"time": 48.7, "type": "hound"},
+        {"time": 49, "type": "hound"},
         {"time": 49.8, "type": "wrecker"}
       ]
     },

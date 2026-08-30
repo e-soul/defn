@@ -15,6 +15,11 @@ python scripts/analyze_matrix.py defn/build/matrix.jsonl
 python scripts/analyze_matrix.py defn/build/matrix.jsonl --transpose
 ```
 
+It reproduces exactly — to three decimals and to the bootstrap interval — so **treat this table as a regression test
+on the catalog**. When a fresh run disagrees, diff `data/unit_data.json` against the last commit that touched
+balance deliberately before concluding the document is stale; twice now the difference has been a unit stat riding
+along in a commit about something else.
+
 ---
 
 ## The scoreboard
@@ -63,6 +68,7 @@ worth the same amount against every column is absorbed entirely by that row's le
 | `move_speed`, `hp` | level only | Tried on four units each; moved `Var(R)` by nothing while moving `a[i]` more than any other stat. |
 | **`cost`** | **level only, provably** | See below. |
 | Reach (hostile out-ranges) | structure, wrong sign | The largest structural change of any lever, but it *flattened* the matrix and halved regret. Reverted. |
+| **`ranged_attack_period`** | **structure that buys nothing** | Column spread larger than the mean shift itself — more structural in shape than any other lever — yet swept 0.85 to 1.38 it never changes which mix answers which column. See below. |
 | Target preference (hostile) | none | Null. Hostile strength is set by bulk and reach, not by choice of target. |
 | Target preference (friendly), aggro weight, minimum range | none alone | Inert until a rusher existed to enter the dead zone and reach the front rank first. |
 | Shot-count rounding | none | Null. Overkill changes kill speed, and the dominant unit's budget was survival-bound. |
@@ -110,6 +116,56 @@ Two consequences worth acting on:
 The one exception is small: a *mix* row is not immune, because cheaper `u` buys more `u` for the same energy share and
 the realised composition drifts. Measured on `marksman+operator`, the per-column spread of the shift is 0.010 to
 0.060 — four to twelve times the mono row's, and still under the floor the gates are read at.
+
+### Rate of fire is the opposite of cost, and buys just as little
+
+`ranged_attack_period` is the most structurally *shaped* lever measured here and one of the least productive, which
+makes it the standing counter-example to reading a structural classification as a result. Swept on the `marksman` at
+its shipped price, 51 seeds per point, paired against 1.05:
+
+| period | `Var(R)` | `Var(a)` | regret | dead | mono shift | structural sd | sd / shift |
+|---|---|---|---|---|---|---|---|
+| 0.85 | 0.0374 | 0.0312 | 13.9% | 3 | +0.159 | 0.154 | 97% |
+| 0.95 | **0.0390** | 0.0232 | 15.8% | 3 | +0.067 | 0.101 | 151% |
+| **1.05 (shipped)** | 0.0367 | 0.0212 | 14.0% | 3 | — | — | — |
+| 1.15 | 0.0365 | 0.0205 | 12.4% | 3 | −0.031 | 0.052 | 168% |
+| 1.25 | 0.0367 | 0.0205 | 11.7% | 3 | −0.096 | 0.125 | 130% |
+| 1.38 | 0.0352 | 0.0211 | 9.9% MISS | 3 | −0.170 | 0.135 | 79% |
+
+**The column-to-column spread is as large as the average move, or larger** — against roughly 2% for `cost`, the pure
+level case. By the test at the top of this section it is emphatically structural. And it buys nothing: a 62% swing in
+fire rate moves `Var(R)` from −4% to +6%, never changes the dead-slot count, and — the reading that settles it — **at 0.95 all
+fifteen columns keep the winner they had at 1.05**, six distinct winners before and after. The residual grew without
+one matchup resolving differently.
+
+Push it far enough and the change is real but is the failure mode, not the goal: at 0.85 the blind-best mix itself
+becomes `breacher+marksman`, which takes 6 of 15 columns while `breacher` collapses from 3 to 1, and `Var(a)` rises
+47%. Concentration, not diversity.
+
+The response is also **saturating, one-sided and quantised**, which is why no single pair of readings characterises
+it. Marksman mono budget by column, against 1.05:
+
+| period | grime | mason | wrecker | jackal | hound |
+|---|---|---|---|---|---|
+| 0.85 | −33% | **+0%** | −26% | −26% | −23% |
+| 0.95 | −13% | **+0%** | −12% | −14% | −2% |
+| 1.15 | +0% | +0% | +0% | +1% | +0% |
+| 1.25 | +0% | +0% | +0% | +6% | +0% |
+| 1.38 | +0% | **+49%** | +7% | +16% | +6% |
+
+- **1.05 to 1.25 is a dead zone**: four of five columns move by exactly nothing. The marksman can be slowed 19% and
+  the matrix cannot see it.
+- **The mason column is saturated on the fast side** and is where all the structure comes from there — the marksman
+  already kills a mason before it can answer, so extra rate is worth nothing against it and a great deal elsewhere.
+- **1.38 is a breakpoint, not a slope.** Five free approach shots at 19 damage kill an 82hp mason before contact;
+  four do not. Damage taken from six masons goes 0 → 60 → 214 → **0** across 1.05/1.15/1.25/1.38: the invariant
+  erodes at constant budget, then is bought back by spending 49% more on more marksmen.
+
+> **A lever can be structural in shape and still move no answers.** The rule at the top of this section is
+> necessary, not sufficient: the payoff has to differ across columns in *sign or saturation*, not merely in
+> magnitude. Rate of fire is worth more against everything, just differently more — so the spread it creates lands
+> back in `a[i]` and in the residual's size, never in an argmax. **Check the winner-by-column table before believing
+> a `Var(R)` gain**; it costs nothing and it is the only reading that distinguishes the two.
 
 ### Archetypes buy diversity; numbers do not
 
@@ -294,6 +350,7 @@ Kept because a negative result costs the same to measure as a positive one and i
 | `wrecker` plating (`damage_cap`) | Armour's inverse — a per-hit ceiling, so it punishes burst where armour punishes rate. Buys `Var(R)` resolvedly at every setting swept, and pays for it in hostile dead slots at roughly one for one: +0.0026 `Var(R)` costs +3.8 dead, and the one setting costing nothing resolvable buys +1%. Not under-payment — at a setting where the wrecker's own row shift is −0.007 the regression is still +2.4. The mechanic concentrates hostile strength into the 5 wrecker rows, which were already the strong end. **The mechanic is wired and tested but carried by no unit**; re-aim it at `mason` or `grime`, where concentrating a weak row is a gain. See the entry of 2026-08-29 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
 | `operator` plating (`damage_cap: 14`) | **Measured through both gates; not shipped.** The same mechanic on a friendly carrier, where hostile damage is spread (grime 5, mason 10, wrecker 13, jackal 18, hound melee 20) so a cap is an anti-`jackal`/anti-`hound` stat rather than a single-unit dial. `Var(R)` +0.0017 resolved, both regrets in band, hostile side untouched, and it lands **five times harder on `operator` than on `breacher+operator`** — the row inversion every previous operator lever failed to get. Costs: `marksman+impact` takes the operator's place on the dead list, and the premium's zero margin is spent. And then, once the campaign gate could see an operator at all, **nothing happened there**: ±2 cells of 125 on the two policies that buy one, net −1 over 750 paired runs, with the other four at exactly +0. Improves no gate and softens two. See 2026-08-29 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
 | `mason` plating (`damage_cap`) | The carrier test for the row above, and it confirms it: cap 12 on the mason costs nothing resolvable in dead slots where the same value on the wrecker costs +3.3, and cap 10 *buys* 2.8 of them — hostile dead 5 of 15 down to **2**, the lowest recorded. But `Var(R)` falls resolvedly at every setting (−7.6% to −23%) and cap 10 takes friendly regret out of band at 9.9%. The marksman is the mason's one clean answer; plating blunts it, so the sharpest matchup in the matrix is what pays. See 2026-08-29 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
+| `marksman` `ranged_attack_period` 0.85 / 0.95 / 1.15 / 1.25 / 1.38 | **The whole range measured; 1.05 stands.** 0.95 looked like the best result on the board — `Var(R)` 0.0390, higher than anything recorded here, regret 14.0% -> 15.8%, both resolved, neither a ratio — and **all fifteen columns kept the winner they already had**. 1.38 takes regret out of band and lowers `Var(R)`; 0.85 makes `breacher+marksman` the blind-best mix and 6 of 15 columns while `breacher` falls to 1. Dead slots are 3 at every point. See above and the entry of 2026-08-30 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
 | Hostile spacing 110 -> 200px | Hostile regret 14.5% -> 8.8% MISS and the premium falls to 1 column, in exchange for one hostile dead row. The mechanism is the *marksman's* reach, not melee reach: six hostiles at 110px span 550px and are engaged all at once, at 200px they span 1000px and are engaged piecemeal. Open question rather than a rejected change — see below. |
 
 ---
@@ -303,6 +360,13 @@ Kept because a negative result costs the same to measure as a positive one and i
 1. **`scons conformance`** — mandatory on anything touching combat, movement, or frame order.
 2. **`scons matrix` before and after, at 51 seeds**, decomposed **both ways**. Read **regret first, then `Var(R)`,
    then `SII` and the premium**: the last two are ratios and both can be moved by making the denominator worse.
+   Regret is not immune either — buffing a row that already wins columns inflates it against a blind pick that does
+   not contain that row, with nothing else changing.
+
+   Then **diff the winner-by-column table**, which is the only reading that separates "the residual got bigger" from
+   "the answer changed". Every number above is a summary and all of them can move while each question keeps the
+   answer it had: the marksman rate sweep moved `Var(R)` *and* regret resolvedly, in the right directions, with all
+   fifteen winners unchanged. **If no column changed hands, no diversity was bought, whatever the headlines say.**
 3. **Always pass `--baseline`** and read the paired block. A delta whose interval spans zero is not a result. Check
    the per-row `level` / `structural` classification before believing a lever did what you wanted — if the rows read
    `level`, the lever is a price however it is spelled.
