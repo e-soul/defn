@@ -93,9 +93,10 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     // config's, because a melee-only unit carries -1 there and would end up sensing nothing at all.
     entity.detection_radius = std::max(config->aggro_range, resolved.ranged_attack_range);
     entity.projectile_attack = config->projectile_attack;
-    // AnimationController::get_muzzle_global_position resolves to owner->to_global(offset), and the unit's transform
-    // carries its sprite scale.
-    entity.muzzle_offset = {.x = config->muzzle.offset.x * config->scale, .y = config->muzzle.offset.y * config->scale};
+    // AnimationController::get_muzzle_global_position resolves to owner->to_global(the anchor), and the unit's
+    // transform carries its sprite scale.
+    const Vector2 anchor = muzzle_anchor(*config);
+    entity.muzzle_offset = {.x = anchor.x * config->scale, .y = anchor.y * config->scale};
     entity.move_speed_pixels_per_second = config->move_speed_pixels_per_second;
     entity.combat_enabled = profile.enable_combat;
     entity.movement_enabled = profile.enable_movement;

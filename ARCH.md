@@ -303,6 +303,16 @@ Target combat flow:
 
 Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. Animation timing is owned by `UnitAnimationState`, an engine-free model of which animation is current and how far its `AnimationClock` has run, built from the `AnimConfig` a unit declares. It answers whether an attack or shoot animation is on screen, whether it is still inside its `windup_frames`, and when a shot leaves the muzzle; those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. `AnimationController` owns one such state and is pure presentation around it: the `AnimatedSprite2D` never runs an animation of its own, it is parked on whichever frame the state has reached. The frame index therefore remains the single source of truth for what the player sees, the same index is available without Godot, and the simulator drives the identical code rather than a second copy of it.
 
+Where a clip is drawn is separate from when. The sprite packs crop every animation to its own bounding box, so a
+centered frame parks the *canvas* on the unit's origin rather than the *character*, and switching clips jumps the body
+by the difference in padding. Each `AnimConfig` therefore carries an `offset`, in unscaled texture pixels, measured
+against the unit's `idle` clip -- which is the reference and always zero. `AnimationController` applies it to the
+`AnimatedSprite2D` and mirrors its x with the facing, because Godot mirrors the texture inside an unmoved destination
+rect rather than moving the rect. The muzzle flash hangs off the unit rather than off the sprite and so does not
+inherit the correction; `muzzle_anchor` folds the shoot clip's offset in, and both `AnimationController` and `SimWorld`
+read that one function so the game and the kernel cannot disagree about where a shot starts. The offsets are measured
+by `scripts/gen_anim_offsets.py`, not authored by hand.
+
 Projectile flight is `ProjectileFlight`, an engine-free straight line at a fixed speed toward a position captured when
 the shot left the muzzle. There is no homing, so a target that keeps walking is missed by the blast -- though the direct
 target still takes impact damage, which `resolve_projectile_impact` applies by identity rather than by proximity.

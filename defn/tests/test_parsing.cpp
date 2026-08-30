@@ -84,10 +84,21 @@ Dictionary make_unit_data() {
     shoot_animation["path_template"] = "res://operator_shoot_%03d.png";
     shoot_animation["frame_count"] = 8;
     shoot_animation["windup_frames"] = 12;
+    Array shoot_offset;
+    shoot_offset.push_back(-9);
+    shoot_offset.push_back(4);
+    shoot_animation["offset"] = shoot_offset;
     Dictionary animations;
     animations["idle"] = idle_animation;
     animations["shoot"] = shoot_animation;
     friendly["animations"] = animations;
+    Dictionary muzzle_flash;
+    muzzle_flash["path_template"] = "res://muzzle_%03d.png";
+    Array muzzle_offset;
+    muzzle_offset.push_back(200);
+    muzzle_offset.push_back(-10);
+    muzzle_flash["offset"] = muzzle_offset;
+    friendly["muzzle_flash"] = muzzle_flash;
     Dictionary projectile_attack;
     projectile_attack["speed_pixels_per_second"] = 180.0;
     projectile_attack["affected_target_rounding"] = "ceil";
@@ -617,10 +628,18 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_REQUIRE(idle != friendly->animations.end());
     DEFN_CHECK_EQ(idle->second.path_template, std::string("res://operator_idle_%03d.png"));
     DEFN_CHECK_EQ(idle->second.windup_frames, 3);
+    // A clip that names no anchor correction is centered, which is what every unit's reference clip wants.
+    DEFN_CHECK_CLOSE(idle->second.offset.x, 0.0F, 0.000001);
+    DEFN_CHECK_CLOSE(idle->second.offset.y, 0.0F, 0.000001);
     const auto shoot = std::ranges::find_if(friendly->animations, [](const auto &animation) { return animation.first == "shoot"; });
     DEFN_REQUIRE(shoot != friendly->animations.end());
     // A windup longer than the animation is clamped to its frame count.
     DEFN_CHECK_EQ(shoot->second.windup_frames, 8);
+    DEFN_CHECK_CLOSE(shoot->second.offset.x, -9.0F, 0.000001);
+    DEFN_CHECK_CLOSE(shoot->second.offset.y, 4.0F, 0.000001);
+    // The muzzle rides the shoot clip's correction, or the flash comes off the barrel when the clip is re-anchored.
+    DEFN_CHECK_CLOSE(muzzle_anchor(*friendly).x, 191.0F, 0.000001);
+    DEFN_CHECK_CLOSE(muzzle_anchor(*friendly).y, -6.0F, 0.000001);
     const auto hostile = loader.get_unit("jackal");
     DEFN_REQUIRE(hostile.has_value());
     DEFN_CHECK_EQ(hostile->description, std::string());

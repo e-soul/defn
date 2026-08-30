@@ -12,16 +12,28 @@
 #include <array>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace defn {
+
+// The clip names `unit_data.json` is written in, and the contract between that file and the code that poses a unit.
+inline constexpr std::string_view WALK_ANIMATION = "walk";
+inline constexpr std::string_view ATTACK_ANIMATION = "attack";
+inline constexpr std::string_view SHOOT_ANIMATION = "shoot";
+inline constexpr std::string_view DEATH_ANIMATION = "death";
 
 struct AnimConfig {
     std::string path_template;
     int frame_count = 10;
     double speed = 10.0;
     bool loop = false;
+    // Where this clip's canvas sits relative to the unit's origin, in unscaled texture pixels. The sprite packs crop
+    // every clip to its own bounding box, so centering each canvas would park the *canvas* on the origin rather than
+    // the *character*, and switching clips would jump the body by the difference in padding. One offset per clip pins
+    // the body instead. Measured against the unit's `idle` clip, which is therefore always zero.
+    Vector2 offset;
     // Attack and shoot animations commit to their first frames: the unit may not be re-posed or moved until they play
     // out. The remaining frames are the cancelable backswing. Meaningless for animations combat never triggers.
     int windup_frames = 3;
@@ -135,6 +147,22 @@ struct UnitConfig {
     std::optional<ProjectileAttackConfig> projectile_attack;
     std::vector<std::pair<std::string, AnimConfig>> animations;
 };
+
+// Where the muzzle flash sits and where a projectile leaves the unit, in unscaled pixels. The flash hangs off the
+// unit rather than off the sprite, so it does not inherit the shoot clip's anchor correction the way the body does;
+// folding that correction in here keeps the flash on the barrel. Both the game and the simulation kernel read this
+// one function, so the two cannot drift apart -- `scons conformance` checks that they have not.
+inline Vector2 muzzle_anchor(const UnitConfig &config) {
+    Vector2 anchor = config.muzzle.offset;
+    for (const auto &[name, animation] : config.animations) {
+        if (name == SHOOT_ANIMATION) {
+            anchor.x += animation.offset.x;
+            anchor.y += animation.offset.y;
+            break;
+        }
+    }
+    return anchor;
+}
 
 class UnitCatalog {
   public:

@@ -54,4 +54,6 @@ The balance and diversity instruments are documented in [defn/BALANCE_TOOLING.md
 
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
 
+Re-measure where each animation clip is anchored, after adding a unit or swapping its sprites: `python scripts/gen_anim_offsets.py --report` to read the numbers, `--write` to update `data/unit_data.json`, `--contact-sheet out.png` to eyeball them. The clips are cropped to different canvases, so without these offsets a unit's body jumps when it switches pose.
+
 Create a native release archive from the repository root: `python scripts/build.py --platform windows` or `python scripts/build.py --platform linux`.

@@ -32,13 +32,15 @@
           "path_template": "res://assets/tower.png",
           "frame_count": 1,
           "speed": 1.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "death": {
           "path_template": "res://assets/tower_destroyed.png",
           "frame_count": 1,
           "speed": 1.0,
-          "loop": false
+          "loop": false,
+          "offset": [-1, -3]
         }
       }
     },
@@ -76,37 +78,43 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 7]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-124, 48]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [97, 52]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [5, -4]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-139, -28]
         }
       }
     },
@@ -114,7 +122,7 @@
       "description": "Dedicated counter-sniper. Extreme reach and heavy shots make the marksman the best answer to exposed specials.",
       "side": "friendly",
       "role": "sniper",
-      "hp": 180,
+      "hp": 580,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 128.0,
@@ -144,37 +152,43 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [8, -8]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-160, 94]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [92, 76]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [11, -28]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-238, -76]
         }
       }
     },
@@ -211,37 +225,43 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-2, 6]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-87, 44]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [106, 42]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-10, -1]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-113, -23]
         }
       }
     },
@@ -277,37 +297,43 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-5, 7]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-46, -4]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [130, 31]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [6, 0]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-66, -7]
         }
       }
     },
@@ -344,37 +370,43 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-14, 11]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-12, 30]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [105, 37]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [8, 1]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-145, 7]
         }
       }
     },
@@ -441,37 +473,43 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [3, 12]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-48, -30]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [68, -32]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-14, 5]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-61, -25]
         }
       }
     },
@@ -508,37 +546,43 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [9, 0]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-145, -54]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [1, -30]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [9, -36]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-149, -59]
         }
       }
     },
@@ -576,37 +620,43 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [1, 3]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-90, -34]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [126, -15]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [18, -19]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-124, -33]
         }
       }
     },
@@ -629,40 +679,42 @@
       "bounty": 5,
       "scale": 0.285,
       "sprite_flip_h": true,
-      "health_bar_offset": [
-        30,
-        -240
-      ],
+      "health_bar_offset": [30, -240],
       "animations": {
         "idle": {
           "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Run__%03d.png",
           "frame_count": 10,
           "speed": 12.0,
-          "loop": true
+          "loop": true,
+          "offset": [-48, -2]
         },
         "attack": {
           "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
           "frame_count": 10,
           "speed": 12.0,
-          "loop": false
+          "loop": false,
+          "offset": [-27, 31]
         },
         "death": {
           "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [80, 25]
         },
         "happy": {
           "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-90, -24]
         }
       }
     }

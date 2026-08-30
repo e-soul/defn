@@ -928,6 +928,30 @@ DEFN_TEST(animation_controller_drops_a_pending_shoot_effect_when_the_pose_change
     memdelete(owner);
 }
 
+// The muzzle hangs off the unit rather than off the sprite, so it has to be told about the shoot clip's anchor
+// correction by hand -- and told again on every facing change, because a mirrored body needs a mirrored barrel.
+// `SimWorld` reads the same `muzzle_anchor`, which is what keeps `scons conformance` agreeing about where shots start.
+DEFN_TEST(animation_controller_anchors_the_muzzle_to_the_corrected_shoot_clip) {
+    UnitConfig config = make_animation_timing_config();
+    config.animations = {
+        {"shoot", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = false, .offset = {.x = -9.0F, .y = 4.0F}, .windup_frames = 2}}};
+    config.muzzle.path_template = "res://muzzle_%03d.png";
+    config.muzzle.offset = {.x = 200.0F, .y = -10.0F};
+
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, config);
+
+    animation->set_facing(FacingDirection::FORWARD);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().x, 191.0F, 0.001F);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().y, -6.0F, 0.001F);
+
+    animation->set_facing(FacingDirection::BACKWARD);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().x, -191.0F, 0.001F);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().y, -6.0F, 0.001F);
+
+    memdelete(owner);
+}
+
 DEFN_TEST(animation_controller_reports_no_attack_timing_for_a_unit_without_attack_animations) {
     UnitConfig config = make_animation_timing_config();
     config.animations = {{"walk", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = true, .windup_frames = 0}}};
