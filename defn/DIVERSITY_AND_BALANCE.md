@@ -103,8 +103,8 @@ Two consequences worth acting on:
 > (**0.172**, fourteen times the spread), on the same fifteen columns, 51 seeds, paired. **Price is a level lever
 > only for as long as the instrument hands the player the whole purse at once.**
 >
-> So: `scons matrix` cannot rank a price change against anything time-sensitive. **Validate repricings in
-> `scons sim`**, which has the clock, the bounties and the base. See the entry of 2026-08-28 in
+> So: `scons matrix` cannot rank a price change against anything time-sensitive. **Validate repricings in the tempo
+> lab**, which has the clock, the bounties and the base without borrowing a level's story. See the entry of 2026-08-28 in
 > [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md) for the measurement and for why the lab was left alone.
 
 The one exception is small: a *mix* row is not immune, because cheaper `u` buys more `u` for the same energy share and
@@ -291,6 +291,9 @@ Kept because a negative result costs the same to measure as a positive one and i
 | Armour on the `wrecker` | `Var(a)` quadruples, regret collapses to 0.0%. |
 | Hostiles out-ranging friendlies | Largest structural change of any lever measured, but it flattened the matrix and halved regret. |
 | `mason` reach 400 -> 600 | Hits breachers harder *and* starts hurting marksmen (0 -> 98 damage), which deletes the one clean answer to it. The shipped ordering is load-bearing: breacher 245 < impact 320 < operator 380 < **mason 400** < marksman 650. |
+| `wrecker` plating (`damage_cap`) | Armour's inverse — a per-hit ceiling, so it punishes burst where armour punishes rate. Buys `Var(R)` resolvedly at every setting swept, and pays for it in hostile dead slots at roughly one for one: +0.0026 `Var(R)` costs +3.8 dead, and the one setting costing nothing resolvable buys +1%. Not under-payment — at a setting where the wrecker's own row shift is −0.007 the regression is still +2.4. The mechanic concentrates hostile strength into the 5 wrecker rows, which were already the strong end. **The mechanic is wired and tested but carried by no unit**; re-aim it at `mason` or `grime`, where concentrating a weak row is a gain. See the entry of 2026-08-29 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
+| `operator` plating (`damage_cap: 14`) | **Measured through both gates; not shipped.** The same mechanic on a friendly carrier, where hostile damage is spread (grime 5, mason 10, wrecker 13, jackal 18, hound melee 20) so a cap is an anti-`jackal`/anti-`hound` stat rather than a single-unit dial. `Var(R)` +0.0017 resolved, both regrets in band, hostile side untouched, and it lands **five times harder on `operator` than on `breacher+operator`** — the row inversion every previous operator lever failed to get. Costs: `marksman+impact` takes the operator's place on the dead list, and the premium's zero margin is spent. And then, once the campaign gate could see an operator at all, **nothing happened there**: ±2 cells of 125 on the two policies that buy one, net −1 over 750 paired runs, with the other four at exactly +0. Improves no gate and softens two. See 2026-08-29 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
+| `mason` plating (`damage_cap`) | The carrier test for the row above, and it confirms it: cap 12 on the mason costs nothing resolvable in dead slots where the same value on the wrecker costs +3.3, and cap 10 *buys* 2.8 of them — hostile dead 5 of 15 down to **2**, the lowest recorded. But `Var(R)` falls resolvedly at every setting (−7.6% to −23%) and cap 10 takes friendly regret out of band at 9.9%. The marksman is the mason's one clean answer; plating blunts it, so the sharpest matchup in the matrix is what pays. See 2026-08-29 in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md). |
 | Hostile spacing 110 -> 200px | Hostile regret 14.5% -> 8.8% MISS and the premium falls to 1 column, in exchange for one hostile dead row. The mechanism is the *marksman's* reach, not melee reach: six hostiles at 110px span 550px and are engaged all at once, at 200px they span 1000px and are engaged piecemeal. Open question rather than a rejected change — see below. |
 
 ---
@@ -305,7 +308,12 @@ Kept because a negative result costs the same to measure as a positive one and i
    `level`, the lever is a price however it is spelled.
 4. **Gate the dead-slot count on the noise-floor reading, not the strict argmax.** No mix outside every column's noise
    floor; none present in every argmax at constant weight.
-5. **`scons sim` with `MixPolicy` against the mono policies**, at enough seeds to resolve what it is being asked.
+5. **The tempo lab, bisected** — `scons sim scenario=res://scenarios/tempo_lab.json seeds=25 bisect=yes`, read
+   with `analyze_tempo.py --baseline`. It is the only instrument with a clock, so **anything whose value depends on
+   arriving early has to be judged here, a price above all**. Read the critical purse, never a win rate at a fixed
+   purse: the latter is a step function and four compositions tie at 100% across every engagement. Nothing here
+   runs on a shipped level — levels are narrative, some are written to be lost, and a gate denominated in content
+   inherits the content's churn.
 6. **Pin each job's defining matchup as a test**, in the hosted suite if it is composition-sensitive. Catalog values
    that encode a breakpoint (`hp: 96` is five marksman shots plus one) must be pinned, because nothing about the
    number says what it is for.
@@ -358,7 +366,16 @@ Tune each mission with two numbers: **total threat**, from the measured coeffici
 The hostile side is the larger half and the cheaper one, since hostiles carry no cost-balance constraint. Four of the
 five involve the mason or grime.
 
-**2. The operator has no job.** It is dead in 1 of its 4 rows after the repricing, and prices cannot manufacture a job
+**2. The operator has no job, and the campaign agrees — checked directly on 2026-08-29.** The sweep can now see the
+unit at all — before that no policy bought one, and a *cost tie with the breacher* was the whole reason. Read per
+level rather than as a total, an operator-heavy line won 25/25 on level 1 and then 2, 0, 0, 0 — its single good
+column being the one where every 20-cost policy also wins, `greedy` included at 100%. The lab, run against the same
+five level compositions, named `breacher` as level 1's answer and a marksman-bearing mix for levels 2-5, which is
+what the campaign did. **The two instruments agree; the operator wins nothing uniquely on either.** The campaign
+scenarios were deleted the next day — see [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md) — and this stands as the last
+reading taken from them.
+
+It is dead in 1 of its 4 rows after the repricing, and prices cannot manufacture a job
 — past cost 20 they only move the dead rows around. It is a high-rate, low-damage mid-range shooter, so its job cannot
 come from durability (armour on it is measurably wrong), and **nothing in the roster currently rewards rate as such**.
 This is a design pass, not a sweep. The catalog also declares it `SPECIALIST` while it has no special ability; nothing
@@ -371,7 +388,14 @@ with level 1's opening wave retyped so the game opens by teaching the rush), the
 pulls fire (`threat_weight: 0.25`). Regenerate the coefficients before using them. Retuning **level 2** specifically
 is what unblocks `grime` armour 5, and it is worth doing on its own terms either way.
 
-**4. The campaign sweep is the least resolved gate in use.** It is still read as two unpaired point estimates at 5
+**4. Resolved 2026-08-30 — the tempo lab now reports a critical purse.** `bisect=yes` bisects
+`starting_core_resource` per (engagement, composition), so the instrument no longer saturates and no longer needs a
+hand-calibrated purse. What remains open is smaller: the bisection assumes win rate rises with the purse, which is
+noisy near the threshold, so a small move should be paired against a baseline rather than read once.
+
+**4b. The campaign sweep was the least resolved gate in use**, and was deleted along with every other
+content-denominated instrument on 2026-08-30. Kept here because the failure mode outlives the file: a gate read as
+two unpaired point estimates at a low seed count will reject a real change as noise, and did. It is still read as two unpaired point estimates at 5
 seeds, and it is the gate that rejected `grime` armour 5 — at 5 seeds it read 83 -> 81, the right size to dismiss as
 noise; at 25 seeds paired by seed it is an unambiguous -10 on one policy. Raise its default seed count and pair it
 against a baseline, as `analyze_matrix.py` already does. A scripting change, not a design one.

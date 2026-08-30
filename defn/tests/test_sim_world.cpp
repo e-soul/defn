@@ -188,7 +188,7 @@ DEFN_TEST(sim_world_carries_a_threat_weight_below_one_from_the_catalog) {
 namespace {
 
 // Armour reaches the kernel's damage path from the catalog, and applies to every source rather than only to shots.
-int damage_dealt_to_armoured_dummy(int shot_damage, int armour) {
+int damage_dealt_to_mitigating_dummy(int shot_damage, int armour, int damage_cap) {
     SimRoster roster;
     UnitConfig shooter = make_unit("shooter", UnitSide::FRIENDLY, 400, 0);
     shooter.ranged_damage = shot_damage;
@@ -199,6 +199,7 @@ int damage_dealt_to_armoured_dummy(int shot_damage, int armour) {
 
     UnitConfig dummy = make_dummy("dummy", UnitSide::HOSTILE, 5000);
     dummy.armour = armour;
+    dummy.damage_cap = damage_cap;
     dummy.move_speed_pixels_per_second = 0.0F;
     roster.add(dummy);
 
@@ -215,8 +216,8 @@ int damage_dealt_to_armoured_dummy(int shot_damage, int armour) {
 } // namespace
 
 DEFN_TEST(sim_world_applies_armour_from_the_catalog) {
-    const int bare = damage_dealt_to_armoured_dummy(19, 0);
-    const int armoured = damage_dealt_to_armoured_dummy(19, 6);
+    const int bare = damage_dealt_to_mitigating_dummy(19, 0, 0);
+    const int armoured = damage_dealt_to_mitigating_dummy(19, 6, 0);
 
     DEFN_CHECK(bare > 0);
     // Same number of shots either way -- the shooter is stationary and the dummy cannot die -- so the ratio is the
@@ -225,9 +226,33 @@ DEFN_TEST(sim_world_applies_armour_from_the_catalog) {
 }
 
 DEFN_TEST(sim_world_never_lets_armour_block_a_shot_completely) {
-    const int chipped = damage_dealt_to_armoured_dummy(4, 50);
+    const int chipped = damage_dealt_to_mitigating_dummy(4, 50, 0);
 
     DEFN_CHECK(chipped > 0);
+}
+
+// The same question for plating, and asked for the same reason: a matrix that comes back unchanged looks identical
+// whether the mechanic is inert or was never wired to the kernel at all. This is the difference.
+DEFN_TEST(sim_world_carries_a_damage_cap_from_the_catalog) {
+    const int uncapped = damage_dealt_to_mitigating_dummy(19, 0, 0);
+    const int capped = damage_dealt_to_mitigating_dummy(19, 0, 12);
+
+    DEFN_CHECK(uncapped > 0);
+    // Same shot count, so the ratio is the truncation: 12 of every 19 arrives.
+    DEFN_CHECK_EQ(capped * 19, uncapped * 12);
+}
+
+// The mechanic's whole point, at the kernel level: the light gun does not notice the plate the heavy gun runs into.
+DEFN_TEST(sim_world_leaves_a_shot_under_the_damage_cap_untouched) {
+    DEFN_CHECK_EQ(damage_dealt_to_mitigating_dummy(6, 0, 12), damage_dealt_to_mitigating_dummy(6, 0, 0));
+}
+
+// Ordering, observed through the kernel rather than the rule: cap first takes 19 to 12, then armour 4 to 8.
+DEFN_TEST(sim_world_applies_the_damage_cap_before_armour) {
+    const int bare = damage_dealt_to_mitigating_dummy(19, 0, 0);
+    const int both = damage_dealt_to_mitigating_dummy(19, 4, 12);
+
+    DEFN_CHECK_EQ(both * 19, bare * 8);
 }
 
 namespace {

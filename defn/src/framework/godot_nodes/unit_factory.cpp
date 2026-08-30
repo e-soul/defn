@@ -29,7 +29,7 @@ HealthComponent *create_health_component(Unit *unit) {
     auto *health = memnew(HealthComponent);
     health->set_name("HealthComponent");
     unit->add_child(health);
-    health->configure(unit->get_unit_config().hp, unit->get_unit_config().armour);
+    health->configure(unit->get_unit_config().hp, unit->get_unit_config().armour, unit->get_unit_config().damage_cap);
     return health;
 }
 

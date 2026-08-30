@@ -31,6 +31,8 @@ struct SimEntity {
     int max_hp = 0;
     // Flat reduction on every point of damage taken, from any source.
     int armour = 0;
+    // Ceiling on any single hit taken, zero for none.
+    int damage_cap = 0;
     bool dead = false;
     // Godot copies the process group before walking it, so a node added during a frame first runs on the next one.
     std::uint64_t spawn_tick = 0;

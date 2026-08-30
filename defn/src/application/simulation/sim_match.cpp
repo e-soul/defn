@@ -263,7 +263,13 @@ SimMatchReport SimMatch::build_report() const {
     SimMatchReport report;
     report.level_id = scenario_.level_id;
     report.seed = scenario_.seed;
-    report.policy = policy_ != nullptr ? policy_->name() : "none";
+    // An explicit label wins, so two policies of the same kind stay apart in a sweep. Unlabelled policies keep
+    // reporting their kind, which is what every recorded baseline is denominated in.
+    if (!scenario_.policy.label.empty()) {
+        report.policy = scenario_.policy.label;
+    } else {
+        report.policy = policy_ != nullptr ? policy_->name() : "none";
+    }
     report.decided = director_.is_game_over();
     report.victory = victory_;
     report.clear_time_seconds = report.decided ? decided_at_seconds_ : elapsed_seconds_;

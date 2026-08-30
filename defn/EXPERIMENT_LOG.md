@@ -14,6 +14,493 @@ against the baseline, decomposed both ways, unless the entry says otherwise.
 
 ---
 
+## 2026-08-30 — The tempo lab, measured as a critical purse
+
+**Shipped.** `bisect=yes` on `scons sim`, `scripts/analyze_tempo.py`, three hosted tests.
+
+The lab shipped the day before read a win rate at a fixed purse, and said this:
+
+| composition | rush | spike | grind | escalation |
+|---|---|---|---|---|
+| `breacher+marksman` | 100% | 100% | 100% | 100% |
+| `marksman` | 100% | 100% | 100% | 100% |
+| `marksman+operator` | 100% | 96% | 100% | 100% |
+| `marksman+impact` | 100% | 88% | 100% | 100% |
+
+Four compositions tied at the top of every engagement, which is not a result — it is the ceiling effect
+`DIVERSITY_MODEL.md` rejects win rate for, arriving in the timed instrument as well. **Win rate is a step function
+of the purse**: sweeping it showed cells jumping 0% to 100% between adjacent probes, which is also why the shipped
+purses had to be hand-calibrated per engagement to land anywhere informative.
+
+So the lab now makes the same measurement `scons matrix` does, on the quantity this instrument actually varies:
+**the smallest starting purse at which a composition wins the engagement half the time.** Same contract as
+`critical_budget` — bisect under a ceiling, report a cell that never wins as `bounded: false` rather than handing it
+a number, carry the probe count so a cell that ran out of iterations is visible.
+
+### Result, 25 seeds, ten compositions x four engagements
+
+| composition | rush | spike | grind | escalation |
+|---|---|---|---|---|
+| `breacher+marksman` | **50** | **81** | 44 | 56 |
+| `marksman` | 66 | 100 | **26** | 62 |
+| `marksman+operator` | 75 | 109 | 65 | **50** |
+| `marksman+impact` | 91 | 100 | 71 | 63 |
+| `operator` | 100 | 159 | 84 | 73 |
+| `breacher+operator` | 110 | 176 | 78 | 75 |
+| `breacher` | 115 | 143 | 88 | 84 |
+| `breacher+impact` | 140 | 279 | 100 | 91 |
+| `impact+operator` | 141 | 288 | 93 | 93 |
+| `impact` | 156 | 284 | 90 | 88 |
+| *`defensive`, reference* | *41* | *28* | *6* | *12* |
+
+**Three distinct cheapest answers across four engagements, no unbounded cells, and spreads of 1.9x to 3.8x between
+the cheapest and dearest answer.** The win-rate table showed none of that: it could not separate its own top four.
+
+Worth reading off it:
+
+1. **`marksman` mono is the cheapest answer to the grind at 26 and one of the dearest to the spike at 100.** A
+   trickle lets a sniper work for free; twenty bodies arriving at once do not. That is a tempo matchup, and no
+   arrangement of the matrix can express it, because the matrix has no arrival order.
+2. **`marksman+operator` is the cheapest answer to the escalation.** First time the `operator` has appeared in a
+   cheapest answer on any instrument. It is not a job yet — the margin over `breacher+marksman` at 56 is one probe
+   step — but it is the first sign that anything rewards the unit, and it appears only once a clock exists.
+3. **`defensive` is far cheaper than every composition on every engagement** (28 on the spike against 81 for the
+   best composition). Banking until contact then committing is worth more than any composition choice measured here.
+   That is a statement about the *policies*, not the roster, and it means composition results should be read against
+   each other rather than against the reference lines.
+
+### What is now known
+
+- **The ceiling effect is a property of the measure, not the instrument.** Win rate saturated in the matrix, the
+  campaign sweep and the tempo lab in turn. Each time the fix was the same: bisect the resource the player spends.
+  **Reach for a critical quantity before calibrating a fixed one** — the hand-tuned purses from the day before
+  became dead weight the moment the bisection existed.
+- **A floor is as blinding as a ceiling.** The first bisection returned purse `1` for the grind and escalation:
+  spread over two minutes, income alone (120 energy) swamped any starting purse. Compressing those two schedules
+  from six-second to three-second spacing put them back on scale. **A cell reading the minimum of the search range
+  is not a cheap answer, it is an unmeasured one.**
+- **Cost of the whole thing:** about 120 lines in `defn_sim_runner.cpp`, one flag through SConstruct and the `.gd`
+  runner, a 130-line reader, three hosted tests. The 4x12 table takes 203 seconds at 25 seeds.
+
+---
+
+## 2026-08-30 — Deleting every instrument denominated in content
+
+**Shipped.** No code paths removed; nine scenario files and one matrix spec deleted, two fixtures repointed.
+
+The day before, the campaign sweep was demoted from a roster gate to a level instrument and the tempo lab was built
+to replace it. That was half a decision. **Levels are narrative — some are written to be lost — so a win rate over
+one is not a weak measurement of the roster, it is a measurement of something else**, and leaving the scenarios in
+place left a gate that would be reached for again.
+
+Deleted: `campaign_matrix.json`, `campaign_progression.json`, the seven `level_01_*.json` sweeps, and
+`matrix_levels.json` — the one-off that reconciled the two instruments, whose result is recorded above along with
+the compositions it used, so the reading stays reproducible without the file.
+
+Kept, because neither touches a level: `matrix_smoke.json` (unit mixes only) and `tempo_lab.json` with its four
+synthetic engagements in `data/lab/`.
+
+Two references were load-bearing and had to move rather than go:
+
+- `godot_sim_runner.gd`'s default scenario, and
+- `defn_sim_runner_runs_a_checked_in_scenario_and_writes_jsonl`, a hosted plumbing test that needs *a* checked-in
+  scenario and does not care which,
+
+both now on a new `tempo_smoke.json` — one synthetic engagement, one policy, the counterpart of `matrix_smoke.json`.
+A third apparent reference was a false positive: `content_validator.cpp` contains a function called
+`validate_campaign_progression` that has nothing to do with the scenario file of that name.
+
+### What is now known
+
+- **Demoting an instrument is not the same as removing it.** A gate that is documented as "for levels only" is still
+  a gate sitting where somebody will reach for it, and its numbers still look like results. If content should not
+  decide roster questions, the content-denominated files have to go, not be relabelled.
+- **Check what a fixture is actually for before deleting it.** Of eleven scenario files, nine were unreferenced, one
+  was the runner's default *and* a hosted test's input, and one match was a name collision in production code. The
+  cost of checking was one `grep`; the cost of not checking would have been a red suite and a wrong guess about why.
+
+---
+
+## 2026-08-29 — Plating the wrecker: armour's inverse, measured across seven settings
+
+**Content reverted; the mechanic is kept in code, wired and tested but carried by no unit.** `damage_cap` is now a
+`UnitConfig` field applied in both damage paths, exactly as `armour` was before anything used it.
+
+The `wrecker` was the strongest hostile on the board and completely flat — worth the same against every friendly
+composition, so its whole contribution was to the power term `a[i]` and none of it to the matchup term `Var(R)`.
+Every armour value in the roster also pushes the *same* way: armour subtracts, so it punishes rate and spares burst,
+and `breacher 4 / grime 4 / jackal 2` therefore all say "bring the marksman". Reach-and-burst answers every question
+on the board at once, which is what totally orders the friendly roster.
+
+- **`damage_cap`, plating** — a ceiling on any single hit, applied before armour. Armour's exact inverse: it costs a
+  19-damage round seven points and a 6-damage round nothing. In this roster it is an anti-marksman stat exclusively,
+  since nothing else friendly exceeds 8.
+- **The intended fight**: *the wrecker shrugs off single heavy rounds, so killing it cheaply needs sustained fire
+  delivered from outside its reach* — and the `operator` is the only friendly gun that is both, passing the cap
+  untouched at 6 damage and out-ranging the wrecker 380 to 330. The operator has no job, and nothing in the roster
+  rewards rate as such; this was meant to be the thing that does.
+
+### Result
+
+Seven settings, 51 seeds each, paired, decomposed both ways. Baseline `Var(R)` 0.0367, friendly dead 3/10, hostile
+dead 5/15, hostile premium 2 columns.
+
+| cap | hp | dmg | `Var(R)` change | friendly dead | hostile dead change | hostile premium | wrecker row shift |
+|---|---|---|---|---|---|---|---|
+| 12 | 160 | 13 | +0.0026 resolved | **2** | **+3.8** [3, 5] | 1 col MISS | +0.032 |
+| 12 | 180 | 12 | +0.0029 resolved | **2** | **+3.3** [2, 5] | 1 col MISS | +0.053 |
+| 12 | 180 | 11 | +0.0054 resolved | 3 | **+2.9** [2, 4] | 1 col MISS | −0.017 |
+| 12 | 150 | 13 | +0.0034 resolved | **2** | **+2.4** [1, 3] | 2 col PASS | −0.007 |
+| 14 | 180 | 13 | +0.0014 resolved | 3 | **+3.8** [3, 4] | 1 col MISS | +0.036 |
+| 15 | 170 | 13 | +0.0004 resolved | **2** | +1.3 [0, 2] *not resolved* | 2 col PASS | +0.005 |
+| 16 | 180 | 13 | +0.0006 resolved | 3 | +1.7 [1, 2] | 2 col PASS | +0.012 |
+
+**The trade is monotone and roughly one-for-one: every point of `Var(R)` the cap buys is paid for in hostile dead
+slots.** The dead-slot count is the only gate the roster currently misses, so this is the wrong currency to spend.
+The one setting that costs nothing resolvable — cap 15 — buys `Var(R)` +1%, which is under any bar worth shipping
+for.
+
+The mechanic itself is not at fault and did precisely what the arithmetic said. The friendly paired block splits
+exactly along the axis it was designed to split: every marksman row falls (`marksman` −0.058 with the largest
+structural sd on the board, 0.107) and every other row rises (`impact+operator` +0.028, `operator` +0.015), each
+classified `structural`. On the hostile side every row without a wrecker in it reads **+0.000, structural sd 0.000,
+level** — byte-identical, as it must be, which is the cleanest wiring confirmation available.
+
+### What is now known
+
+1. **A conditional mechanic on a hostile unit spreads the friendly side and concentrates the hostile side at the same
+   time, and they are the same effect seen from two sides.** The cap varies by *which friendly gun* faces it, which
+   is real structure and shows up as a resolved `Var(R)` gain. But it is worth the same to every hostile mix that
+   contains a wrecker, so all 5 of the 15 wrecker rows rise together — and they were already the strong end. The
+   wrecker mono then wins all three marksman columns outright and its own pairs stop adding anything over it:
+   `wrecker+jackal`, `wrecker+hound` and `grime+wrecker` died, and `grime+hound` / `grime+jackal` died without
+   moving at all, purely because rows above them improved. **Read the transpose before believing a spread.**
+2. **The regression is not under-payment.** At cap 12 / hp 150 the wrecker's own row shift is −0.007 — its power is
+   neutralised outright — and hostile dead still rises +2.4 [+1.0, +3.0], resolved. Paying for a conditional buff
+   removes the level component; it does not touch which rows the structure concentrates in.
+3. **Cutting `hp` and cutting `ranged_damage` are not interchangeable payments.** `hp` scales the durability term the
+   plating multiplies, so it shrinks the structure along with the power (cap 12 / hp 150 keeps `Var(R)` +0.0034);
+   `ranged_damage` touches only the offensive term and leaves the structure intact (cap 12 / hp 180 / dmg 11 is the
+   largest `Var(R)` of the seven at +0.0054). **Pay for a durability mechanic out of the offence.**
+4. **The `operator` came off the noise-floor dead list in four of the seven settings, and never resolvably.** Its own
+   row moves +0.002 to +0.031 with a structural sd under the floor in the settings that revive it: the row sits on
+   the edge of the floor and the cap nudges it across rather than giving it a job. Consistent with the standing
+   diagnosis — the operator's budget is survival-bound, and plating is a damage-side lever.
+5. **The friendly premium is insensitive to this whole family.** Three settings read 4 columns and three read 3, and
+   the paired delta spans zero in all seven. Nothing here moves it either way.
+
+### The same mechanic on the mason, which is the losing end
+
+The entry above predicted that plating a *losing* hostile row would reduce dead slots where plating a strong one
+raised them. That is exactly what happened, and the mechanic failed anyway.
+
+| mason cap | `Var(R)` | friendly dead | **hostile dead** | friendly regret | hostile premium |
+|---|---|---|---|---|---|
+| baseline | 0.0367 | 3 | 5 | 14.0% | 2 col |
+| 15 | 0.0339 (**−0.0028**) | 4 (+0.9 *n/r*) | 5 (−0.1 *n/r*) | 12.9% | 2 col PASS |
+| 12 | 0.0304 (**−0.0063**) | 4 (+1.0) | 5 (−0.1 *n/r*) | 12.9% | 2 col PASS |
+| 10 | 0.0281 (**−0.0086**) | 4 (+1.0 *n/r*) | **2 (−2.8** [−3, −2]**)** | **9.9% MISS** | 1 col MISS |
+
+**The carrier lesson is confirmed outright.** Cap 12 on the wrecker costs +3.3 hostile dead slots, resolved; cap 12
+on the mason costs nothing resolvable, and cap 10 on the mason *buys* 2.8 of them — from 5 of 15 down to **2 of 15**,
+the lowest hostile dead count ever recorded here, against a target of zero. Lifting a losing row spreads the hostile
+side; lifting a strong one concentrates it.
+
+**And `Var(R)` falls, resolved, at every setting** — the deepest cap costs 23% of the matchup term and takes friendly
+regret out of band at 9.9%. This is the flattening signature, and the mechanism is stated in the entry that rejected
+`mason` reach 400 → 600: *the marksman is the mason's one clean answer*, out-ranging it 650 to 400 and taking zero
+damage. Plating blunts that answer — the marksman row shifts −0.057 at cap 12 and −0.082 at cap 10, structural, with
+the largest column spreads on the board — so the sharpest matchup in the matrix is the one being paid out.
+
+### The same mechanic on the operator, which is a friendly
+
+Point 8 below, taken the same afternoon. Hostile damage is spread where friendly damage is not — grime 5, mason 10
+(splash 12), wrecker 13, jackal 18, hound melee 20 — so a cap on a *friendly* unit is not a single-unit dial at all.
+At 14 it is worth 22% against a `jackal`, 30% against a `hound`'s melee, and **exactly nothing** against grime, mason
+or wrecker. Unpaid, catalog-only.
+
+| operator cap | `Var(R)` | friendly dead | hostile dead | friendly regret | premium |
+|---|---|---|---|---|---|
+| baseline | 0.0367 | 3 — incl. `operator` | 5 | 14.0% | 3 col / 3 win |
+| **14** | 0.0384 (**+0.0017**) | 3 — `operator` **out**, `marksman+impact` in | 5, unchanged | 13.4% PASS | 2 col / 2 win PASS |
+| 12 | 0.0391 (**+0.0025**) | 3 — same set as 14 | 5, unchanged | 14.5% PASS | 1 col MISS |
+| 10 | 0.0387 (+0.0020) | **4 (+1.3** [+1, +2]**)** | 5, unchanged | 13.2% PASS | 1 col MISS |
+
+**Cap 14 is the first setting measured in this whole investigation that costs no resolved regression on any gate.**
+`Var(R)` rises resolvedly, both regrets stay in band, the hostile side does not move at all — no concentration,
+because the carrier is friendly — and the premium falls from 3 columns to 2, which still passes and is not resolved.
+
+**And it lands in the right row, which is the thing that has failed every previous attempt.** The paired shifts at
+cap 14, in order:
+
+| row | shift | structural sd |
+|---|---|---|
+| `operator` | **+0.109** | 0.115 |
+| `impact+operator` | +0.062 | 0.078 |
+| `marksman+operator` | +0.045 | 0.081 |
+| `breacher+operator` | +0.023 | 0.043 |
+
+The buff is worth **five times more to the operator alone than to `breacher+operator`**, which is exactly the
+inversion the 2026-08-28 pierce entry asked for and could not produce — there, the operator's `a[i]` improved while
+the row stayed dead and `breacher+operator` collected the gain. The mechanism is plain once stated: a breacher
+already absorbs what the plating would have stopped, so plating pays least where a tank is standing in front.
+
+Read against the pierce, which paid in the same 9 of 15 columns and *lowered* `Var(R)`: **column count is not
+sufficient — the spread of the payoff within those columns is what matters.** Pierce paid a flat fraction against
+anything armoured; this pays 30% against a hound that reaches, 22% against a jackal, and nothing at all otherwise.
+
+What it costs, and neither is resolved: `marksman+impact` takes the operator's place on the dead list, so the count
+is unchanged and the dead row has moved rather than gone; and the premium's margin, already zero, is spent. `Var(a)`
+also falls 0.0025, so any `SII` gain here is partly a denominator effect and should not be quoted as diversity.
+
+**Not shipped, because it cannot yet be validated.** No policy in `campaign_matrix.json` buys an operator, so
+`scons sim` can neither confirm nor reject this — the same blocker recorded on 2026-08-28. Fixing that is a
+prerequisite, not an optional extra, and it is a scenario change rather than a design one.
+
+### Through the campaign gate — after making the gate able to see an operator at all
+
+`scons sim` could not judge this, because no policy bought an operator. The cause is sharper than "the policies do
+not like it": `best_affordable` takes the most expensive affordable unit with a **strict** `>`, so on a cost tie the
+earlier catalog entry wins. `breacher` and `operator` both cost 20 and the breacher is listed first, so the operator
+is unbuyable at every energy level by `greedy`, `defensive` and `patience` — and `mix` named only breacher and
+marksman. **This became true when the operator was repriced 25 → 20**, a shipped change that silently removed a unit
+from a gate, and it went unnoticed because the sweep was read as one number.
+
+Two mix policies were added, plus an optional `label` on a policy spec so two policies of the same kind are not
+pooled into one row by `aggregate_sim.py`. 6 policies x 5 levels x 25 seeds = 750 runs, **paired by
+`(level, policy, seed)`**:
+
+| policy | before | after | delta |
+|---|---|---|---|
+| `defensive` | 125/125 | 125/125 | **+0** |
+| `greedy` | 85/125 | 85/125 | **+0** |
+| `patience` | 91/125 | 91/125 | **+0** |
+| `mix` (breacher 2, marksman 1) | 99/125 | 99/125 | **+0** |
+| `mix_balanced` (breacher 1, marksman 1, operator 1) | **107/125** | 105/125 | −2 |
+| `mix_operator` (breacher 1, operator 2) | 27/125 | 28/125 | +1 |
+| total | 534/750 | 533/750 | −1 |
+
+**Plating the operator is invisible at level scale.** ±2 cells out of 125 on the two policies that can see it, net −1
+across 750 runs, and both moves are in `level_02`. The four policies that buy no operator are **exactly** +0 with
+zero integrity drift, which is the isolation check: the mechanic touches what it should and nothing else.
+
+**So cap 14 is not shipped.** The matrix says `Var(R)` +0.0017 resolved and the operator row alive; the campaign says
+nothing happened. Against that, the matrix costs are real — the dead row moved to `marksman+impact` rather than
+going, and the premium's zero margin is spent. A change that improves no gate and softens two does not ship on a
+structural argument alone.
+
+**The instrument fix is the part worth keeping.** `mix_balanced` wins 107/125 against `mix` at 99, which looked at
+first like the campaign contradicting the lab's "the operator has no job". **It does not — see the reconciliation
+below.** Both of those totals are averages over five levels that disagree with each other, and the average is the
+one number in this sweep that carries no information.
+
+### Reconciling the two instruments, which turned out not to disagree
+
+The aggregate win rates suggested the campaign rated the operator where the lab did not. Read per level, the
+suggestion evaporates — and the totals turn out to be hiding a genuine matchup:
+
+| policy | level_01 | level_02 | level_03 | level_04 | level_05 | total |
+|---|---|---|---|---|---|---|
+| `mix` (breacher 2, marksman 1) | **3/25** | 22/25 | 25/25 | 24/25 | 25/25 | 99 |
+| `mix_balanced` (1/1/1) | 16/25 | 17/25 | 25/25 | 25/25 | 24/25 | 107 |
+| `mix_operator` (breacher 1, operator 2) | **25/25** | 2/25 | 0/25 | 0/25 | 0/25 | 27 |
+
+`mix` and `mix_operator` are near-perfect complements. **That is composition diversity at level scale, and reading
+the sweep as one number per policy destroyed it** — the whole 107-against-99 gap is level 1, where `mix` collapses.
+
+The lab was then run against the campaign's own content rather than against even mixes of the roster: each hostile
+column one shipped level's spawn composition scaled to a 12-body force, each friendly row one of the policies the
+campaign played, 51 seeds. The spec file has since been deleted along with the rest of the content-denominated
+instruments, so the columns are recorded here instead:
+
+| column | 12-body force | from spawn shares |
+|---|---|---|
+| `level_01` | grime 8, hound 4 | grime 67%, hound 33% |
+| `level_02` | grime 5, wrecker 5, hound 2 | grime 45%, wrecker 39%, hound 16% |
+| `level_03` | grime 4, wrecker 3, mason 3, hound 2 | grime 33%, wrecker 25%, mason 25%, hound 17% |
+| `level_04` | grime 3, wrecker 3, jackal 2, mason 2, hound 2 | grime 23%, wrecker 23%, jackal 23%, mason 16%, hound 16% |
+| `level_05` | wrecker 4, grime 3, hound 2, mason 2, jackal 1 | wrecker 33%, grime 25%, hound 18%, mason 12%, jackal 12% |
+
+| column | lab's best answer | campaign's winner | |
+|---|---|---|---|
+| `level_01` | `breacher` | `mix_operator` 25/25, `mix` 3/25 | **disagrees** |
+| `level_02` | `mix` | `mix` 22/25 | agrees |
+| `level_03` | `mix_balanced` | `mix_balanced` 25/25, `mix` 25/25 | agrees |
+| `level_04` | `marksman` | `mix_balanced` 25/25, `mix` 24/25 | agrees |
+| `level_05` | `marksman` | `mix` 25/25, `mix_balanced` 24/25 | agrees |
+
+**Levels 2-5 agree outright**, and across these five columns the lab ranks `mix_operator` at `a = 0.009` against
+`mix` at 0.265 — it is never a strict winner, which is what 27/125 says too. The disagreement is **level 1 alone**.
+
+Its mechanism, from the sweep's own fields:
+
+| policy | level_01 win | leaks | energy spent | deployments per run |
+|---|---|---|---|---|
+| `mix_operator` | **100%** | 0.0 | 206 | operator 6.0, breacher 4.3 |
+| `greedy` | **100%** | 1.6 | 209 | breacher 8.3, marksman 1.0 |
+| `defensive` | **100%** | 0.0 | 180 | breacher 4.0, impact 2.0, marksman 2.0 |
+| `mix_balanced` | 64% | 19.4 | 182 | marksman 3.4, breacher 2.8, operator 1.7 |
+| `mix` | **12%** | 15.4 | **94** | breacher 2.4, marksman 1.7 |
+
+`mix` spends **94 energy** where everything else spends about 200. `MixPolicy` banks when the unit furthest below its
+target share cannot be afforded, so on `{breacher 2, marksman 1}` it buys one breacher, then sits on 24 energy
+waiting for a 27-cost marksman while four hounds cross the belt from t=3s at 120px/s. **The variable is not "has an
+operator", it is "has something affordable at t=3s"** — the breacher costs 20 as well, and `greedy` wins the level
+100% on 8.3 of them.
+
+**So the two instruments agree, the lab's "the operator has no job" stands, and the level-1 gap is the missing clock
+(open problem 6) with a measured instance at last.** What the lab cannot represent is not *composition* but the
+interaction of a unit's price with a wave's arrival time — and that is a property of `MixPolicy` and the level's
+opening, not of the roster.
+
+Three things follow that are worth more than the plating was:
+
+1. **Never read this sweep as one number per policy.** Two of its six policies are complements whose totals differ
+   by 8 and whose per-level records differ by 25. Read `(level, policy)`.
+2. **`MixPolicy` had a banking pathology, and it was not a roster fact.** A ratio naming an expensive unit stalled
+   against an early rush; the policy would not buy the affordable unit it also named. `mix`'s 3/25 on level 1 was
+   that, not a verdict on breacher-plus-marksman. **Fixed and measured — see below.**
+3. **The lab can be pointed at any columns you like**, which costs one spec file and no code, and turns "does the
+   lab predict the game" into a table. Worth doing once when the two instruments seem to disagree — and worth
+   deleting afterwards rather than leaving a content-denominated gate standing.
+
+### Fixing `MixPolicy`'s bank, and the variant that had to be rejected first
+
+Not a bug so much as a rule with no exception. The banking is deliberate and the reason is written in the source: a
+mix that skipped to the next-neediest *affordable* unit whenever the neediest was out of reach would buy the cheap
+end every time energy crossed its cost and never reach the expensive end at all — a mono-stack claiming to be a
+composition. What was missing is that a plan is worth nothing to a base being hit while the purse fills.
+
+Two exceptions were tried, both over 750 paired runs against the same baseline:
+
+| | `mix` | `mix_balanced` | others | `level_01` mix | `level_04` mix | total |
+|---|---|---|---|---|---|---|
+| baseline | 99/125 | 107/125 | — | 3/25 | 24/25 | 534/750 |
+| **broad** — `under_pressure`, as `patience` uses it | 51/125 | 81/125 | +0 | **11/25** | **0/25** | **460** |
+| **narrow** — hostile inside base engage range | **106/125** | **113/125** | +0 | **11/25** | 24/25 | **547** |
+
+**The broad test swallowed the rule.** It also fires on "three or more hostiles live", which is the normal condition
+of a level with forty spawns, so on levels 3-5 it never stopped firing and handed back exactly the mono-stack the
+original comment warned about: `level_04` marksman deployments **4.5 → 1.0 per run, 24/25 → 0/25**. The author's
+reasoning was right and my first patch was the thing it predicted.
+
+**The narrow test takes the whole gain and none of the cost.** `level_01` reaches 11/25 either way; `level_04` comes
+back byte-identical at 24/25 with marksmen restored to 4.5. Net **+13 over 750 runs**, entirely on level 1, with the
+four policies that never bank at exactly +0 — `mix_operator` included, because every unit it names costs 20 and it
+never had a bank to stall in.
+
+Three things worth keeping:
+
+1. **A policy's rule and its exception are a matched pair, and the exception's *width* is the whole design.** Same
+   direction, same seam, one line apart: one variant is +13 and the other is −74.
+2. **`patience`'s pressure test does not generalise.** It is fine for a policy choosing *when* to spend a fixed
+   ladder and ruinous for one choosing *what* to buy. The two now sit next to each other in the source as
+   `hostile_at_the_gate` and `under_pressure`, named so the difference is visible at the call site.
+3. **`level_01` is still only 11/25 for `mix`, and that is now a level question rather than a policy one.** The
+   override cannot fire until something reaches the base, by which point a 27-cost opening has already cost the
+   player the wave. The level is teaching the rush on purpose; whether it should also punish a mix naming a marksman
+   this hard is open problem 8's play test, not a sweep.
+
+**Every campaign figure recorded before this is denominated in the stalling policy**, including the 400/500 and
+534/750 baselines and the plating readings above. The plating verdict is unaffected — it moved `mix_operator` and
+`mix_balanced` by ±2 and neither is sensitive to the bank — but re-baseline before comparing anything new.
+
+### Retiring the campaign as a roster gate, and building the tempo lab
+
+**Levels are content, and some of them are written to be lost.** A win-rate gate over narrative is measuring the
+story; worse, it makes roster work hostage to content churn — `grime` armour 5 is blocked today purely because
+`level_02` happens to be grime-heavy, a rejection already flagged as reversible the moment level 2 is retuned.
+
+Reviewing every use of the gate in this log: **five uses, one decision, and that decision was the content-driven
+one.** The other four returned +0, +6-then-reverted, confirmatory, and −1.
+
+But the clock cannot go with it. The recorded measurement is that the same `operator` 20 → 25 shifts
+`breacher+operator` *uniformly* in the matrix (structural sd 0.012, under the floor) and *by column* in a timed lab
+(0.172, fourteen times the spread). Price is the most-used lever in the game; with no timed instrument no repricing
+can be judged at all. So the clock stays and the content goes.
+
+**The tempo lab.** Four synthetic engagements in `data/lab/`, outside `data/levels/` so nothing here can be mistaken
+for narrative. Same base and the *same twenty hostiles* in each — grime 8, wrecker 5, hound 3, jackal 2, mason 2 —
+so the only variable is the arrival schedule: `tempo_rush` (all twenty in 30s), `tempo_spike` (a minute of nothing,
+then all twenty), `tempo_grind` (one every six seconds), `tempo_escalation` (cheap first, heavy last). Rows are
+compositions rather than spending heuristics. `scons sim scenario=res://scenarios/tempo_lab.json`.
+
+| composition | rush | spike | grind | escalation |
+|---|---|---|---|---|
+| `breacher+marksman` | 100% | 100% | 100% | 100% |
+| `marksman` | 100% | 100% | 100% | 100% |
+| `marksman+operator` | 100% | 96% | 100% | 100% |
+| `marksman+impact` | 100% | 88% | 100% | 100% |
+| `operator` | 68% | **0%** | 100% | 100% |
+| `breacher+operator` | **4%** | 28% | 100% | 100% |
+| `breacher` | 0% | 0% | 84% | 100% |
+| `breacher+impact` | 0% | 0% | 0% | 100% |
+| `impact` | 0% | 0% | 20% | 48% |
+| `impact+operator` | 0% | 0% | 40% | 20% |
+
+**With a clock, reach dominates harder than it does in the matrix.** The top four rows are marksman-bearing and clear
+everything; the table is close to a ladder. The inversions that exist are all in the lower half: `operator` beats
+`breacher+operator` on the rush 68% to 4% and loses to it on the spike 0% to 28%; `impact+operator` beats `impact` on
+the grind and loses on the escalation.
+
+### What this instrument still needs
+
+1. **Critical purse, not win rate.** Sweeping `starting_core_resource` showed the transitions are step functions: at
+   any fixed purse most cells read 0% or 100%, which is precisely the ceiling effect `DIVERSITY_MODEL.md` rejects win
+   rate for. The purses shipped here (rush 100, spike 120, grind 40, escalation 40) were hand-calibrated to the band
+   where compositions come apart, and they rank but do not measure distance. **Bisect the purse per
+   (composition, engagement) the way `scons matrix` bisects budget** and the top four rows separate.
+2. **One purse cannot serve four schedules.** The same force delivered faster is harder, so a shared purse was
+   abandoned. That is not a flaw to fix — the purse *is* the measurement, once it is bisected.
+
+### What is now known
+
+- **Check `owned_upgrades` before believing any composition table.** The roster is `base_units` — breacher alone —
+  plus owned `unit_unlock` cards. The lab's first run had `owned_upgrades: []`, so all twelve composition policies
+  silently played the same breacher-only force and produced a full, plausible, meaningless table. **Third instance
+  today of an instrument quietly measuring something else**, after the unbuyable operator and the pooled `mix`
+  label. The tell was `energy_spent: 0` with an empty deployment list, and it is worth checking first every time.
+- **A gate denominated in content inherits the content's churn.** This is the general form of the `grime` armour 5
+  block, and it is why the campaign sweep is now documented as a level instrument only.
+
+### What is now known, from both carriers together
+
+6. **In this roster, hostile plating is a marksman dial and nothing else.** Friendly ranged damage is 6, 8, 8 and
+   **19**: the marksman's is the only shot any useful cap truncates. So plating a hostile unit means exactly "make
+   the marksman worse against that unit", and where it is pointed decides which gate moves:
+   - at a hostile the marksman answers *partially* (`wrecker`), it **creates** a matchup — `Var(R)` +7%, at the cost
+     of concentrating five already-strong rows;
+   - at a hostile the marksman answers *uniquely and totally* (`mason`), it **destroys** one — hostile dead slots
+     3 of 5 recovered, at the cost of 17-23% of `Var(R)` and, at cap 10, regret itself.
+
+   Both carriers rob one gate to pay another, and the two failures are the same fact seen twice.
+7. **`grime` mono is dead in all ten matrices measured today** — every wrecker setting, every mason setting, and the
+   baseline. It is the most robustly dead row on the board and nothing aimed at another unit reaches it.
+8. **The friendly side is where this mechanic has not been tried.** Hostile damage is far more spread than friendly:
+   grime 5, mason 10 (splash 12), wrecker 13, jackal 18, hound melee 20. A cap on a *friendly* unit is therefore not
+   a single-unit dial but an anti-`jackal`, anti-`hound` stat — and it is survival-side, which is what the standing
+   diagnosis says the `operator` actually needs. **Measured above, and it is the only setting of the three carriers
+   that costs no resolved regression**: the mechanic is not at fault on either hostile, the side it is on is.
+
+### Cost of the attempt
+
+`damage_cap` needed a `UnitConfig` field, a loader line, a `SimEntity` field, and one call swapped in each of the two
+damage paths — `SimWorld::take_damage` and `HealthComponent::take_damage`, both now routed through a single
+`damage_after_mitigation` so the ordering cannot drift either. About 25 lines across 8 files, conformance-clean on
+the first run, clang-tidy clean after one divide-by-zero guard in a test. Seven 51-seed matrices at roughly 105
+seconds each. **The mechanic is left in place**: it is the only lever in the rules that runs opposite to armour, and
+the reason it failed here is the carrier, not the arithmetic.
+
+### What to try next
+
+Aim it at a *losing* hostile instead. Four of the five baseline dead hostile rows involve `mason` or `grime`, and the
+`mason` is the sharpest case: it is dead as a mono, and its only answer is the marksman, which out-ranges it 650 to
+400 and takes **zero** damage doing so. Plating the mason blunts that answer without deleting it — the marksman still
+out-ranges and still kills, only slower — which is the shape a question is supposed to have. Concentration into a
+weak row is a gain where concentration into a strong one was the whole of this entry's cost.
+
+---
+
 ## 2026-08-28 — Giving the lab an economy: measured, then reverted
 
 **Reverted. The finding is kept and the code is not.** No content changed.

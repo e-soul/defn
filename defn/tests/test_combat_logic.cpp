@@ -383,6 +383,53 @@ DEFN_TEST(armour_separates_many_small_shots_from_few_big_ones) {
     DEFN_CHECK(marksman_armoured / operator_armoured > marksman_bare / operator_bare);
 }
 
+// Plating, armour's inverse and the second breakpoint in the rules. Armour subtracts, so the shot it hurts is the
+// small one; a cap truncates, so the shot it hurts is the big one. Nothing is immune either way -- a capped round
+// still lands its cap.
+DEFN_TEST(plating_truncates_a_heavy_round_and_leaves_a_light_one_alone) {
+    DEFN_CHECK_EQ(damage_after_plating(19, 0), 19); // zero is no cap, not a cap of zero
+    DEFN_CHECK_EQ(damage_after_plating(19, 12), 12);
+    DEFN_CHECK_EQ(damage_after_plating(8, 12), 8); // under the cap, untouched
+    DEFN_CHECK_EQ(damage_after_plating(12, 12), 12);
+    DEFN_CHECK_EQ(damage_after_plating(0, 12), 0);
+    DEFN_CHECK_EQ(damage_after_plating(-5, 12), 0);
+}
+
+// The two mitigations compose in a fixed order -- cap first, then armour -- and the order is observable, so it is
+// pinned. Against cap 12 and armour 4 a marksman's 19 arrives as 12 and leaves as 8; armour first would leave 12.
+// No shipped unit carries both today, which is exactly why this would otherwise drift unnoticed.
+DEFN_TEST(plating_applies_before_armour) {
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 12, 4), 8);
+    DEFN_CHECK_EQ(damage_after_armour(damage_after_plating(19, 12), 4), 8);
+    DEFN_CHECK(damage_after_mitigation(19, 12, 4) < damage_after_plating(damage_after_armour(19, 4), 12));
+
+    // Each alone still behaves as itself, so a unit carrying one stat is unaffected by the other's presence.
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 0, 4), damage_after_armour(19, 4));
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 12, 0), damage_after_plating(19, 12));
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 0, 0), 19);
+
+    // The floor survives composition: armour still cannot take a capped round to nothing.
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 6, 6), 1);
+}
+
+// Plating and armour pull the *same* two shot profiles in opposite directions. This is the whole reason the stat
+// exists: before it, every armour value in the roster asked for burst, so reach-and-burst answered every question
+// on the board and the payoff matrix had one dominant answer to be found.
+DEFN_TEST(plating_and_armour_order_the_same_two_guns_oppositely) {
+    constexpr int OPERATOR_SHOT = 6;
+    constexpr int MARKSMAN_SHOT = 19;
+    constexpr int SHOTS = 10;
+
+    // Behind armour 6 the heavy round is worth thirteen of the light one.
+    DEFN_CHECK(SHOTS * damage_after_armour(MARKSMAN_SHOT, 6) > SHOTS * damage_after_armour(OPERATOR_SHOT, 6) * 12);
+
+    // Behind plating 6 the ordering flips per-shot: the heavy round keeps 6 of 19 and the light one keeps all 6, so
+    // the burst gun has lost its advantage entirely and only rate is left to break the tie.
+    DEFN_CHECK_EQ(damage_after_plating(MARKSMAN_SHOT, 6), damage_after_plating(OPERATOR_SHOT, 6));
+    DEFN_CHECK(damage_after_plating(MARKSMAN_SHOT, 12) < MARKSMAN_SHOT);
+    DEFN_CHECK_EQ(damage_after_plating(OPERATOR_SHOT, 12), OPERATOR_SHOT);
+}
+
 // Shot-count rounding, the breakpoint that was already in the rules and had never been priced. Time to kill is
 // `ceil(hp / damage)` shots, not `hp / dps`, so the last shot into a nearly-dead target throws its remainder away.
 // This is the mirror of armour: it penalises big shots and rewards many small ones.

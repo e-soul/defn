@@ -205,7 +205,7 @@ column — so neither can see an off-diagonal, and neither says anything about d
 ## `scons sim` — whole matches
 
 ```
-scons sim scenario=res://scenarios/campaign_progression.json seeds=20 out=res://build/sweep.jsonl
+scons sim scenario=res://scenarios/tempo_lab.json seeds=25 out=res://build/sweep.jsonl
 python scripts/aggregate_sim.py defn/build/sweep.jsonl --per-unit
 ```
 
@@ -256,15 +256,44 @@ Always read the spread.
 | `greedy` | Deploys the best affordable unit the instant energy allows. The floor: no patience. |
 | `defensive` | Banks everything until the leading hostile is inside the base's own weapon range, then commits and keeps spending. |
 | `patience` | Saves toward the top of the roster, keeps a reserve, spends immediately under pressure. |
-| `mix` | Plays a target composition: `"weights": { "breacher": 2, "marksman": 1 }`. Deploys whichever named unit is furthest below its share of the field, and banks when that unit is out of reach. |
+| `mix` | Plays a target composition: `"weights": { "breacher": 2, "marksman": 1 }`. Deploys whichever named unit is furthest below its share of the field, and banks when that unit is out of reach — **except with a hostile already inside the base's own weapon range**, where it buys the neediest unit it can afford instead. |
 | `scripted` | A fixed plan: `"script": [{ "time": 1.0, "unit_id": "breacher" }]`. Exact reproduction of one line of play. |
 
 `greedy`, `defensive` and `patience` all end in "the most expensive affordable unit" — they vary *when* to spend,
 never *what* to buy, so a sweep of them compares mono-stacks and nothing else. **`mix` is the only policy that can
 express a composition**, and it is what any level-scale claim about composition has to be measured with.
 
+> **`mix`'s banking and its exception are a matched pair; changing either alone breaks it.** Without banking the
+> policy buys the cheap end every time energy crosses its cost and never reaches the expensive end — a mono-stack
+> claiming to be a composition. Without the exception it stalls through an opening rush with a full purse. And the
+> exception has to be the *narrow* emergency: widening it to the busy-belt test `patience` uses makes it fire
+> permanently on levels of forty spawns, which restores the mono-stack (`level_04` marksmen 4.5 → 1.0 per run,
+> 24/25 → 0/25). Both variants are measured in the 2026-08-29 entry of
+> [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md).
+
 Adding a policy is a subclass of `PlayerPolicy` in `application/simulation/policies`, plus a line in `make_policy`. It
 sees only what a player sees: energy, integrity, wave, the roster, and what is on the belt.
+
+**Two policies of the same kind need a `label`**, because a run reports its policy's `kind` and `aggregate_sim.py`
+groups by that name — so a second `mix` is silently pooled with the first and the comparison it was added for cannot
+be read. `"label": "mix_operator"` overrides the reported name. Unlabelled policies keep reporting their kind, so
+every recorded baseline stays denominated the way it was measured.
+
+> **Levels are content, and content is not a balance fixture.** The five shipped levels tell a story — pacing,
+> escalation, and some are written to be *lost* on purpose. A win rate over one of those measures the story, and it
+> makes roster work hostage to content churn: `grime` armour 5 is blocked today purely because `level_02` happens to
+> be grime-heavy. **Every scenario that ran on a shipped level was deleted on 2026-08-30.** What is left —
+> `tempo_lab.json`, `tempo_smoke.json`, `matrix_smoke.json` — touches only synthetic engagements and the roster.
+> If you ever need to ask whether a *level* plays as intended, write a scenario for it deliberately, keep it out of
+> `scons test_all`, and never read it as a roster result.
+
+> **A unit no policy buys is invisible to this gate, and a cost tie is enough to cause it.** `best_affordable` takes
+> the most expensive affordable unit with a strict `>`, so on a tie the earlier catalog entry wins — which made the
+> `operator` (cost 20, tying `breacher`, and listed after it) unbuyable by `greedy`, `defensive` and `patience` at
+> every energy level, from the moment it was repriced 25 → 20. It was bought **zero** times in 500 runs and nobody
+> noticed, because the sweep was read as one number. **Before trusting this gate on a unit, count that unit's
+> deployments in the sweep.** `tempo_lab.json` sidesteps the whole class by naming every composition explicitly
+> rather than leaving the choice to a price ladder.
 
 ### Reading a run
 
@@ -286,6 +315,84 @@ Each run writes one JSON object on one line.
 Two standing caveats. **Manual repositioning is not modelled** — a player who drags units around has an option the
 policies do not. And this sweep is still read as two unpaired point estimates at a low seed count, which makes it the
 least resolved gate in use; raise the seeds and difference by seed before letting it decide anything.
+
+Pairing is worth the trouble and costs nothing: `(scenario, seed)` decides a match completely, so the same seed in
+both sweeps differences out. Read it per `(level, policy)` and print only the cells that moved — a change that leaves
+every policy which does not buy the changed unit at **exactly** +0 is showing you its own isolation, and any cell
+that moves is then worth looking at rather than being lost in a total.
+
+> **A policy total is the one number here that carries no information.** `mix` and `mix_operator` differ by 8 runs
+> in total and by **25 of 25** on level 1, where they are near-perfect complements. Always read `(level, policy)`.
+
+### `scons sim scenario=res://scenarios/tempo_lab.json` — the tempo lab
+
+The clock without the content. `scons matrix` hands the whole budget over at once, so it cannot see anything whose
+value depends on arriving early — price above all. This is the instrument that can, built so that no part of the
+answer comes from a level.
+
+Four synthetic engagements in `data/lab/`, deliberately outside `data/levels/`. Same base, and the **same twenty
+hostiles** in every one — grime 8, wrecker 5, hound 3, jackal 2, mason 2 — so the only variable is the schedule:
+
+| engagement | schedule | asks |
+|---|---|---|
+| `tempo_rush` | all twenty inside 30s, fast units first | does arriving early pay? punishes an opening spent banking |
+| `tempo_spike` | a minute of nothing, then all twenty | rewards the bank the rush punishes |
+| `tempo_grind` | one every three seconds | no spike to answer; the economy is the only limit |
+| `tempo_escalation` | cheap first, heavy last, same span | does the right answer change mid-match? |
+
+The grind and escalation spacings are calibration, not taste: at one every *six* seconds, income alone answered the
+whole engagement and the critical purse floored at 1, which measures nothing.
+
+Rows are compositions, not spending heuristics — `greedy` and `defensive` are kept only as reference lines.
+
+**Read it as a critical purse, not a win rate.** Add `bisect=yes`:
+
+```
+scons sim scenario=res://scenarios/tempo_lab.json seeds=25 bisect=yes out=res://build/purse.jsonl
+python scripts/analyze_tempo.py defn/build/purse.jsonl
+python scripts/analyze_tempo.py defn/build/purse.jsonl --baseline before.jsonl
+```
+
+This bisects `starting_core_resource` per (engagement, composition) for the smallest purse that wins half the time —
+the same measurement `scons matrix` makes on budget, and for the same reason. Win rate at a fixed purse is a *step
+function*: read at any single purse, four marksman-bearing compositions clear all four engagements at 100% and the
+table cannot rank them. Bisected, they separate by 1.9x to 3.8x.
+
+The cell contract matches `critical_budget`'s: a cell that still loses at `max_purse` is reported
+`"bounded": false` and carries no number rather than a bogus large one. Tunable through the same args —
+`max_purse` (400), `tolerance` (2), `max_iterations` (9), `win_threshold` (0.5).
+
+Two standing caveats:
+
+- **Bisection assumes the win rate rises with the purse.** Near the threshold it is noisy, so a cell can bracket
+  slightly differently between runs at low seed counts. Pair against a baseline rather than reading one number, and
+  raise seeds before believing a small move — 25 seeds costs about three minutes for the full 4x12 table.
+- **This is deliberately not an `SII`.** The matrix decomposition attributes everything it cannot explain to the
+  matchup term, so folding an economy into it would put tempo, leaks and matchup into one number and call the total
+  diversity. `analyze_tempo.py` reports purses and the cheapest answer per engagement, and stops there.
+
+Adding an engagement is one file in `data/lab/` and one line in `levels`. Keep the hostile multiset identical to the
+others or the comparison stops being about tempo. A scenario resolves its levels from `level_directory`, defaulting
+to the campaign's.
+
+> **Check `owned_upgrades` before believing a composition table.** The roster is `base_units` — **breacher alone** —
+> plus whatever `unit_unlock` upgrades are owned. A lab scenario with `owned_upgrades: []` silently gives every
+> composition policy the same breacher-only force, and the table looks like a result. The three unlock cards are
+> `sharpshooter_contract` (marksman), `demolition_permit` (impact), `command_uplink` (operator), and they carry no
+> other effect.
+
+### Naming your own columns
+
+A matrix spec takes arbitrary compositions and needs no code: `hostile_mixes` takes absolute `units` counts,
+`friendly_mixes` takes relative `weights`, and either may carry a `label`. `matrix_smoke.json` is the shape.
+
+That is how the lab was checked against the game once, on 2026-08-29 — columns built from the five shipped levels'
+spawn shares, rows from the compositions the campaign played — and it found the lab names the winner on levels 2
+through 5, missing only on level 1 where the result is set by a 27-cost unit arriving after a 3-second rush.
+**Where two instruments part company is worth locating exactly, because that gap is the lab's missing clock and
+nothing else.** The reading is written up in [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md) with the compositions it used;
+the spec file was deleted with the rest of the content-denominated instruments, because a standing gate built from
+levels is the thing that had to go.
 
 ---
 

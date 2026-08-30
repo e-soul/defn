@@ -1,0 +1,62 @@
+{
+  "_comment": [
+    "The tempo lab: composition measured against a clock, with no content in the way.",
+    "",
+    "`scons matrix` hands the whole budget over at once, so it cannot see anything whose value depends on arriving",
+    "early -- price above all. The campaign sweep can, but it is denominated in shipped levels, and a level is",
+    "narrative: it has pacing, escalation, and some are written to be lost. A win rate over one of those measures",
+    "the story, not the roster.",
+    "",
+    "So these four engagements carry no story. They are a controlled comparison: identical base, and the *same",
+    "twenty hostiles* -- grime 8, wrecker 5, hound 3, jackal 2, mason 2. The only variable is when that force",
+    "arrives. Anything that separates the four is a tempo effect and nothing else.",
+    "",
+    "The purse differs per engagement (rush 100, spike 120, grind 40, escalation 40) and is not a free parameter:",
+    "the same force delivered faster is simply harder, so one purse cannot put four schedules in the band where",
+    "compositions come apart. Each was swept and set where they do. This is a hand-calibrated stand-in for the",
+    "right measurement, which is the *critical purse* -- bisect starting energy per (composition, engagement) the",
+    "way `scons matrix` bisects budget. Win rate at a fixed purse is a step function: most cells read 0% or 100%,",
+    "so this table ranks compositions but does not measure the distance between them.",
+    "",
+    "  tempo_rush        all twenty inside 30s, fast units first  -- punishes an opening spent banking",
+    "  tempo_spike       a minute of nothing, then all twenty     -- rewards the bank the rush punishes",
+    "  tempo_grind       one every six seconds for two minutes    -- no spike to answer, the economy is the limit",
+    "  tempo_escalation  cheap first, heavy last, same two minutes -- the right answer changes mid-match",
+    "",
+    "Rows are compositions rather than spending heuristics, because composition is the question. `greedy` and",
+    "`defensive` are kept as reference lines: they vary when to spend, never what to buy.",
+    "",
+    "Read it per (level, policy) and paired by seed. A policy total across four engagements that disagree with each",
+    "other is the one number here that carries no information."
+  ],
+  "level_directory": "res://data/lab",
+  "levels": [
+    "tempo_rush",
+    "tempo_spike",
+    "tempo_grind",
+    "tempo_escalation"
+  ],
+  "policies": [
+    { "kind": "greedy" },
+    { "kind": "defensive" },
+    { "kind": "mix", "label": "breacher", "weights": { "breacher": 1 } },
+    { "kind": "mix", "label": "marksman", "weights": { "marksman": 1 } },
+    { "kind": "mix", "label": "impact", "weights": { "impact": 1 } },
+    { "kind": "mix", "label": "operator", "weights": { "operator": 1 } },
+    { "kind": "mix", "label": "breacher+marksman", "weights": { "breacher": 1, "marksman": 1 } },
+    { "kind": "mix", "label": "breacher+operator", "weights": { "breacher": 1, "operator": 1 } },
+    { "kind": "mix", "label": "breacher+impact", "weights": { "breacher": 1, "impact": 1 } },
+    { "kind": "mix", "label": "marksman+impact", "weights": { "marksman": 1, "impact": 1 } },
+    { "kind": "mix", "label": "marksman+operator", "weights": { "marksman": 1, "operator": 1 } },
+    { "kind": "mix", "label": "impact+operator", "weights": { "impact": 1, "operator": 1 } }
+  ],
+  "seed": 4242,
+  "_owned_upgrades_note": "The three unit_unlock cards, and nothing else. Without them the roster is base_units -- breacher alone -- and every composition policy silently collapses to the same force.",
+  "owned_upgrades": [
+    "sharpshooter_contract",
+    "demolition_permit",
+    "command_uplink"
+  ],
+  "camera": "modelled",
+  "max_seconds": 400.0
+}

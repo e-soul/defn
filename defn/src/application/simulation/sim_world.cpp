@@ -47,9 +47,10 @@ int take_damage(SimEntity &entity, int amount) {
     if (entity.hp <= 0 || amount == 0) {
         return 0;
     }
-    // Armour is applied here rather than at the attacker so that every source pays it: melee, direct fire, and both
-    // halves of a splash. Anywhere else and a shell would ignore the armour a rifle respects.
-    amount = damage_after_armour(amount, entity.armour);
+    // Mitigation is applied here rather than at the attacker so that every source pays it: melee, direct fire, and
+    // both halves of a splash. Anywhere else and a shell would ignore the armour a rifle respects, and a capped
+    // target would take a full-weight round from whichever path was forgotten.
+    amount = damage_after_mitigation(amount, entity.damage_cap, entity.armour);
 
     const int previous_hp = entity.hp;
     entity.hp = std::max(entity.hp - amount, 0);
@@ -82,6 +83,7 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.hp = overrides.hp.value_or(config->hp);
     entity.max_hp = entity.hp;
     entity.armour = config->armour;
+    entity.damage_cap = config->damage_cap;
     entity.bounty = config->bounty;
     entity.spawn_tick = tick_index_;
     entity.spawn_time_seconds = elapsed_seconds_;

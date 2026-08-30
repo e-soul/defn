@@ -1,0 +1,19 @@
+{
+  "_comment": [
+    "The smallest possible sweep: one synthetic engagement, one policy. It exists so the runner has a default and",
+    "the hosted suite has a checked-in scenario to read, without either of them reaching for narrative content.",
+    "",
+    "`matrix_smoke.json` plays the same role for `scons matrix`."
+  ],
+  "level_directory": "res://data/lab",
+  "level_id": "tempo_grind",
+  "policy": { "kind": "mix", "label": "breacher+marksman", "weights": { "breacher": 1, "marksman": 1 } },
+  "seed": 4242,
+  "owned_upgrades": [
+    "sharpshooter_contract",
+    "demolition_permit",
+    "command_uplink"
+  ],
+  "camera": "modelled",
+  "max_seconds": 400.0
+}

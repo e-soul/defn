@@ -120,6 +120,8 @@ struct UnitConfig {
     float aggro_range = 0.0F;
     // Flat reduction applied to every point of damage this unit takes, from any source.
     int armour = 0;
+    // Ceiling on any single hit this unit takes, zero for none. Armour's inverse: it blunts burst instead of volume.
+    int damage_cap = 0;
     int cost = 0;
     int bounty = 0;
     float scale = 0.27F;

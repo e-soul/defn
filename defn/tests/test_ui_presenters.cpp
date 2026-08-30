@@ -47,6 +47,7 @@
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
@@ -1415,11 +1416,15 @@ DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
     DEFN_CHECK(!controller.retreat_target());
 }
 
-// The kernel is covered natively; this covers the plumbing around it -- reading a checked-in scenario, loading the
-// shipped content through the real loaders, and writing one JSON line per seed.
+// The kernel is covered natively; this covers the plumbing around it -- reading a checked-in scenario, loading
+// content through the real loaders, and writing one JSON line per seed.
+//
+// The scenario is a *synthetic* one, and deliberately: no test may depend on a shipped level, because levels are
+// narrative and some are written to be lost. `tempo_smoke.json` also exercises `level_directory`, which is the seam
+// that lets a sweep resolve its engagements from outside `data/levels`.
 DEFN_TEST(defn_sim_runner_runs_a_checked_in_scenario_and_writes_jsonl) {
     Dictionary args;
-    args["scenario"] = "res://scenarios/level_01_greedy.json";
+    args["scenario"] = "res://scenarios/tempo_smoke.json";
     args["seeds"] = 2;
     args["out"] = "user://defn_sim_runner_test.jsonl";
 
@@ -1431,9 +1436,85 @@ DEFN_TEST(defn_sim_runner_runs_a_checked_in_scenario_and_writes_jsonl) {
     const String written = FileAccess::get_file_as_string("user://defn_sim_runner_test.jsonl");
     DEFN_CHECK(!written.is_empty());
     DEFN_CHECK_EQ(int(written.strip_edges().split("\n").size()), 2);
-    DEFN_CHECK(written.contains("\"level_id\":\"level_01\""));
-    DEFN_CHECK(written.contains("\"policy\":\"greedy\""));
+    DEFN_CHECK(written.contains("\"level_id\":\"tempo_grind\""));
+    // The label, not the kind: a mix that did not carry one would report "mix" here.
+    DEFN_CHECK(written.contains("\"policy\":\"breacher+marksman\""));
     DEFN_CHECK(written.contains("\"peak_window_5s\":"));
+}
+
+// The critical purse: the same scenario measured by bisecting starting energy instead of reading a win rate at one
+// fixed purse.
+//
+// This exists because win rate is a step function of the purse. At a generous purse every composition wins and at a
+// mean one none does, so a table read at any single purse is mostly zeroes and hundreds and cannot rank anything --
+// the ceiling effect `DIVERSITY_MODEL.md` rejects win rate for, arriving in the timed instrument as well.
+//
+// Pinned here is the contract rather than the number: a bounded cell reports a purse strictly inside the search
+// range, and it reports the win rate that was actually achieved there.
+namespace {
+
+// One bisected cell from the smoke scenario, as a parsed dictionary. Shared so neither test below has to carry the
+// whole run plus every assertion, which is enough branching on its own to trip the cognitive-complexity limit.
+Dictionary bisect_one_smoke_cell(int max_purse, const String &out_path) {
+    Dictionary args;
+    args["scenario"] = "res://scenarios/tempo_smoke.json";
+    args["seeds"] = 3;
+    args["max_purse"] = max_purse;
+    args["out"] = out_path;
+
+    const Dictionary result = DefnSimRunner::run_purse_bisection(args);
+    Dictionary cell;
+    cell["result"] = result;
+    cell["written"] = FileAccess::get_file_as_string(out_path);
+    return cell;
+}
+
+} // namespace
+
+DEFN_TEST(defn_sim_runner_bisects_a_critical_purse) {
+    const Dictionary outcome = bisect_one_smoke_cell(400, "user://defn_sim_runner_purse_test.jsonl");
+    const Dictionary result = outcome["result"];
+    const String written = outcome["written"];
+
+    DEFN_REQUIRE(bool(result.get("success", false)));
+    // One engagement, one policy, so exactly one cell however many seeds each probe cost.
+    DEFN_CHECK_EQ(int(result.get("cells", 0)), 1);
+    DEFN_REQUIRE(!written.is_empty());
+    DEFN_CHECK_EQ(int(written.strip_edges().split("\n").size()), 1);
+    DEFN_CHECK(written.contains("\"level_id\":\"tempo_grind\""));
+    DEFN_CHECK(written.contains("\"bounded\":true"));
+}
+
+// A bounded answer has to be cheaper than the ceiling and has to have actually won there, or the bisection reported
+// a number without narrowing anything.
+DEFN_TEST(defn_sim_runner_reports_a_purse_below_the_ceiling_that_won) {
+    const Dictionary outcome = bisect_one_smoke_cell(400, "user://defn_sim_runner_purse_bounds_test.jsonl");
+    const String written = outcome["written"];
+    DEFN_REQUIRE(!written.is_empty());
+
+    const Dictionary cell = JSON::parse_string(written.strip_edges());
+    DEFN_REQUIRE(cell.has("purse"));
+    const int purse = cell["purse"];
+    DEFN_CHECK(purse > 0);
+    DEFN_CHECK(purse < 400);
+    DEFN_CHECK(double(cell["win_rate"]) >= 0.5);
+}
+
+// The other half of the contract: a cell that cannot be won at the ceiling is reported unbounded rather than handed
+// a bogus number, which is what `critical_budget` already promises for a matrix cell that never wins.
+DEFN_TEST(defn_sim_runner_reports_an_unwinnable_cell_as_unbounded) {
+    Dictionary args;
+    args["scenario"] = "res://scenarios/tempo_smoke.json";
+    args["seeds"] = 2;
+    // A purse of one buys nothing at all, so the engagement cannot be won from it.
+    args["max_purse"] = 1;
+    args["out"] = "user://defn_sim_runner_unbounded_test.jsonl";
+
+    const Dictionary result = DefnSimRunner::run_purse_bisection(args);
+
+    DEFN_REQUIRE(bool(result.get("success", false)));
+    DEFN_CHECK_EQ(int(result.get("unbounded", 0)), 1);
+    DEFN_CHECK(FileAccess::get_file_as_string("user://defn_sim_runner_unbounded_test.jsonl").contains("\"bounded\":false"));
 }
 
 // The measurement itself is a lab result, not a rule, so this only pins that it runs and stays discriminating: a

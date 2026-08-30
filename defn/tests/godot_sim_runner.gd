@@ -3,9 +3,10 @@ extends SceneTree
 
 func _parse_args() -> Dictionary:
 	var parsed := {
-		"scenario": "res://scenarios/level_01_greedy.json",
+		"scenario": "res://scenarios/tempo_smoke.json",
 		"seeds": 1,
 		"out": "",
+		"bisect": false,
 	}
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var index := 0
@@ -21,6 +22,9 @@ func _parse_args() -> Dictionary:
 				index += 2
 			"--out":
 				parsed["out"] = value
+				index += 2
+			"--bisect":
+				parsed["bisect"] = value.to_lower() in ["1", "true", "yes", "on"]
 				index += 2
 			_:
 				index += 1
@@ -38,9 +42,11 @@ func _run() -> void:
 		return
 
 	var args := _parse_args()
-	print("Running %d seed(s) of %s" % [int(args["seeds"]), args["scenario"]])
+	var bisecting: bool = bool(args["bisect"])
+	var method: String = "run_purse_bisection" if bisecting else "run_sweep"
+	print("Running %d seed(s) of %s%s" % [int(args["seeds"]), args["scenario"], " (critical purse)" if bisecting else ""])
 
-	var result_variant: Variant = ClassDB.class_call_static("DefnSimRunner", "run_sweep", args)
+	var result_variant: Variant = ClassDB.class_call_static("DefnSimRunner", method, args)
 	if typeof(result_variant) != TYPE_DICTIONARY:
 		printerr("Simulation runner returned an invalid result payload.")
 		quit(2)
@@ -52,10 +58,15 @@ func _run() -> void:
 		quit(1)
 		return
 
-	var runs: int = int(result.get("runs", 0))
-	var victories: int = int(result.get("victories", 0))
 	var out_path: String = str(result.get("out", ""))
-	print("%d run(s), %d victory/victories (%.0f%% win rate)" % [runs, victories, 100.0 * float(victories) / float(max(runs, 1))])
+	if bisecting:
+		var cells: int = int(result.get("cells", 0))
+		var unbounded: int = int(result.get("unbounded", 0))
+		print("%d cell(s), %d unbounded" % [cells, unbounded])
+	else:
+		var runs: int = int(result.get("runs", 0))
+		var victories: int = int(result.get("victories", 0))
+		print("%d run(s), %d victory/victories (%.0f%% win rate)" % [runs, victories, 100.0 * float(victories) / float(max(runs, 1))])
 	if out_path != "":
 		print("Wrote %s" % out_path)
 	quit(0)

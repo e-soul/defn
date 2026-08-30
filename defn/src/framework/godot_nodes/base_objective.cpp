@@ -102,7 +102,7 @@ void BaseObjective::configure(int max_hp, const godot::Vector2 &position, const 
     }
 
     if (HealthComponent *health = get_health_component()) {
-        health->configure(max_hp, visual_config_.has_value() ? visual_config_->armour : 0);
+        health->configure(max_hp, visual_config_.has_value() ? visual_config_->armour : 0, visual_config_.has_value() ? visual_config_->damage_cap : 0);
     }
     update_visual_state();
     queue_redraw();

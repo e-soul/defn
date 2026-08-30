@@ -324,6 +324,7 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
         config.move_speed_pixels_per_second = VariantTools::as_float(unit_dict.get("move_speed", 0.5)) * LEGACY_MOVE_SPEED_SCALE;
     }
     config.armour = VariantTools::as_int(unit_dict.get("armour", config.armour));
+    config.damage_cap = VariantTools::as_int(unit_dict.get("damage_cap", config.damage_cap));
     config.threat_weight = VariantTools::as_real(unit_dict.get("threat_weight", config.threat_weight));
     config.target_preference = parse_target_preference(unit_dict);
     config.role = parse_unit_role(String(unit_dict.get("role", "none")));

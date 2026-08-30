@@ -34,10 +34,12 @@ separation_arg = ARGUMENTS.pop("separation", "")
 friendly_spacing_arg = ARGUMENTS.pop("spacing", "")
 seeds_arg = ARGUMENTS.pop("seeds", "")
 out_arg = ARGUMENTS.pop("out", "")
+bisect_arg = ARGUMENTS.pop("bisect", "")
 
 sim_scenario_arg = ["--scenario", scenario_arg] if scenario_arg else []
 sim_seeds_arg = ["--seeds", seeds_arg] if seeds_arg else []
 sim_out_arg = ["--out", out_arg] if out_arg else []
+sim_bisect_arg = ["--bisect", bisect_arg] if bisect_arg else []
 matrix_spec_arg = ["--spec", spec_arg] if spec_arg else []
 matrix_separation_arg = ["--separation", separation_arg] if separation_arg else []
 matrix_spacing_arg = ["--friendly-spacing", friendly_spacing_arg] if friendly_spacing_arg else []
@@ -755,7 +757,7 @@ def run_simulation(target, source, env):
         return prepare_result
 
     command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
-    sim_args = [argument for argument in [sim_scenario_arg, sim_seeds_arg, sim_out_arg] if argument]
+    sim_args = [argument for argument in [sim_scenario_arg, sim_seeds_arg, sim_out_arg, sim_bisect_arg] if argument]
     if sim_args:
         command.append("--")
         for argument in sim_args:

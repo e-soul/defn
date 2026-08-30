@@ -1,0 +1,102 @@
+{
+  "name": "Tempo Lab - Spike",
+  "background": "res://assets/backgrounds/background_desert_outpost_tiling.png",
+  "starting_core_resource": 60,
+  "base_integrity": 3,
+  "base_position": [
+    0.06,
+    0.65
+  ],
+  "belt_width": [
+    0.66,
+    0.825
+  ],
+  "level_id": 2,
+  "waves": [
+    {
+      "wave_number": 1,
+      "spawns": [
+        {
+          "time": 70.0,
+          "type": "grime"
+        },
+        {
+          "time": 70.4,
+          "type": "grime"
+        },
+        {
+          "time": 70.8,
+          "type": "grime"
+        },
+        {
+          "time": 71.2,
+          "type": "grime"
+        },
+        {
+          "time": 71.6,
+          "type": "grime"
+        },
+        {
+          "time": 72.0,
+          "type": "grime"
+        },
+        {
+          "time": 72.4,
+          "type": "grime"
+        },
+        {
+          "time": 72.8,
+          "type": "grime"
+        },
+        {
+          "time": 73.2,
+          "type": "wrecker"
+        },
+        {
+          "time": 73.6,
+          "type": "wrecker"
+        },
+        {
+          "time": 74.0,
+          "type": "wrecker"
+        },
+        {
+          "time": 74.4,
+          "type": "wrecker"
+        },
+        {
+          "time": 74.8,
+          "type": "wrecker"
+        },
+        {
+          "time": 75.2,
+          "type": "hound"
+        },
+        {
+          "time": 75.6,
+          "type": "hound"
+        },
+        {
+          "time": 76.0,
+          "type": "hound"
+        },
+        {
+          "time": 76.4,
+          "type": "mason"
+        },
+        {
+          "time": 76.8,
+          "type": "mason"
+        },
+        {
+          "time": 77.2,
+          "type": "jackal"
+        },
+        {
+          "time": 77.6,
+          "type": "jackal"
+        }
+      ]
+    }
+  ]
+}

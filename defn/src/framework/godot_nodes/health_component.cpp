@@ -14,10 +14,11 @@ void HealthComponent::_bind_methods() {
     ADD_SIGNAL(MethodInfo("health_changed", PropertyInfo(Variant::INT, "current"), PropertyInfo(Variant::INT, "max")));
 }
 
-void HealthComponent::configure(int p_max_hp, int p_armour) {
+void HealthComponent::configure(int p_max_hp, int p_armour, int p_damage_cap) {
     max_hp = p_max_hp;
     current_hp = max_hp;
     armour = p_armour;
+    damage_cap = p_damage_cap;
     emit_signal("health_changed", current_hp, max_hp);
 }
 
@@ -34,7 +35,7 @@ int HealthComponent::take_damage(int amount) {
     }
 
     // Same rule, same place in the sequence as SimWorld::take_damage. Conformance compares the two.
-    amount = damage_after_armour(amount, armour);
+    amount = damage_after_mitigation(amount, damage_cap, armour);
 
     const int previous_hp = current_hp;
     current_hp -= amount;
