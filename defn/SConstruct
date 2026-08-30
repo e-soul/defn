@@ -6,6 +6,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 
 
 def remove_flags(flags, flags_to_remove):
@@ -796,6 +797,15 @@ def run_conformance(target, source, env):
     return result.returncode
 
 
+def run_packaging_check(target, source, env):
+    # Pure Python: it reads the presets and the data, and needs neither the extension nor Godot.
+    result = subprocess.run([sys.executable, str(source[0].abspath)], check=False)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
 def run_balance(target, source, env):
     godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
     if not godot_executable:
@@ -865,6 +875,13 @@ conformance_stamp = env.Command(os.path.join("build", "defn_conformance.stamp"),
 AlwaysBuild(conformance_stamp)
 env.Alias("conformance", conformance_stamp)
 
+# The script reads the presets, the data, the scenes and the sources, which is more than is worth declaring;
+# AlwaysBuild covers all of it.
+packaging_script = os.path.join("..", "scripts", "check_export_presets.py")
+packaging_stamp = env.Command(os.path.join("build", "defn_packaging.stamp"), packaging_script, run_packaging_check)
+AlwaysBuild(packaging_stamp)
+env.Alias("packaging", packaging_stamp)
+
 sim_script = os.path.join("tests", "godot_sim_runner.gd")
 sim_stamp = env.Command(os.path.join("build", "defn_sim.stamp"), [library, sim_script], run_simulation)
 AlwaysBuild(sim_stamp)
@@ -875,7 +892,8 @@ hosted_test_stamp = env.Command(os.path.join("build", "defn_hosted_tests.stamp")
 AlwaysBuild(hosted_test_stamp)
 env.Alias("hosted_test", hosted_test_stamp)
 # Conformance gates like any other correctness test: a failure means the kernel and the game disagree about a rule.
-env.Alias("test_all", [test_stamp, hosted_test_stamp, conformance_stamp])
+# The packaging check gates alongside it: a pass here means the game runs, a pass there means it also ships.
+env.Alias("test_all", [test_stamp, hosted_test_stamp, conformance_stamp, packaging_stamp])
 
 coverage_hosted_stamp = env.Command(os.path.join("build", "coverage", "hosted", "coverage.stamp"), [library, hosted_test_script], run_hosted_coverage)
 AlwaysBuild(coverage_hosted_stamp)
