@@ -40,19 +40,7 @@ Build and run the broader headless Godot-hosted suite: `scons hosted_test godot_
 
 Build and run both suites together: `scons test_all godot_bin=path/to/godot_executable`
 
-Measure the two roster tables: `scons balance`
-
-Measure the payoff matrix of critical budgets, then decompose it: `scons matrix out=res://build/matrix.jsonl` followed by `python scripts/analyze_matrix.py defn/build/matrix.jsonl`. Pass `spec=res://scenarios/<file>.json` to name the compositions, `seeds=<n>` to change the seed count, and `--baseline before.jsonl` when judging a change rather than taking a reading.
-
-Play whole matches headless: `scons sim scenario=res://scenarios/<file>.json seeds=<n> out=res://build/sweep.jsonl` followed by `python scripts/aggregate_sim.py defn/build/sweep.jsonl`.
-
-Judge a roster change against the clock with the tempo lab: `scons sim scenario=res://scenarios/tempo_lab.json seeds=25 bisect=yes out=res://build/purse.jsonl` followed by `python scripts/analyze_tempo.py defn/build/purse.jsonl`. `bisect=yes` reports the *critical purse* — the smallest starting energy that wins half the time — because a win rate at a fixed purse saturates. Its four synthetic engagements share one hostile force and differ only in when it arrives. **No instrument runs on shipped levels**: levels are narrative content, some are meant to be lost, and a gate denominated in them measures the story and inherits its churn.
-
-Check that the simulation kernel still agrees with the game: `scons conformance`. It runs as part of `scons test_all`.
-
 Check that every asset the game can reach is actually packaged: `scons packaging`. It runs as part of `scons test_all`, needs neither Godot nor the extension, and fails with the paths to add. The presets ship only what `export_files` names, so a new unit renders in a debug run and is missing its sprites in the exported build. Add `--stale` when running `python scripts/check_export_presets.py` directly to also see listed entries nothing reaches.
-
-The balance and diversity instruments are documented in [defn/BALANCE_TOOLING.md](defn/BALANCE_TOOLING.md); what they currently say is in [defn/DIVERSITY_AND_BALANCE.md](defn/DIVERSITY_AND_BALANCE.md), and the model behind them in [defn/DIVERSITY_MODEL.md](defn/DIVERSITY_MODEL.md). Every measured change, shipped or reverted, is logged in [defn/EXPERIMENT_LOG.md](defn/EXPERIMENT_LOG.md).
 
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
 
