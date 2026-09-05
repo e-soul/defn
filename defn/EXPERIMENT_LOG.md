@@ -14,6 +14,53 @@ against the baseline, decomposed both ways, unless the entry says otherwise.
 
 ---
 
+## 2026-09-05 — Melee reach 128 -> 100, because the swing was landing in front of the target
+
+**Shipped; every unit's `melee_attack_range` is 100.** A presentation fix with one balance consequence, measured
+rather than assumed.
+
+**Hypothesis.** None, really — this started as a complaint that units in contact are visibly not touching. The
+number was checked against the art instead of against the gates: each clip's opaque bounding box, moved by that
+clip's `offset` and scaled by the unit's `scale`, gives where a weapon tip and a body edge actually sit in world
+pixels. At a separation of 128 the attacker's tip stops a **median 40px short of the target's body**, which is about
+one body width of air. Tip-to-body contact wants a separation near 91 and tip-to-silhouette near 109 across the 40
+attacker/defender pairs; 100 sits between them and reads as contact for the short-reach pairs without burying the
+long-reach ones. Rendered at 128 / 108 / 100 / 92 to pick it.
+
+### Result
+
+`scons balance`, 25 seeds. Four of the five hostile rows and the entire roster table are **bit-identical**: units
+acquire at their ranged range and stop there, so a melee band they never enter cannot move their numbers.
+
+| hostile | threat before | threat after | hp/kill before | hp/kill after |
+|---|---|---|---|---|
+| `grime`, `mason`, `wrecker`, `jackal` | — | unchanged | — | unchanged |
+| `hound` | 5.38 | 4.76 | 142.6 | 126.2 |
+
+The `hound` is the only unit with no gun, so its reach *is* its weapon and a 22% cut to it is a 12% cut to what it
+is worth. That is the whole measured cost.
+
+### What is now known
+
+**The melee band is nearly inert in the lab, and that is a property of the stopping rule, not of the numbers.** A
+unit stops the tick it engages, and it engages at its ranged range — 245px at the shortest — so nothing walks into
+contact unless it has no gun or its target dies underneath it. Any future melee lever will read as a flat null on
+four of five hostile columns for the same reason; the `hound` column is the only instrument that can see one.
+
+**The diver toll is now one swing wide, not two, and the composition threshold moved from two `impact`s to four.**
+`impact`'s tax is `2 x reach / hound speed` seconds of contact, which was 2.13s at 128px and is 1.67s at 100px —
+either side of the 1.0s melee period. This is the one thing the cut broke, and it is pinned as arithmetic in
+`impact_taxes_a_diver_for_roughly_half_its_health_on_the_way_past`. Buying the second swing back costs one dial:
+`impact`'s melee period 1.0 -> 0.8 (transit holds 2 swings, and its melee DPS goes 30 -> 37.5), or the `hound`'s
+speed 120 -> 96 (a second nerf on top of the reach cut). Neither was measured; the toll was left weaker rather than
+compensated blind.
+
+**110px hostile spacing changed sides.** It used to sit inside the melee reach and now sits outside it, which
+retires half of open question 5 in [`DIVERSITY_AND_BALANCE.md`](DIVERSITY_AND_BALANCE.md) without answering the
+half that matters — the marksman's 650px reach spanning the whole hostile line is untouched.
+
+---
+
 ## 2026-08-30 — Marksman rate of fire, swept: structure that moves no answers
 
 **Not shipped; `ranged_attack_period_seconds` stays at 1.05.** Six points swept, 51 seeds each, paired.

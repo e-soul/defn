@@ -44,7 +44,7 @@ struct LabSetup {
     float friendly_front_x = 800.0F;
     // Friendlies fill backwards from the front, hostiles forwards from theirs: the two lines face each other.
     //
-    // Spacing must stay **wider than the largest melee reach in the game** (128px), or the lab has no notion of a
+    // Spacing must stay **wider than the largest melee reach in the game** (100px), or the lab has no notion of a
     // back rank: a unit arriving at the front rank finds the second rank already in contact, so anything that means
     // to walk past the first to reach the second has nothing to walk past. The original 70px was chosen for a purely
     // ranged, 1-D roster and silently measured every positional mechanic as a flat null. See `BALANCE_TOOLING.md`.

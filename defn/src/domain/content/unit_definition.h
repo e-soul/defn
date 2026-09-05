@@ -111,7 +111,7 @@ struct UnitConfig {
     int hp = 100;
     int melee_damage = 15;
     double melee_attack_period_seconds = 1.0;
-    float melee_attack_range = 128.0F;
+    float melee_attack_range = 100.0F;
     RangeVariationConfig melee_attack_range_variation;
     int ranged_damage = 8;
     double ranged_attack_period_seconds = 2.0 / 3.0;

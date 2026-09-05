@@ -10,7 +10,7 @@
 namespace defn {
 
 struct RuntimeRangeConfig {
-    float melee_attack_range = 128.0F;
+    float melee_attack_range = 100.0F;
     float melee_attack_range_variation_min = 1.0F;
     float melee_attack_range_variation_max = 1.0F;
     float ranged_attack_range = 384.0F;
@@ -19,7 +19,7 @@ struct RuntimeRangeConfig {
 };
 
 struct ResolvedUnitRuntimeConfig {
-    float melee_attack_range = 128.0F;
+    float melee_attack_range = 100.0F;
     float ranged_attack_range = 384.0F;
 };
 

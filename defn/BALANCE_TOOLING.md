@@ -73,7 +73,7 @@ number. If many cells come back unbounded, raise `max_budget`.
 | Parameter | Default | Why it matters |
 |---|---|---|
 | `separation` | 800px | Friendlies advance at their own speeds, so over a longer walk a mix with a wide speed spread arrives strung out rather than as a line. One separation cannot see that. |
-| `friendly_spacing` | 200px | **Must stay wider than the largest melee reach (128px)**, or a unit arriving at the front rank finds the second rank already in contact, and anything meaning to walk past the first rank has nothing to walk past. The original 70px measured every positional mechanic as a flat null. |
+| `friendly_spacing` | 200px | **Must stay wider than the largest melee reach (100px)**, or a unit arriving at the front rank finds the second rank already in contact, and anything meaning to walk past the first rank has nothing to walk past. The original 70px measured every positional mechanic as a flat null. |
 | `hostile_spacing` | 110px | Six hostiles at 110px span 550px, inside the marksman's 650 reach, so a marksman engages the whole hostile force at once. Widening it changes the value of the dominant friendly unit in every cell — an open question, not a settled default. |
 | belt band | 750–850px | Units are scattered across the belt as in the game, sampled from a *second* random stream (`seed ^ 0x9E3779B9`) so that adding depth does not shift every range variation after it. Splash is the only rule that reads a 2-D distance. |
 

@@ -174,11 +174,15 @@ Six levers applied to the existing units moved nothing that survived. One new ar
 that walks forward and stops to trade — and reach totally orders such units, so no arrangement of their numbers can
 produce a matchup matrix.
 
-**`hound`, the rusher.** 110 hp, melee 20 per 0.8s at 128px, no gun, speed 120. Sized from the approach arithmetic: it
+**`hound`, the rusher.** 110 hp, melee 20 per 0.8s at 100px, no gun, speed 120. Sized from the approach arithmetic: it
 survives one marksman's approach fire (79 damage against 110 hp), reaches a breacher in 1.0s, and loses to a breacher
 in contact. It gave the marksman its first fight, at twice the budget of the one it wins — and note *how*: it takes
 only 153 damage and loses 0.33 units. It is not dying, it is ineffective, because it cannot shoot inside 200px.
 Minimum range, aggro weight and the composition premium all became live measurements the moment it existed.
+
+Its reach was 128px when it was sized here and was cut to 100 on 2026-09-05 so that a swing lands on the
+target rather than in the air in front of it. The `hound` is the only row that moved — threat 5.38 -> 4.76 — because
+it is the only unit with no gun, and so the only one that ever enters a melee band on purpose. See [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md).
 
 **The role mechanism.** `UnitRole`, a per-shooter `preferred_roles` bias table and an `aggro_range`, all folded into
 the existing threat weight as `effective_weight = threat_weight * role_bias(role)`. A role is a *targeting handle*,
@@ -464,7 +468,7 @@ seeds, and it is the gate that rejected `grime` armour 5 — at 5 seeds it read 
 noise; at 25 seeds paired by seed it is an unambiguous -10 on one policy. Raise its default seed count and pair it
 against a baseline, as `analyze_matrix.py` already does. A scripting change, not a design one.
 
-**5. Hostile line spacing.** 110px is inside the 128px melee reach, and widening it to match the friendly side costs
+**5. Hostile line spacing.** 110px used to sit inside the melee reach and now sits just outside it, the reach having been cut 128 -> 100; widening the spacing to match the friendly side costs
 two passing gates while buying one hostile row. It is not obvious which spacing is *right*: 200px is arguably closer
 to a real level, where hostiles arrive over time and strung out, and the lab models no reinforcement-travel cost at
 all. Doing it properly means widening the spacing **and** retuning against the new baseline, as one deliberate piece

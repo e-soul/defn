@@ -292,13 +292,13 @@ DEFN_TEST(pursuit_never_pulls_a_unit_out_of_a_contact_it_is_already_in) {
 }
 
 // The hound's catalog numbers, pinned as a pair, because neither is meaningful without the other. `aggro_range: 600`
-// against a `melee_attack_range` of 128 is the whole dive: it has to see a sniper from well outside contact to have
+// against a `melee_attack_range` of 100 is the whole dive: it has to see a sniper from well outside contact to have
 // anything to decline. And both are read against the *friendly line's* spacing -- at the lab's original 70px spacing
-// the back rank is already inside 128px when the front rank is, so there is no backline to reach and the mechanism
+// the back rank is already inside 100px when the front rank is, so there is no backline to reach and the mechanism
 // measures as a flat null. See `BALANCE_TOOLING.md`.
 DEFN_TEST(the_hound_senses_a_sniper_far_outside_the_reach_it_kills_with) {
     constexpr float HOUND_AGGRO_RANGE = 600.0F;
-    constexpr float HOUND_MELEE_RANGE = 128.0F;
+    constexpr float HOUND_MELEE_RANGE = 100.0F;
     constexpr float LAB_FRIENDLY_SPACING = 70.0F;
 
     // The dive only exists in the gap between the two.
@@ -465,11 +465,16 @@ DEFN_TEST(jackal_is_exactly_four_marksman_shots) {
 // unit whose job is the fight everyone else has no opinion about.
 //
 // The mechanism is a toll, not a wall. A diving hound declines impact -- it prefers snipers -- so impact never gets a
-// stand-up fight. What it gets is the seconds the hound spends crossing its 128px reach, and the damage in that window
-// is what decides whether the marksman behind it survives. Two impacts in the line is the threshold, which is what
-// makes the value non-additive rather than a flat buff.
+// stand-up fight. What it gets is the seconds the hound spends crossing its 100px reach, and the damage in that window
+// is what decides whether the marksman behind it survives. How many impacts it takes to close that window is the
+// composition, which is what makes the value non-additive rather than a flat buff.
+//
+// The reach used to be 128px, which bought two swings and put the threshold at two impacts. It was cut to 100 so that
+// a swing lands on the target instead of in the air in front of it -- see `DIVERSITY_AND_BALANCE.md` -- and the
+// window is now one swing wide, which moves the threshold to four. The toll is real but it is a weaker one; the
+// alternative is buying the second swing back on another dial (impact's period, or the hound's speed).
 DEFN_TEST(impact_taxes_a_diver_for_roughly_half_its_health_on_the_way_past) {
-    constexpr float IMPACT_MELEE_REACH = 128.0F;
+    constexpr float IMPACT_MELEE_REACH = 100.0F;
     constexpr int IMPACT_MELEE_DAMAGE = 30;
     constexpr double IMPACT_MELEE_PERIOD = 1.0;
     constexpr float HOUND_SPEED = 120.0F;
@@ -478,11 +483,13 @@ DEFN_TEST(impact_taxes_a_diver_for_roughly_half_its_health_on_the_way_past) {
     // In and out the far side of the band, at a sprint.
     const double transit_seconds = (2.0 * IMPACT_MELEE_REACH) / HOUND_SPEED;
     const int swings = static_cast<int>(transit_seconds / IMPACT_MELEE_PERIOD);
-    DEFN_CHECK_EQ(swings, 2);
+    DEFN_CHECK_EQ(swings, 1);
 
-    // One impact cannot kill it in the window; two can. That threshold is the composition, stated as arithmetic.
-    DEFN_CHECK(swings * IMPACT_MELEE_DAMAGE < HOUND_HP);
-    DEFN_CHECK(2 * swings * IMPACT_MELEE_DAMAGE > HOUND_HP);
+    // The threshold is the smallest line that closes the window, and it is pinned rather than derived so that a
+    // catalog edit which moves it has to say so here.
+    constexpr int IMPACTS_TO_KILL_IN_TRANSIT = 4;
+    DEFN_CHECK((IMPACTS_TO_KILL_IN_TRANSIT - 1) * swings * IMPACT_MELEE_DAMAGE < HOUND_HP);
+    DEFN_CHECK(IMPACTS_TO_KILL_IN_TRANSIT * swings * IMPACT_MELEE_DAMAGE > HOUND_HP);
 
     // And it has to out-hit the thing it is taxing, or the trade is the wrong way round.
     DEFN_CHECK(IMPACT_MELEE_DAMAGE > 20); // the hound's own melee
