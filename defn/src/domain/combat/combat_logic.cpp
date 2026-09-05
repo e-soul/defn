@@ -4,6 +4,7 @@
 #include "combat_logic.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace defn {
@@ -16,6 +17,11 @@ float get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &
     return origin.x - target_position.x;
 }
 
+// A sensor is never allowed to be tighter than the gun. An `aggro_range` left at its default of zero therefore means
+// "see exactly as far as you shoot", which is every unit shipped before pursuit existed and is why turning the
+// mechanism on changes nothing until a catalog entry widens it.
+float resolve_aggro_range(const CombatConfig &config) { return config.aggro_range > config.ranged_range ? config.aggro_range : config.ranged_range; }
+
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance) {
     if (distance < 0.0F) {
         return AttackMode::NONE;
@@ -23,40 +29,78 @@ AttackMode classify_target_by_distance(const CombatConfig &config, float distanc
     if (distance <= config.attack_range) {
         return AttackMode::MELEE;
     }
-    if (distance <= config.ranged_range) {
+    // Too far for contact and too close to shoot: the unit has to move before it can do anything, which is the whole
+    // point of a minimum range.
+    if (distance >= config.minimum_ranged_range && distance <= config.ranged_range) {
         return AttackMode::RANGED;
     }
 
     return AttackMode::NONE;
 }
 
-CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
-                                                   std::span<const CombatTargetSnapshot> targets) {
-    if (current_target_id.is_valid()) {
-        for (const CombatTargetSnapshot &snapshot : targets) {
-            if (snapshot.id != current_target_id || snapshot.dead || snapshot.side == config.side) {
-                continue;
-            }
+namespace {
 
-            const AttackMode current_mode = classify_target_by_distance(config, get_forward_distance(config.side, origin, snapshot.position));
-            if (current_mode != AttackMode::NONE) {
-                return {
-                    .engaged = true,
-                    .attack_mode = current_mode,
-                    .target_id = current_target_id,
-                    .target_position = snapshot.position,
-                };
-            }
-            break;
-        }
+// What a ranged shooter is reaching for, as one number: lower wins.
+//
+// Threat weight always makes a candidate more attractive, so it divides a score that is being minimised and
+// multiplies one that has been negated to be minimised. A weight of exactly 1 leaves the score bit-identical to the
+// raw distance the rule used before preferences existed, which is what keeps every default unit's behaviour unmoved.
+//
+// The range gate is deliberately not part of this. A unit still cannot shoot what it cannot reach; only the choice
+// among the things it *can* reach is what a preference changes.
+// A candidate's pull, as the shooter sees it: what the target broadcasts, times what this shooter thinks that kind of
+// target is worth. The two compose rather than override, so a tank's aggro still drags a role-preferring shooter --
+// just less far.
+float effective_weight(const CombatConfig &config, const CombatTargetSnapshot &snapshot) {
+    const float weight = snapshot.threat_weight > 0.0F ? snapshot.threat_weight : 1.0F;
+    return weight * config.bias_for_role(snapshot.role);
+}
+
+float ranged_target_score(const CombatConfig &config, const CombatTargetSnapshot &snapshot, float distance) {
+    const float weight = effective_weight(config, snapshot);
+    const auto health = static_cast<float>(snapshot.health);
+    switch (config.target_preference) {
+    case TargetPreference::FARTHEST:
+        return -distance * weight;
+    case TargetPreference::LOWEST_HP:
+        return health / weight;
+    case TargetPreference::HIGHEST_HP:
+        return -health * weight;
+    case TargetPreference::NEAREST:
+        break;
     }
 
-    EntityId best_melee_target_id;
-    EntityId best_ranged_target_id;
-    Vector2 best_melee_target_position;
-    Vector2 best_ranged_target_position;
+    return distance / weight;
+}
+
+// How much better a candidate has to be before a shooter abandons the target it is already firing at, as a fraction
+// of the current target's score.
+//
+// Zero would re-pick every tick and make units thrash between candidates as the line walks. Infinity is what the rule
+// used to be, and it is why aggro weight and target preference could only ever speak at the instant of first
+// acquisition: a unit that had already locked on never asked the question again, and in a lane the first thing to
+// cross the range gate is the nearest thing by construction.
+constexpr float RANGED_RETARGET_MARGIN = 0.25F;
+
+// The best candidate of each kind, chosen in one pass. Melee and ranged are picked by different rules, so they are
+// tracked separately rather than one falling out of the other.
+struct BestTargets {
+    EntityId melee_id;
+    Vector2 melee_position;
+    EntityId ranged_id;
+    Vector2 ranged_position;
+    float ranged_score = std::numeric_limits<float>::max();
+    // A preferred-role candidate that is sensed but cannot be attacked from here yet. The reason to keep walking.
+    bool preferred_ahead = false;
+    // Whether the best thing that *can* be attacked is itself preferred, which is when there is nothing to wait for.
+    bool best_is_preferred = false;
+};
+
+BestTargets scan_targets(const Vector2 &origin, const CombatConfig &config, std::span<const CombatTargetSnapshot> targets) {
+    BestTargets best;
     float closest_melee_distance = std::numeric_limits<float>::max();
-    float closest_ranged_distance = std::numeric_limits<float>::max();
+    float best_ranged_score = std::numeric_limits<float>::max();
+    bool best_is_preferred = false;
 
     for (const CombatTargetSnapshot &snapshot : targets) {
         if (!snapshot.id.is_valid() || snapshot.dead || snapshot.side == config.side) {
@@ -68,33 +112,132 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
             continue;
         }
 
+        // Melee stays on pure distance. Contact is decided by who you are standing next to, and a preference that
+        // reached past the unit in your face would be a movement change wearing a targeting change's clothes.
         if (distance <= config.attack_range && distance < closest_melee_distance) {
             closest_melee_distance = distance;
-            best_melee_target_id = snapshot.id;
-            best_melee_target_position = snapshot.position;
+            best.melee_id = snapshot.id;
+            best.melee_position = snapshot.position;
         }
-        if (distance <= config.ranged_range && distance < closest_ranged_distance) {
-            closest_ranged_distance = distance;
-            best_ranged_target_id = snapshot.id;
-            best_ranged_target_position = snapshot.position;
+
+        const bool shootable = distance >= config.minimum_ranged_range && distance <= config.ranged_range;
+        const float score = shootable ? ranged_target_score(config, snapshot, distance) : std::numeric_limits<float>::max();
+        if (score < best_ranged_score) {
+            best_ranged_score = score;
+            best.ranged_id = snapshot.id;
+            best.ranged_position = snapshot.position;
+        }
+
+        if (!config.prefers_role(snapshot.role)) {
+            continue;
+        }
+
+        // Preferred and reachable settles it; preferred and merely sensed is the reason not to settle for anything
+        // else. The dead zone counts as unreachable on purpose -- walking into a target you cannot shoot yet is what
+        // a minimum range is for.
+        if (classify_target_by_distance(config, distance) != AttackMode::NONE) {
+            best_is_preferred = true;
+        } else if (distance <= resolve_aggro_range(config)) {
+            best.preferred_ahead = true;
         }
     }
 
-    if (best_melee_target_id.is_valid()) {
+    best.best_is_preferred = best_is_preferred;
+
+    best.ranged_score = best_ranged_score;
+    return best;
+}
+
+// What the unit is already fighting, if it is still there and still reachable.
+struct RetainedTarget {
+    AttackMode mode = AttackMode::NONE;
+    Vector2 position;
+    float ranged_score = std::numeric_limits<float>::max();
+};
+
+RetainedTarget find_retained_target(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
+                                    std::span<const CombatTargetSnapshot> targets) {
+    if (!current_target_id.is_valid()) {
+        return {};
+    }
+
+    for (const CombatTargetSnapshot &snapshot : targets) {
+        if (snapshot.id != current_target_id || snapshot.dead || snapshot.side == config.side) {
+            continue;
+        }
+
+        const float distance = get_forward_distance(config.side, origin, snapshot.position);
         return {
-            .engaged = true,
-            .attack_mode = AttackMode::MELEE,
-            .target_id = best_melee_target_id,
-            .target_position = best_melee_target_position,
+            .mode = classify_target_by_distance(config, distance),
+            .position = snapshot.position,
+            .ranged_score = ranged_target_score(config, snapshot, distance),
         };
     }
 
-    if (best_ranged_target_id.is_valid()) {
+    return {};
+}
+
+// Sign-safe on purpose: `farthest` and `highest_hp` score negative, so the margin is taken against the magnitude of
+// what the unit is currently shooting rather than multiplied through it.
+bool clears_retarget_margin(float candidate_score, float retained_score) {
+    return candidate_score < retained_score - (RANGED_RETARGET_MARGIN * std::abs(retained_score));
+}
+
+} // namespace
+
+CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
+                                                   std::span<const CombatTargetSnapshot> targets) {
+    const RetainedTarget retained = find_retained_target(origin, config, current_target_id, targets);
+
+    // Contact is sticky. Who you are standing next to is not a choice a preference gets to revisit, and letting one
+    // walk a unit away mid-swing would be a movement change wearing a targeting change's clothes.
+    if (retained.mode == AttackMode::MELEE) {
+        return {
+            .engaged = true,
+            .attack_mode = AttackMode::MELEE,
+            .target_id = current_target_id,
+            .target_position = retained.position,
+        };
+    }
+
+    const BestTargets best = scan_targets(origin, config, targets);
+
+    // Pursuit. Something this shooter prefers is sensed ahead but cannot be hit from here, and nothing it *can* hit is
+    // preferred -- so it declines to engage and the caller walks it forward, which is the only steering a lane needs.
+    //
+    // Deliberately after the melee-retention check above: a unit already in contact has stopped choosing, and pulling
+    // it out of a fight it is in the middle of is a movement change rather than a targeting one. Nothing declares a
+    // preferred role in the shipped catalog yet, so `preferred_ahead` is false everywhere and this never fires.
+    if (best.preferred_ahead && !best.best_is_preferred) {
+        return {.pursuing = true};
+    }
+
+    // Ranged fire re-asks the question, but only answers differently when the answer is clearly better. Below the
+    // margin the unit keeps firing at what it already had.
+    if (retained.mode == AttackMode::RANGED && !clears_retarget_margin(best.ranged_score, retained.ranged_score)) {
         return {
             .engaged = true,
             .attack_mode = AttackMode::RANGED,
-            .target_id = best_ranged_target_id,
-            .target_position = best_ranged_target_position,
+            .target_id = current_target_id,
+            .target_position = retained.position,
+        };
+    }
+
+    if (best.melee_id.is_valid()) {
+        return {
+            .engaged = true,
+            .attack_mode = AttackMode::MELEE,
+            .target_id = best.melee_id,
+            .target_position = best.melee_position,
+        };
+    }
+
+    if (best.ranged_id.is_valid()) {
+        return {
+            .engaged = true,
+            .attack_mode = AttackMode::RANGED,
+            .target_id = best.ranged_id,
+            .target_position = best.ranged_position,
         };
     }
 

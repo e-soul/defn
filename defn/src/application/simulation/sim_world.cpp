@@ -27,6 +27,12 @@ CombatConfig make_combat_config(const UnitConfig &config, const ResolvedUnitRunt
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? resolved.melee_attack_range : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? resolved.ranged_attack_range : -1.0F;
+    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
+    combat_config.threat_weight = config.threat_weight;
+    combat_config.target_preference = config.target_preference;
+    combat_config.role = config.role;
+    combat_config.role_bias = config.preferred_roles;
+    combat_config.aggro_range = config.aggro_range;
     combat_config.melee_flash_color = config.melee_flash_color;
     combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {
@@ -41,6 +47,10 @@ int take_damage(SimEntity &entity, int amount) {
     if (entity.hp <= 0 || amount == 0) {
         return 0;
     }
+    // Mitigation is applied here rather than at the attacker so that every source pays it: melee, direct fire, and
+    // both halves of a splash. Anywhere else and a shell would ignore the armour a rifle respects, and a capped
+    // target would take a full-weight round from whichever path was forgotten.
+    amount = damage_after_mitigation(amount, entity.damage_cap, entity.armour);
 
     const int previous_hp = entity.hp;
     entity.hp = std::max(entity.hp - amount, 0);
@@ -72,16 +82,21 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.position = position;
     entity.hp = overrides.hp.value_or(config->hp);
     entity.max_hp = entity.hp;
+    entity.armour = config->armour;
+    entity.damage_cap = config->damage_cap;
     entity.bounty = config->bounty;
     entity.spawn_tick = tick_index_;
     entity.spawn_time_seconds = elapsed_seconds_;
     entity.combat = make_combat_config(*config, resolved);
     entity.combat.side = side;
-    entity.detection_radius = resolved.ranged_attack_range;
+    // Mirrors the sensor radius in UnitFactory, and reads the *resolved catalog* range rather than the combat
+    // config's, because a melee-only unit carries -1 there and would end up sensing nothing at all.
+    entity.detection_radius = std::max(config->aggro_range, resolved.ranged_attack_range);
     entity.projectile_attack = config->projectile_attack;
-    // AnimationController::get_muzzle_global_position resolves to owner->to_global(offset), and the unit's transform
-    // carries its sprite scale.
-    entity.muzzle_offset = {.x = config->muzzle.offset.x * config->scale, .y = config->muzzle.offset.y * config->scale};
+    // AnimationController::get_muzzle_global_position resolves to owner->to_global(the anchor), and the unit's
+    // transform carries its sprite scale.
+    const Vector2 anchor = muzzle_anchor(*config);
+    entity.muzzle_offset = {.x = anchor.x * config->scale, .y = anchor.y * config->scale};
     entity.move_speed_pixels_per_second = config->move_speed_pixels_per_second;
     entity.combat_enabled = profile.enable_combat;
     entity.movement_enabled = profile.enable_movement;
@@ -164,7 +179,13 @@ void SimWorld::build_snapshots(const SimEntity &viewer) {
             continue;
         }
 
-        snapshots_.push_back({.id = other.id, .side = other.side, .dead = other.dead, .position = other.position});
+        snapshots_.push_back({.id = other.id,
+                              .side = other.side,
+                              .dead = other.dead,
+                              .position = other.position,
+                              .threat_weight = other.combat.threat_weight,
+                              .health = other.hp,
+                              .role = other.combat.role});
     }
 
     // A target that walked out of the sensor is still readable through its retained id, so CombatTargetSelector adds it
@@ -184,6 +205,9 @@ void SimWorld::build_snapshots(const SimEntity &viewer) {
             .side = current_target->side,
             .dead = current_target->dead,
             .position = current_target->position,
+            .threat_weight = current_target->combat.threat_weight,
+            .health = current_target->hp,
+            .role = current_target->combat.role,
         });
     }
 }

@@ -303,6 +303,16 @@ Target combat flow:
 
 Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. Animation timing is owned by `UnitAnimationState`, an engine-free model of which animation is current and how far its `AnimationClock` has run, built from the `AnimConfig` a unit declares. It answers whether an attack or shoot animation is on screen, whether it is still inside its `windup_frames`, and when a shot leaves the muzzle; those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. `AnimationController` owns one such state and is pure presentation around it: the `AnimatedSprite2D` never runs an animation of its own, it is parked on whichever frame the state has reached. The frame index therefore remains the single source of truth for what the player sees, the same index is available without Godot, and the simulator drives the identical code rather than a second copy of it.
 
+Where a clip is drawn is separate from when. The sprite packs crop every animation to its own bounding box, so a
+centered frame parks the *canvas* on the unit's origin rather than the *character*, and switching clips jumps the body
+by the difference in padding. Each `AnimConfig` therefore carries an `offset`, in unscaled texture pixels, measured
+against the unit's `idle` clip -- which is the reference and always zero. `AnimationController` applies it to the
+`AnimatedSprite2D` and mirrors its x with the facing, because Godot mirrors the texture inside an unmoved destination
+rect rather than moving the rect. The muzzle flash hangs off the unit rather than off the sprite and so does not
+inherit the correction; `muzzle_anchor` folds the shoot clip's offset in, and both `AnimationController` and `SimWorld`
+read that one function so the game and the kernel cannot disagree about where a shot starts. The offsets are measured
+by `scripts/gen_anim_offsets.py`, not authored by hand.
+
 Projectile flight is `ProjectileFlight`, an engine-free straight line at a fixed speed toward a position captured when
 the shot left the muzzle. There is no homing, so a target that keeps walking is missed by the blast -- though the direct
 target still takes impact damage, which `resolve_projectile_impact` applies by identity rather than by proximity.
@@ -364,10 +374,13 @@ provide:
 - `SimProgression` implements `ProgressionService` for one hypothetical save. Every modifier a match reads goes
   through the same `progression_rules` functions the campaign uses; only the reward and presentation half is stubbed.
 - `PlayerPolicy` decides deployments. Deployment is the whole player vocabulary: the camera is pushed by units
-  crossing triggers, never by the player, and manual repositioning arrives with the play harness. Four policies ship
-  -- scripted, greedy, defensive and composition -- because a single policy produces a single number with no meaning.
-  The spread is the point: on level 1 the defensive policy wins every seed while greedy loses every seed, on
+  crossing triggers, never by the player, and manual repositioning arrives with the play harness. Five policies ship
+  -- scripted, greedy, defensive, patience and mix -- because a single policy produces a single number with no
+  meaning. The spread is the point: on level 1 the defensive policy wins every seed while greedy loses every seed, on
   identical content, so any verdict quoted from one policy alone is a verdict about that policy.
+  `MixPolicy` is the only one that chooses *what* to buy: the rest all resolve to the most expensive affordable unit,
+  so a sweep of them can compare mono-stacks and nothing else. It plays a target composition, deploying whichever
+  named unit is furthest below its share of the field and banking when that unit is out of reach.
 
 The tick order mirrors the scene tree: the director runs first, then spawns land, then the player acts, then entities
 fight, then projectiles fly, then deaths are reported as bounty and base damage, then the camera moves. `SimWorld`
@@ -379,10 +392,39 @@ is the Godot-facing entry point, in the mould of `DefnHostedTestRunner`: it load
 measures the world width from the background texture, hands plain structs to the kernel, and writes the JSONL. Sim
 sources reach the extension only under the hosted-tests flag, so nothing of it ships in a release export.
 
-`DefnBalanceRunner` answers the two roster questions `BALANCE.md` used to estimate -- what one hostile costs the
+### The engagement lab
+
+`sim_engagement_lab` is the shared measurement kernel: it stands two explicit forces on a strip, runs the engagement
+and reports the outcome. A force is a `ForceMix` of unit ids and counts, interleaved round-robin when it takes the
+field so a 2:1 mix is not silently measured as "whichever unit was listed first is the front line". A `MixShape` is
+the same thing described by relative weights, which `allocate_budget` spends an energy budget along using
+largest-remainder apportionment -- naive flooring collapses a 2:1 mix into a mono-stack at small budgets.
+
+`critical_budget` bisects that budget for the smallest one at which a shape beats a force half the time, and reports
+`unbounded` when even the ceiling loses. It exists because win rate saturated: levels 2 to 5 read 100% at full
+integrity across every policy, and a saturated scale ranks nothing. Budget never saturates, is denominated in the
+energy the player actually spends, and `log B*` is approximately additive, which is what makes decomposing a matrix
+of these numbers mean anything.
+
+`DefnBalanceRunner` answers the two roster questions the design used to estimate -- what one hostile costs the
 player, and what one friendly buys for its energy -- by running each unit against a fixed reference force and
 averaging over seeds. The reference is the whole method: it has to beat every hostile and still bleed doing it, or the
 measurement silently reports zero.
+
+`DefnMatrixRunner` measures the payoff matrix `M[friendly mix][hostile mix]` of critical budgets. Every other number
+in the project is one row or one column of it -- the threat table fixes the defence, the roster table fixes the
+attacker, the campaign sweep compares mono-stacks -- so none of them can see an off-diagonal, and diversity lives
+strictly in the off-diagonals. It emits one JSONL row per `(friendly mix, hostile mix, seed)`, each seed bisected
+separately so the spread is a real confidence interval, and `scripts/analyze_matrix.py` decomposes the result into
+unit power, content difficulty and matchup interaction.
+
+That script's headline numbers include two ratios -- `SII = Var(R) / (Var(a) + Var(R))` and the composition premium
+`best_mix(j) / best_mono(j)` -- and a ratio rises when its denominator falls just as readily as when its numerator
+rises. The two mean opposite things: a new matchup versus a flatter roster, or a better mix versus a nerfed best unit.
+The premium is split by the same decomposition that produced it -- `(a[mix] - a[mono]) + (R[mix][j] - R[mono][j])`,
+where `mu` and `b[j]` cancel -- and the gate counts only the structural half, so a globally weakened mono buys no
+columns. `SII` has no such split and takes `--baseline <matrix>`, against which the script reports `Var(R)` itself and
+warns when the ratio moved without it.
 
 ### Conformance
 

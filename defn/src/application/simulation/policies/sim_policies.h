@@ -6,8 +6,10 @@
 
 #include "player_policy.h"
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace defn {
@@ -57,15 +59,34 @@ class DefensivePolicy final : public PlayerPolicy {
 
 // Holds for expensive units, reacts to what is on the belt, and keeps a reserve. Spends immediately when hostiles
 // are close to the base, saves toward the top of the roster otherwise.
-class CompositionPolicy final : public PlayerPolicy {
+//
+// It varies *when* to spend, never *what* to buy -- every branch ends in the most expensive affordable unit. The name
+// says patience because that is the whole of it; `MixPolicy` is the one that chooses a composition.
+class PatiencePolicy final : public PlayerPolicy {
   public:
-    explicit CompositionPolicy(int energy_reserve = 15) : energy_reserve_(energy_reserve) {}
+    explicit PatiencePolicy(int energy_reserve = 15) : energy_reserve_(energy_reserve) {}
 
-    [[nodiscard]] const char *name() const override { return "composition"; }
+    [[nodiscard]] const char *name() const override { return "patience"; }
     std::vector<PlayerCommand> decide(const MatchObservation &observation) override;
 
   private:
     int energy_reserve_;
+};
+
+// Plays a target composition rather than a power ladder: each tick it deploys the affordable unit whose share of the
+// field is furthest below its target weight.
+//
+// Every other policy resolves to "the most expensive thing I can afford", so a sweep of them can only ever compare
+// mono-stacks. Nothing about composition is expressible at level scale without this.
+class MixPolicy final : public PlayerPolicy {
+  public:
+    explicit MixPolicy(std::map<std::string, double> weights) : weights_(std::move(weights)) {}
+
+    [[nodiscard]] const char *name() const override { return "mix"; }
+    std::vector<PlayerCommand> decide(const MatchObservation &observation) override;
+
+  private:
+    std::map<std::string, double> weights_;
 };
 
 } // namespace defn

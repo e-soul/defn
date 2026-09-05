@@ -55,6 +55,12 @@ CombatComponent::Config make_combat_config(const UnitConfig &config) {
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? config.melee_attack_range : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? config.ranged_attack_range : -1.0F;
+    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
+    combat_config.threat_weight = config.threat_weight;
+    combat_config.target_preference = config.target_preference;
+    combat_config.role = config.role;
+    combat_config.role_bias = config.preferred_roles;
+    combat_config.aggro_range = config.aggro_range;
     combat_config.melee_flash_color = config.melee_flash_color;
     combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {
@@ -76,6 +82,8 @@ void BaseObjective::configure(int max_hp, const godot::Vector2 &position, const 
     visual_config_ = visual_config;
     if (visual_config_.has_value()) {
         set_side(visual_config_->side);
+        set_threat_weight(visual_config_->threat_weight);
+        set_role(visual_config_->role);
     }
     ensure_sprite();
     Node2D *target_anchor = ensure_target_anchor();
@@ -94,7 +102,7 @@ void BaseObjective::configure(int max_hp, const godot::Vector2 &position, const 
     }
 
     if (HealthComponent *health = get_health_component()) {
-        health->configure(max_hp);
+        health->configure(max_hp, visual_config_.has_value() ? visual_config_->armour : 0, visual_config_.has_value() ? visual_config_->damage_cap : 0);
     }
     update_visual_state();
     queue_redraw();

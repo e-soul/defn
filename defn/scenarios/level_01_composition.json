@@ -1,8 +1,0 @@
-{
-  "level_id": "level_01",
-  "seed": 2026,
-  "policy": { "kind": "composition", "energy_reserve": 15 },
-  "owned_upgrades": [],
-  "camera": "modelled",
-  "max_seconds": 300.0
-}

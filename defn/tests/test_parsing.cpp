@@ -84,10 +84,21 @@ Dictionary make_unit_data() {
     shoot_animation["path_template"] = "res://operator_shoot_%03d.png";
     shoot_animation["frame_count"] = 8;
     shoot_animation["windup_frames"] = 12;
+    Array shoot_offset;
+    shoot_offset.push_back(-9);
+    shoot_offset.push_back(4);
+    shoot_animation["offset"] = shoot_offset;
     Dictionary animations;
     animations["idle"] = idle_animation;
     animations["shoot"] = shoot_animation;
     friendly["animations"] = animations;
+    Dictionary muzzle_flash;
+    muzzle_flash["path_template"] = "res://muzzle_%03d.png";
+    Array muzzle_offset;
+    muzzle_offset.push_back(200);
+    muzzle_offset.push_back(-10);
+    muzzle_flash["offset"] = muzzle_offset;
+    friendly["muzzle_flash"] = muzzle_flash;
     Dictionary projectile_attack;
     projectile_attack["speed_pixels_per_second"] = 180.0;
     projectile_attack["affected_target_rounding"] = "ceil";
@@ -617,14 +628,68 @@ DEFN_TEST(unit_data_loader_loads_globals_and_units_from_dictionaries) {
     DEFN_REQUIRE(idle != friendly->animations.end());
     DEFN_CHECK_EQ(idle->second.path_template, std::string("res://operator_idle_%03d.png"));
     DEFN_CHECK_EQ(idle->second.windup_frames, 3);
+    // A clip that names no anchor correction is centered, which is what every unit's reference clip wants.
+    DEFN_CHECK_CLOSE(idle->second.offset.x, 0.0F, 0.000001);
+    DEFN_CHECK_CLOSE(idle->second.offset.y, 0.0F, 0.000001);
     const auto shoot = std::ranges::find_if(friendly->animations, [](const auto &animation) { return animation.first == "shoot"; });
     DEFN_REQUIRE(shoot != friendly->animations.end());
     // A windup longer than the animation is clamped to its frame count.
     DEFN_CHECK_EQ(shoot->second.windup_frames, 8);
+    DEFN_CHECK_CLOSE(shoot->second.offset.x, -9.0F, 0.000001);
+    DEFN_CHECK_CLOSE(shoot->second.offset.y, 4.0F, 0.000001);
+    // The muzzle rides the shoot clip's correction, or the flash comes off the barrel when the clip is re-anchored.
+    DEFN_CHECK_CLOSE(muzzle_anchor(*friendly).x, 191.0F, 0.000001);
+    DEFN_CHECK_CLOSE(muzzle_anchor(*friendly).y, -6.0F, 0.000001);
     const auto hostile = loader.get_unit("jackal");
     DEFN_REQUIRE(hostile.has_value());
     DEFN_CHECK_EQ(hostile->description, std::string());
     check_content_color_close(friendly->health_bar_color, {.r = 0.1F, .g = 0.8F, .b = 0.1F, .a = 1.0F});
+}
+
+// The catalog key names, pinned. A role that silently stopped parsing would not fail a build or a rule test -- every
+// unit would just quietly go back to NONE, nothing would prefer anything, and the next matrix run would read as "the
+// mechanism does nothing" rather than "the mechanism was not loaded". That is exactly the ambiguity the wiring tests
+// exist to remove, and it starts here at the JSON key.
+DEFN_TEST(unit_data_loader_reads_roles_preferences_and_aggro_range) {
+    UnitDataLoader loader;
+    Dictionary units;
+    Dictionary hound;
+    hound["side"] = "hostile";
+    hound["role"] = "diver";
+    hound["aggro_range"] = 600.0;
+    Dictionary preferred;
+    preferred["sniper"] = 3.0;
+    hound["preferred_roles"] = preferred;
+    units["hound"] = hound;
+    Dictionary data;
+    data["units"] = units;
+
+    DEFN_REQUIRE(loader.load_from_data(data, Dictionary()));
+    const auto parsed = loader.get_unit("hound");
+    DEFN_REQUIRE(parsed.has_value());
+
+    DEFN_CHECK_EQ(parsed->role, UnitRole::DIVER);
+    DEFN_CHECK_EQ(parsed->aggro_range, 600.0F);
+    DEFN_CHECK_EQ(parsed->preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))), 3.0F);
+    // Everything not named keeps its multiplier at one, which is what makes an empty table the old behaviour.
+    DEFN_CHECK_EQ(parsed->preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::TANK))), 1.0F);
+}
+
+// An unreadable role is not a load failure: the unit keeps playing, visibly wrong, rather than taking the game down.
+DEFN_TEST(unit_data_loader_falls_back_to_no_role_for_an_unknown_name) {
+    UnitDataLoader loader;
+    Dictionary units;
+    Dictionary ghost;
+    ghost["side"] = "hostile";
+    ghost["role"] = "wizard";
+    units["ghost"] = ghost;
+    Dictionary data;
+    data["units"] = units;
+
+    DEFN_REQUIRE(loader.load_from_data(data, Dictionary()));
+    const auto parsed = loader.get_unit("ghost");
+    DEFN_REQUIRE(parsed.has_value());
+    DEFN_CHECK_EQ(parsed->role, UnitRole::NONE);
 }
 
 DEFN_TEST(unit_data_loader_uses_default_field_promotion_rules_when_absent) {

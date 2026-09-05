@@ -3,6 +3,7 @@
     "base": {
       "description": "Friendly base. Can shoot.",
       "side": "friendly",
+      "role": "structure",
       "hp": 300,
       "melee_damage": 0,
       "melee_attack_period_seconds": 1.0,
@@ -11,6 +12,7 @@
       "ranged_attack_period_seconds": 1.2,
       "ranged_attack_range": 520.0,
       "move_speed_pixels_per_second": 0.0,
+      "threat_weight": 0.25,
       "cost": 0,
       "bounty": 0,
       "scale": 0.55,
@@ -30,27 +32,32 @@
           "path_template": "res://assets/tower.png",
           "frame_count": 1,
           "speed": 1.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "death": {
           "path_template": "res://assets/tower_destroyed.png",
           "frame_count": 1,
           "speed": 1.0,
-          "loop": false
+          "loop": false,
+          "offset": [-1, -3]
         }
       }
     },
     "breacher": {
       "description": "Frontline anchor. Cheapest friendly, highest durability, and a short-range rifle make the breacher the safest first deployment.",
       "side": "friendly",
+      "role": "tank",
       "hp": 400,
+      "armour": 4,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 8,
       "ranged_attack_period_seconds": 0.72,
       "ranged_attack_range": 245.0,
       "move_speed_pixels_per_second": 58.0,
+      "threat_weight": 2.0,
       "cost": 20,
       "bounty": 0,
       "scale": 0.27,
@@ -71,51 +78,60 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 7]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-124, 48]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [97, 52]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [5, -4]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier1/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-139, -28]
         }
       }
     },
     "marksman": {
       "description": "Dedicated counter-sniper. Extreme reach and heavy shots make the marksman the best answer to exposed specials.",
       "side": "friendly",
+      "role": "sniper",
       "hp": 180,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 19,
-      "ranged_attack_period_seconds": 1.05,
+      "ranged_attack_period_seconds": 1.1,
       "ranged_attack_range": 650.0,
+      "minimum_ranged_attack_range": 200.0,
       "move_speed_pixels_per_second": 74.0,
+      "target_preference": "farthest",
       "cost": 27,
       "bounty": 0,
       "scale": 0.27,
@@ -136,51 +152,59 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [8, -8]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-160, 94]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [92, 76]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [11, -28]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier2/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-238, -76]
         }
       }
     },
     "impact": {
-      "description": "Fast flanker. High speed and aggressive mid-range fire let impact collapse exposed lanes before they stabilize.",
+      "description": "Counter-puncher. Middling fire at range, but it hits far harder in contact than anything else on the field, so whatever closes on the line pays for it.",
       "side": "friendly",
+      "role": "assault",
       "hp": 245,
-      "melee_damage": 15,
+      "melee_damage": 30,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 8,
       "ranged_attack_period_seconds": 0.48,
       "ranged_attack_range": 320.0,
       "move_speed_pixels_per_second": 98.0,
+      "target_preference": "nearest",
       "cost": 23,
       "bounty": 0,
       "scale": 0.27,
@@ -201,52 +225,59 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-2, 6]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-87, 44]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [106, 42]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-10, -1]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier3/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-113, -23]
         }
       }
     },
     "operator": {
       "description": "Flexible skirmisher. Reliable sustained fire makes the operator the best general-purpose cleaner once a lane is stabilized.",
       "side": "friendly",
+      "role": "specialist",
       "hp": 225,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 6,
       "ranged_attack_period_seconds": 0.3,
       "ranged_attack_range": 380.0,
       "move_speed_pixels_per_second": 84.0,
-      "cost": 25,
+      "cost": 20,
       "bounty": 0,
       "scale": 0.27,
       "sprite_flip_h": false,
@@ -266,47 +297,55 @@
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-5, 7]
         },
         "attack": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-46, -4]
         },
         "death": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [130, 31]
         },
         "shoot": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [6, 0]
         },
         "happy": {
           "path_template": "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-66, -7]
         }
       }
     },
     "grime": {
       "description": "Rifle grunt. Weak alone, fast enough to pressure a lane, and still dangerous when multiple grimes stack their fire.",
       "side": "hostile",
-      "hp": 95,
+      "role": "assault",
+      "hp": 96,
+      "armour": 4,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 5,
       "ranged_attack_period_seconds": 0.62,
       "ranged_attack_range": 345.0,
@@ -331,51 +370,59 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-14, 11]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-12, 30]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [105, 37]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [8, 1]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier1/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-145, 7]
         }
       }
     },
     "mason": {
       "description": "Rocket support. Direct damage is modest, but any clustered defense will feel the splash immediately.",
       "side": "hostile",
+      "role": "splash",
       "hp": 82,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 10,
       "ranged_attack_period_seconds": 1.0,
       "ranged_attack_range": 400.0,
       "move_speed_pixels_per_second": 48.0,
+      "target_preference": "lowest_hp",
       "cost": 0,
       "bounty": 6,
       "scale": 0.247,
@@ -394,13 +441,13 @@
       "projectile_attack": {
         "speed_pixels_per_second": 1800.0,
         "splash_radius": 140.0,
-        "affected_fraction": 0.5,
+        "affected_fraction": 1.0,
         "min_affected_targets": 1,
         "spawn_animation_frame": 2,
         "affected_target_rounding": "nearest",
         "include_direct_target": true,
         "impact_damage": 10,
-        "splash_damage": 7,
+        "splash_damage": 12,
         "projectile_scale_multiplier": 0.6,
         "explosion_scale_multiplier": 0.5,
         "explosion_sfx": {
@@ -426,51 +473,59 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [3, 12]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-48, -30]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [68, -32]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-14, 5]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier2/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-61, -25]
         }
       }
     },
     "wrecker": {
       "description": "Bruiser. Slow, sturdy, and brutally efficient once he gets a clean firing lane.",
       "side": "hostile",
+      "role": "assault",
       "hp": 180,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 13,
       "ranged_attack_period_seconds": 0.78,
       "ranged_attack_range": 330.0,
       "move_speed_pixels_per_second": 55.0,
+      "target_preference": "highest_hp",
       "cost": 0,
       "bounty": 7,
       "scale": 0.247,
@@ -491,51 +546,60 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [9, 0]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-145, -54]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [1, -30]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [9, -36]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier3/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-149, -59]
         }
       }
     },
     "jackal": {
       "description": "Backline sniper. Jackal opens fights from extreme range, but folds quickly if a diver reaches him.",
       "side": "hostile",
-      "hp": 80,
+      "role": "sniper",
+      "hp": 76,
+      "armour": 2,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
-      "melee_attack_range": 128.0,
+      "melee_attack_range": 100.0,
       "ranged_damage": 18,
       "ranged_attack_period_seconds": 1.3,
       "ranged_attack_range": 620.0,
       "move_speed_pixels_per_second": 48.0,
+      "target_preference": "farthest",
       "cost": 0,
       "bounty": 6,
       "scale": 0.247,
@@ -556,37 +620,101 @@
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [0, 0]
         },
         "walk": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Walk__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [1, 3]
         },
         "attack": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [-90, -34]
         },
         "death": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
           "frame_count": 10,
           "speed": 8.0,
-          "loop": false
+          "loop": false,
+          "offset": [126, -15]
         },
         "shoot": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Shoot__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": false
+          "loop": false,
+          "offset": [18, -19]
         },
         "happy": {
           "path_template": "res://assets/The_Guerrila_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
           "frame_count": 10,
           "speed": 10.0,
-          "loop": true
+          "loop": true,
+          "offset": [-124, -33]
+        }
+      }
+    },
+    "hound": {
+      "description": "Rusher. No gun at all: it closes at a sprint and fights in contact, which is the one place a marksman cannot shoot.",
+      "side": "hostile",
+      "role": "diver",
+      "aggro_range": 600.0,
+      "preferred_roles": {
+        "sniper": 3.0
+      },
+      "hp": 110,
+      "melee_damage": 20,
+      "melee_attack_period_seconds": 0.8,
+      "melee_attack_range": 100.0,
+      "ranged_damage": 0,
+      "ranged_attack_range": 400.0,
+      "move_speed_pixels_per_second": 120.0,
+      "cost": 0,
+      "bounty": 5,
+      "scale": 0.285,
+      "sprite_flip_h": true,
+      "health_bar_offset": [30, -240],
+      "animations": {
+        "idle": {
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Idle__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true,
+          "offset": [0, 0]
+        },
+        "walk": {
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Run__%03d.png",
+          "frame_count": 10,
+          "speed": 12.0,
+          "loop": true,
+          "offset": [-48, -2]
+        },
+        "attack": {
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Melee__%03d.png",
+          "frame_count": 10,
+          "speed": 12.0,
+          "loop": false,
+          "offset": [-27, 31]
+        },
+        "death": {
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Dead__%03d.png",
+          "frame_count": 10,
+          "speed": 8.0,
+          "loop": false,
+          "offset": [80, 25]
+        },
+        "happy": {
+          "path_template": "res://assets/The_Mercenaries_-_Game_Sprites/png/Soldier4/Happy__%03d.png",
+          "frame_count": 10,
+          "speed": 10.0,
+          "loop": true,
+          "offset": [-90, -24]
         }
       }
     }

@@ -11,6 +11,7 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
+#include <map>
 #include <string>
 
 namespace defn {
@@ -58,6 +59,9 @@ class AnimationController : public Node {
     void setup_muzzle_flash(Node *owner_node, const UnitConfig &cfg);
     void sync_presentation();
     void show_state_frame_on_sprite();
+    // The anchor correction for the clip on screen, already mirrored to match the sprite's current facing.
+    [[nodiscard]] godot::Vector2 current_sprite_offset() const;
+    void apply_sprite_offset();
     void update_death_presentation();
     void on_muzzle_flash_finished();
     void start_death_fade();
@@ -65,6 +69,8 @@ class AnimationController : public Node {
 
     UnitAnimationState state_;
     std::string presented_animation_;
+    // Per-clip anchor corrections, keyed by animation name. See `AnimConfig::offset`.
+    std::map<std::string, godot::Vector2> animation_offsets_;
 
     AnimatedSprite2D *sprite = nullptr;
     AnimatedSprite2D *muzzle_flash = nullptr;

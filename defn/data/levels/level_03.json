@@ -13,7 +13,9 @@
         {"time": 4.0, "type": "grime"},
         {"time": 5.1, "type": "wrecker"},
         {"time": 6.2, "type": "grime"},
+        {"time": 6.7, "type": "hound"},
         {"time": 7.3, "type": "mason"},
+        {"time": 7.7, "type": "hound"},
         {"time": 8.4, "type": "grime"}
       ]
     },
@@ -23,6 +25,8 @@
         {"time": 23.5, "type": "grime"},
         {"time": 24.6, "type": "wrecker"},
         {"time": 25.7, "type": "mason"},
+        {"time": 26.2, "type": "hound"},
+        {"time": 26.3, "type": "hound"},
         {"time": 26.8, "type": "grime"},
         {"time": 27.9, "type": "wrecker"}
       ]
@@ -33,8 +37,11 @@
         {"time": 45.0, "type": "grime"},
         {"time": 45.9, "type": "wrecker"},
         {"time": 46.8, "type": "mason"},
+        {"time": 47.2, "type": "hound"},
         {"time": 47.7, "type": "grime"},
         {"time": 48.6, "type": "mason"},
+        {"time": 48.7, "type": "hound"},
+        {"time": 49, "type": "hound"},
         {"time": 49.8, "type": "wrecker"}
       ]
     },
@@ -44,6 +51,7 @@
         {"time": 67.5, "type": "grime"},
         {"time": 68.3, "type": "wrecker"},
         {"time": 69.1, "type": "mason"},
+        {"time": 69.5, "type": "hound"},
         {"time": 69.9, "type": "grime"},
         {"time": 70.7, "type": "mason"},
         {"time": 71.5, "type": "wrecker"}
@@ -55,9 +63,11 @@
         {"time": 92.5, "type": "grime"},
         {"time": 93.3, "type": "wrecker"},
         {"time": 94.1, "type": "mason"},
+        {"time": 94.5, "type": "hound"},
         {"time": 94.9, "type": "grime"},
         {"time": 95.7, "type": "mason"},
         {"time": 96.5, "type": "wrecker"},
+        {"time": 96.9, "type": "hound"},
         {"time": 97.3, "type": "mason"},
         {"time": 98.1, "type": "grime"}
       ]

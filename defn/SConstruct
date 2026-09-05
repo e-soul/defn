@@ -6,6 +6,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 
 
 def remove_flags(flags, flags_to_remove):
@@ -29,12 +30,20 @@ with_hosted_tests_arg = parse_bool_arg(ARGUMENTS.pop("with_hosted_tests", ""))
 godot_bin_arg = ARGUMENTS.pop("godot_bin", "")
 with_tidy_arg = parse_bool_arg(ARGUMENTS.pop("with_tidy", ""))
 scenario_arg = ARGUMENTS.pop("scenario", "")
+spec_arg = ARGUMENTS.pop("spec", "")
+separation_arg = ARGUMENTS.pop("separation", "")
+friendly_spacing_arg = ARGUMENTS.pop("spacing", "")
 seeds_arg = ARGUMENTS.pop("seeds", "")
 out_arg = ARGUMENTS.pop("out", "")
+bisect_arg = ARGUMENTS.pop("bisect", "")
 
 sim_scenario_arg = ["--scenario", scenario_arg] if scenario_arg else []
 sim_seeds_arg = ["--seeds", seeds_arg] if seeds_arg else []
 sim_out_arg = ["--out", out_arg] if out_arg else []
+sim_bisect_arg = ["--bisect", bisect_arg] if bisect_arg else []
+matrix_spec_arg = ["--spec", spec_arg] if spec_arg else []
+matrix_separation_arg = ["--separation", separation_arg] if separation_arg else []
+matrix_spacing_arg = ["--friendly-spacing", friendly_spacing_arg] if friendly_spacing_arg else []
 
 
 # 1. Setup the basic SCons environment
@@ -107,7 +116,7 @@ coverage_hosted_requested = "coverage_hosted" in requested_targets
 coverage_merged_requested = "coverage" in requested_targets
 coverage_targets_requested = coverage_native_requested or coverage_hosted_requested or coverage_merged_requested
 coverage_extension_requested = coverage_hosted_requested or coverage_merged_requested
-hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all", "sim", "conformance", "balance"})) or coverage_extension_requested
+hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all", "sim", "conformance", "balance", "matrix"})) or coverage_extension_requested
 
 env["DEFN_GODOT_BIN"] = godot_bin_arg
 
@@ -229,7 +238,9 @@ sim_sources = [
     "src/framework/testing/defn_sim_runner.cpp",
     "src/framework/testing/defn_conformance_runner.cpp",
     "src/framework/testing/defn_balance_runner.cpp",
+    "src/framework/testing/defn_matrix_runner.cpp",
     "src/application/simulation/sim_world.cpp",
+    "src/application/simulation/sim_engagement_lab.cpp",
     "src/application/simulation/sim_camera.cpp",
     "src/application/simulation/sim_progression.cpp",
     "src/application/simulation/sim_scenario.cpp",
@@ -247,6 +258,7 @@ hosted_test_sources = [
     "tests/test_parsing.cpp",
     "tests/test_progression_presentation.cpp",
     "tests/test_settings_adapters.cpp",
+    "tests/test_shipped_content.cpp",
     "tests/test_ui_presenters.cpp",
     "tests/test_ui_theme_provider.cpp",
     "tests/test_unit_profiles.cpp",
@@ -288,6 +300,7 @@ test_support_sources = [
     "src/domain/content/unit_animation_state.cpp",
     "src/domain/content/ui_theme_models.cpp",
     "src/application/simulation/sim_world.cpp",
+    "src/application/simulation/sim_engagement_lab.cpp",
     "src/application/simulation/sim_camera.cpp",
     "src/application/simulation/sim_progression.cpp",
     "src/application/simulation/sim_scenario.cpp",
@@ -303,6 +316,7 @@ unit_test_sources = [
     "tests/test_unit_animation_state.cpp",
     "tests/test_sim_world.cpp",
     "tests/test_sim_match.cpp",
+    "tests/test_engagement_lab.cpp",
     "tests/test_match_session_core.cpp",
     "tests/test_combat_logic.cpp",
     "tests/test_field_promotion.cpp",
@@ -744,7 +758,7 @@ def run_simulation(target, source, env):
         return prepare_result
 
     command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
-    sim_args = [argument for argument in [sim_scenario_arg, sim_seeds_arg, sim_out_arg] if argument]
+    sim_args = [argument for argument in [sim_scenario_arg, sim_seeds_arg, sim_out_arg, sim_bisect_arg] if argument]
     if sim_args:
         command.append("--")
         for argument in sim_args:
@@ -783,6 +797,15 @@ def run_conformance(target, source, env):
     return result.returncode
 
 
+def run_packaging_check(target, source, env):
+    # Pure Python: it reads the presets and the data, and needs neither the extension nor Godot.
+    result = subprocess.run([sys.executable, str(source[0].abspath)], check=False)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
 def run_balance(target, source, env):
     godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
     if not godot_executable:
@@ -810,15 +833,54 @@ def run_balance(target, source, env):
     return result.returncode
 
 
+def run_matrix(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run the matrix measurement.")
+        return 1
+
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_matrix_runner.gd"
+    run_env = make_hosted_test_environment("matrix")
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
+    if prepare_result != 0:
+        return prepare_result
+
+    command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
+    matrix_args = [argument for argument in [matrix_spec_arg, matrix_separation_arg, matrix_spacing_arg, sim_seeds_arg, sim_out_arg] if argument]
+    if matrix_args:
+        command.append("--")
+        for argument in matrix_args:
+            command.extend(argument)
+
+    result = subprocess.run(command, check=False, cwd=project_dir, env=run_env)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
 balance_script = os.path.join("tests", "godot_balance_runner.gd")
 balance_stamp = env.Command(os.path.join("build", "defn_balance.stamp"), [library, balance_script], run_balance)
 AlwaysBuild(balance_stamp)
 env.Alias("balance", balance_stamp)
 
+matrix_script = os.path.join("tests", "godot_matrix_runner.gd")
+matrix_stamp = env.Command(os.path.join("build", "defn_matrix.stamp"), [library, matrix_script], run_matrix)
+AlwaysBuild(matrix_stamp)
+env.Alias("matrix", matrix_stamp)
+
 conformance_script = os.path.join("tests", "godot_conformance_runner.gd")
 conformance_stamp = env.Command(os.path.join("build", "defn_conformance.stamp"), [library, conformance_script], run_conformance)
 AlwaysBuild(conformance_stamp)
 env.Alias("conformance", conformance_stamp)
+
+# The script reads the presets, the data, the scenes and the sources, which is more than is worth declaring;
+# AlwaysBuild covers all of it.
+packaging_script = os.path.join("..", "scripts", "check_export_presets.py")
+packaging_stamp = env.Command(os.path.join("build", "defn_packaging.stamp"), packaging_script, run_packaging_check)
+AlwaysBuild(packaging_stamp)
+env.Alias("packaging", packaging_stamp)
 
 sim_script = os.path.join("tests", "godot_sim_runner.gd")
 sim_stamp = env.Command(os.path.join("build", "defn_sim.stamp"), [library, sim_script], run_simulation)
@@ -830,7 +892,8 @@ hosted_test_stamp = env.Command(os.path.join("build", "defn_hosted_tests.stamp")
 AlwaysBuild(hosted_test_stamp)
 env.Alias("hosted_test", hosted_test_stamp)
 # Conformance gates like any other correctness test: a failure means the kernel and the game disagree about a rule.
-env.Alias("test_all", [test_stamp, hosted_test_stamp, conformance_stamp])
+# The packaging check gates alongside it: a pass here means the game runs, a pass there means it also ships.
+env.Alias("test_all", [test_stamp, hosted_test_stamp, conformance_stamp, packaging_stamp])
 
 coverage_hosted_stamp = env.Command(os.path.join("build", "coverage", "hosted", "coverage.stamp"), [library, hosted_test_script], run_hosted_coverage)
 AlwaysBuild(coverage_hosted_stamp)

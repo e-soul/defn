@@ -9,18 +9,31 @@
 #include "field_promotion.h"
 #include "gameplay_rules.h"
 
+#include <array>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace defn {
+
+// The clip names `unit_data.json` is written in, and the contract between that file and the code that poses a unit.
+inline constexpr std::string_view WALK_ANIMATION = "walk";
+inline constexpr std::string_view ATTACK_ANIMATION = "attack";
+inline constexpr std::string_view SHOOT_ANIMATION = "shoot";
+inline constexpr std::string_view DEATH_ANIMATION = "death";
 
 struct AnimConfig {
     std::string path_template;
     int frame_count = 10;
     double speed = 10.0;
     bool loop = false;
+    // Where this clip's canvas sits relative to the unit's origin, in unscaled texture pixels. The sprite packs crop
+    // every clip to its own bounding box, so centering each canvas would park the *canvas* on the origin rather than
+    // the *character*, and switching clips would jump the body by the difference in padding. One offset per clip pins
+    // the body instead. Measured against the unit's `idle` clip, which is therefore always zero.
+    Vector2 offset;
     // Attack and shoot animations commit to their first frames: the unit may not be re-posed or moved until they play
     // out. The remaining frames are the cancelable backswing. Meaningless for animations combat never triggers.
     int windup_frames = 3;
@@ -98,13 +111,29 @@ struct UnitConfig {
     int hp = 100;
     int melee_damage = 15;
     double melee_attack_period_seconds = 1.0;
-    float melee_attack_range = 128.0F;
+    float melee_attack_range = 100.0F;
     RangeVariationConfig melee_attack_range_variation;
     int ranged_damage = 8;
     double ranged_attack_period_seconds = 2.0 / 3.0;
     float ranged_attack_range = 384.0F;
+    // Below this distance the ranged attack is unavailable, leaving the unit to close to melee or reposition.
+    float minimum_ranged_attack_range = 0.0F;
     RangeVariationConfig ranged_attack_range_variation;
     float move_speed_pixels_per_second = 64.0F;
+    // How hard this unit pulls enemy fire, and which enemy it reaches for itself. The two levers that make a unit's
+    // value depend on what else is on the field; both default to no effect.
+    float threat_weight = 1.0F;
+    TargetPreference target_preference = TargetPreference::NEAREST;
+    // What this unit is, and what kinds of thing it goes out of its way for. `role` is read by *other* units off the
+    // snapshot; `preferred_roles` is read by this one. Zero aggro range means "see as far as you shoot", which is no
+    // pursuit at all.
+    UnitRole role = UnitRole::NONE;
+    std::array<float, UNIT_ROLE_COUNT> preferred_roles{};
+    float aggro_range = 0.0F;
+    // Flat reduction applied to every point of damage this unit takes, from any source.
+    int armour = 0;
+    // Ceiling on any single hit this unit takes, zero for none. Armour's inverse: it blunts burst instead of volume.
+    int damage_cap = 0;
     int cost = 0;
     int bounty = 0;
     float scale = 0.27F;
@@ -118,6 +147,22 @@ struct UnitConfig {
     std::optional<ProjectileAttackConfig> projectile_attack;
     std::vector<std::pair<std::string, AnimConfig>> animations;
 };
+
+// Where the muzzle flash sits and where a projectile leaves the unit, in unscaled pixels. The flash hangs off the
+// unit rather than off the sprite, so it does not inherit the shoot clip's anchor correction the way the body does;
+// folding that correction in here keeps the flash on the barrel. Both the game and the simulation kernel read this
+// one function, so the two cannot drift apart -- `scons conformance` checks that they have not.
+inline Vector2 muzzle_anchor(const UnitConfig &config) {
+    Vector2 anchor = config.muzzle.offset;
+    for (const auto &[name, animation] : config.animations) {
+        if (name == SHOOT_ANIMATION) {
+            anchor.x += animation.offset.x;
+            anchor.y += animation.offset.y;
+            break;
+        }
+    }
+    return anchor;
+}
 
 class UnitCatalog {
   public:

@@ -363,7 +363,7 @@ DEFN_TEST(spawn_scheduler_returns_ordered_spawn_requests_and_wave_changes) {
     DEFN_CHECK(first_update.spawn_unit_intents[0].side == MatchUnitSide::Hostile);
     DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].position.x, 896.0, 0.001);
     DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].position.y, 240.0, 0.001);
-    DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].resolved_runtime_config.melee_attack_range, 64.0, 0.001);
+    DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].resolved_runtime_config.melee_attack_range, 50.0, 0.001);
     DEFN_CHECK_CLOSE(first_update.spawn_unit_intents[0].resolved_runtime_config.ranged_attack_range, 576.0, 0.001);
     DEFN_REQUIRE(first_update.wave_changed.has_value());
     DEFN_CHECK_EQ(first_update.wave_changed->current_wave, 1);

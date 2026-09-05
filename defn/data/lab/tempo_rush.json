@@ -1,0 +1,102 @@
+{
+  "name": "Tempo Lab - Rush",
+  "background": "res://assets/backgrounds/background_desert_outpost_tiling.png",
+  "starting_core_resource": 60,
+  "base_integrity": 3,
+  "base_position": [
+    0.06,
+    0.65
+  ],
+  "belt_width": [
+    0.66,
+    0.825
+  ],
+  "level_id": 1,
+  "waves": [
+    {
+      "wave_number": 1,
+      "spawns": [
+        {
+          "time": 2.0,
+          "type": "hound"
+        },
+        {
+          "time": 3.5,
+          "type": "hound"
+        },
+        {
+          "time": 5.0,
+          "type": "hound"
+        },
+        {
+          "time": 6.5,
+          "type": "grime"
+        },
+        {
+          "time": 8.0,
+          "type": "grime"
+        },
+        {
+          "time": 9.5,
+          "type": "grime"
+        },
+        {
+          "time": 11.0,
+          "type": "grime"
+        },
+        {
+          "time": 12.5,
+          "type": "grime"
+        },
+        {
+          "time": 14.0,
+          "type": "grime"
+        },
+        {
+          "time": 15.5,
+          "type": "grime"
+        },
+        {
+          "time": 17.0,
+          "type": "grime"
+        },
+        {
+          "time": 18.5,
+          "type": "wrecker"
+        },
+        {
+          "time": 20.0,
+          "type": "wrecker"
+        },
+        {
+          "time": 21.5,
+          "type": "wrecker"
+        },
+        {
+          "time": 23.0,
+          "type": "wrecker"
+        },
+        {
+          "time": 24.5,
+          "type": "wrecker"
+        },
+        {
+          "time": 26.0,
+          "type": "mason"
+        },
+        {
+          "time": 27.5,
+          "type": "mason"
+        },
+        {
+          "time": 29.0,
+          "type": "jackal"
+        },
+        {
+          "time": 30.5,
+          "type": "jackal"
+        }
+      ]
+    }
+  ]
+}

@@ -47,6 +47,7 @@
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/node2d.hpp>
@@ -927,6 +928,30 @@ DEFN_TEST(animation_controller_drops_a_pending_shoot_effect_when_the_pose_change
     memdelete(owner);
 }
 
+// The muzzle hangs off the unit rather than off the sprite, so it has to be told about the shoot clip's anchor
+// correction by hand -- and told again on every facing change, because a mirrored body needs a mirrored barrel.
+// `SimWorld` reads the same `muzzle_anchor`, which is what keeps `scons conformance` agreeing about where shots start.
+DEFN_TEST(animation_controller_anchors_the_muzzle_to_the_corrected_shoot_clip) {
+    UnitConfig config = make_animation_timing_config();
+    config.animations = {
+        {"shoot", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = false, .offset = {.x = -9.0F, .y = 4.0F}, .windup_frames = 2}}};
+    config.muzzle.path_template = "res://muzzle_%03d.png";
+    config.muzzle.offset = {.x = 200.0F, .y = -10.0F};
+
+    auto *owner = memnew(Node2D);
+    auto *animation = add_test_animation_controller(owner, config);
+
+    animation->set_facing(FacingDirection::FORWARD);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().x, 191.0F, 0.001F);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().y, -6.0F, 0.001F);
+
+    animation->set_facing(FacingDirection::BACKWARD);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().x, -191.0F, 0.001F);
+    DEFN_CHECK_CLOSE(animation->get_muzzle_global_position().y, -6.0F, 0.001F);
+
+    memdelete(owner);
+}
+
 DEFN_TEST(animation_controller_reports_no_attack_timing_for_a_unit_without_attack_animations) {
     UnitConfig config = make_animation_timing_config();
     config.animations = {{"walk", {.path_template = "", .frame_count = 10, .speed = 10.0, .loop = true, .windup_frames = 0}}};
@@ -1415,11 +1440,15 @@ DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
     DEFN_CHECK(!controller.retreat_target());
 }
 
-// The kernel is covered natively; this covers the plumbing around it -- reading a checked-in scenario, loading the
-// shipped content through the real loaders, and writing one JSON line per seed.
+// The kernel is covered natively; this covers the plumbing around it -- reading a checked-in scenario, loading
+// content through the real loaders, and writing one JSON line per seed.
+//
+// The scenario is a *synthetic* one, and deliberately: no test may depend on a shipped level, because levels are
+// narrative and some are written to be lost. `tempo_smoke.json` also exercises `level_directory`, which is the seam
+// that lets a sweep resolve its engagements from outside `data/levels`.
 DEFN_TEST(defn_sim_runner_runs_a_checked_in_scenario_and_writes_jsonl) {
     Dictionary args;
-    args["scenario"] = "res://scenarios/level_01_greedy.json";
+    args["scenario"] = "res://scenarios/tempo_smoke.json";
     args["seeds"] = 2;
     args["out"] = "user://defn_sim_runner_test.jsonl";
 
@@ -1431,9 +1460,85 @@ DEFN_TEST(defn_sim_runner_runs_a_checked_in_scenario_and_writes_jsonl) {
     const String written = FileAccess::get_file_as_string("user://defn_sim_runner_test.jsonl");
     DEFN_CHECK(!written.is_empty());
     DEFN_CHECK_EQ(int(written.strip_edges().split("\n").size()), 2);
-    DEFN_CHECK(written.contains("\"level_id\":\"level_01\""));
-    DEFN_CHECK(written.contains("\"policy\":\"greedy\""));
+    DEFN_CHECK(written.contains("\"level_id\":\"tempo_grind\""));
+    // The label, not the kind: a mix that did not carry one would report "mix" here.
+    DEFN_CHECK(written.contains("\"policy\":\"breacher+marksman\""));
     DEFN_CHECK(written.contains("\"peak_window_5s\":"));
+}
+
+// The critical purse: the same scenario measured by bisecting starting energy instead of reading a win rate at one
+// fixed purse.
+//
+// This exists because win rate is a step function of the purse. At a generous purse every composition wins and at a
+// mean one none does, so a table read at any single purse is mostly zeroes and hundreds and cannot rank anything --
+// the ceiling effect `DIVERSITY_MODEL.md` rejects win rate for, arriving in the timed instrument as well.
+//
+// Pinned here is the contract rather than the number: a bounded cell reports a purse strictly inside the search
+// range, and it reports the win rate that was actually achieved there.
+namespace {
+
+// One bisected cell from the smoke scenario, as a parsed dictionary. Shared so neither test below has to carry the
+// whole run plus every assertion, which is enough branching on its own to trip the cognitive-complexity limit.
+Dictionary bisect_one_smoke_cell(int max_purse, const String &out_path) {
+    Dictionary args;
+    args["scenario"] = "res://scenarios/tempo_smoke.json";
+    args["seeds"] = 3;
+    args["max_purse"] = max_purse;
+    args["out"] = out_path;
+
+    const Dictionary result = DefnSimRunner::run_purse_bisection(args);
+    Dictionary cell;
+    cell["result"] = result;
+    cell["written"] = FileAccess::get_file_as_string(out_path);
+    return cell;
+}
+
+} // namespace
+
+DEFN_TEST(defn_sim_runner_bisects_a_critical_purse) {
+    const Dictionary outcome = bisect_one_smoke_cell(400, "user://defn_sim_runner_purse_test.jsonl");
+    const Dictionary result = outcome["result"];
+    const String written = outcome["written"];
+
+    DEFN_REQUIRE(bool(result.get("success", false)));
+    // One engagement, one policy, so exactly one cell however many seeds each probe cost.
+    DEFN_CHECK_EQ(int(result.get("cells", 0)), 1);
+    DEFN_REQUIRE(!written.is_empty());
+    DEFN_CHECK_EQ(int(written.strip_edges().split("\n").size()), 1);
+    DEFN_CHECK(written.contains("\"level_id\":\"tempo_grind\""));
+    DEFN_CHECK(written.contains("\"bounded\":true"));
+}
+
+// A bounded answer has to be cheaper than the ceiling and has to have actually won there, or the bisection reported
+// a number without narrowing anything.
+DEFN_TEST(defn_sim_runner_reports_a_purse_below_the_ceiling_that_won) {
+    const Dictionary outcome = bisect_one_smoke_cell(400, "user://defn_sim_runner_purse_bounds_test.jsonl");
+    const String written = outcome["written"];
+    DEFN_REQUIRE(!written.is_empty());
+
+    const Dictionary cell = JSON::parse_string(written.strip_edges());
+    DEFN_REQUIRE(cell.has("purse"));
+    const int purse = cell["purse"];
+    DEFN_CHECK(purse > 0);
+    DEFN_CHECK(purse < 400);
+    DEFN_CHECK(double(cell["win_rate"]) >= 0.5);
+}
+
+// The other half of the contract: a cell that cannot be won at the ceiling is reported unbounded rather than handed
+// a bogus number, which is what `critical_budget` already promises for a matrix cell that never wins.
+DEFN_TEST(defn_sim_runner_reports_an_unwinnable_cell_as_unbounded) {
+    Dictionary args;
+    args["scenario"] = "res://scenarios/tempo_smoke.json";
+    args["seeds"] = 2;
+    // A purse of one buys nothing at all, so the engagement cannot be won from it.
+    args["max_purse"] = 1;
+    args["out"] = "user://defn_sim_runner_unbounded_test.jsonl";
+
+    const Dictionary result = DefnSimRunner::run_purse_bisection(args);
+
+    DEFN_REQUIRE(bool(result.get("success", false)));
+    DEFN_CHECK_EQ(int(result.get("unbounded", 0)), 1);
+    DEFN_CHECK(FileAccess::get_file_as_string("user://defn_sim_runner_unbounded_test.jsonl").contains("\"bounded\":false"));
 }
 
 // The measurement itself is a lab result, not a rule, so this only pins that it runs and stays discriminating: a
@@ -1446,8 +1551,10 @@ DEFN_TEST(defn_balance_runner_measures_a_discriminating_threat_ladder) {
     const Dictionary result = DefnBalanceRunner::measure(args);
     DEFN_REQUIRE(bool(result.get("success", false)));
 
+    // One row per hostile in the default roster. A lower bound rather than an exact count: the roster grows as
+    // archetypes are added, and the count was never what this test was for -- the spread below is.
     const Array threat = result.get("threat", Array());
-    DEFN_CHECK_EQ(int(threat.size()), 4);
+    DEFN_CHECK(int(threat.size()) >= 4);
 
     double baseline = 0.0;
     double highest = 0.0;
@@ -1466,7 +1573,7 @@ DEFN_TEST(defn_balance_runner_measures_a_discriminating_threat_ladder) {
     DEFN_CHECK(highest > baseline * 1.5);
 
     const Array roster = result.get("roster", Array());
-    DEFN_CHECK_EQ(int(roster.size()), 4);
+    DEFN_CHECK(int(roster.size()) >= 4);
 }
 
 DEFN_TEST(defn_sim_runner_reports_a_missing_scenario) {

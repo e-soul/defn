@@ -9,11 +9,6 @@ namespace defn {
 
 namespace {
 
-constexpr std::string_view WALK_ANIMATION = "walk";
-constexpr std::string_view ATTACK_ANIMATION = "attack";
-constexpr std::string_view SHOOT_ANIMATION = "shoot";
-constexpr std::string_view DEATH_ANIMATION = "death";
-
 std::string_view animation_name_for(UnitPose pose) {
     switch (pose) {
     case UnitPose::WALK:

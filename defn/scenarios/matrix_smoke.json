@@ -1,0 +1,16 @@
+{
+  "seeds": 2,
+  "max_budget": 300.0,
+  "tolerance": 10.0,
+  "max_iterations": 5,
+  "win_threshold": 0.5,
+  "friendly_mixes": [
+    { "label": "breacher", "weights": { "breacher": 1 } },
+    { "label": "marksman", "weights": { "marksman": 1 } },
+    { "label": "breacher+marksman", "weights": { "breacher": 1, "marksman": 1 } }
+  ],
+  "hostile_mixes": [
+    { "label": "grime", "units": { "grime": 6 } },
+    { "label": "jackal", "units": { "jackal": 6 } }
+  ]
+}

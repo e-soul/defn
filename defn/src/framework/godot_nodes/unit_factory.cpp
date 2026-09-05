@@ -29,7 +29,7 @@ HealthComponent *create_health_component(Unit *unit) {
     auto *health = memnew(HealthComponent);
     health->set_name("HealthComponent");
     unit->add_child(health);
-    health->configure(unit->get_unit_config().hp);
+    health->configure(unit->get_unit_config().hp, unit->get_unit_config().armour, unit->get_unit_config().damage_cap);
     return health;
 }
 
@@ -76,7 +76,10 @@ DetectionComponent *create_detection_component(Unit *unit) {
 
     const real_t scale_x = unit->get_scale().x;
     const auto detection_channels = get_detection_channels(unit->get_side());
-    detection->configure(unit, detection_channels.sensor_mask, unit->get_ranged_range(), scale_x);
+    // The sensor is the aggro range, not the gun. A unit cannot decline a target it never saw, so pursuit needs the
+    // wider circle here or the whole mechanism is invisible to selection.
+    const real_t sensor_range = MAX(unit->get_unit_config().aggro_range, unit->get_ranged_range());
+    detection->configure(unit, detection_channels.sensor_mask, sensor_range, scale_x);
     return detection;
 }
 
@@ -100,6 +103,12 @@ CombatComponent::Config make_combat_config(const Unit *unit) {
     combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
     combat_config.attack_range = has_melee_attack ? unit->get_attack_range() : -1.0F;
     combat_config.ranged_range = has_ranged_attack ? unit->get_ranged_range() : -1.0F;
+    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
+    combat_config.threat_weight = config.threat_weight;
+    combat_config.target_preference = config.target_preference;
+    combat_config.role = config.role;
+    combat_config.role_bias = config.preferred_roles;
+    combat_config.aggro_range = config.aggro_range;
     combat_config.melee_flash_color = config.melee_flash_color;
     combat_config.ranged_flash_color = config.ranged_flash_color;
     if (config.projectile_attack.has_value()) {

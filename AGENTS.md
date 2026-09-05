@@ -29,3 +29,7 @@ Note: Fix any clang-tidy issues reported by the build.
 cd defn
 git ls-files '**.h' '**.cpp' | ForEach-Object { clang-format -i $_ }
 ```
+
+## Misc
+
+README.md should not be updated unless specifically requested.

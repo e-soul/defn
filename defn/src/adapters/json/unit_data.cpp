@@ -7,6 +7,7 @@
 #include "variant_tools.h"
 
 #include <algorithm>
+#include <array>
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -56,6 +57,7 @@ AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig 
     animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
     animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
+    animation.offset = parse_vector2(animation_dict.get("offset", Array()), animation.offset);
     animation.windup_frames = std::clamp(VariantTools::as_int(animation_dict.get("windup_frames", animation.windup_frames)), 0, animation.frame_count);
     return animation;
 }
@@ -134,6 +136,70 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
         globals.friendly_ranged_flash_color = parse_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
         globals.hostile_ranged_flash_color = parse_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
     }
+}
+
+// An unknown name falls back to NEAREST rather than failing the load: a typo in the catalog should cost a unit its
+// job, visibly, in the next measurement -- not stop the game from starting.
+TargetPreference parse_target_preference(const Dictionary &unit_dict) {
+    const String value = String(unit_dict.get("target_preference", "nearest")).to_lower();
+    if (value == String("farthest")) {
+        return TargetPreference::FARTHEST;
+    }
+    if (value == String("lowest_hp")) {
+        return TargetPreference::LOWEST_HP;
+    }
+    if (value == String("highest_hp")) {
+        return TargetPreference::HIGHEST_HP;
+    }
+    return TargetPreference::NEAREST;
+}
+
+// Same forgiving policy as the preference above: an unrecognised role reads as NONE, which nothing prefers, so a typo
+// costs the unit its matchup in the next measurement rather than stopping the game.
+UnitRole parse_unit_role(const String &value) {
+    const String name = value.to_lower();
+    if (name == String("tank")) {
+        return UnitRole::TANK;
+    }
+    if (name == String("diver")) {
+        return UnitRole::DIVER;
+    }
+    if (name == String("sniper")) {
+        return UnitRole::SNIPER;
+    }
+    if (name == String("assault")) {
+        return UnitRole::ASSAULT;
+    }
+    if (name == String("splash")) {
+        return UnitRole::SPLASH;
+    }
+    if (name == String("specialist")) {
+        return UnitRole::SPECIALIST;
+    }
+    if (name == String("support")) {
+        return UnitRole::SUPPORT;
+    }
+    if (name == String("structure")) {
+        return UnitRole::STRUCTURE;
+    }
+    return UnitRole::NONE;
+}
+
+// `{"sniper": 3.0}` reads as "worth three times what its own threat weight says". A role left out of the table keeps
+// its multiplier at one, so an empty table is exactly the pre-role behaviour.
+std::array<float, UNIT_ROLE_COUNT> parse_preferred_roles(const Dictionary &unit_dict) {
+    std::array<float, UNIT_ROLE_COUNT> bias{};
+    bias.fill(1.0F);
+
+    const Dictionary preferred = unit_dict.get("preferred_roles", Dictionary());
+    for (const Variant &key : preferred.keys()) {
+        const UnitRole role = parse_unit_role(String(key));
+        if (role == UnitRole::NONE) {
+            continue;
+        }
+        bias.at(static_cast<std::size_t>(unit_role_index(role))) = VariantTools::as_float(preferred[key]);
+    }
+    return bias;
 }
 
 UnitSide parse_unit_side_impl(const Dictionary &unit_dict) {
@@ -251,12 +317,20 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     config.ranged_damage = VariantTools::as_int(unit_dict.get("ranged_damage", 8));
     config.ranged_attack_period_seconds = VariantTools::as_double(unit_dict.get("ranged_attack_period_seconds", 2.0 / 3.0));
     config.ranged_attack_range = VariantTools::as_real(unit_dict.get("ranged_attack_range", config.ranged_attack_range));
+    config.minimum_ranged_attack_range = VariantTools::as_real(unit_dict.get("minimum_ranged_attack_range", config.minimum_ranged_attack_range));
     config.ranged_attack_range_variation = globals.ranged_attack_range_variation;
     if (unit_dict.has("move_speed_pixels_per_second")) {
         config.move_speed_pixels_per_second = VariantTools::as_float(unit_dict.get("move_speed_pixels_per_second", config.move_speed_pixels_per_second));
     } else {
         config.move_speed_pixels_per_second = VariantTools::as_float(unit_dict.get("move_speed", 0.5)) * LEGACY_MOVE_SPEED_SCALE;
     }
+    config.armour = VariantTools::as_int(unit_dict.get("armour", config.armour));
+    config.damage_cap = VariantTools::as_int(unit_dict.get("damage_cap", config.damage_cap));
+    config.threat_weight = VariantTools::as_real(unit_dict.get("threat_weight", config.threat_weight));
+    config.target_preference = parse_target_preference(unit_dict);
+    config.role = parse_unit_role(String(unit_dict.get("role", "none")));
+    config.preferred_roles = parse_preferred_roles(unit_dict);
+    config.aggro_range = VariantTools::as_float(unit_dict.get("aggro_range", config.aggro_range));
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
     config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));

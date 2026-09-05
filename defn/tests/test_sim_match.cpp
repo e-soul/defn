@@ -256,11 +256,12 @@ DEFN_TEST(sim_match_holds_every_deployment_until_the_enemy_is_in_reach) {
 }
 
 DEFN_TEST(sim_match_runs_every_policy) {
-    for (const char *kind : {"greedy", "composition", "scripted", "defensive"}) {
+    for (const char *kind : {"greedy", "patience", "scripted", "defensive", "mix"}) {
         SimScenario scenario;
         scenario.seed = 11U;
         scenario.policy.kind = kind;
         scenario.policy.script = {{.time_seconds = 1.0, .unit_id = "breacher"}, {.time_seconds = 12.0, .unit_id = "breacher"}};
+        scenario.policy.weights = {{"breacher", 1.0}, {"marksman", 1.0}};
 
         const SimMatchReport report = run_match(scenario, make_test_level());
 
@@ -268,6 +269,110 @@ DEFN_TEST(sim_match_runs_every_policy) {
         DEFN_CHECK(report.decided);
         DEFN_CHECK(report.clear_time_seconds > 0.0);
     }
+}
+
+// Every other policy ends in "the most expensive thing I can afford", so a sweep of them compares mono-stacks and
+// nothing else. This is the one that can play a composition, and the deployment counts are how you tell.
+DEFN_TEST(sim_match_mix_policy_deploys_toward_its_target_shape) {
+    SimScenario scenario;
+    scenario.seed = 17U;
+    scenario.policy.kind = "mix";
+    scenario.policy.weights = {{"breacher", 3.0}, {"marksman", 1.0}};
+
+    const SimMatchReport report = run_match(scenario, make_test_level(10));
+
+    const auto deployed = [&report](const std::string &unit_id) {
+        for (const SimDeploymentStat &deployment : report.deployments) {
+            if (deployment.unit_id == unit_id) {
+                return deployment.count;
+            }
+        }
+        return 0;
+    };
+
+    DEFN_CHECK(deployed("breacher") > 0);
+    DEFN_CHECK(deployed("marksman") > 0);
+    DEFN_CHECK(deployed("breacher") > deployed("marksman"));
+}
+
+// Greedy reaches for the top of the roster whenever it can afford it, so what it ends up buying is decided by the
+// price list. A mix that names only the breacher never buys a marksman, however much energy is banked.
+DEFN_TEST(sim_match_mix_policy_buys_what_it_was_told_rather_than_the_top_of_the_ladder) {
+    SimScenario greedy;
+    greedy.seed = 17U;
+    greedy.policy.kind = "greedy";
+
+    SimScenario mix = greedy;
+    mix.policy.kind = "mix";
+    mix.policy.weights = {{"breacher", 1.0}};
+
+    const SimMatchReport greedy_report = run_match(greedy, make_test_level(10));
+    const SimMatchReport mix_report = run_match(mix, make_test_level(10));
+
+    const auto deployed = [](const SimMatchReport &report, const std::string &unit_id) {
+        for (const SimDeploymentStat &deployment : report.deployments) {
+            if (deployment.unit_id == unit_id) {
+                return deployment.count;
+            }
+        }
+        return 0;
+    };
+
+    DEFN_CHECK(deployed(greedy_report, "marksman") > 0);
+    DEFN_CHECK_EQ(deployed(mix_report, "marksman"), 0);
+    DEFN_CHECK(deployed(mix_report, "breacher") > 0);
+}
+
+// The banking rule and its one exception, pinned together because each is wrong without the other.
+//
+// Banking is deliberate: a mix that skipped to the next-neediest affordable unit whenever the neediest was out of
+// reach would buy the cheap end every time energy crossed its cost and never reach the expensive end at all -- a
+// mono-stack claiming to be a composition. But an unbounded bank stalls exactly where a level is decided. On
+// `level_01`, `{breacher 2, marksman 1}` bought one breacher and then sat on 24 energy waiting for a 27-cost
+// marksman while four hounds crossed the belt at 120px/s: 94 energy spent against ~200 for every other policy, and
+// 3 wins in 25.
+//
+// The exception is `hostile_at_the_gate` and **not** the broader `under_pressure` that `patience` uses. Both were
+// measured over 750 paired runs: the broad test also fires on a busy belt, which is the normal condition of
+// levels 3 to 5, so it swallowed the rule and handed back the mono-stack -- `level_04` marksman deployments
+// 4.5 -> 1.0 per run and 24/25 -> 0/25. The narrow test keeps `level_04` byte-identical and takes `level_01` from
+// 3/25 to 11/25, which is the whole of the broad test's gain and none of its cost.
+DEFN_TEST(sim_match_mix_policy_spends_rather_than_banking_with_a_hostile_at_the_gate) {
+    SimScenario scenario;
+    scenario.seed = 23U;
+    scenario.policy.kind = "mix";
+    // The breacher is affordable long before the marksman, so an unbroken bank shows up as an idle purse.
+    scenario.policy.weights = {{"breacher", 1.0}, {"marksman", 3.0}};
+
+    const SimMatchReport report = run_match(scenario, make_test_level(10));
+
+    DEFN_CHECK(report.deployments_total > 0);
+    DEFN_CHECK(report.energy_spent > 0);
+}
+
+// And the exception does not eat the rule: with nothing near the base, the policy still holds out for the unit its
+// shape is short of rather than spending down on the affordable one.
+DEFN_TEST(sim_match_mix_policy_still_banks_for_the_expensive_end_when_nothing_is_pressing) {
+    SimScenario scenario;
+    scenario.seed = 29U;
+    scenario.policy.kind = "mix";
+    scenario.policy.weights = {{"breacher", 1.0}, {"marksman", 1.0}};
+    // The first hostile spawns at 3s and is still far out at 12s, so no pressure test can fire in this window.
+    scenario.max_seconds = 12.0;
+
+    const SimMatchReport report = run_match(scenario, make_test_level());
+
+    const auto deployed = [&report](const std::string &unit_id) {
+        for (const SimDeploymentStat &deployment : report.deployments) {
+            if (deployment.unit_id == unit_id) {
+                return deployment.count;
+            }
+        }
+        return 0;
+    };
+
+    // Whatever it bought, it did not spend its way past the marksman by stacking the cheap end.
+    DEFN_CHECK(deployed("breacher") <= deployed("marksman") + 1);
 }
 
 DEFN_TEST(sim_match_report_serializes_to_one_json_line) {

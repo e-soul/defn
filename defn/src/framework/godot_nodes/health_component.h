@@ -15,7 +15,7 @@ class HealthComponent : public Node {
     GDCLASS(HealthComponent, Node)
 
   public:
-    void configure(int max_hp);
+    void configure(int max_hp, int armour = 0, int damage_cap = 0);
     void set_max_hp_and_heal(int new_max_hp);
     [[nodiscard]] int take_damage(int amount);
     bool is_dead() const { return current_hp <= 0; }
@@ -28,6 +28,8 @@ class HealthComponent : public Node {
   private:
     int max_hp = 100;
     int current_hp = 100;
+    int armour = 0;
+    int damage_cap = 0;
 };
 
 } // namespace defn

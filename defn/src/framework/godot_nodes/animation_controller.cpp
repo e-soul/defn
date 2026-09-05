@@ -18,19 +18,12 @@
 
 namespace defn {
 
-namespace {
-
-constexpr std::string_view SHOOT_ANIMATION = "shoot";
-constexpr std::string_view DEATH_ANIMATION = "death";
-
-} // namespace
-
 void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
 void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite) {
     this->owner_node = Object::cast_to<Node2D>(owner_node);
     state_.configure(cfg.animations);
-    muzzle_offset = to_godot_vector(cfg.muzzle.offset);
+    muzzle_offset = to_godot_vector(muzzle_anchor(cfg));
     base_sprite_flip_h_ = cfg.sprite_flip_h;
     base_muzzle_flip_h_ = cfg.muzzle.flip_h;
 
@@ -72,6 +65,7 @@ void AnimationController::setup_sprite_frames(const UnitConfig &cfg) {
 
     for (const auto &[anim_name, anim_cfg] : cfg.animations) {
         const String animation_name = to_godot_string(anim_name);
+        animation_offsets_[anim_name] = to_godot_vector(anim_cfg.offset);
         frames->add_animation(animation_name);
         frames->set_animation_speed(animation_name, anim_cfg.speed);
         frames->set_animation_loop(animation_name, anim_cfg.loop);
@@ -118,7 +112,7 @@ void AnimationController::setup_muzzle_flash(Node *owner_node, const UnitConfig 
     }
 
     muzzle_flash->set_sprite_frames(frames);
-    muzzle_flash->set_position(to_godot_vector(cfg.muzzle.offset));
+    muzzle_flash->set_position(muzzle_offset);
     if (cfg.muzzle.flip_h) {
         muzzle_flash->set_flip_h(true);
     }
@@ -160,8 +154,29 @@ void AnimationController::show_state_frame_on_sprite() {
     if (sprite->get_animation() != animation_name) {
         sprite->set_animation(animation_name);
     }
+    apply_sprite_offset();
     sprite->stop();
     sprite->set_frame_and_progress(std::min(state_.get_clock().frame(), frame_count - 1), 0.0);
+}
+
+// Godot mirrors the texture inside an unmoved destination rect, so `offset` is *not* flipped for us: a correction
+// measured on the un-flipped art has to be mirrored by hand to keep pointing at the same spot on the body.
+godot::Vector2 AnimationController::current_sprite_offset() const {
+    if (sprite == nullptr) {
+        return {};
+    }
+    const auto entry = animation_offsets_.find(presented_animation_);
+    if (entry == animation_offsets_.end()) {
+        return {};
+    }
+    const godot::Vector2 offset = entry->second;
+    return sprite->is_flipped_h() ? godot::Vector2(-offset.x, offset.y) : offset;
+}
+
+void AnimationController::apply_sprite_offset() {
+    if (sprite != nullptr) {
+        sprite->set_offset(current_sprite_offset());
+    }
 }
 
 void AnimationController::set_anim_state(UnitPose pose) {
@@ -214,6 +229,7 @@ void AnimationController::set_facing(FacingDirection direction) {
     const bool backward = direction == FacingDirection::BACKWARD;
     if (sprite != nullptr) {
         sprite->set_flip_h(backward ? !base_sprite_flip_h_ : base_sprite_flip_h_);
+        apply_sprite_offset();
     }
     if (muzzle_flash != nullptr) {
         muzzle_flash->set_flip_h(backward ? !base_muzzle_flip_h_ : base_muzzle_flip_h_);
@@ -254,7 +270,7 @@ godot::Rect2 AnimationController::get_sprite_local_bounds() const {
         return {};
     }
     const godot::Vector2 size = texture->get_size();
-    return {-size * 0.5F, size};
+    return {current_sprite_offset() - (size * 0.5F), size};
 }
 
 void AnimationController::play_muzzle_flash() {

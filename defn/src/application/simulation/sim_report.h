@@ -53,7 +53,7 @@ struct SimMatchReport {
     // Wasted economy: the integral of unspent energy over time. High means the player banked what it could have spent.
     double energy_idle_integral = 0.0;
     int peak_concurrent_enemies = 0;
-    // The most enemies that appeared inside any five-second window: the spike density BALANCE.md tunes against.
+    // The most enemies that appeared inside any five-second window: the spike density levels are tuned against.
     int peak_window_5s = 0;
 
     int deployments_total = 0;

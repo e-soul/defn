@@ -40,6 +40,10 @@ Build and run the broader headless Godot-hosted suite: `scons hosted_test godot_
 
 Build and run both suites together: `scons test_all godot_bin=path/to/godot_executable`
 
+Check that every asset the game can reach is actually packaged: `scons packaging`. It runs as part of `scons test_all`, needs neither Godot nor the extension, and fails with the paths to add. The presets ship only what `export_files` names, so a new unit renders in a debug run and is missing its sprites in the exported build. Add `--stale` when running `python scripts/check_export_presets.py` directly to also see listed entries nothing reaches.
+
 The hosted suite is launched through godot_hosted_runner.gd and calls into the Godot-exposed C++ runner in `defn_hosted_test_runner.cpp`. You can also use the environment variable `GODOT_BIN` instead of passing godot_bin on the command line.
+
+Re-measure where each animation clip is anchored, after adding a unit or swapping its sprites: `python scripts/gen_anim_offsets.py --report` to read the numbers, `--write` to update `data/unit_data.json`, `--contact-sheet out.png` to eyeball them. The clips are cropped to different canvases, so without these offsets a unit's body jumps when it switches pose.
 
 Create a native release archive from the repository root: `python scripts/build.py --platform windows` or `python scripts/build.py --platform linux`.
