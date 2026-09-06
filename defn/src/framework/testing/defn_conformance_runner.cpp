@@ -186,15 +186,9 @@ bool DefnConformanceRunner::load_content() {
     // stop for anything else and slides onto across the whole run-in. Every scenario before this one stands on a
     // single BELT_Y, so 6 and 7 are the only places the two sides can be caught disagreeing about y.
     //
-    // The pair is deliberately small and deliberately starts inside both sensors -- 297 px apart against the
-    // marksman's 650 and the hound's 600 -- and only ever closes, so no sensor edge is crossed during the run. That
-    // constraint exists because the two sides do not model the sensor identically: the game overlaps an `Area2D`
-    // against the target's hitbox circle, while the kernel measures centre to centre, so the game acquires up to one
-    // hitbox radius (5 px, about three frames of closing) earlier. On a single belt line the difference is invisible,
-    // because a target is sensed long before the forward distance lets anyone attack it. Off-lane it is not, and a
-    // scenario that straddled a sensor edge would fail on that gap rather than on anything about y. The gap predates
-    // this scenario -- the same spawns diverge identically with the slide rate zeroed -- and closing it belongs to
-    // whoever takes on the sensor model.
+    // The pair is deliberately small and starts inside both sensors -- 297 px apart against the marksman's 650 and
+    // the hound's 600 -- and only ever closes, so acquisition is settled before the first frame and y is the only
+    // thing left that can disagree. Scenario 8 is where the sensor edge itself is crossed.
     {
         Scenario scenario;
         scenario.name = "belt_slide";
@@ -213,8 +207,8 @@ bool DefnConformanceRunner::load_content() {
     // so it cannot select the operator either, until the last 100 px. For 200 px of run-in it has *nothing selected
     // and nothing pursued* and is steering purely by what it is walking at -- the case scenario 6 does not reach.
     //
-    // Same sensor-edge discipline as scenario 6: 340 px apart against the operator's 380 px sensor and the hound's
-    // 600, closing from the first frame, so neither side crosses an acquisition boundary mid-run.
+    // Same shape as scenario 6: 340 px apart against the operator's 380 px sensor and the hound's 600, closing from
+    // the first frame, so acquisition is settled and steering is the only thing under test.
     {
         Scenario scenario;
         scenario.name = "belt_slide_approach";
@@ -223,6 +217,37 @@ bool DefnConformanceRunner::load_content() {
         scenario.spawns = {
             {.unit_id = "operator", .side = UnitSide::FRIENDLY, .position = {.x = 700.0F, .y = BELT_Y - 80.0F}},
             {.unit_id = "hound", .side = UnitSide::HOSTILE, .position = {.x = 1000.0F, .y = BELT_Y + 80.0F}},
+        };
+        scenario.frames = 900;
+        scenarios_.push_back(scenario);
+    }
+
+    // 8. The sensor edge itself, crossed off-lane. Scenarios 6 and 7 start inside every sensor on the field, so they
+    // never exercise the frame on which a target is first seen; every scenario before them stands on one belt line,
+    // where the frame is unobservable anyway because a target is sensed long before the forward distance lets anyone
+    // attack it. Off-lane -- which is every real match, since spawn y is a uniform draw across the belt band -- it is
+    // sensing that binds, and the acquisition frame is what the whole run hangs off.
+    //
+    // 900 px apart on x and 160 px apart on y, so 914 px centre to centre: outside both sensors on frame one. Neither
+    // unit slides, so y is fixed for the whole run and the crossings are pure geometry. That buys about 110 frames of
+    // free walking that both sides must agree on before anything is acquired, and then each sensor is crossed in
+    // turn: the marksman's 650 px circle reaches the grime's body at dx 635 and its centre at dx 630, and the grime's
+    // 345 px circle reaches the marksman's body at dx 311 and its centre at dx 306. Five pixels either way, about
+    // three frames of closing.
+    //
+    // Acquisition is the binding constraint at both edges, which is what off-lane buys: on one belt line the
+    // marksman's forward distance is inside 650 well before the sensor reaches, so the frame the two sides would
+    // disagree about is a frame on which nothing depends. Here the marksman stops and opens fire on the frame it
+    // acquires, and its 200 px dead zone caps how many shots the run contains at all, so an acquisition frame landing
+    // three frames late moves damage rather than merely reordering it.
+    {
+        Scenario scenario;
+        scenario.name = "sensor_edge_off_lane";
+        scenario.globals = globals;
+        scenario.roster = shipped;
+        scenario.spawns = {
+            {.unit_id = "marksman", .side = UnitSide::FRIENDLY, .position = {.x = 300.0F, .y = BELT_Y - 80.0F}},
+            {.unit_id = "grime", .side = UnitSide::HOSTILE, .position = {.x = 1200.0F, .y = BELT_Y + 80.0F}},
         };
         scenario.frames = 900;
         scenarios_.push_back(scenario);

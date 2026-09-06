@@ -43,6 +43,13 @@ struct SimEntity {
     CombatConfig combat;
     // The sensor radius is the resolved ranged range even for melee-only units, mirroring DetectionComponent.
     float detection_radius = 0.0F;
+    // Where this unit's sensor and hitbox stood when the physics server last looked, and where they will have stood
+    // when it next looks. The shipped game answers `get_overlapping_areas` out of the last completed physics step,
+    // which ran a whole frame of movement ago, so an overlap becomes visible to combat one tick after the two circles
+    // actually touch. Positions read *off the snapshot* stay current -- the shipped selector takes those off the
+    // nodes, not off the physics state -- so only sensor membership is lagged.
+    Vector2 sensed_position;
+    Vector2 pending_sensed_position;
     std::optional<ProjectileAttackConfig> projectile_attack;
     // Where a shot leaves the unit: the configured muzzle offset, already scaled by the unit's sprite scale. Zero for
     // every shipped unit today, but a long-range shooter with a real offset would otherwise mistime its flights.

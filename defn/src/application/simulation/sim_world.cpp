@@ -4,6 +4,7 @@
 #include "sim_world.h"
 
 #include "hostile_scaling.h"
+#include "unit_body.h"
 #include "unit_runtime_config_resolver.h"
 #include "unit_runtime_profile.h"
 
@@ -79,6 +80,8 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.unit_id = unit_id;
     entity.side = side;
     entity.position = position;
+    entity.sensed_position = position;
+    entity.pending_sensed_position = position;
     entity.hp = overrides.hp.value_or(config->hp);
     entity.max_hp = entity.hp;
     entity.armour = config->armour;
@@ -112,6 +115,16 @@ void SimWorld::tick() {
     // Anything created during this tick waits for the next one, because Godot walks a copy of the process group taken
     // before the frame started. Without this a unit deployed now would act a frame before its node ever could.
     const std::size_t projectiles_at_tick_start = projectiles_.size();
+
+    // Age the sensor's view of the world by one tick: `sensed_position` becomes where everything stood at the top of
+    // the previous tick, one movement step behind where it stands now. That is the physics step the shipped game's
+    // overlap query answers out of. Every entity reads the same view, which is the second thing this buys and the
+    // reason it is published here rather than read live: a unit stepped later in the tick would otherwise sense an
+    // earlier one at the position it has already moved to, which no physics frame ever reported.
+    for (SimEntity &entity : entities_) {
+        entity.sensed_position = entity.pending_sensed_position;
+        entity.pending_sensed_position = entity.position;
+    }
 
     // Ascending id is the scene-tree order the shipped game processes in: entities are appended in spawn order, and
     // Godot walks the process group depth-first over that same order.
@@ -166,15 +179,25 @@ void SimWorld::step_entity(SimEntity &entity) {
 void SimWorld::build_snapshots(const SimEntity &viewer) {
     snapshots_.clear();
 
-    // Replaces the Area2D overlap query: the detection sensor is a circle of the resolved ranged range around the unit.
-    const float radius_squared = viewer.detection_radius * viewer.detection_radius;
+    // Replaces the Area2D overlap query, which is two facts rather than one. First, the sensor is a circle of the
+    // resolved ranged range and what it overlaps is the target's *body*, not the target's centre, so two circles
+    // touch at the sum of their radii and the sensor reaches one hitbox radius past its own -- the same pairing
+    // `SimCamera::overlaps_trigger` already models for the camera strips. Second, the overlap set is answered out of
+    // the last completed physics frame, so it is read against `sensed_position` and lands one tick after the circles
+    // actually touch. The positions that go into the snapshot stay current, because the shipped selector reads those
+    // off the nodes.
+    //
+    // Both halves are load-bearing off-lane and neither is visible on a single belt line, where a target is sensed
+    // long before the forward distance lets anyone attack it.
+    const float sensed_radius = viewer.detection_radius + UNIT_HITBOX_RADIUS;
+    const float radius_squared = sensed_radius * sensed_radius;
     for (const SimEntity &other : entities_) {
         if (other.id == viewer.id || other.dead || other.side == viewer.side) {
             continue;
         }
 
-        const float delta_x = other.position.x - viewer.position.x;
-        const float delta_y = other.position.y - viewer.position.y;
+        const float delta_x = other.sensed_position.x - viewer.sensed_position.x;
+        const float delta_y = other.sensed_position.y - viewer.sensed_position.y;
         if ((delta_x * delta_x) + (delta_y * delta_y) > radius_squared) {
             continue;
         }

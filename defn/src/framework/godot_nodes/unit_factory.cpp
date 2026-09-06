@@ -17,14 +17,13 @@
 #include "movement_component.h"
 #include "sound_controller.h"
 #include "unit.h"
+#include "unit_body.h"
 #include "unit_control_component.h"
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 namespace defn {
 
 namespace {
-
-constexpr real_t DEFAULT_HITBOX_RADIUS = 5.0F;
 
 HealthComponent *create_health_component(Unit *unit) {
     auto *health = memnew(HealthComponent);
@@ -66,7 +65,7 @@ HitboxComponent *create_hitbox_component(Unit *unit) {
 
     const real_t scale_x = unit->get_scale().x;
     const auto detection_channels = get_detection_channels(unit->get_side());
-    hitbox->configure(unit, detection_channels.hitbox_layer, DEFAULT_HITBOX_RADIUS / scale_x);
+    hitbox->configure(unit, detection_channels.hitbox_layer, UNIT_HITBOX_RADIUS / scale_x);
     return hitbox;
 }
 

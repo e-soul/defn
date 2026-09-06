@@ -3,16 +3,11 @@
 
 #include "sim_camera.h"
 
+#include "unit_body.h"
+
 #include <cmath>
 
 namespace defn {
-
-namespace {
-
-// HitboxComponent gives every unit a 5-pixel hitbox in world space, whatever its sprite scale.
-constexpr float UNIT_HITBOX_RADIUS = 5.0F;
-
-} // namespace
 
 void SimCamera::configure(const GameplayRules &rules, SimCameraMode mode) {
     controller_.configure(rules);

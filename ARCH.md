@@ -394,9 +394,20 @@ facts those rules would otherwise read off nodes:
 - `SimEntity` flattens what `Unit` spreads across health, movement, combat and animation components.
 - `SimWorld::build_snapshots` replaces the `Area2D` overlap query with a radius scan, and re-adds the retained target
   the way `CombatTargetSelector` does, so the chase decision still sees a target that left the sensor. The scan
-  measures centre to centre while the game's overlap includes the target's hitbox circle, so the game acquires up to
-  one hitbox radius earlier. On a single belt line that is invisible, because a target is sensed long before the
-  forward distance lets anyone attack it; off-lane, where sensing can be the binding constraint, it is not.
+  reproduces two properties of that query rather than one, because the shipped game is what acquisition means and the
+  kernel models it. First, what a sensor overlaps is the target's *body*: every unit carries a `UNIT_HITBOX_RADIUS`
+  circle in world space, so two circles touch at the sum of their radii and the sensor reaches one hitbox radius past
+  its own. Second, the answer comes out of the last completed physics step, which ran a whole frame of movement ago,
+  so an overlap becomes visible to combat one tick after the circles actually touch; the scan reads
+  `SimEntity::sensed_position`, published once at the top of the tick, while the positions that go *into* the snapshot
+  stay current because the shipped selector takes those off the nodes. Publishing the lagged view up front is also
+  what keeps the answer independent of walk order, which a plain scan of live positions is not: a unit stepped later
+  in the tick would otherwise sense an earlier one where it has already moved to.
+
+  Neither property is visible on a single belt line, because there a target is sensed long before the forward distance
+  lets anyone attack it. Off-lane -- which is every real match, since spawn y is a uniform draw across the belt band --
+  sensing is what binds, and the two errors do not reliably cancel: the `sensor_edge_off_lane` conformance scenario
+  crosses both units' sensor edges off-lane and pins the acquisition frame on each.
 - `SimWorld::apply_commands` mirrors `CombatRuntime::apply_command` case for case; the presentation-only commands are
   the only ones it drops.
 - Movement and damage are the ten-line equivalents of `MovementComponent::move`,
@@ -422,7 +433,7 @@ provide:
 
 - `SimGrid` implements `GridQueryService` over the same rules as `GridManager`, including the level's belt ratios.
 - `SimCamera` wraps the shared `CameraScrollController` and adds the one scene fact it needs: noticing that a unit's
-  hitbox has entered a trigger strip. `SimCameraMode::FIXED` pins the camera so scroll pacing can be isolated.
+  hitbox has entered a trigger strip, sized by the same `UNIT_HITBOX_RADIUS` the sensor scan pairs against. `SimCameraMode::FIXED` pins the camera so scroll pacing can be isolated.
 - `SimProgression` implements `ProgressionService` for one hypothetical save. Every modifier a match reads goes
   through the same `progression_rules` functions the campaign uses; only the reward and presentation half is stubbed.
 - `PlayerPolicy` decides deployments. Deployment is the whole player vocabulary: the camera is pushed by units
