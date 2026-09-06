@@ -22,6 +22,9 @@ struct CombatCommand {
     EntityId target_id;
     Vector2 target_position;
     int damage = 0;
+    // How a DEAL_DAMAGE hit arrives, so the target's mitigation can tell a round from a swing. Meaningless on every
+    // other command type.
+    DamageDelivery delivery = DamageDelivery::RANGED;
     Color color;
     ProjectileDamageConfig projectile;
 };

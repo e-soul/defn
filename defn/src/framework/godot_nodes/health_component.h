@@ -4,6 +4,8 @@
 #ifndef HEALTH_COMPONENT_H
 #define HEALTH_COMPONENT_H
 
+#include "damage_rules.h"
+
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
@@ -17,7 +19,7 @@ class HealthComponent : public Node {
   public:
     void configure(int max_hp, int armour = 0, int damage_cap = 0);
     void set_max_hp_and_heal(int new_max_hp);
-    [[nodiscard]] int take_damage(int amount);
+    [[nodiscard]] int take_damage(int amount, DamageDelivery delivery);
     bool is_dead() const { return current_hp <= 0; }
     int get_current_hp() const { return current_hp; }
     int get_max_hp() const { return max_hp; }

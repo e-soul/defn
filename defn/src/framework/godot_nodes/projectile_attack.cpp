@@ -246,7 +246,7 @@ void ProjectileAttack::apply_splash_damage() {
             continue;
         }
 
-        (void)DamageDispatcher::apply(source_id_, victim, command.damage);
+        (void)DamageDispatcher::apply(source_id_, victim, command.damage, DamageDelivery::RANGED);
         victim->flash_damage(flash_color_);
     }
 }

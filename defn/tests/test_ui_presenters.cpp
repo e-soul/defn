@@ -1023,14 +1023,14 @@ DEFN_TEST(animation_controller_reports_no_attack_timing_for_a_unit_without_attac
 DEFN_TEST(health_component_reports_effective_damage_and_caps_overkill) {
     auto *health = memnew(HealthComponent);
     health->configure(20);
-    DEFN_CHECK_EQ(health->take_damage(-5), 0);
-    DEFN_CHECK_EQ(health->take_damage(7), 7);
+    DEFN_CHECK_EQ(health->take_damage(-5, DamageDelivery::RANGED), 0);
+    DEFN_CHECK_EQ(health->take_damage(7, DamageDelivery::RANGED), 7);
     health->set_max_hp_and_heal(30);
     DEFN_CHECK_EQ(health->get_current_hp(), 30);
     DEFN_CHECK_EQ(health->get_max_hp(), 30);
-    DEFN_CHECK_EQ(health->take_damage(10), 10);
-    DEFN_CHECK_EQ(health->take_damage(100), 20);
-    DEFN_CHECK_EQ(health->take_damage(1), 0);
+    DEFN_CHECK_EQ(health->take_damage(10, DamageDelivery::RANGED), 10);
+    DEFN_CHECK_EQ(health->take_damage(100, DamageDelivery::RANGED), 20);
+    DEFN_CHECK_EQ(health->take_damage(1, DamageDelivery::RANGED), 0);
     memdelete(health);
 }
 
@@ -1051,7 +1051,7 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
     UnitFactory::initialize(unit);
     auto *health = godot::Object::cast_to<HealthComponent>(unit->get_node_or_null("HealthComponent"));
     DEFN_REQUIRE(health != nullptr);
-    DEFN_CHECK_EQ(health->take_damage(60), 60);
+    DEFN_CHECK_EQ(health->take_damage(60, DamageDelivery::RANGED), 60);
 
     unit->record_effective_damage_dealt(500);
     DEFN_CHECK(unit->is_field_promoted());
@@ -1494,9 +1494,9 @@ DEFN_TEST(base_objective_configures_health_hitbox_and_optional_attack_stack) {
     DEFN_CHECK_EQ(objective->get_max_hp(), 250);
     DEFN_CHECK(base_objective_has_basic_stack(objective));
 
-    (void)objective->take_damage(40);
+    (void)objective->take_damage(40, DamageDelivery::RANGED);
     DEFN_CHECK_EQ(objective->get_current_hp(), 210);
-    (void)objective->take_damage(500);
+    (void)objective->take_damage(500, DamageDelivery::RANGED);
     DEFN_CHECK(objective->is_dead());
     DEFN_CHECK_EQ(objective->get_current_hp(), 0);
 

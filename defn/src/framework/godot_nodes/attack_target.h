@@ -5,6 +5,7 @@
 #define ATTACK_TARGET_H
 
 #include "content_values.h"
+#include "damage_rules.h"
 #include "unit_side.h"
 
 #include <godot_cpp/classes/node2d.hpp>
@@ -27,7 +28,7 @@ class AttackTarget {
     // says advertises NONE, which nothing prefers, so an implementer that ignores roles behaves exactly as before.
     [[nodiscard]] virtual UnitRole get_role() const { return UnitRole::NONE; }
     [[nodiscard]] virtual int get_current_health() const = 0;
-    [[nodiscard]] virtual int take_damage(int amount) = 0;
+    [[nodiscard]] virtual int take_damage(int amount, DamageDelivery delivery) = 0;
     virtual void flash_damage(const godot::Color &color) = 0;
     [[nodiscard]] virtual Node2D *get_target_node() = 0;
     [[nodiscard]] virtual const Node2D *get_target_node() const = 0;

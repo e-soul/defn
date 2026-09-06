@@ -22,7 +22,7 @@ class BattleEntity : public Node2D, public AttackTarget {
     GDCLASS(BattleEntity, Node2D)
 
   public:
-    [[nodiscard]] int take_damage(int amount) override;
+    [[nodiscard]] int take_damage(int amount, DamageDelivery delivery) override;
     [[nodiscard]] bool is_dead() const override;
     [[nodiscard]] UnitSide get_side() const override { return side_; }
     [[nodiscard]] float get_threat_weight() const override { return threat_weight_; }

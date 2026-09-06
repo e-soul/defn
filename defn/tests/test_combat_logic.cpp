@@ -402,17 +402,30 @@ DEFN_TEST(plating_truncates_a_heavy_round_and_leaves_a_light_one_alone) {
 // pinned. Against cap 12 and armour 4 a marksman's 19 arrives as 12 and leaves as 8; armour first would leave 12.
 // No shipped unit carries both today, which is exactly why this would otherwise drift unnoticed.
 DEFN_TEST(plating_applies_before_armour) {
-    DEFN_CHECK_EQ(damage_after_mitigation(19, 12, 4), 8);
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 12, 4, DamageDelivery::RANGED), 8);
     DEFN_CHECK_EQ(damage_after_armour(damage_after_plating(19, 12), 4), 8);
-    DEFN_CHECK(damage_after_mitigation(19, 12, 4) < damage_after_plating(damage_after_armour(19, 4), 12));
+    DEFN_CHECK(damage_after_mitigation(19, 12, 4, DamageDelivery::RANGED) < damage_after_plating(damage_after_armour(19, 4), 12));
 
     // Each alone still behaves as itself, so a unit carrying one stat is unaffected by the other's presence.
-    DEFN_CHECK_EQ(damage_after_mitigation(19, 0, 4), damage_after_armour(19, 4));
-    DEFN_CHECK_EQ(damage_after_mitigation(19, 12, 0), damage_after_plating(19, 12));
-    DEFN_CHECK_EQ(damage_after_mitigation(19, 0, 0), 19);
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 0, 4, DamageDelivery::RANGED), damage_after_armour(19, 4));
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 12, 0, DamageDelivery::RANGED), damage_after_plating(19, 12));
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 0, 0, DamageDelivery::RANGED), 19);
 
     // The floor survives composition: armour still cannot take a capped round to nothing.
-    DEFN_CHECK_EQ(damage_after_mitigation(19, 6, 6), 1);
+    DEFN_CHECK_EQ(damage_after_mitigation(19, 6, 6, DamageDelivery::RANGED), 1);
+}
+
+// The cap is a property of a *shot*. A blade in contact is not slipped, so a melee hit meets armour alone and the
+// cap is invisible to it. This is what lets one stat give the sniper a weakness without also deleting the
+// counter-puncher's swing, which is the heaviest single hit in the roster and the hound's answer.
+DEFN_TEST(plating_never_touches_a_melee_hit) {
+    DEFN_CHECK_EQ(damage_after_mitigation(30, 6, 0, DamageDelivery::MELEE), 30);
+    DEFN_CHECK_EQ(damage_after_mitigation(30, 6, 0, DamageDelivery::RANGED), 6);
+
+    // Armour still applies to a swing, so the two mitigations really are split by delivery rather than melee
+    // simply bypassing mitigation altogether.
+    DEFN_CHECK_EQ(damage_after_mitigation(30, 6, 4, DamageDelivery::MELEE), 26);
+    DEFN_CHECK_EQ(damage_after_mitigation(30, 6, 4, DamageDelivery::RANGED), 2);
 }
 
 // Plating and armour pull the *same* two shot profiles in opposite directions. This is the whole reason the stat

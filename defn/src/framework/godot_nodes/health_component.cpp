@@ -28,14 +28,14 @@ void HealthComponent::set_max_hp_and_heal(int new_max_hp) {
     emit_signal("health_changed", current_hp, max_hp);
 }
 
-int HealthComponent::take_damage(int amount) {
+int HealthComponent::take_damage(int amount, DamageDelivery delivery) {
     amount = std::max(amount, 0);
     if (is_dead() || amount == 0) {
         return 0;
     }
 
     // Same rule, same place in the sequence as SimWorld::take_damage. Conformance compares the two.
-    amount = damage_after_mitigation(amount, damage_cap, armour);
+    amount = damage_after_mitigation(amount, damage_cap, armour, delivery);
 
     const int previous_hp = current_hp;
     current_hp -= amount;

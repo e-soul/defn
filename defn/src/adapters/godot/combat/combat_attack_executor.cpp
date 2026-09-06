@@ -83,7 +83,7 @@ void CombatAttackExecutor::apply_command(const CombatCommand &command, const std
     if (command.type == CombatCommandType::DEAL_DAMAGE) {
         if (AttackTarget *target = resolve_entity_id(command.target_id); target != nullptr) {
             const ObjectID source_id = source != nullptr ? ObjectID(source->get_instance_id()) : ObjectID();
-            (void)DamageDispatcher::apply(source_id, target, command.damage);
+            (void)DamageDispatcher::apply(source_id, target, command.damage, command.delivery);
         }
         return;
     }

@@ -345,6 +345,17 @@ the shot left the muzzle. There is no homing, so a target that keeps walking is 
 target still takes impact damage, which `resolve_projectile_impact` applies by identity rather than by proximity.
 `ProjectileAttack` is the humble object around that model: sprite, explosion, audio and `queue_free`, nothing else.
 
+Damage mitigation is one function, `damage_after_mitigation` in `damage_rules.h`, called from both damage paths --
+`SimWorld::apply_damage` in the kernel and `HealthComponent::take_damage` in the game -- so the two cannot drift apart
+in arithmetic or in ordering, and `scons conformance` checks that they have not. It composes two per-hit rules that
+pull the same two shot profiles in opposite directions: **armour** subtracts a flat amount, so it blunts a stream of
+light rounds and barely marks a heavy one; the **cap** (`damage_cap`, "evasive" in the catalog) truncates a single
+hit, so it blunts the heavy round and leaves the light one whole. A hit also carries its `DamageDelivery`, `MELEE` or
+`RANGED`, set where the `DEAL_DAMAGE` command is built and by the projectile path, and **only a ranged hit is capped**:
+a swing in contact meets armour alone. That clause is what lets one stat give the sniper a weakness without also
+deleting the counter-puncher's swing, which is the heaviest single hit in the roster and the diver's answer. The
+roster built on that axis, and what it measures as, is in [`defn/DIVERSITY_AND_BALANCE.md`](defn/DIVERSITY_AND_BALANCE.md).
+
 The belt has a depth axis as well as a forward one, and the two move independently. A unit slides along Y toward the
 lane of whatever it is walking at, so a rusher curves onto its victim's line across the whole approach and arrives
 beside it rather than a hundred pixels above it. The split follows the forward axis exactly: the domain decides *which*

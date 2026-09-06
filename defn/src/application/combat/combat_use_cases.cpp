@@ -27,8 +27,8 @@ void append_movement_commands(const CombatLogicIntent &intent, std::vector<Comba
     }
 }
 
-void append_damage_commands(EntityId target_id, int damage, Color color, std::vector<CombatCommand> &commands) {
-    commands.push_back({.type = CombatCommandType::DEAL_DAMAGE, .target_id = target_id, .damage = damage});
+void append_damage_commands(EntityId target_id, int damage, DamageDelivery delivery, Color color, std::vector<CombatCommand> &commands) {
+    commands.push_back({.type = CombatCommandType::DEAL_DAMAGE, .target_id = target_id, .damage = damage, .delivery = delivery});
     commands.push_back({.type = CombatCommandType::PLAY_EFFECT, .effect = CombatEffectType::DAMAGE_FLASH, .target_id = target_id, .color = color});
 }
 
@@ -39,7 +39,7 @@ void append_attack_commands(const CombatConfig &config, const CombatTargetSelect
 
     if (selection.attack_mode == AttackMode::MELEE) {
         commands.push_back({.type = CombatCommandType::PLAY_EFFECT, .effect = CombatEffectType::MELEE_ATTACK, .target_id = selection.target_id});
-        append_damage_commands(selection.target_id, config.melee_damage, config.melee_flash_color, commands);
+        append_damage_commands(selection.target_id, config.melee_damage, DamageDelivery::MELEE, config.melee_flash_color, commands);
         return;
     }
 
@@ -61,7 +61,7 @@ void append_attack_commands(const CombatConfig &config, const CombatTargetSelect
     }
 
     commands.push_back({.type = CombatCommandType::PLAY_EFFECT, .effect = CombatEffectType::RANGED_SHOOT, .target_id = selection.target_id});
-    append_damage_commands(selection.target_id, config.ranged_damage, config.ranged_flash_color, commands);
+    append_damage_commands(selection.target_id, config.ranged_damage, DamageDelivery::RANGED, config.ranged_flash_color, commands);
 }
 
 } // namespace

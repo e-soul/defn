@@ -44,7 +44,7 @@ CombatConfig make_combat_config(const UnitConfig &config, const ResolvedUnitRunt
 }
 
 // Mirrors HealthComponent::take_damage, including the overkill cap: the return value is what actually landed.
-int take_damage(SimEntity &entity, int amount) {
+int take_damage(SimEntity &entity, int amount, DamageDelivery delivery) {
     amount = std::max(amount, 0);
     if (entity.hp <= 0 || amount == 0) {
         return 0;
@@ -52,7 +52,7 @@ int take_damage(SimEntity &entity, int amount) {
     // Mitigation is applied here rather than at the attacker so that every source pays it: melee, direct fire, and
     // both halves of a splash. Anywhere else and a shell would ignore the armour a rifle respects, and a capped
     // target would take a full-weight round from whichever path was forgotten.
-    amount = damage_after_mitigation(amount, entity.damage_cap, entity.armour);
+    amount = damage_after_mitigation(amount, entity.damage_cap, entity.armour, delivery);
 
     const int previous_hp = entity.hp;
     entity.hp = std::max(entity.hp - amount, 0);
@@ -255,7 +255,7 @@ void SimWorld::apply_commands(SimEntity &entity, const std::vector<CombatCommand
         case CombatCommandType::HIDE_MUZZLE_FLASH:
             break;
         case CombatCommandType::DEAL_DAMAGE:
-            apply_damage(entity, command.target_id, command.damage);
+            apply_damage(entity, command.target_id, command.damage, command.delivery);
             break;
         case CombatCommandType::SPAWN_PROJECTILE:
             entity.pending_projectile = {
@@ -375,7 +375,7 @@ void SimWorld::detonate(SimProjectile &projectile) {
         if (victim == nullptr || victim->dead) {
             continue;
         }
-        apply_damage(*source, command.target_id, command.damage);
+        apply_damage(*source, command.target_id, command.damage, DamageDelivery::RANGED);
     }
 }
 
@@ -420,7 +420,7 @@ void SimWorld::slide_belt(SimEntity &entity, float target_y) const {
 }
 
 // Mirrors DamageDispatcher::apply plus the death handling GameManager wires up through the "died" signal.
-void SimWorld::apply_damage(SimEntity &source, EntityId target_id, int base_damage) {
+void SimWorld::apply_damage(SimEntity &source, EntityId target_id, int base_damage, DamageDelivery delivery) {
     SimEntity *target = find_mutable_entity(target_id);
     if (target == nullptr) {
         return;
@@ -428,7 +428,7 @@ void SimWorld::apply_damage(SimEntity &source, EntityId target_id, int base_dama
 
     const bool live_friendly_source = !source.dead && source.side == UnitSide::FRIENDLY;
     const int resolved_damage = live_friendly_source ? source.field_promotion.outgoing_damage(base_damage) : base_damage;
-    const int effective_damage = take_damage(*target, resolved_damage);
+    const int effective_damage = take_damage(*target, resolved_damage, delivery);
     if (effective_damage <= 0) {
         return;
     }

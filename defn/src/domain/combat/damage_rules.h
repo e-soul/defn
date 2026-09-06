@@ -31,7 +31,7 @@ namespace defn {
 // the roster pushed the same way -- bring burst -- which made reach-and-burst the answer to every question at once.
 // A capped target asks the opposite question, so a force facing both has to answer both.
 //
-// Zero means no cap, so a unit without the stat is untouched.
+// Zero means no cap, so a unit without the stat is untouched. In the catalog this is the "evasive" profile.
 [[nodiscard]] inline int damage_after_plating(int damage, int damage_cap) {
     if (damage <= 0) {
         return 0;
@@ -39,11 +39,22 @@ namespace defn {
     return damage_cap > 0 && damage > damage_cap ? damage_cap : damage;
 }
 
+// How a hit arrived. The cap reads it and armour does not: a round can be slipped for most of its weight, a blade
+// in contact cannot, so an evasive unit is answered by volume fire *or* by closing with it. Without that split the
+// cap would blunt the one heavy melee swing in the roster as readily as the heavy rifle round it exists to blunt,
+// and the counter-puncher's job would vanish along with the sniper's.
+//
+// Lives here rather than beside `AttackMode` because this header must stay include-free (see above), and because a
+// delivery is a property of the hit, not of the shooter's current mode.
+enum class DamageDelivery { MELEE, RANGED };
+
 // The full mitigation sequence, in one place so the two damage paths cannot drift apart in ordering as well as in
 // arithmetic. Plating first, then armour: the cap describes what the round arrives carrying, armour describes what
-// the plate stops, and armour keeps the floor of one so nothing is ever completely immune.
-[[nodiscard]] inline int damage_after_mitigation(int damage, int damage_cap, int armour) {
-    return damage_after_armour(damage_after_plating(damage, damage_cap), armour);
+// the plate stops, and armour keeps the floor of one so nothing is ever completely immune. Only a ranged hit is
+// capped; a melee hit passes the cap untouched and meets armour alone.
+[[nodiscard]] inline int damage_after_mitigation(int damage, int damage_cap, int armour, DamageDelivery delivery) {
+    const int applicable_cap = delivery == DamageDelivery::RANGED ? damage_cap : 0;
+    return damage_after_armour(damage_after_plating(damage, applicable_cap), armour);
 }
 
 } // namespace defn

@@ -14,6 +14,148 @@ against the baseline, decomposed both ways, unless the entry says otherwise.
 
 ---
 
+## 2026-09-06 — The burst/volume roster: evasion as armour's other end, carried by the units the marksman farmed
+
+**Shipped.** One rule change and nine catalog lines. The rule: the per-hit cap (`damage_cap`, "evasive" in the
+catalog) now reads the hit's delivery and applies to **shots only**; a melee swing meets armour alone. The catalog:
+`grime` and `hound` lose armour and gain `damage_cap: 6`, `impact` gains `damage_cap: 6`, `wrecker` gains
+`armour: 4`, `jackal` goes 2 -> 4, `grime`'s rifle 5 -> 7, `marksman`'s swing 15 -> 8. Every other number is where
+it was.
+
+**Hypothesis, as a fight.** The marksman answered everything because burst-plus-reach had no hard weakness, and the
+operator had no job because nothing in the roster rewarded rate. Both are the same fact: every mitigation on the
+board was armour, and armour asks for burst. Plating is armour's inverse and had been wired, tested and swept on
+three carriers -- and every carrier tried was one the marksman was *supposed* to beat (`wrecker`, `mason`) or a
+friendly (`operator`), so each sweep measured the mechanic blunting the roster's one clean matchup and rejected it.
+Put it instead on the two units the marksman farmed for free, and the marksman's row stops being flat: a 19-round
+arrives as 6 against `grime` and `hound`, the operator's 6 arrives whole, and the answer to the cheapest and the
+fastest hostile flips from the dearest friendly to the cheapest. Armour on `wrecker` and `jackal` then makes the
+other half of the roster the marksman's, so neither gun answers both ends.
+
+The rule change is the load-bearing clause. Capped whole, the hound's cap would also truncate the impact's 30-damage
+swing -- the one thing that stops a diver -- and the counter-puncher's job would vanish with the sniper's. Shots
+only, the impact keeps the swing, and a second reading falls out for free: **melee is the other answer to evasion**,
+which is why the breacher still beats a hound in contact and the marksman, at 8, does not.
+
+Two catalog decisions were made by the instruments rather than argued, and are recorded because the first guess was
+wrong both times:
+
+- `wrecker` was first set to armour 5. At 5 the operator's round is at the floor of 1, `operator` alone cannot beat
+  `mason+wrecker` at any budget under 400, and `analyze_matrix.py` drops the whole row as unbounded. 4 leaves it 2.
+- `impact` was first given a 16-damage shotgun to go with its evasion. That made it the answer to `jackal` **and**
+  `wrecker` *and* `hound` -- an evasive unit that also carries burst soaks the heavies and kills them -- and the
+  marksman became the one dead row (`a = -0.238`, alive in no column). With its old 8 / 0.48 rifle back the impact
+  *soaks* heavy rounds while the marksman kills what fires them, and the two heavy-side units have distinct jobs.
+  Cost of the wrong guess against the right one: `SII` 0.851 -> 0.788 and `Var(R)` 0.0636 -> 0.0529, in exchange
+  for dead slots 1 -> 0, premium 1/1 -> 2/2 and distinct answers 7 -> 8. The gates outrank the headline.
+
+### Result
+
+51 seeds, paired against `build/matrix51_after.jsonl`, the shipped catalog as of the belt-slide commit.
+
+| | before | after | paired change |
+|---|---|---|---|
+| `SII` | 0.640 | **0.788** | +0.147 [+0.138, +0.158] resolved |
+| `Var(R)` matchup | 0.0375 | **0.0529** | +0.0154 [+0.0146, +0.0162] resolved |
+| `Var(a)` power | 0.0211 | 0.0143 | −0.0068 resolved |
+| Decision regret | 12.5% | **18.3%** | +0.058, resolved, mid-band |
+| Dead slots, noise floor | 3 of 10 | **0 of 10** | −3, bootstrap [0, 1] |
+| Auto-include | none | none | |
+| Distinct best answers | 5 | **8** | |
+| Per-unit usage in argmaxes | breacher 11, marksman 7, operator 3, impact 1 | impact 8, breacher 7, operator 5, marksman 5 | |
+| Composition premium, structural | 3 cols / 2 winners | 2 cols / 2 winners | PASS, interval [1, 2] not resolved |
+| Best blind mix | `breacher+operator` | `marksman+impact` | |
+
+**Every row of the paired table reads `structural`**, with column-to-column spreads of 0.16 to 0.48 in log-budget
+against a 0.026 floor. This is what a mechanic that pays by opponent looks like in that table; cost, for comparison,
+reads 0.005.
+
+The cells, as median critical budget, before and after -- the two rows that were the whole complaint:
+
+| | grime | hound | jackal | mason | wrecker | mason+wrecker |
+|---|---|---|---|---|---|---|
+| `marksman` before | 81 | 109 | 81 | 55 | 109 | 81 |
+| `marksman` after | **136** | **244** | 81 | 55 | 109 | 81 |
+| `operator` before | 100 | 81 | 141 | 100 | 81 | 100 |
+| `operator` after | **61** | **81** | **200** | 100 | **200** | **241** |
+
+The marksman row used to be 81 against nearly everything, which is the numerical form of "the answer to
+everything"; it now runs from 55 to 244. The operator's runs 61 to 241 in the other direction.
+
+Winner by column, the only reading that separates "the residual grew" from "the answer changed": **eleven of
+fifteen columns changed hands.** `grime`, `grime+hound`, `grime+mason`, `mason+hound` go to `breacher+operator`;
+`jackal`, `jackal+hound`, `wrecker+jackal` to `impact` alone; `wrecker`, `wrecker+hound`, `mason+jackal` to
+`marksman+impact`; `hound` to `impact+operator`. `mason` keeps `breacher+marksman` and `mason+wrecker` is the
+marksman's own.
+
+Transposed, the hostile side is a different story and is recorded as one: `SII` 0.620 -> 0.694 and `Var(R)` the
+same +0.0154, but hostile dead rows go **5 -> 12 of 15** and distinct hardest questions 5 -> 3. The three are
+`hound` (hardest for `marksman`, `breacher+marksman`, `marksman+impact`), `mason+wrecker` (hardest for every
+operator- or breacher-bearing line) and `wrecker`. Every grime, mason and jackal column is now easy at six bodies,
+because a hard counter makes a heavy body worth several light ones and the lab's columns are priced in bodies, not
+in threat. Read as content, that is the design working -- the hound is the sniper's question and the armoured pair
+is the gunner's -- but the gate reads it as twelve questions nobody needs to answer. See "What is now known".
+
+`scons balance`, 25 seeds: threat `grime` 1.00, `hound` 2.39, `wrecker` 4.07, `jackal` 3.37, `mason` 3.57. The
+whole ladder compressed because the *unit* got dearer: grime's rifle lands 3 on the reference breacher where it
+landed 1, and the breacher's 8-round arrives as 6. The roster table against eight grime now reads `operator` 100%
+at 16s, `impact` 100% at 25s, `breacher` 100% at 33s and `marksman` 0% with all four bodies lost -- the design
+statement in one line.
+
+`scons conformance` agrees on every scenario; the delivery rides on the command in both paths.
+
+Pinned in `test_shipped_content.cpp`, against the real catalog: the profile table; the operator beating a grime
+pair that the marksman loses; burst beating a wrecker that the operator loses; the hound beating a lone marksman
+and losing to each of the other three; and the mason ordering, which survived a third content change at
+134 / 72 / 48.
+
+### The clock, and the endless mode
+
+The tempo lab, 25 seeds, bisected purse, paired against `purse_final.jsonl`: the cheapest answer is
+`marksman+operator` for the spike and (tied with `breacher+marksman`) the rush, a three-way tie of `impact`,
+`impact+operator` and `marksman+operator` for the grind, and `operator` alone for the escalation — three distinct
+answers, as before. What changed is the other end of each column: `marksman` alone is the dearest answer in three
+of four engagements at 1.9x to 4.0x the best, where before the change it was the *cheapest* answer to the grind at
+a purse of 26 and `breacher+marksman` the cheapest to the rush and the spike. The wall is the wrong answer on the
+clock as well as in the lump-sum lab.
+
+Endless, with `threat_costs` refreshed and `B0` swept at 6 / 9 / 12 / 16: shipped at 12, where every fixed
+composition on the slate dies and none reaches wave 40. Sniper-bearing lines die at waves 3-5 to the evasive
+opening, operator-bearing lines at 36-39 where the armoured share and the mason set piece arrive. At 6 all three
+marksman-bearing pairs reach the ceiling at full integrity — the old wall, given a small enough opening to stand
+up behind; at 9 `impact+operator` clears 40 on every seed. The reading that matters is the *shape*: fixed lines
+die in two places for two reasons, and the survivor would be a line that changes composition mid-run, which is
+what the mode was built to demand and what no policy on the slate can do. Details in `ENDLESS_MODE.md`.
+
+### What is now known
+
+1. **A counter that holds at any army size has to be a breakpoint, not a gradient.** Every earlier lever was a
+   gradient and every gradient was outnumbered by the endless wall. A per-hit cap is a breakpoint: no number of
+   marksmen makes a capped round worth more than the cap. The roster's first scale-invariant counter is what
+   moved eleven columns, and it is the property to ask of any future counter before measuring it.
+2. **The carrier of a conditional mechanic decides whether it reads as a counter or as a nerf**, and the right
+   carrier is the unit the dominant answer beats for free — not the unit that is losing overall, and not the
+   unit the dominant answer is *meant* to beat. Three earlier plating sweeps were rejected for putting it on the
+   wrong carrier; the same mechanic on the right two is the largest structural change ever recorded here.
+3. **Two ends of one axis are worth more than two mechanics.** Armour alone made every question a burst
+   question. Adding its inverse on the other half of the roster produced eight distinct best answers out of
+   fifteen columns with no new unit, no new stat and one clause of new rule.
+4. **A defensive profile on a friendly unit gives the hostiles a target choice for free.** The evasive impact and
+   the armoured breacher are answered by opposite hostile guns, so which front-liner to field is now a decision
+   the *hostile* composition makes, and it costs the hostile side nothing to ask.
+5. **The lab's fixed-count hostile columns cannot price hard counters.** Six grime and six wreckers were
+   comparable columns under gradient counters and are not under breakpoints, which is why the hostile-side dead
+   count went 5 -> 12 while the friendly side went 3 -> 0. The transposed gate needs threat-priced columns before
+   it can be read again; the generator already has the costs.
+6. **The composition premium is a gate written for a roster where mixing was the only source of structure.** On
+   a roster whose units carry structure on their own a mono is often the right answer to a mono column, and the
+   strongest pairs win on level as well as matchup; the gate then reports the design working as a bare pass.
+7. **The endless slate needs a policy that changes its mind.** A mode built so the right composition changes
+   mid-run cannot be gated on fixed compositions; the sweep now shows exactly the shape it was meant to produce
+   and cannot say how far the intended play gets.
+
+---
+
 ## 2026-09-05 — Melee reach 128 -> 100, because the swing was landing in front of the target
 
 **Shipped; every unit's `melee_attack_range` is 100.** A presentation fix with one balance consequence, measured

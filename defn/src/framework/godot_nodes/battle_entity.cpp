@@ -10,9 +10,9 @@ namespace defn {
 
 void BattleEntity::_bind_methods() {}
 
-int BattleEntity::take_damage(int amount) {
+int BattleEntity::take_damage(int amount, DamageDelivery delivery) {
     if (health_component_ != nullptr) {
-        return health_component_->take_damage(amount);
+        return health_component_->take_damage(amount, delivery);
     }
     return 0;
 }

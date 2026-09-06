@@ -90,7 +90,7 @@ the conversion, and `endless_generator_reads_a_keyframe_as_bodies_rather_than_as
 | `B0` | `greedy` | `mono:breacher` | `breacher+marksman` | `defensive` |
 |---|---|---|---|---|
 | 22 | 5 or 57 | 57 | 57 | 57 |
-| **28 (shipped)** | 4-5 | 9 | 53 | 53 |
+| 28 (shipped until 2026-09-06) | 4-5 | 9 | 53 | 53 |
 | 34 | 4 | 7 | 6-7 | 50 |
 | 48 | 3 | 5-6 | 5 | 44 |
 
@@ -182,6 +182,72 @@ change is therefore not "make friendlies die" -- starvation, boons and banes and
 and none of them reach the base -- but **letting hostiles through a line that is still fighting**: bypassing,
 outranging or outrunning the front rather than grinding against it. `defensive` does degrade with decay (41 -> 33
 waves), so the lever is not inert; it just cannot touch the one composition that decides the gate.
+
+---
+
+## Re-tuned for the burst/volume roster (2026-09-06)
+
+Everything under "What the sweep found" above was measured on the roster that had one answer. The roster changed
+on 2026-09-06 — evasion on `grime`, `hound` and `impact`, armour on `wrecker` and `jackal`, the cap applying to
+shots only; see [`DIVERSITY_AND_BALANCE.md`](DIVERSITY_AND_BALANCE.md) — and this section is what the mode does
+against it. Two things were re-measured and one was changed.
+
+**The threat costs compressed.** `scons balance` now reads `grime` 1.00, `hound` 2.39, `wrecker` 4.07,
+`jackal` 3.37, `mason` 3.57 (was 1 / 4.76 / 6.77 / 7.22 / 8.78). Nothing but the grime got cheaper in absolute terms:
+the *unit* got dearer, because its rifle now lands 3 on the reference breacher where it landed 1 and its evasion
+caps the breacher's round at 6. Copied into `data/endless.json` as the protocol says.
+
+**The opening wave had to shrink by more than half.** With the old `B0 = 28` priced in the new grime, wave 1 is
+nineteen evasive grime and four hounds against a cold 105 energy, and every composition on the slate dies inside
+five waves except `mono:operator`, which walks to wave 38. Swept `B0` at 3 seeds, `r = 1.06`, `d = 0.985`, the
+shipped drift; the cell is waves reached per seed and the ceiling wave at each `B0` is where the budget cap lands:
+
+| composition | `B0 = 6` (ceiling 71) | `B0 = 9` | **`B0 = 12` (shipped)** | `B0 = 16` |
+|---|---|---|---|---|
+| `mono:operator` | 55 / 48 / 50 | 39 / 40 / 40 | **39 / 39 / 39** | 36 / 36 / 36 |
+| `breacher+operator` | 53 / 48 / 54 | 38 / 38 / 38 | 36 / 36 / 36 | 33 / 29 / 32 |
+| `impact+operator` | 57 / 56 / 57 | 40 / 40 / 44 | 36 / 38 / 4 | 3 / 3 / 3 |
+| `breacher+impact` | 57 / 58 / 57 | 45 / 45 / 43 | 5 / 42 / 4 | 4 / 5 / 4 |
+| `mono:breacher` | 43 / 43 / 44 | 35 / 35 / 34 | 8 / 8 / 8 | 5 / 5 / 5 |
+| `mono:impact` | 60 / 60 / 60 | 41 / 6 / 48 | 3 / 4 / 3 | 3 / 3 / 3 |
+| `marksman+operator` | **71 / 71 / 71 at 4/4** | 70 / 4 / 71 | 3 / 5 / 3 | 3 / 3 / 3 |
+| `breacher+marksman` | **71 / 71 / 71 at 4/4** | 5 / 6 / 8 | 4 / 5 / 4 | 4 / 3 / 4 |
+| `impact+marksman` | **71 / 71 / 71 at 4/4** | 3 / 3 / 3 | 3 / 3 / 3 | 3 / 3 / 3 |
+| `mono:marksman` | 4 / 4 / 4 | 3 / 3 / 3 | 2 / 3 / 2 | 2 / 2 / 2 |
+| `defensive` | 54 / 54 / 54 | 44 / 44 / 45 | 36 / 41 / 42 | 3 / 2 / 3 |
+
+Three readings, in the order the protocol asks for them:
+
+1. **Run length.** At 12 the best fixed compositions reach the high thirties, which is about 14 minutes — just
+   under the 15-25 band for a *fixed* line, and a fixed line is the floor: see the third reading.
+2. **Not solved.** At 12 **no composition on the slate reaches wave 40 on any seed**, and the ceiling is never
+   touched. At 9 `impact+operator` clears 40 on every seed and `marksman+operator` reaches the ceiling at full
+   integrity on two of three; at 6 every marksman-bearing pair reaches it — the opening is small enough that the
+   sniper line is standing before the swarm is big, which is the old wall reappearing. The gate is a knife-edge on
+   the number (`mono:operator` at 39 / 39 / 39), so read the shape rather than the threshold: **every fixed line
+   dies, and they die at two different places.** Marksman-bearing lines die at waves 3-5 to the evasive opening;
+   operator-bearing lines die at 36-39, where the drift has brought the armoured share up and the mason set piece
+   lands. The `outlasts the field` reading reports 8.5x for that reason, and it is the wrong reading here: the
+   "field" it divides by is the marksman lines dying at wave 3, which is the roster working.
+3. **Economy.** `defensive` −0.38 and `patience` −0.26 energy per wave, `greedy` flat; the snowball is off.
+
+**What this means, and what it does not.** The slate is fixed compositions, and a fixed composition is exactly what
+this roster is built to punish: the light half of the roster answers the first eighteen waves and the heavy half is
+needed after. A player who *transitions* — operators and breachers into the swarm, marksmen and impacts as wreckers
+and jackals arrive — is not on the slate, and would outlast every row of the table. That is the composition
+decision recurring inside one match, which is what the mode exists for; the sweep cannot see it because no policy
+changes its mind. The gate therefore passes for the reason the design wanted, and the mode's real ceiling is
+unmeasured until the slate carries a transitioning policy.
+
+**Not changed, and why.** The drift keyframes are where they were. The evasive opening is what kills a sniper-first
+line and the armoured tail is what kills an operator-only one, and both of those are the roster's questions being
+asked in order; pulling the heavy share forward would shorten the operator-only phase, which is the obvious next
+knob, but the protocol asks for a sweep in the same commit and the `B0` sweep was the one that decided runs. The
+army-to-wave multiple remains the mode's standing limitation for any composition the waves do not specifically
+punish, exactly as recorded above.
+
+**Next.** A `transition` policy for the slate (a mix whose weights are a function of the wave), so the gate can
+read the thing the mode is actually about; then the drift, swept against it.
 
 ---
 

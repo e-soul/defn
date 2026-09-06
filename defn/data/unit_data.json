@@ -45,7 +45,7 @@
       }
     },
     "breacher": {
-      "description": "Frontline anchor. Cheapest friendly, highest durability, and a short-range rifle make the breacher the safest first deployment.",
+      "description": "Armoured anchor. Cheapest friendly, thickest hide: light rounds barely scratch it, so it holds the front while the rest of the line does the killing.",
       "side": "friendly",
       "role": "tank",
       "hp": 400,
@@ -119,11 +119,11 @@
       }
     },
     "marksman": {
-      "description": "Dedicated counter-sniper. Extreme reach and heavy shots make the marksman the best answer to exposed specials.",
+      "description": "Long-range burst. Heavy rounds and extreme reach pick armoured targets apart before they can answer, but the same rounds are slipped by anything evasive, and it is helpless in contact.",
       "side": "friendly",
       "role": "sniper",
       "hp": 180,
-      "melee_damage": 15,
+      "melee_damage": 8,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 100.0,
       "ranged_damage": 19,
@@ -193,10 +193,11 @@
       }
     },
     "impact": {
-      "description": "Counter-puncher. Middling fire at range, but it hits far harder in contact than anything else on the field, so whatever closes on the line pays for it.",
+      "description": "Evasive assault trooper. Fast and hard to pin with a heavy round, so it shrugs off bruisers and snipers while the marksman kills them, and it hits harder in contact than anything on the field, which is what stops a diver. Volume fire is what wears it down.",
       "side": "friendly",
       "role": "assault",
       "hp": 245,
+      "damage_cap": 6,
       "melee_damage": 30,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 100.0,
@@ -266,7 +267,7 @@
       }
     },
     "operator": {
-      "description": "Flexible skirmisher. Reliable sustained fire makes the operator the best general-purpose cleaner once a lane is stabilized.",
+      "description": "Volume fire. A stream of light rounds that evasive targets cannot slip, so the operator clears swarms and divers that a sniper only tickles. Armour shrugs the same rounds off.",
       "side": "friendly",
       "role": "specialist",
       "hp": 225,
@@ -338,15 +339,15 @@
       }
     },
     "grime": {
-      "description": "Rifle grunt. Weak alone, fast enough to pressure a lane, and still dangerous when multiple grimes stack their fire.",
+      "description": "Evasive rifle grunt. Cheap and hard to hit with a heavy round, so a marksman line cannot thin a swarm of them; volume fire or the front rank in contact can.",
       "side": "hostile",
       "role": "assault",
       "hp": 96,
-      "armour": 4,
+      "damage_cap": 6,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 100.0,
-      "ranged_damage": 5,
+      "ranged_damage": 7,
       "ranged_attack_period_seconds": 0.62,
       "ranged_attack_range": 345.0,
       "move_speed_pixels_per_second": 72.0,
@@ -411,7 +412,7 @@
       }
     },
     "mason": {
-      "description": "Rocket support. Direct damage is modest, but any clustered defense will feel the splash immediately.",
+      "description": "Rocket support. Direct damage is modest, but any clustered defense will feel the splash immediately. Out-ranged only by a marksman.",
       "side": "hostile",
       "role": "splash",
       "hp": 82,
@@ -514,10 +515,11 @@
       }
     },
     "wrecker": {
-      "description": "Bruiser. Slow, sturdy, and brutally efficient once he gets a clean firing lane.",
+      "description": "Armoured bruiser. Slow, sturdy, and brutally efficient once he gets a clean firing lane; light rounds barely mark him, so bring heavy ones.",
       "side": "hostile",
       "role": "assault",
       "hp": 180,
+      "armour": 4,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 100.0,
@@ -587,11 +589,11 @@
       }
     },
     "jackal": {
-      "description": "Backline sniper. Jackal opens fights from extreme range, but folds quickly if a diver reaches him.",
+      "description": "Armoured backline sniper. Opens fights from extreme range and picks off the rear rank; light rounds cannot dent him, so out-range him or close fast.",
       "side": "hostile",
       "role": "sniper",
       "hp": 76,
-      "armour": 2,
+      "armour": 4,
       "melee_damage": 15,
       "melee_attack_period_seconds": 1.0,
       "melee_attack_range": 100.0,
@@ -661,7 +663,7 @@
       }
     },
     "hound": {
-      "description": "Rusher. No gun at all: it closes at a sprint and fights in contact, which is the one place a marksman cannot shoot.",
+      "description": "Evasive rusher. No gun at all: it closes at a sprint, slipping heavy rounds on the way in, and fights in contact, which is the one place a marksman cannot shoot. Volume fire on the approach or a heavy swing in contact stops it.",
       "side": "hostile",
       "role": "diver",
       "aggro_range": 600.0,
@@ -669,6 +671,7 @@
         "sniper": 3.0
       },
       "hp": 110,
+      "damage_cap": 6,
       "melee_damage": 20,
       "melee_attack_period_seconds": 0.8,
       "melee_attack_range": 100.0,

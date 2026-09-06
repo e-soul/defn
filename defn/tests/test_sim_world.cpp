@@ -257,6 +257,54 @@ DEFN_TEST(sim_world_applies_the_damage_cap_before_armour) {
 
 namespace {
 
+// The same dummy, hit in contact rather than shot: the melee branch of the kernel's damage path.
+int melee_damage_dealt_to_mitigating_dummy(int swing_damage, int armour, int damage_cap) {
+    SimRoster roster;
+    UnitConfig brawler = make_unit("brawler", UnitSide::FRIENDLY, 400, 0);
+    brawler.ranged_damage = 0;
+    brawler.melee_damage = swing_damage;
+    brawler.melee_attack_period_seconds = 1.0;
+    brawler.melee_attack_range = 100.0F;
+    brawler.move_speed_pixels_per_second = 0.0F;
+    roster.add(brawler);
+
+    UnitConfig dummy = make_dummy("dummy", UnitSide::HOSTILE, 5000);
+    dummy.armour = armour;
+    dummy.damage_cap = damage_cap;
+    dummy.move_speed_pixels_per_second = 0.0F;
+    roster.add(dummy);
+
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    world.spawn("brawler", UnitSide::FRIENDLY, {.x = 0.0F, .y = BELT_Y});
+    world.spawn("dummy", UnitSide::HOSTILE, {.x = 60.0F, .y = BELT_Y});
+    world.begin_run();
+    run_engagement(world, 12.0);
+
+    return total_damage_taken(world, UnitSide::HOSTILE);
+}
+
+} // namespace
+
+// The kernel carries the delivery with the hit: a swing into a capped target lands whole, a shot into the same target
+// is truncated, and armour still bites the swing. All three through `SimWorld`, because the command that carries the
+// delivery is built in the use case and a wiring slip there would show up nowhere else.
+DEFN_TEST(sim_world_caps_shots_but_not_swings) {
+    const int swung = melee_damage_dealt_to_mitigating_dummy(30, 0, 6);
+    const int swung_bare = melee_damage_dealt_to_mitigating_dummy(30, 0, 0);
+    const int shot = damage_dealt_to_mitigating_dummy(30, 0, 6);
+    const int shot_bare = damage_dealt_to_mitigating_dummy(30, 0, 0);
+
+    DEFN_CHECK(swung > 0);
+    DEFN_CHECK_EQ(swung, swung_bare);
+    DEFN_CHECK_EQ(shot * 30, shot_bare * 6);
+
+    const int swung_armoured = melee_damage_dealt_to_mitigating_dummy(30, 4, 6);
+    DEFN_CHECK_EQ(swung_armoured * 30, swung_bare * 26);
+}
+
+namespace {
+
 // Does a minimum range from the catalog actually reach the kernel's range gate? The rule is tested directly
 // elsewhere; this asks whether the plumbing carries it, which is a different question and the one that bit before.
 int damage_dealt_by_shooter_with_dead_zone(float minimum_range, float target_distance) {
