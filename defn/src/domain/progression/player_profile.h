@@ -17,6 +17,10 @@ struct PlayerProfile {
     std::map<std::string, int> owned_upgrade_counts;
     std::map<std::string, std::string> claimed_level_upgrades;
     std::map<std::string, int> claimed_rescue_drafts;
+    // Keyed by threat level so an ascension ladder can be added without another save migration. Absent from a
+    // pre-endless save, which loads as empty.
+    std::map<int, int> endless_best_wave;
+    std::map<int, int> endless_best_score;
 };
 
 using ProgressionProfile = PlayerProfile;

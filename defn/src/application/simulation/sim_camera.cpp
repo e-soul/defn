@@ -14,8 +14,8 @@ constexpr float UNIT_HITBOX_RADIUS = 5.0F;
 
 } // namespace
 
-void SimCamera::configure(const GameplayRules &rules, float world_width, SimCameraMode mode) {
-    controller_.configure(rules, world_width);
+void SimCamera::configure(const GameplayRules &rules, SimCameraMode mode) {
+    controller_.configure(rules);
     mode_ = mode;
     position_ = controller_.get_camera_anchor_position();
     scroll_events_ = 0;

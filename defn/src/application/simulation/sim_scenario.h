@@ -4,6 +4,7 @@
 #ifndef SIM_SCENARIO_H
 #define SIM_SCENARIO_H
 
+#include "endless_wave_generator.h"
 #include "policies/sim_policies.h"
 #include "sim_camera.h"
 
@@ -40,9 +41,9 @@ struct SimScenario {
     std::vector<std::string> owned_upgrades;
     SimCameraMode camera = SimCameraMode::MODELLED;
     double max_seconds = 300.0;
-    // World width comes from the background texture in the shipped game, so a Godot-hosted driver measures it and
-    // supplies it here. Left empty, the kernel falls back to the viewport-derived default.
-    std::optional<float> world_width;
+    // Set for an endless run. The level definition then authors no waves at all: every wave is generated from this
+    // schedule and appended as the run goes, which is what the sweep in `ENDLESS_MODE.md` phase 5 varies.
+    std::optional<EndlessSchedule> endless;
 };
 
 [[nodiscard]] std::unique_ptr<PlayerPolicy> make_policy(const SimPolicySpec &spec);

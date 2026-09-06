@@ -494,15 +494,19 @@ void MenuManager::show_level_select() {
     auto *map_view = memnew(CampaignMapView);
     map_view->set_name("CampaignMapView");
     const Callable deploy_action = callable_mp(this, &MenuManager::on_level_selected);
+    const Callable endless_action = callable_mp(this, &MenuManager::on_endless_selected);
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed).bind(static_cast<int>(MenuIntentType::GotoMenu), String("game_menu"));
     ui_layer_->add_child(map_view);
     mount_screen(map_view);
+    map_view->set_endless_action(endless_action);
     map_view->configure(progression, deploy_action, back_action);
 }
 
 void MenuManager::on_level_selected(const String &level_id) {
     apply_menu_flow_result(MenuFlowUseCase(CampaignService::get_singleton()).select_level(to_std_string(level_id)));
 }
+
+void MenuManager::on_endless_selected() { apply_menu_flow_result(MenuFlowUseCase(CampaignService::get_singleton()).select_endless()); }
 
 void MenuManager::show_progression() {
     clear_active_screen();

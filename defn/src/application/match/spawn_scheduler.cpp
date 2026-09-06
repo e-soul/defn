@@ -12,20 +12,25 @@ namespace {
 
 MatchUnitSide to_match_unit_side(UnitSide side) { return side == UnitSide::FRIENDLY ? MatchUnitSide::Friendly : MatchUnitSide::Hostile; }
 
+SpawnTimelineWave to_spawn_timeline_wave(const WaveDefinition &wave_definition) {
+    SpawnTimelineWave wave;
+    wave.wave_number = wave_definition.wave_number;
+    wave.damage_scale = wave_definition.damage_scale;
+    wave.spawns.reserve(wave_definition.spawns.size());
+    for (const auto &spawn_definition : wave_definition.spawns) {
+        wave.spawns.push_back({
+            .time = spawn_definition.time,
+            .type = spawn_definition.type,
+        });
+    }
+    return wave;
+}
+
 SpawnTimelineDefinition to_spawn_timeline_definition(const LevelDefinition &level_definition) {
     SpawnTimelineDefinition result;
     result.waves.reserve(level_definition.waves.size());
     for (const auto &wave_definition : level_definition.waves) {
-        SpawnTimelineWave wave;
-        wave.wave_number = wave_definition.wave_number;
-        wave.spawns.reserve(wave_definition.spawns.size());
-        for (const auto &spawn_definition : wave_definition.spawns) {
-            wave.spawns.push_back({
-                .time = spawn_definition.time,
-                .type = spawn_definition.type,
-            });
-        }
-        result.waves.push_back(wave);
+        result.waves.push_back(to_spawn_timeline_wave(wave_definition));
     }
     return result;
 }
@@ -36,6 +41,8 @@ void SpawnScheduler::load_level_definition(const LevelDefinition &level_definiti
     level_definition_ = level_definition;
     timeline_.load(to_spawn_timeline_definition(level_definition));
 }
+
+void SpawnScheduler::append_wave(const WaveDefinition &wave_definition) { timeline_.append(to_spawn_timeline_wave(wave_definition)); }
 
 void SpawnScheduler::configure(const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random) {
     unit_catalog_ = unit_catalog;
@@ -73,6 +80,7 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
             .position = {.x = spawn_x_pos, .y = spawn_y_pos},
             .runtime_profile = UnitRuntimeProfile::from_unit_config(*config),
             .resolved_runtime_config = resolve_unit_runtime_config(to_runtime_range_config(*config), *random_),
+            .damage_scale = spawn.damage_scale,
         });
     }
 

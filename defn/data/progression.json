@@ -23,5 +23,8 @@
       "requires_completed": "level_04",
       "rescue_thresholds": [1760, 2050, 2380]
     }
-  ]
+  ],
+  "endless": {
+    "requires_completed": "level_05"
+  }
 }

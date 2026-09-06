@@ -124,6 +124,13 @@ Current boundary ownership:
 - `MatchDirector` and `SpawnScheduler` use `std::string`, level definitions,
   ports, and match intents. `GameManager` converts their level labels and
   background paths to Godot `String` values when rendering the scene.
+- `EndlessDirector` is a coordinator *around* `MatchDirector`, not a variant of
+  it. It owns an `EndlessWaveGenerator`, appends each generated wave one wave
+  ahead of the spawn cursor, and scales the bounty and survival bonus through
+  narrow seams on the director. `MatchDirector` itself knows nothing about the
+  mode: it gained `append_wave`, `set_bounty_scale`, `award_survival_bonus` and
+  `concede_match`, all of which are meaningful without endless mode existing.
+  `GameManager` reads the mode once, when it composes the match.
 - `ContentValidator` consumes `ContentValidationInput`, a plain value model of
   campaign-map, menu, progression, upgrade, unit, and level data, and returns
   `std::vector<std::string>` issues. `JsonContentRepository` converts parsed
@@ -138,6 +145,15 @@ Current boundary ownership:
   is a gameplay rule rather than a view concern. `GameManager` keeps the Godot
   half: it applies the returned position to a `Camera2D` and publishes it to
   `GridManager`.
+- The belt has no right-hand end. `advance_target` is unclamped, the `Camera2D`
+  right limit is left at Godot's default, and no component clamps a friendly's
+  advance; only the left edge is a boundary, because the base stands on it. A
+  level therefore lasts as long as its waves do rather than as long as its
+  ground does, and there is no world width for anything to measure.
+- `GameBackgroundBuilder` relies on `Parallax2D` repeating its child forever
+  once `repeat_size` is set. `repeat_times` is sized to cover the viewport --
+  it is a drawing window that travels with the camera, not the extent of the
+  world.
 - `GameManager` is the match-level composition and lifecycle entry point. It
   delegates camera movement to `CameraScrollController`, backgrounds to
   `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and
@@ -218,6 +234,17 @@ flowchart TB
 Current files that map into this module:
 
 - `MatchSession` is the seed for `MatchState`, `EconomyRules`, and `ScoreRules`.
+- `EndlessWaveGenerator` (`domain/match`) is pure: `(schedule, wave_number)`
+  decides a wave's composition, and the injected `RandomSource` decides only
+  spawn order and jitter. It returns the same `WaveDefinition` `LevelLoader`
+  produces, so everything downstream of it was already written.
+- `SpawnTimeline::append` extends a running timeline. `all_spawns_completed`
+  keeps its meaning exactly: an endless run avoids it by staying ahead of the
+  cursor rather than by a mode flag inside the timeline.
+- `force_mix` (`domain/content`) holds the budget apportionment both the
+  engagement lab and the wave generator spend through. It moved inward from the
+  simulation lab when the generator needed it, because a domain module may not
+  depend on `application/simulation`.
 - `DeploymentService` is the seed for `RequestDeployment`.
 - `SpawnScheduler` should split into a pure `SpawnTimeline` plus a use-case-owned clock advance.
 - `MatchDirector` is currently a use-case coordinator, but should stop knowing concrete loaders and `Unit *`.
@@ -389,7 +416,7 @@ feed the conformance trace.
 
 `SimScenario` is the run input and `SimMatchReport` the output, serialised as one JSON line per run. `DefnSimRunner`
 is the Godot-facing entry point, in the mould of `DefnHostedTestRunner`: it loads content through the real loaders,
-measures the world width from the background texture, hands plain structs to the kernel, and writes the JSONL. Sim
+hands plain structs to the kernel, and writes the JSONL. Sim
 sources reach the extension only under the hosted-tests flag, so nothing of it ships in a release export.
 
 ### The engagement lab

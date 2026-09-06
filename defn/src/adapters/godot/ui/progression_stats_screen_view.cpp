@@ -160,6 +160,15 @@ void ProgressionStatsScreenView::rebuild() {
     }
     scaffold.body->add_child(selector_row);
 
+    // The one career line that belongs to no unit. It sits under the roster rather than inside a dossier because
+    // there is no entity whose record it is.
+    if (!model.endless_record_label.empty()) {
+        auto *endless_record = make_label(to_godot_string(model.endless_record_label), "muted");
+        endless_record->set_name("EndlessRecord");
+        endless_record->set_horizontal_alignment(godot::HORIZONTAL_ALIGNMENT_CENTER);
+        scaffold.body->add_child(endless_record);
+    }
+
     auto *dossier = make_surface("dossier");
     dossier->set_name("EntityDossier");
     dossier->set_custom_minimum_size({UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("progression_dossier_height", 330)});

@@ -26,6 +26,8 @@ class ProgressionUseCases {
                                     const std::string &upgrade_id);
     static bool claim_rescue_draft(ProgressionProfile &profile, const std::vector<ProgressionLevelUnlock> &level_unlocks,
                                    const std::vector<ProgressionUpgradeCard> &cards, const std::string &level_id, const std::string &upgrade_id);
+    // Keeps the best wave and the best score for one threat level, and reports which half of the pair moved.
+    static EndlessRunRecordResult record_endless_run(ProgressionProfile &profile, int threat_level, int wave_reached, int score);
     static std::vector<std::string> build_upgrade_draft(const ProgressionProfile &profile, const std::vector<UpgradeDraftCard> &cards,
                                                         const UpgradeDraftConfig &config, RandomSource &random);
 };
@@ -39,6 +41,8 @@ class ProgressionCampaignUseCases {
     bool save_campaign(const PlayerProfile &profile) const;
     [[nodiscard]] bool can_select_level(const PlayerProfile &profile, const std::string &level_id) const;
     [[nodiscard]] ProgressionMatchResult complete_level(PlayerProfile &profile, const std::string &level_id, int level_score, bool victory);
+    [[nodiscard]] bool is_endless_available(const PlayerProfile &profile) const;
+    [[nodiscard]] EndlessRunRecordResult record_endless_run(PlayerProfile &profile, int threat_level, int wave_reached, int score) const;
     [[nodiscard]] ProgressionRewardDraft build_first_clear_reward_draft(const PlayerProfile &profile, const std::string &level_id);
     [[nodiscard]] ProgressionRewardDraft build_rescue_reward_draft(const PlayerProfile &profile, const std::string &level_id);
     [[nodiscard]] ProgressionRewardDraft build_reward_draft(const PlayerProfile &profile, const std::string &level_id, bool victory);

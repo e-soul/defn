@@ -118,6 +118,16 @@ void write_front_line(std::ostringstream &out, const std::vector<float> &trace) 
     out << ']';
 }
 
+void write_energy_at_wave(std::ostringstream &out, const std::vector<int> &energy) {
+    out << R"("energy_at_wave":[)";
+    bool first = true;
+    for (const int sample : energy) {
+        out << (first ? "" : ",") << sample;
+        first = false;
+    }
+    out << ']';
+}
+
 } // namespace
 
 std::string to_jsonl(const SimMatchReport &report) {
@@ -145,6 +155,8 @@ std::string to_jsonl(const SimMatchReport &report) {
     out << ',';
     write_field(out, "level_score", report.level_score);
     out << ',';
+    write_field(out, "waves_reached", report.waves_reached);
+    out << ',';
     write_field(out, "energy_idle_integral", report.energy_idle_integral);
     out << ',';
     write_field(out, "peak_concurrent_enemies", report.peak_concurrent_enemies);
@@ -162,6 +174,8 @@ std::string to_jsonl(const SimMatchReport &report) {
     write_per_unit(out, report.per_unit);
     out << ',';
     write_front_line(out, report.front_line_trace);
+    out << ',';
+    write_energy_at_wave(out, report.energy_at_wave);
     out << ',';
     write_leaks(out, report.leak_events);
     out << '}';

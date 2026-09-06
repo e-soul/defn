@@ -152,6 +152,17 @@ void add_owned_upgrades_section(VBoxContainer *content, const std::vector<Upgrad
     owned_row->add_child(owned_panel);
 }
 
+/// Where the tally stops and the scoring starts. Found by label rather than counted, so a row that only appears
+/// sometimes -- the survival bonus, the wave reached -- cannot silently move the separator.
+size_t score_rows_start(const std::vector<std::pair<std::string, std::string>> &rows) {
+    for (size_t index = 0; index < rows.size(); ++index) {
+        if (rows[index].first == "Level Score:" || rows[index].first == "Run Score:") {
+            return index;
+        }
+    }
+    return rows.size();
+}
+
 void add_action_button(HBoxContainer *row, const String &text, const Callable &action, bool enabled) {
     auto *button = make_button(text, "secondary", action);
     apply_enabled(button, enabled);
@@ -192,7 +203,8 @@ ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel 
 
     VBoxContainer *content = scaffold.body;
 
-    const size_t score_start_index = presentation.victory ? 5 : 4;
+    // The separator sits above the scoring rows -- everything from "Level Score" / "Run Score" down.
+    const size_t score_start_index = score_rows_start(presentation.stat_rows);
     for (size_t index = 0; index < std::min(score_start_index, presentation.stat_rows.size()); ++index) {
         add_stat_row(content, to_godot_string(presentation.stat_rows[index].first), to_godot_string(presentation.stat_rows[index].second));
     }
@@ -217,7 +229,15 @@ ScoreScreenViewNodes ScoreScreenView::show(Node *parent, const ScoreScreenModel 
         add_action_button(button_row, "Next Level", actions.on_next_level, presentation.next_level_button_enabled);
     }
 
-    add_action_button(button_row, "Retry", actions.on_retry, presentation.retry_button_enabled);
+    // The endless action sits where the eye already expects the forward action: after level 5 there is no next
+    // level, and after an endless run there is no retry, so in both cases this button is the one in that slot.
+    if (presentation.endless_button_visible) {
+        add_action_button(button_row, to_godot_string(presentation.endless_button_label), actions.on_endless, presentation.endless_button_enabled);
+    }
+
+    if (presentation.retry_button_visible) {
+        add_action_button(button_row, "Retry", actions.on_retry, presentation.retry_button_enabled);
+    }
     add_action_button(button_row, "Campaign", actions.on_campaign, presentation.campaign_button_enabled);
 
     return view;

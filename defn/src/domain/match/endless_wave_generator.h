@@ -1,0 +1,127 @@
+// Copyright (c) 2026 e-soul.org
+// SPDX-License-Identifier: BSD-2-Clause
+
+#ifndef ENDLESS_WAVE_GENERATOR_H
+#define ENDLESS_WAVE_GENERATOR_H
+
+#include "force_mix.h"
+#include "level_definition.h"
+#include "random_source.h"
+
+#include <span>
+#include <vector>
+
+namespace defn {
+
+// The three knobs the endless mode is tuned on, plus the pacing they are spent through. Every number here is a
+// measurement rather than a preference -- `r`, `d` and the drift keyframes are swept in the simulator until the
+// run-length, not-solved and economy readings land where the design wants them. See `ENDLESS_MODE.md`.
+struct EndlessTuning {
+    double base_budget = 12.0; // B0
+    double escalation = 1.14;  // r
+    // The curve the wave index is raised to before the escalation is applied: `B(n) = B0 * r^((n-1)^a)`.
+    //
+    // `a = 1.0` is the plain geometric ramp and the historical behaviour. It cannot overrun a competent player at
+    // any `r`, and that is arithmetic rather than tuning: bounty income is proportional to `B(n)`, so the army the
+    // player has standing integrates the budget and settles at `B(n) * r/(r-1)` -- a ratio bounded below by 1
+    // whatever `r` is. Sweeping `r` over 1.06, 1.10 and 1.14 moved the strongest composition by zero integrity; it
+    // only moved the ceiling it ran out of schedule at.
+    //
+    // For `a > 1` the step ratio `B(n)/B(n-1)` grows without bound, so the multiple shrinks instead of holding. The
+    // convergence is asymptotic and slow -- the step ratio grows like `n^(a-1)` -- so this is a tightening rather
+    // than a cliff: at `a = 1.2` the multiple falls from 8.1 to about 3.6 by wave 40 and keeps going. That is the
+    // direction the geometric ramp cannot supply at any `r`, but where it becomes enough to overrun a given
+    // composition is a measurement, not an argument. Sweep it.
+    double escalation_curve = 1.0; // a
+
+    // What a hostile hits for, per wave: `damage_scale(n) = hostile_damage_growth^(n-1)`, capped.
+    //
+    // This is the half of the escalation that does not cost bodies. Budget growth buys more hostiles and runs into a
+    // body-count wall long before it can overrun a competent line -- driving the army-to-wave multiple to 1 by wave
+    // size alone needs waves of order 10^21. Damage growth is unbounded at a constant wave size, and it removes the
+    // player's standing army rather than adding targets for it, which is the mechanism the mode was missing.
+    //
+    // Capped because it multiplies rather than adds: uncapped, a long run reaches damage numbers where every
+    // friendly dies to one hit and the composition question stops being asked at all.
+    double hostile_damage_growth = 1.0; // per wave
+    double hostile_damage_cap = 8.0;
+    double bounty_decay = 0.985;   // d
+    double first_wave_delay = 3.0; // when wave 1 opens
+    double wave_interval = 18.0;
+    double interval_growth = 1.01;
+    double spawn_stagger = 0.8;    // seconds between spawns within a wave
+    double budget_ceiling = 600.0; // hard stop; above this the run is unwinnable by construction
+    double wall_clock_ceiling = 3600.0;
+    int survival_bonus_per_wave = 25;
+};
+
+// A point the drift passes through. Waves between two keyframes interpolate; waves outside the outermost pair hold
+// the nearest one.
+//
+// Weights are **relative unit counts**, not budget shares: `{grime: 6, hound: 2}` means six bodies to two. The
+// generator converts to budget share against the threat costs before spending, so a keyframe reads as what it puts
+// on the belt rather than as what it costs.
+struct ShapeKeyframe {
+    int wave = 1;
+    MixShape weights;
+};
+
+// A wave that overrides the drifted shape whenever `wave % period == offset`. A set piece is the same generator
+// called with a degenerate shape, which is why an all-`hound` rush costs no new code and no new content.
+struct SetPiece {
+    int period = 0;
+    int offset = 0;
+    MixShape weights;
+};
+
+struct EndlessSchedule {
+    EndlessTuning tuning;
+    std::vector<ShapeKeyframe> drift;
+    std::vector<SetPiece> set_pieces;
+    std::vector<UnitCost> threat_costs;
+};
+
+// Generates endless waves by spending an escalating threat budget along a drifting composition shape.
+//
+// Composition is a pure function of `(schedule, wave_number)`: the same schedule asked for the same wave twice
+// returns the same units. `RandomSource` decides only the order they take the field in and the jitter on their spawn
+// times, which mirrors how `SpawnScheduler` already treats an injected source.
+class EndlessWaveGenerator {
+  public:
+    void configure(const EndlessSchedule &schedule);
+
+    [[nodiscard]] const EndlessTuning &tuning() const { return schedule_.tuning; }
+
+    // What wave `wave_number` is worth, in measured threat. Geometric, and unclamped: a caller compares it against
+    // `budget_ceiling` to decide the run is over rather than being handed a silently capped wave.
+    [[nodiscard]] double budget(int wave_number) const;
+
+    // When wave `wave_number` opens, in seconds from the start of the run.
+    [[nodiscard]] double wave_start_time(int wave_number) const;
+
+    // How long wave `wave_number` has the field to itself.
+    [[nodiscard]] double wave_interval(int wave_number) const;
+
+    // The authored shape for this wave, in relative unit counts: a set piece if one lands on it, otherwise the
+    // interpolated drift.
+    [[nodiscard]] MixShape shape(int wave_number) const;
+
+    [[nodiscard]] WaveDefinition generate(int wave_number, RandomSource &random) const;
+
+    // Income decays as difficulty compounds, or the mode resolves into a runaway defence. Always positive.
+    [[nodiscard]] double bounty_multiplier(int wave_number) const;
+
+    // What every hostile in this wave hits for, as a multiple of its catalog damage. Never below 1: the ramp only
+    // ever makes the run harder.
+    [[nodiscard]] double hostile_damage_scale(int wave_number) const;
+
+  private:
+    // Rescales an authored count ratio into the budget ratio `allocate_budget` spends along.
+    [[nodiscard]] static MixShape to_budget_shape(const MixShape &counts, std::span<const UnitCost> costs);
+
+    EndlessSchedule schedule_;
+};
+
+} // namespace defn
+
+#endif

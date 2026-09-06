@@ -69,5 +69,17 @@
                 "dossier_zoom": 1.0
             }
         }
-    ]
+    ],
+    "endless": {
+        "position": [0.685, 0.50],
+        "title": "Standing Engagement",
+        "tagline": "Hold the line at Feldkirchen for as long as it holds.",
+        "requires_completed": "level_05",
+        "preview": {
+            "path": "res://assets/campaign/feldkirchen_preview.jpg",
+            "focus": [0.38, 0.50],
+            "node_zoom": 1.0,
+            "dossier_zoom": 1.0
+        }
+    }
 }

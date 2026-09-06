@@ -48,6 +48,14 @@ MenuFlowResult MenuFlowUseCase::select_level(const std::string &level_id) const 
     return navigation_result(SceneNavigationDestination::Level, level_id);
 }
 
+MenuFlowResult MenuFlowUseCase::select_endless() const {
+    if (progression_ == nullptr || !progression_->select_endless()) {
+        return {};
+    }
+
+    return navigation_result(SceneNavigationDestination::Endless);
+}
+
 MenuFlowResult MenuFlowUseCase::request_main_menu() { return navigation_result(SceneNavigationDestination::MainMenu); }
 
 MenuFlowResult MenuFlowUseCase::request_campaign_map() { return navigation_result(SceneNavigationDestination::CampaignMap); }

@@ -49,6 +49,7 @@
 #ifdef DEFN_HOSTED_TESTS_ENABLED
 #include "defn_balance_runner.h"
 #include "defn_conformance_runner.h"
+#include "defn_endless_runner.h"
 #include "defn_hosted_test_runner.h"
 #include "defn_matrix_runner.h"
 #include "defn_sim_runner.h"
@@ -106,6 +107,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<defn::DefnConformanceRunner>();
     ClassDB::register_class<defn::DefnBalanceRunner>();
     ClassDB::register_class<defn::DefnMatrixRunner>();
+    ClassDB::register_class<defn::DefnEndlessRunner>();
 #endif
 }
 

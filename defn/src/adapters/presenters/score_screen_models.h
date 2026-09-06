@@ -40,6 +40,19 @@ struct ScoreScreenRewardModel {
     }
 };
 
+// The endless half of the score screen: the announcement, the button, and -- when the match *was* an endless run --
+// the run-over reading that replaces the level reading.
+struct ScoreScreenEndlessModel {
+    bool unlocked = false;
+    bool available = false;
+    bool run = false;
+    int wave_reached = 0;
+    int best_wave = 0;
+    int best_score = 0;
+    bool record_wave = false;
+    bool record_score = false;
+};
+
 struct ScoreScreenModel {
     bool victory = false;
     int enemies_killed = 0;
@@ -47,9 +60,11 @@ struct ScoreScreenModel {
     int hearts_remaining = 0;
     int hearts_total = 0;
     int integrity_bonus = 0;
+    int survival_bonus = 0;
     int completion_bonus = 0;
     int level_score = 0;
     int new_total_score = 0;
+    ScoreScreenEndlessModel endless;
     std::string current_level_id;
     std::string next_level_id;
     std::vector<std::string> new_unlocks;

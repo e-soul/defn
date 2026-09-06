@@ -97,11 +97,8 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
         const Dictionary gameplay_rules = global_data["gameplay_rules"];
         globals.gameplay_rules.viewport_width = VariantTools::as_real(gameplay_rules.get("viewport_width", globals.gameplay_rules.viewport_width));
         globals.gameplay_rules.viewport_height = VariantTools::as_real(gameplay_rules.get("viewport_height", globals.gameplay_rules.viewport_height));
-        globals.gameplay_rules.world_multiplier = VariantTools::as_int(gameplay_rules.get("world_multiplier", globals.gameplay_rules.world_multiplier));
         globals.gameplay_rules.breach_x = VariantTools::as_real(gameplay_rules.get("breach_x", globals.gameplay_rules.breach_x));
         globals.gameplay_rules.spawn_offset = VariantTools::as_real(gameplay_rules.get("spawn_offset", globals.gameplay_rules.spawn_offset));
-        globals.gameplay_rules.friendly_world_margin =
-            VariantTools::as_real(gameplay_rules.get("friendly_world_margin", globals.gameplay_rules.friendly_world_margin));
         globals.gameplay_rules.scroll_trigger_extra_height =
             VariantTools::as_real(gameplay_rules.get("scroll_trigger_extra_height", globals.gameplay_rules.scroll_trigger_extra_height));
         globals.gameplay_rules.camera_scroll_step_factor =

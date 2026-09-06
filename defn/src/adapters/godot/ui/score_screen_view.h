@@ -17,6 +17,7 @@ using namespace godot;
 
 struct ScoreScreenActions {
     Callable on_next_level;
+    Callable on_endless;
     Callable on_retry;
     Callable on_campaign;
     Callable on_select_upgrade;

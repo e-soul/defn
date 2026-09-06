@@ -4,6 +4,8 @@
 #include "spawn_timeline.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <iterator>
 
 namespace defn {
 
@@ -21,11 +23,28 @@ void SpawnTimeline::load(const SpawnTimelineDefinition &definition) {
                 .time = spawn.time,
                 .type = spawn.type,
                 .wave = wave.wave_number,
+                .damage_scale = wave.damage_scale,
             });
         }
     }
 
     std::ranges::sort(all_spawns_, [](const FlatSpawn &left, const FlatSpawn &right) { return left.time < right.time; });
+}
+
+void SpawnTimeline::append(const SpawnTimelineWave &wave) {
+    for (const auto &spawn : wave.spawns) {
+        all_spawns_.push_back({
+            .time = spawn.time,
+            .type = spawn.type,
+            .wave = wave.wave_number,
+            .damage_scale = wave.damage_scale,
+        });
+    }
+
+    // Only the spawns still ahead of the cursor are ordered. Sorting the whole list would reorder spawns already
+    // handed out, and the cursor is an index into it.
+    std::sort(all_spawns_.begin() + static_cast<std::ptrdiff_t>(std::min(next_spawn_idx_, all_spawns_.size())), all_spawns_.end(),
+              [](const FlatSpawn &left, const FlatSpawn &right) { return left.time < right.time; });
 }
 
 void SpawnTimeline::start() {
@@ -55,6 +74,7 @@ SpawnTimelineUpdate SpawnTimeline::advance(double delta) {
         update.due_spawns.push_back({
             .type = spawn.type,
             .wave = spawn.wave,
+            .damage_scale = spawn.damage_scale,
         });
         ++next_spawn_idx_;
     }

@@ -5,6 +5,7 @@
 #define GAME_MANAGER_H
 
 #include "camera_scroll_controller.h"
+#include "endless_director.h"
 #include "match_director.h"
 #include "match_result_cutscene_view_model.h"
 #include "score_screen_models.h"
@@ -62,7 +63,8 @@ class GameManager : public Node2D {
     Unit *materialize_spawn_intent(const SpawnUnitIntent &intent);
     void add_friendly_unit(Unit *unit);
     void add_enemy_unit(Unit *unit);
-    void apply_match_update(const MatchUpdate &update);
+    [[nodiscard]] bool compose_match(const String &level_id);
+    void apply_match_update(MatchUpdate update);
     void setup_match_result_cutscene_timer();
     void setup_match_result_reveal_timer();
     void start_match_result_cutscene(const MatchEnded &match_end);
@@ -83,6 +85,7 @@ class GameManager : public Node2D {
     // Score screen callbacks
     void on_score_screen_next_level(const String &level_id);
     void on_score_screen_retry(const String &level_id);
+    void on_score_screen_endless();
     void on_score_screen_campaign();
     void on_score_screen_upgrade_selected(const String &upgrade_id);
     void on_pause_menu_main_menu();
@@ -108,6 +111,9 @@ class GameManager : public Node2D {
     // Unit data
     UnitDataLoader unit_data_;
     MatchDirector match_director_;
+    // Present only for an endless run, in which case it drives `match_director_` and keeps its timeline topped up.
+    std::optional<EndlessDirector> endless_director_;
+    StdRandomSource endless_random_;
     bool match_result_cutscene_active_ = false;
     std::optional<ScoreScreenModel> pending_score_screen_model_;
     std::optional<MatchResultCutsceneModel> pending_match_result_cutscene_model_;

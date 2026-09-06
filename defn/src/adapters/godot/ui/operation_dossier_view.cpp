@@ -146,11 +146,13 @@ OperationDossierView::OperationDossierView() {
 
 void OperationDossierView::_bind_methods() {
     ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "level_id")));
+    ADD_SIGNAL(MethodInfo("endless_requested"));
     ADD_SIGNAL(MethodInfo("back_requested"));
 }
 
 void OperationDossierView::configure(const CampaignMissionViewModel &mission, const Ref<Texture2D> &preview_texture) {
     mission_ = mission;
+    endless_selected_ = false;
     eyebrow_->set_text(vformat("OPERATION %02d", mission.sequence_number));
     status_->set_text(status_text(mission.state));
     set_state_tint(status_, status_color_role(mission.state));
@@ -165,17 +167,7 @@ void OperationDossierView::configure(const CampaignMissionViewModel &mission, co
     integrity_value_->set_text(upgraded_value(mission.base_integrity, mission.effective_base_integrity));
     record_->set_text(mission.best_score > 0 ? vformat("BEST SCORE  %d", mission.best_score) : String("BEST SCORE  UNPLAYED"));
 
-    clear_enemy_chips();
-    if (mission.state != CampaignNodeState::LOCKED) {
-        const auto chip_limit = static_cast<std::size_t>(UiThemeProvider::data().metric("operation_enemy_chip_limit", 4));
-        const std::size_t visible_count = std::min<std::size_t>(chip_limit, mission.enemy_labels.size());
-        for (std::size_t index = 0; index < visible_count; ++index) {
-            enemy_chips_->add_child(make_chip(to_godot_string(mission.enemy_labels[index]), "text_primary"));
-        }
-        if (mission.enemy_labels.size() > visible_count) {
-            enemy_chips_->add_child(make_chip(vformat("+%d", mission.enemy_labels.size() - visible_count), "text_muted"));
-        }
-    }
+    set_enemy_chips(mission.state == CampaignNodeState::LOCKED ? std::vector<std::string>{} : mission.enemy_labels);
 
     const bool locked = mission.state == CampaignNodeState::LOCKED;
     enemy_heading_->set_visible(!locked);
@@ -193,7 +185,59 @@ void OperationDossierView::configure(const CampaignMissionViewModel &mission, co
     deploy_button_->set_tooltip_text(locked ? to_godot_string(mission.unlock_requirement) : String());
 }
 
+void OperationDossierView::configure_endless(const CampaignEndlessViewModel &endless, const Ref<Texture2D> &preview_texture) {
+    endless_selected_ = true;
+    eyebrow_->set_text("STANDING ENGAGEMENT");
+    status_->set_text("OPEN");
+    set_state_tint(status_, "accent");
+    title_->set_text(to_godot_string(endless.title).to_upper());
+    tagline_->set_text(to_godot_string(endless.tagline));
+    preview_->configure(preview_texture, endless.preview.focus_x, endless.preview.focus_y, endless.preview.dossier_zoom);
+    preview_->set_modulate(GColor(1, 1, 1, 1));
+
+    // The bounded readings have no bounded answer here, and saying so is the whole point of the panel. The duration
+    // is the one that will not fit a stat cell on one line, so it is the one that wraps; a mission's "~3 MIN" is
+    // short enough that leaving the wrap on afterwards changes nothing.
+    threat_value_->set_text("ESCALATING");
+    duration_value_->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
+    duration_value_->set_text("UNTIL THE BASE FALLS");
+    waves_value_->set_text("UNBOUNDED");
+
+    // The roster is not fixed either: what arrives is decided by the drift, and every hostile turns up eventually.
+    set_enemy_chips({"All Hostiles"});
+
+    // The two conditions that *are* bounded read exactly as they do for a mission, upgrades included: what the run
+    // opens with is the one thing the player can still change before pressing the button.
+    energy_value_->set_text(upgraded_value(endless.base_starting_energy, endless.effective_starting_energy));
+    integrity_value_->set_text(upgraded_value(endless.base_integrity, endless.effective_base_integrity));
+    record_->set_text(to_godot_string(endless.record_label));
+
+    enemy_heading_->set_visible(true);
+    enemy_chips_->set_visible(true);
+    locked_message_->set_visible(false);
+    locked_message_->set_text(String());
+    deploy_button_->set_disabled(false);
+    deploy_button_->set_text("BEGIN WATCH");
+    deploy_button_->set_tooltip_text(String());
+}
+
+void OperationDossierView::set_enemy_chips(const std::vector<std::string> &labels) {
+    clear_enemy_chips();
+    const auto chip_limit = static_cast<std::size_t>(UiThemeProvider::data().metric("operation_enemy_chip_limit", 4));
+    const std::size_t visible_count = std::min<std::size_t>(chip_limit, labels.size());
+    for (std::size_t index = 0; index < visible_count; ++index) {
+        enemy_chips_->add_child(make_chip(to_godot_string(labels[index]), "text_primary"));
+    }
+    if (labels.size() > visible_count) {
+        enemy_chips_->add_child(make_chip(vformat("+%d", labels.size() - visible_count), "text_muted"));
+    }
+}
+
 void OperationDossierView::on_deploy_pressed() {
+    if (endless_selected_) {
+        emit_signal("endless_requested");
+        return;
+    }
     if (mission_.state != CampaignNodeState::LOCKED) {
         emit_signal("deploy_requested", to_godot_string(mission_.level_id));
     }

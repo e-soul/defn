@@ -28,6 +28,10 @@ class ProgressionCatalogPort {
     virtual ~ProgressionCatalogPort() = default;
 
     [[nodiscard]] virtual std::vector<ProgressionLevelUnlock> get_progression_level_unlocks() const = 0;
+
+    // The level whose completion opens endless mode, empty when the content does not offer one. Endless gating is
+    // progression data, so it is answered from the same catalog every other unlock is.
+    [[nodiscard]] virtual std::string get_endless_requires_completed() const { return {}; }
 };
 
 class UpgradeCatalogPort {

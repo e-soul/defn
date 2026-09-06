@@ -9,6 +9,7 @@
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/string.hpp>
 
+#include <string>
 #include <vector>
 
 namespace defn {
@@ -28,9 +29,11 @@ class ProgressionCatalog : public ProgressionCatalogPort {
 
     const std::vector<LevelUnlock> &get_level_unlocks() const { return level_unlocks_; }
     [[nodiscard]] std::vector<ProgressionLevelUnlock> get_progression_level_unlocks() const override;
+    [[nodiscard]] std::string get_endless_requires_completed() const override;
 
   private:
     std::vector<LevelUnlock> level_unlocks_;
+    String endless_requires_completed_;
 };
 
 } // namespace defn

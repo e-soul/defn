@@ -16,14 +16,9 @@ constexpr float SNAP_DISTANCE = 1.0F;
 
 } // namespace
 
-void CameraScrollController::configure(const GameplayRules &rules, float world_width) {
+void CameraScrollController::configure(const GameplayRules &rules) {
     rules_ = rules;
-    world_width_ = world_width;
     camera_target_x_ = get_min_target_x();
-}
-
-float CameraScrollController::calculate_world_width(float background_display_width) const {
-    return background_display_width * static_cast<float>(rules_.world_multiplier);
 }
 
 float CameraScrollController::get_trigger_height() const { return (rules_.belt_bottom_y - rules_.belt_top_y) + rules_.scroll_trigger_extra_height; }
@@ -57,11 +52,8 @@ Vector2 CameraScrollController::next_camera_position(const Vector2 &current_posi
 }
 
 bool CameraScrollController::advance_target() {
-    const float scroll_step = rules_.viewport_width * rules_.camera_scroll_step_factor;
-    const float next_target = std::min(camera_target_x_ + scroll_step, get_max_target_x());
-    const bool changed = next_target != camera_target_x_;
-    camera_target_x_ = next_target;
-    return changed;
+    camera_target_x_ += rules_.viewport_width * rules_.camera_scroll_step_factor;
+    return true;
 }
 
 bool CameraScrollController::retreat_target() {
@@ -73,7 +65,5 @@ bool CameraScrollController::retreat_target() {
 }
 
 float CameraScrollController::get_min_target_x() const { return rules_.viewport_width / HALF; }
-
-float CameraScrollController::get_max_target_x() const { return std::max(get_min_target_x(), world_width_ - (rules_.viewport_width / HALF)); }
 
 } // namespace defn

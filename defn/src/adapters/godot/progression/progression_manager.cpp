@@ -63,6 +63,7 @@ void CampaignService::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_frontier_level_id"), &CampaignService::get_frontier_level_id_godot);
     ClassDB::bind_method(D_METHOD("get_current_level_id"), &CampaignService::get_current_level_id_godot);
     ClassDB::bind_method(D_METHOD("set_current_level_id", "level_id"), &CampaignService::set_current_level_id_godot);
+    ClassDB::bind_method(D_METHOD("is_endless_available"), &CampaignService::is_endless_available_godot);
     ClassDB::bind_method(D_METHOD("add_score", "amount"), &CampaignService::add_score);
     ClassDB::bind_method(D_METHOD("save"), &CampaignService::save);
 }
@@ -209,7 +210,31 @@ bool CampaignService::select_level(const std::string &level_id) {
         return false;
     }
     current_level_id_ = level_id;
+    match_mode_ = MatchMode::CAMPAIGN;
     return true;
+}
+
+bool CampaignService::is_endless_available() const { return use_cases_.is_endless_available(save_data_); }
+
+EndlessRecord CampaignService::get_endless_record() const {
+    const auto wave = save_data_.endless_best_wave.find(DEFAULT_ENDLESS_THREAT_LEVEL);
+    const auto score = save_data_.endless_best_score.find(DEFAULT_ENDLESS_THREAT_LEVEL);
+    return {
+        .best_wave = wave == save_data_.endless_best_wave.end() ? 0 : wave->second,
+        .best_score = score == save_data_.endless_best_score.end() ? 0 : score->second,
+    };
+}
+
+bool CampaignService::select_endless() {
+    if (!is_endless_available()) {
+        return false;
+    }
+    match_mode_ = MatchMode::ENDLESS;
+    return true;
+}
+
+EndlessRunRecordResult CampaignService::record_endless_run(int wave_reached, int score) {
+    return use_cases_.record_endless_run(save_data_, DEFAULT_ENDLESS_THREAT_LEVEL, wave_reached, score);
 }
 
 ProgressionMatchResult CampaignService::complete_level(const std::string &level_id, int level_score, bool victory) {

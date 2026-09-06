@@ -33,6 +33,8 @@ enum class IntegrityTier { INTACT, DAMAGED, CRITICAL };
 struct HudWaveModel {
     std::string current_text;
     std::string total_text;
+    // False for an unbounded run, where the readout is a count rather than a fraction.
+    bool total_visible = true;
 };
 
 /// One segment per point of starting integrity, with the leading segment draining continuously so that damage

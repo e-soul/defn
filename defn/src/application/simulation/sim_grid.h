@@ -14,15 +14,10 @@ namespace defn {
 // are relative to where the camera is looking, which is why the camera has to be modelled at all.
 class SimGrid final : public GridQueryService {
   public:
-    SimGrid(const GameplayRules &rules, RandomSource &random) : rules_(rules), random_(&random) {
-        world_width_ = rules_.viewport_width * static_cast<float>(rules_.world_multiplier);
-        camera_x_ = rules_.viewport_width / 2.0F;
-    }
+    SimGrid(const GameplayRules &rules, RandomSource &random) : rules_(rules), random_(&random) { camera_x_ = rules_.viewport_width / 2.0F; }
 
     [[nodiscard]] const GameplayRules &get_rules() const { return rules_; }
 
-    void set_world_width(float world_width) { world_width_ = world_width; }
-    [[nodiscard]] float get_world_width() const { return world_width_; }
     void set_camera_x(float camera_x) { camera_x_ = camera_x; }
     [[nodiscard]] float get_camera_x() const { return camera_x_; }
 
@@ -33,7 +28,6 @@ class SimGrid final : public GridQueryService {
   private:
     GameplayRules rules_;
     RandomSource *random_;
-    float world_width_ = 0.0F;
     float camera_x_ = 0.0F;
 };
 

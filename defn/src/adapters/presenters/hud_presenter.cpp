@@ -21,10 +21,13 @@ std::string to_upper_ascii(const std::string &text) {
     return upper;
 }
 
+// An endless run authors no waves, so there is no denominator to show. "WAVE 12" rather than "WAVE 12/0" -- the
+// unbounded form falls out of the wave count being zero, with no mode flag reaching the HUD.
 HudWaveModel build_wave(int current_wave, int total_waves) {
     return {
         .current_text = std::to_string(std::max(0, current_wave)),
-        .total_text = "/ " + std::to_string(std::max(0, total_waves)),
+        .total_text = total_waves > 0 ? "/ " + std::to_string(total_waves) : std::string(),
+        .total_visible = total_waves > 0,
     };
 }
 

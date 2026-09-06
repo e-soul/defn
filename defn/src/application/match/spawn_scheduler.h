@@ -27,6 +27,12 @@ struct SpawnSchedulerUpdate {
 class SpawnScheduler {
   public:
     void load_level_definition(const LevelDefinition &level_definition);
+
+    // Extends a running timeline by one wave. The level definition is not touched, so `get_total_waves` keeps
+    // reporting what the level authored -- zero for a synthesised endless level, which is what the HUD reads as
+    // "unbounded".
+    void append_wave(const WaveDefinition &wave_definition);
+
     void configure(const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random);
     void start();
     void stop();

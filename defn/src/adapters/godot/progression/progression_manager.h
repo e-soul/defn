@@ -56,7 +56,12 @@ class CampaignService : public Object, public ProgressionService {
     [[nodiscard]] int get_effective_energy_regen() const override;
     [[nodiscard]] float get_effective_bounty_multiplier() const override;
     [[nodiscard]] int get_effective_base_integrity(int base) const override;
+    [[nodiscard]] MatchMode get_match_mode() const override { return match_mode_; }
+    [[nodiscard]] bool is_endless_available() const override;
+    [[nodiscard]] EndlessRecord get_endless_record() const override;
     bool select_level(const std::string &level_id) override;
+    bool select_endless() override;
+    EndlessRunRecordResult record_endless_run(int wave_reached, int score) override;
     [[nodiscard]] ProgressionMatchResult complete_level(const std::string &level_id, int level_score, bool victory) override;
     bool claim_upgrade(const ProgressionRewardClaim &claim) override;
     [[nodiscard]] std::vector<std::string> build_new_unlock_descriptions(const std::vector<std::string> &level_ids) const override;
@@ -79,6 +84,7 @@ class CampaignService : public Object, public ProgressionService {
     [[nodiscard]] int get_rescue_drafts_claimed_godot(const String &level_id) const;
     [[nodiscard]] int get_next_rescue_draft_threshold_godot(const String &level_id) const;
     [[nodiscard]] String get_current_level_id_godot() const;
+    [[nodiscard]] bool is_endless_available_godot() const { return is_endless_available(); }
     void set_current_level_id_godot(const String &level_id);
     [[nodiscard]] UnitConfig get_effective_friendly_unit_config(const UnitConfig &base_config) const;
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level_godot(const String &level_id);
@@ -116,6 +122,7 @@ class CampaignService : public Object, public ProgressionService {
 
     // Transient
     std::string current_level_id_ = "level_01";
+    MatchMode match_mode_ = MatchMode::CAMPAIGN;
 };
 
 } // namespace defn

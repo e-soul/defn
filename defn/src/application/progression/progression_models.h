@@ -9,6 +9,28 @@
 
 namespace defn {
 
+// Which kind of match the player is about to start. An explicit mode rather than a reserved level id: the id is a
+// content key everywhere else in the project, and overloading it would put a magic string into path resolution.
+enum class MatchMode { CAMPAIGN, ENDLESS };
+
+// The endless mode is recorded per threat level, so a later ascension ladder needs no second save migration. There
+// is one threat level today.
+inline constexpr int DEFAULT_ENDLESS_THREAT_LEVEL = 0;
+
+struct EndlessRecord {
+    int best_wave = 0;
+    int best_score = 0;
+};
+
+// What one finished run did to the record, so the run-over screen can say which half of it was a personal best.
+struct EndlessRunRecordResult {
+    int wave_reached = 0;
+    int score = 0;
+    bool record_wave = false;
+    bool record_score = false;
+    EndlessRecord record;
+};
+
 enum class ProgressionRewardSource {
     NONE,
     FIRST_CLEAR,
@@ -79,6 +101,9 @@ struct ProgressionRewardViewModel {
 
 struct ProgressionMatchResult {
     int new_total_score = 0;
+    // Edge-triggered on the run that first clears the level endless is gated behind, so replaying it announces
+    // nothing. Read by the score screen; the map beacon reads availability instead.
+    bool endless_unlocked = false;
     std::vector<std::string> new_unlock_level_ids;
     std::string next_level_id;
     ProgressionRewardDraft reward_draft;
@@ -116,6 +141,10 @@ struct ProgressionEntitySnapshot {
 
 struct ProgressionOverviewSnapshot {
     std::vector<ProgressionEntitySnapshot> entities;
+    // Absent until the mode is unlocked. The roster screen is where a career is read, and a standing engagement is
+    // part of a career even though it belongs to no unit.
+    bool endless_available = false;
+    EndlessRecord endless_record;
 };
 
 } // namespace defn

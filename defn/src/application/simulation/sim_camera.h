@@ -24,7 +24,7 @@ enum class SimCameraMode {
 // trigger strip.
 class SimCamera {
   public:
-    void configure(const GameplayRules &rules, float world_width, SimCameraMode mode);
+    void configure(const GameplayRules &rules, SimCameraMode mode);
 
     // Fires triggers for anything that has just entered one, then takes a smoothing step and publishes the result to
     // the grid, which is what spawn and deploy positions are measured from.

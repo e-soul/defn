@@ -48,10 +48,7 @@ SimMatch::SimMatch(const UnitCatalog &catalog, const GlobalUnitConfig &globals, 
                    const std::vector<std::string> &base_unit_ids, const std::vector<ProgressionUpgradeCard> &upgrade_cards)
     : scenario_(scenario), level_(level), random_(scenario.seed), grid_(make_belt_rules(globals.gameplay_rules, level), random_),
       world_(catalog, globals, random_) {
-    const GameplayRules &rules = grid_.get_rules();
-    const float world_width = scenario_.world_width.value_or(rules.viewport_width * static_cast<float>(rules.world_multiplier));
-    grid_.set_world_width(world_width);
-    camera_.configure(rules, world_width, scenario_.camera);
+    camera_.configure(grid_.get_rules(), scenario_.camera);
     grid_.set_camera_x(camera_.get_position().x);
 
     progression_.configure(base_unit_ids, upgrade_cards, scenario_.owned_upgrades);
@@ -59,6 +56,14 @@ SimMatch::SimMatch(const UnitCatalog &catalog, const GlobalUnitConfig &globals, 
 
     director_.configure(&progression_, &catalog, &grid_, &random_);
     director_.load_level_definition(level_, scenario_.level_id);
+
+    // Seeding has to follow the load, which clears the timeline, and precede `begin_match`, which starts it: an
+    // endless timeline that starts empty completes on its first tick.
+    if (scenario_.endless.has_value()) {
+        endless_director_.emplace();
+        endless_director_->configure(&director_, &progression_, *scenario_.endless, &random_);
+        endless_director_->seed_first_wave();
+    }
 }
 
 void SimMatch::begin() {
@@ -85,8 +90,9 @@ void SimMatch::tick() {
         return;
     }
 
-    // 1. Waves, spawn intents and the victory check.
-    apply_match_update(director_.update(delta));
+    // 1. Waves, spawn intents and the victory check. An endless run goes through its own coordinator, which appends
+    //    the next wave before the director looks at the timeline.
+    apply_match_update(endless_director_.has_value() ? endless_director_->update(delta) : director_.update(delta));
 
     // 2. The energy timer, which GameManager runs on a one-second Timer rather than per frame.
     energy_tick_accumulator_ += delta;
@@ -118,7 +124,8 @@ void SimMatch::tick() {
 void SimMatch::apply_match_update(const MatchUpdate &update) {
     for (const SpawnUnitIntent &intent : update.spawn_unit_intents) {
         const SimSpawnResult spawned =
-            world_.spawn(intent.unit_id, to_unit_side(intent.side), {.x = static_cast<float>(intent.position.x), .y = static_cast<float>(intent.position.y)});
+            world_.spawn(intent.unit_id, to_unit_side(intent.side), {.x = static_cast<float>(intent.position.x), .y = static_cast<float>(intent.position.y)},
+                         {.damage_scale = intent.damage_scale});
         if (!spawned.succeeded()) {
             continue;
         }
@@ -131,6 +138,7 @@ void SimMatch::apply_match_update(const MatchUpdate &update) {
 
     if (update.wave_changed.has_value()) {
         current_wave_ = update.wave_changed->current_wave;
+        energy_at_wave_.push_back(director_.get_core_resource());
     }
 
     if (update.match_ended.has_value()) {
@@ -283,6 +291,11 @@ SimMatchReport SimMatch::build_report() const {
         report.remaining_integrity = ending_summary_->hearts_remaining;
         report.kill_score = ending_summary_->kill_score;
         report.level_score = ending_summary_->level_score;
+    }
+
+    if (endless_director_.has_value()) {
+        report.waves_reached = current_wave_;
+        report.energy_at_wave = energy_at_wave_;
     }
 
     report.energy_idle_integral = energy_idle_integral_;

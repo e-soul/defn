@@ -74,6 +74,10 @@ void SceneNavigator::navigate(SceneTree *tree, const SceneNavigationRequest &req
     case SceneNavigationDestination::Level:
         go_to_level(tree, to_godot_string(request.level_id));
         break;
+    case SceneNavigationDestination::Endless:
+        // The same scene: the mode the campaign service carries is what the game scene branches on.
+        go_to_current_level(tree);
+        break;
     case SceneNavigationDestination::Quit:
         quit(tree);
         break;

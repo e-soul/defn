@@ -43,6 +43,7 @@
         "defeat":              "state_danger",
         "integrity_critical":  "state_danger",
         "route_locked":        ["state_locked", 0.480],
+        "route_standing":      ["accent_strong", 0.820],
         "locked_tint":         [0.560, 0.580, 0.640, 0.450],
         "meter_track":         "neutral_sunken",
         "meter_notch":         "neutral_ink",
@@ -112,7 +113,8 @@
         "outline":    { "bg": "transparent",         "border": "border",             "shape": "corner_md" },
         "backplate":  { "bg": "surface_sunken",      "border": "transparent",        "shape": "corner_sm",   "border_width": "border_width" },
         "dossier":    { "bg": "surface_sunken",      "border": "border",             "shape": "corner_lg",   "content_margin": "section_gap" },
-        "map_header": { "bg": "surface_translucent", "border": "transparent",        "shape": "corner_sm" }
+        "map_header": { "bg": "surface_translucent", "border": "transparent",        "shape": "corner_sm" },
+        "map_beacon": { "bg": "surface",             "border": "border_strong",      "shape": "corner_pill", "shadow_size": 8, "shadow": "neutral_ink" }
     },
     "text_styles": {
         "screen_display":    { "font_size": "display",    "color": "text_primary" },
@@ -292,6 +294,10 @@
         "hud_plate_height":                64,
         "hud_segment_height":              15,
         "hud_segment_width":               26,
+        "map_beacon_diameter":             132,
+        "map_beacon_ring_inset":           9,
+        "map_beacon_mark_size":            54,
+        "map_beacon_selected_scale_percent": 108,
         "map_dossier_x":                   1408,
         "map_dossier_y":                   124,
         "map_header_height":               104,
@@ -311,6 +317,8 @@
         "map_route_bow_percent":           6,
         "map_route_shadow_width":          8,
         "map_route_width":                 4,
+        "map_route_dash_gap":              12,
+        "map_route_dash_length":           18,
         "map_route_width_locked":          3,
         "medallion_offset_x":              -5,
         "medallion_offset_y":              -4,

@@ -12,6 +12,7 @@
 #include "bounty_energy_effect.h"
 #include "collision_layers.h"
 #include "data_paths.h"
+#include "endless_schedule_loader.h"
 #include "game_background_builder.h"
 #include "godot_string.h"
 #include "godot_vector.h"
@@ -99,6 +100,17 @@ ScoreScreenModel to_score_screen_model(const MatchEnded &match_end) {
     model.completion_bonus = summary.completion_bonus;
     model.level_score = summary.level_score;
     model.new_total_score = summary.new_total_score;
+    model.survival_bonus = summary.survival_bonus;
+    model.endless = {
+        .unlocked = summary.endless.unlocked,
+        .available = summary.endless.available,
+        .run = summary.endless.run,
+        .wave_reached = summary.wave_reached,
+        .best_wave = summary.endless.best_wave,
+        .best_score = summary.endless.best_score,
+        .record_wave = summary.endless.record_wave,
+        .record_score = summary.endless.record_score,
+    };
     model.current_level_id = summary.current_level_id;
     model.next_level_id = summary.next_level_id;
     for (const auto &new_unlock : summary.new_unlocks) {
@@ -108,6 +120,11 @@ ScoreScreenModel to_score_screen_model(const MatchEnded &match_end) {
     model.owned_upgrades = to_upgrade_card_view_models(match_end.owned_upgrades);
     return model;
 }
+
+// The level id an endless run is completed under. It names no content: `complete_level` on an id that is in no
+// unlock table adds the run's score to the career total and produces neither an unlock nor a reward draft, which is
+// exactly what an endless run should do.
+constexpr auto ENDLESS_MATCH_ID = "endless";
 
 MenuFlowUseCase make_menu_flow_use_case() { return MenuFlowUseCase(CampaignService::get_singleton()); }
 
@@ -127,26 +144,14 @@ void GameManager::_ready() {
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
     auto *progression = CampaignService::get_singleton();
-    String level_id = progression->get_current_level_id_godot();
-    const String level_path = DataPaths::level_definition(level_id);
+    const String level_id = progression->get_current_level_id_godot();
 
     // Load unit data from JSON
     unit_data_.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
 
-    const auto loaded_level = LevelLoader::load(level_path);
-    if (!loaded_level) {
-        UtilityFunctions::printerr("GameManager: Failed to load level: ", level_path);
+    if (!compose_match(level_id)) {
         return;
     }
-
-    if (auto *grid = GridManager::get_singleton()) {
-        grid->configure(unit_data_.get_globals().gameplay_rules, loaded_level->belt_width_ratio.x, loaded_level->belt_width_ratio.y);
-        camera_scroll_controller_.configure(grid->get_rules(), static_cast<float>(grid->get_world_width()));
-    }
-
-    match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
-    match_director_.load_level_definition(*loaded_level, to_std_string(level_id));
-    match_director_.begin_match();
 
     // Setup camera and visual layers using background from level data
     setup_background(to_godot_string(match_director_.get_background_path()));
@@ -181,6 +186,7 @@ void GameManager::_ready() {
     hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
     hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
     hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
+    hud->connect("score_screen_endless", callable_mp(this, &GameManager::on_score_screen_endless));
     hud->connect("score_screen_campaign", callable_mp(this, &GameManager::on_score_screen_campaign));
     hud->connect("score_screen_upgrade_selected", callable_mp(this, &GameManager::on_score_screen_upgrade_selected));
 
@@ -212,13 +218,56 @@ void GameManager::_ready() {
     pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
 }
 
+// The one place the mode is read. A campaign match is composed exactly as it always was; an endless run swaps the
+// level definition for a synthesised one and puts a coordinator in front of the director, which learns nothing.
+bool GameManager::compose_match(const String &level_id) {
+    auto *progression = CampaignService::get_singleton();
+    const bool endless = progression->get_match_mode() == MatchMode::ENDLESS;
+
+    std::optional<LevelDefinition> loaded_level;
+    std::optional<EndlessDefinition> endless_definition;
+    if (endless) {
+        endless_definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
+        if (!endless_definition.has_value()) {
+            UtilityFunctions::printerr("GameManager: Failed to load the endless definition: ", String(DataPaths::ENDLESS_DATA));
+            return false;
+        }
+        loaded_level = endless_definition->level;
+    } else {
+        const String level_path = DataPaths::level_definition(level_id);
+        loaded_level = LevelLoader::load(level_path);
+        if (!loaded_level.has_value()) {
+            UtilityFunctions::printerr("GameManager: Failed to load level: ", level_path);
+            return false;
+        }
+    }
+
+    if (auto *grid = GridManager::get_singleton()) {
+        grid->configure(unit_data_.get_globals().gameplay_rules, loaded_level->belt_width_ratio.x, loaded_level->belt_width_ratio.y);
+        camera_scroll_controller_.configure(grid->get_rules());
+    }
+
+    match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
+    match_director_.load_level_definition(*loaded_level, endless ? std::string(ENDLESS_MATCH_ID) : to_std_string(level_id));
+
+    if (endless) {
+        // Seeded after the load, which clears the timeline, and before the match begins, which starts it.
+        endless_director_.emplace();
+        endless_director_->configure(&match_director_, progression, endless_definition->schedule, &endless_random_);
+        endless_director_->seed_first_wave();
+    }
+
+    match_director_.begin_match();
+    return true;
+}
+
 void GameManager::_process(double delta) {
     if (match_director_.is_game_over()) {
         return;
     }
 
     update_camera_scroll(delta);
-    apply_match_update(match_director_.update(delta));
+    apply_match_update(endless_director_.has_value() ? endless_director_->update(delta) : match_director_.update(delta));
 }
 
 void GameManager::_input(const Ref<InputEvent> &event) {
@@ -237,14 +286,12 @@ void GameManager::setup_background(const String &bg_path) {
     auto *grid = GridManager::get_singleton();
     const auto &rules = grid->get_rules();
 
-    const GameBackgroundBuildResult background = GameBackgroundBuilder::build(bg_path, rules);
-    if (background.background == nullptr) {
+    Parallax2D *background = GameBackgroundBuilder::build(bg_path, rules);
+    if (background == nullptr) {
         return;
     }
 
-    grid->set_world_width(background.world_width);
-    camera_scroll_controller_.configure(rules, static_cast<float>(background.world_width));
-    add_child(background.background);
+    add_child(background);
 }
 
 void GameManager::setup_camera() {
@@ -254,9 +301,10 @@ void GameManager::setup_camera() {
 
     camera->set_position(to_godot_vector(camera_scroll_controller_.get_camera_anchor_position()));
 
+    // Left, top and bottom are real edges -- the base stands on the left one. The right is deliberately left at
+    // Godot's default far limit: the belt has no end, so the camera follows the front line for as long as it advances.
     camera->set_limit(SIDE_LEFT, 0);
     camera->set_limit(SIDE_TOP, 0);
-    camera->set_limit(SIDE_RIGHT, static_cast<int32_t>(camera_scroll_controller_.get_world_width()));
     camera->set_limit(SIDE_BOTTOM, static_cast<int32_t>(rules.viewport_height));
 
     add_child(camera);
@@ -272,7 +320,7 @@ void GameManager::setup_belt_debug_overlay() {
     const GameplayRules &rules = grid->get_rules();
     belt_debug_overlay_ = memnew(BeltDebugOverlay);
     belt_debug_overlay_->set_name("BeltDebugOverlay");
-    belt_debug_overlay_->configure(grid->get_world_width(), rules.belt_top_y, rules.belt_bottom_y);
+    belt_debug_overlay_->configure(rules.viewport_width, rules.belt_top_y, rules.belt_bottom_y);
     add_child(belt_debug_overlay_);
 }
 #endif
@@ -286,6 +334,12 @@ void GameManager::update_camera_scroll(double delta) {
     const godot::Vector2 next_position = to_godot_vector(camera_scroll_controller_.next_camera_position(to_vector(camera->get_position()), delta));
     camera->set_position(next_position);
     grid->set_camera_x(next_position.x);
+
+#ifdef DEFN_DEBUG_RENDERING_ENABLED
+    if (belt_debug_overlay_ != nullptr) {
+        belt_debug_overlay_->follow_camera(next_position.x);
+    }
+#endif
 }
 
 void GameManager::setup_base_objective() {
@@ -442,7 +496,13 @@ void GameManager::setup_match_result_reveal_timer() {
     add_child(match_result_reveal_timer_);
 }
 
-void GameManager::apply_match_update(const MatchUpdate &update) {
+void GameManager::apply_match_update(MatchUpdate update) {
+    // Every path that can end a match arrives here -- the timeline, the base falling, the run being conceded -- so
+    // this is the one place an endless run has to be written into the profile.
+    if (endless_director_.has_value()) {
+        endless_director_->finalize_ended_run(update);
+    }
+
     for (const SpawnUnitIntent &intent : update.spawn_unit_intents) {
         Unit *unit = materialize_spawn_intent(intent);
         if (intent.side == MatchUnitSide::Friendly) {
@@ -636,6 +696,21 @@ void GameManager::on_score_screen_retry(const String &level_id) {
     }
 
     const MenuFlowResult result = make_menu_flow_use_case().select_level(to_std_string(level_id));
+    if (!result.navigation.has_value()) {
+        return;
+    }
+
+    match_director_.clear_pending_match_end();
+    navigate_if_requested(get_tree(), result);
+}
+
+void GameManager::on_score_screen_endless() {
+    if (!match_director_.finalize_selected_upgrade()) {
+        return;
+    }
+
+    // The same seam the campaign map beacon uses, so the two entry points cannot drift apart.
+    const MenuFlowResult result = make_menu_flow_use_case().select_endless();
     if (!result.navigation.has_value()) {
         return;
     }

@@ -83,6 +83,89 @@ DEFN_TEST(score_screen_view_model_blocks_actions_until_reward_selected) {
     DEFN_CHECK_EQ(view_model.reward_title, std::string("CHOOSE 1 UPGRADE"));
 }
 
+DEFN_TEST(score_screen_view_model_offers_endless_where_the_forward_action_goes) {
+    // The run that first clears the gate level: the announcement is edge-triggered, and after level 5 there is no
+    // next level, so the footer reads [Endless] [Retry] [Campaign].
+    const ScoreScreenViewModel view_model = build_score_screen_view_model({
+        .victory = true,
+        .level_score = 270,
+        .new_total_score = 900,
+        .endless = {.unlocked = true, .available = true},
+    });
+
+    DEFN_CHECK(!view_model.next_level_button_visible);
+    DEFN_CHECK(view_model.endless_button_visible);
+    DEFN_CHECK(view_model.endless_button_enabled);
+    DEFN_CHECK_EQ(view_model.endless_button_label, std::string("Endless"));
+    DEFN_CHECK(view_model.retry_button_visible);
+    DEFN_REQUIRE(view_model.new_unlocks.size() == static_cast<size_t>(1));
+    DEFN_CHECK_EQ(view_model.new_unlocks[0], std::string("NEW UNLOCK: ENDLESS MODE!"));
+}
+
+DEFN_TEST(score_screen_view_model_shows_the_endless_button_without_re_announcing_it) {
+    // A later replay of the gate level: the button is still there, the announcement is not.
+    const ScoreScreenViewModel view_model = build_score_screen_view_model({
+        .victory = true,
+        .endless = {.unlocked = false, .available = true},
+    });
+
+    DEFN_CHECK(view_model.endless_button_visible);
+    DEFN_CHECK(view_model.new_unlocks.empty());
+}
+
+DEFN_TEST(score_screen_view_model_gates_the_endless_button_on_a_pending_upgrade_pick) {
+    const ScoreScreenViewModel view_model = build_score_screen_view_model({
+        .victory = true,
+        .endless = {.available = true},
+        .reward_available = true,
+        .reward_requires_selection = true,
+    });
+
+    DEFN_CHECK(view_model.endless_button_visible);
+    DEFN_CHECK(!view_model.endless_button_enabled);
+}
+
+DEFN_TEST(score_screen_view_model_reads_a_finished_run_as_over_rather_than_lost) {
+    const ScoreScreenViewModel view_model = build_score_screen_view_model({
+        .enemies_killed = 140,
+        .kill_score = 900,
+        .hearts_remaining = 0,
+        .hearts_total = 4,
+        .integrity_bonus = 0,
+        .survival_bonus = 425,
+        .level_score = 1325,
+        .new_total_score = 6100,
+        .endless = {.available = true, .run = true, .wave_reached = 17, .best_wave = 17, .best_score = 1325, .record_wave = true, .record_score = true},
+    });
+
+    DEFN_CHECK_EQ(view_model.title, std::string("RUN OVER"));
+    DEFN_REQUIRE(!view_model.stat_rows.empty());
+    DEFN_CHECK_EQ(view_model.stat_rows[0].first, std::string("Wave Reached:"));
+    DEFN_CHECK(view_model.stat_rows[0].second.find("17") != std::string::npos);
+    DEFN_CHECK(view_model.stat_rows[0].second.find("BEST") != std::string::npos);
+
+    const auto has_row = [&view_model](const std::string &label) {
+        for (const auto &row : view_model.stat_rows) {
+            if (row.first == label) {
+                return true;
+            }
+        }
+        return false;
+    };
+    DEFN_CHECK(has_row("Survival Bonus:"));
+    DEFN_CHECK(has_row("Run Score:"));
+    DEFN_CHECK(has_row("Best Run:"));
+    DEFN_CHECK(!has_row("Level Score:"));
+    DEFN_CHECK(!has_row("Completion Bonus:"));
+
+    // There is no next level and nothing to retry: the forward action is a fresh run.
+    DEFN_CHECK(!view_model.next_level_button_visible);
+    DEFN_CHECK(!view_model.retry_button_visible);
+    DEFN_CHECK(view_model.endless_button_visible);
+    DEFN_CHECK_EQ(view_model.endless_button_label, std::string("Retry"));
+    DEFN_CHECK(view_model.campaign_button_enabled);
+}
+
 DEFN_TEST(deploy_card_view_model_formats_title_cost_and_portrait) {
     const DeployCardViewModel view_model = build_deploy_card_view_model({
         .unit_id = "operator",

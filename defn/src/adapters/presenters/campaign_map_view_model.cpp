@@ -112,9 +112,54 @@ std::vector<CampaignRouteViewModel> build_routes(const std::vector<CampaignMissi
     return result;
 }
 
+std::string endless_record_label(int best_wave, int best_score) {
+    if (best_wave <= 0) {
+        return "NO WATCH STOOD";
+    }
+    return "BEST  WAVE " + std::to_string(best_wave) + "  /  " + std::to_string(best_score);
+}
+
+// The beacon leaves from the mission that unlocks it, so the dashed link reads as "past the end of the campaign"
+// rather than as an arbitrary line across the map. Falls back to the last mission when the gate names none.
+std::size_t endless_route_from(const std::vector<CampaignMissionViewModel> &missions, const std::string &requires_completed) {
+    for (std::size_t index = 0; index < missions.size(); ++index) {
+        if (missions[index].level_id == requires_completed) {
+            return index;
+        }
+    }
+    return missions.empty() ? 0 : missions.size() - 1;
+}
+
+std::optional<CampaignEndlessViewModel> build_endless_view_model(const CampaignMapDefinition &map, const std::vector<CampaignMissionViewModel> &missions,
+                                                                 const CampaignEndlessPresentationSource &source) {
+    // Hidden rather than locked. A locked beacon would spoil nothing useful and would clutter a map that is already
+    // full to its right edge.
+    if (!map.endless.has_value() || !source.unlocked) {
+        return std::nullopt;
+    }
+
+    const CampaignEndlessDefinition &endless = *map.endless;
+    return CampaignEndlessViewModel{
+        .title = endless.title.empty() ? "Standing Engagement" : endless.title,
+        .tagline = endless.tagline.empty() ? "The line holds until it does not." : endless.tagline,
+        .preview = endless.preview,
+        .position_x = endless.position_normalized.x,
+        .position_y = endless.position_normalized.y,
+        .best_wave = source.best_wave,
+        .best_score = source.best_score,
+        .base_starting_energy = source.base_starting_energy,
+        .effective_starting_energy = source.effective_starting_energy,
+        .base_integrity = source.base_integrity,
+        .effective_base_integrity = source.effective_base_integrity,
+        .record_label = endless_record_label(source.best_wave, source.best_score),
+        .route_from_index = endless_route_from(missions, endless.requires_completed),
+    };
+}
+
 } // namespace
 
-CampaignMapViewModel CampaignMapPresenter::present(const CampaignMapDefinition &map, const std::vector<CampaignLevelPresentationSource> &levels) {
+CampaignMapViewModel CampaignMapPresenter::present(const CampaignMapDefinition &map, const std::vector<CampaignLevelPresentationSource> &levels,
+                                                   const CampaignEndlessPresentationSource &endless) {
     CampaignMapViewModel result;
     result.title = map.title;
     result.background = map.background;
@@ -136,6 +181,7 @@ CampaignMapViewModel CampaignMapPresenter::present(const CampaignMapDefinition &
 
     result.initial_selected_level_id = choose_initial_selection(result.missions);
     result.routes = build_routes(result.missions);
+    result.endless = build_endless_view_model(map, result.missions, endless);
     return result;
 }
 

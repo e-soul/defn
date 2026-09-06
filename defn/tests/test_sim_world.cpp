@@ -447,7 +447,9 @@ DEFN_TEST(sim_world_lets_a_unit_walk_into_range_before_it_engages) {
     DEFN_CHECK(walker_entity->position.x <= 400.0F);
 }
 
-DEFN_TEST(sim_world_holds_friendlies_at_the_world_margin) {
+// Nothing stops a friendly advancing: the belt is unbounded to the right, so a walker with no one to fight keeps
+// walking, and in the game the camera goes with it. The old far edge sat two viewports out, which this passes.
+DEFN_TEST(sim_world_advances_friendlies_with_no_far_edge) {
     SimRoster roster;
     UnitConfig walker = make_unit("walker", UnitSide::FRIENDLY, 100, 10);
     walker.move_speed_pixels_per_second = 4000.0F;
@@ -455,8 +457,6 @@ DEFN_TEST(sim_world_holds_friendlies_at_the_world_margin) {
 
     GlobalUnitConfig globals = make_globals();
     globals.gameplay_rules.viewport_width = 1000.0F;
-    globals.gameplay_rules.world_multiplier = 2;
-    globals.gameplay_rules.friendly_world_margin = 100.0F;
 
     StdRandomSource random(5U);
     SimWorld world(roster, globals, random);
@@ -466,9 +466,11 @@ DEFN_TEST(sim_world_holds_friendlies_at_the_world_margin) {
         world.tick();
     }
 
+    // 4000 px/s over the 119 ticks that act -- the spawn tick does not -- with the belt never getting in the way.
     const SimEntity *walker_entity = world.find_entity(mover.id);
     DEFN_REQUIRE(walker_entity != nullptr);
-    DEFN_CHECK_CLOSE(walker_entity->position.x, 1900.0, 0.001);
+    // Float accumulation over 119 additions, hence the looser epsilon than the single-step checks above.
+    DEFN_CHECK_CLOSE(walker_entity->position.x, 4000.0 * 119.0 / 60.0, 0.05);
 }
 
 DEFN_TEST(sim_world_promotes_a_friendly_that_crosses_the_damage_threshold) {

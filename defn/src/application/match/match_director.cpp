@@ -48,6 +48,12 @@ void MatchDirector::load_level_definition(const LevelDefinition &level_definitio
     level_id_ = std::move(level_id);
 }
 
+void MatchDirector::append_wave(const WaveDefinition &wave_definition) { spawn_scheduler_.append_wave(wave_definition); }
+
+void MatchDirector::set_bounty_scale(double scale) { match_session_.set_bounty_scale(scale); }
+
+void MatchDirector::award_survival_bonus(int points) { match_session_.award_survival_bonus(points); }
+
 void MatchDirector::begin_match() {
     if (campaign_ == nullptr) {
         return;
@@ -97,6 +103,9 @@ MatchUpdate MatchDirector::update(double delta) {
     const SpawnSchedulerUpdate scheduler_update = spawn_scheduler_.update(delta);
     update_result.spawn_unit_intents = scheduler_update.spawn_unit_intents;
     update_result.wave_changed = scheduler_update.wave_changed;
+    if (scheduler_update.wave_changed.has_value()) {
+        match_session_.record_wave_reached(scheduler_update.wave_changed->current_wave);
+    }
 
     for (const SpawnUnitIntent &intent : update_result.spawn_unit_intents) {
         if (intent.side == MatchUnitSide::Hostile && !intent.unit_id.empty()) {
@@ -148,6 +157,8 @@ MatchUpdate MatchDirector::handle_base_destroyed() {
     match_session_.set_base_health(0);
     return finish_match(false);
 }
+
+MatchUpdate MatchDirector::concede_match() { return finish_match(false); }
 
 MatchUpdate MatchDirector::handle_core_resource_tick() {
     match_session_.tick_energy();
@@ -202,10 +213,16 @@ MatchUpdate MatchDirector::finish_match(bool victory) {
 
     const ProgressionMatchResult progression_result = campaign_->complete_level(level_id_, level_score, victory);
     const std::vector<std::string> new_unlocks = campaign_->build_new_unlock_descriptions(progression_result.new_unlock_level_ids);
+    MatchSummaryModel summary =
+        match_session_.build_end_game_summary(victory, progression_result.new_total_score, level_id_, progression_result.next_level_id, new_unlocks);
+    // Pass-through, not a decision: the campaign answered both, and a coordinator that generated the waves fills in
+    // the rest of the record afterwards.
+    summary.endless.unlocked = progression_result.endless_unlocked;
+    summary.endless.available = campaign_->is_endless_available();
+
     pending_match_end_ = MatchEnded{
         .victory = victory,
-        .summary_model =
-            match_session_.build_end_game_summary(victory, progression_result.new_total_score, level_id_, progression_result.next_level_id, new_unlocks),
+        .summary_model = std::move(summary),
         .reward_options = build_reward_options(progression_result.reward_draft),
         .owned_upgrades = to_match_upgrade_options(campaign_->build_owned_upgrade_cards()),
     };

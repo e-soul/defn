@@ -7,13 +7,17 @@
 #include "campaign_map_definition.h"
 #include "level_definition.h"
 
+#include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace defn {
 
 enum class CampaignNodeState { LOCKED, AVAILABLE, FRONTIER, COMPLETED };
-enum class CampaignRouteState { LOCKED, FRONTIER, COMPLETED };
+// `STANDING` is the endless beacon's link. The campaign chain is a path that was walked; this one is open, which is
+// why it is drawn dashed and in its own colour rather than as a sixth mission route.
+enum class CampaignRouteState { LOCKED, FRONTIER, COMPLETED, STANDING };
 
 struct CampaignLevelPresentationSource {
     std::string level_id;
@@ -49,6 +53,36 @@ struct CampaignMissionViewModel {
     std::vector<std::string> enemy_labels;
 };
 
+// What the campaign knows about the endless mode when the map is composed.
+struct CampaignEndlessPresentationSource {
+    bool unlocked = false;
+    int best_wave = 0;
+    int best_score = 0;
+    int base_starting_energy = 0;
+    int effective_starting_energy = 0;
+    int base_integrity = 0;
+    int effective_base_integrity = 0;
+};
+
+// The beacon, and the endless variant of the dossier it fills. Deliberately not a `CampaignMissionViewModel`: it is
+// not counted, not chained, and not the initial selection.
+struct CampaignEndlessViewModel {
+    std::string title;
+    std::string tagline;
+    CampaignPreviewDefinition preview;
+    float position_x = 0.0F;
+    float position_y = 0.0F;
+    int best_wave = 0;
+    int best_score = 0;
+    int base_starting_energy = 0;
+    int effective_starting_energy = 0;
+    int base_integrity = 0;
+    int effective_base_integrity = 0;
+    std::string record_label;
+    // Which mission the standing route leaves from, an index into `missions`.
+    std::size_t route_from_index = 0;
+};
+
 struct CampaignRouteViewModel {
     std::size_t from_index = 0;
     std::size_t to_index = 0;
@@ -60,6 +94,7 @@ struct CampaignMapViewModel {
     CampaignTextureDefinition background;
     std::vector<CampaignMissionViewModel> missions;
     std::vector<CampaignRouteViewModel> routes;
+    std::optional<CampaignEndlessViewModel> endless;
     std::string initial_selected_level_id;
     int completed_count = 0;
 };
@@ -75,7 +110,8 @@ class CampaignMapPresenter {
   public:
     CampaignMapPresenter() = delete;
 
-    [[nodiscard]] static CampaignMapViewModel present(const CampaignMapDefinition &map, const std::vector<CampaignLevelPresentationSource> &levels);
+    [[nodiscard]] static CampaignMapViewModel present(const CampaignMapDefinition &map, const std::vector<CampaignLevelPresentationSource> &levels,
+                                                      const CampaignEndlessPresentationSource &endless = {});
     [[nodiscard]] static CampaignPreviewFrame frame_preview(float texture_width, float texture_height, float frame_width, float frame_height, float focus_x,
                                                             float focus_y, float zoom);
     [[nodiscard]] static std::string format_duration(double last_spawn_seconds);

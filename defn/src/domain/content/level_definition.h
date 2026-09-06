@@ -19,6 +19,11 @@ struct SpawnDefinition {
 struct WaveDefinition {
     int wave_number = 1;
     std::vector<SpawnDefinition> spawns;
+    // What every hostile in this wave hits for, as a multiple of its catalog damage. Authored levels leave it at 1
+    // and endless raises it per wave. It rides on the wave rather than being set on the scheduler between waves
+    // because a wave's spawns and its wave-changed signal arrive in the same tick -- a setter would apply the new
+    // scale to some of the wave's own spawns and the old one to the rest.
+    double damage_scale = 1.0;
 };
 
 struct LevelDefinition {

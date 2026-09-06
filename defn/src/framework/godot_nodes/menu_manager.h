@@ -38,6 +38,7 @@ class MenuManager : public Node2D {
     void _ready() override;
     void on_button_pressed(int intent_type, const String &target);
     void on_level_selected(const String &level_id);
+    void on_endless_selected();
     void on_display_mode_changed(int index);
     void on_resolution_changed(int index);
     void on_vsync_toggled(bool toggled);

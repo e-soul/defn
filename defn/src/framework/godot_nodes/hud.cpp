@@ -65,6 +65,7 @@ void HUD::_bind_methods() {
     ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "unit_type")));
     ADD_SIGNAL(MethodInfo("score_screen_next_level", PropertyInfo(Variant::STRING, "level_id")));
     ADD_SIGNAL(MethodInfo("score_screen_retry", PropertyInfo(Variant::STRING, "level_id")));
+    ADD_SIGNAL(MethodInfo("score_screen_endless"));
     ADD_SIGNAL(MethodInfo("score_screen_campaign"));
     ADD_SIGNAL(MethodInfo("score_screen_upgrade_selected", PropertyInfo(Variant::STRING, "upgrade_id")));
 }
@@ -138,6 +139,7 @@ void HUD::build_info_plate() {
     wave_current_label = {.label = make_readout_label("1", "hud_wave")};
     wave_group.row->add_child(wave_current_label.label);
     wave_total_label = make_readout_label("/ 3", "hud_wave_total");
+    wave_total_label->set_name("WaveTotal");
     wave_group.row->add_child(wave_total_label);
     row->add_child(wave_group.row);
 
@@ -190,6 +192,7 @@ void HUD::render(const HudModel &model) {
     wave_current_label.set_value(to_godot_string(model.wave.current_text));
     score_label.set_value(to_godot_string(model.score_text));
     wave_total_label->set_text(to_godot_string(model.wave.total_text));
+    wave_total_label->set_visible(model.wave.total_visible);
 
     level_label->set_text(to_godot_string(model.level_text));
     level_group->set_visible(model.level_visible);
@@ -327,6 +330,7 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
         ScoreScreenView::show(this, summary,
                               {
                                   .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(to_godot_string(summary.next_level_id)),
+                                  .on_endless = callable_mp(this, &HUD::on_endless_pressed),
                                   .on_retry = callable_mp(this, &HUD::on_retry_pressed).bind(to_godot_string(summary.current_level_id)),
                                   .on_campaign = callable_mp(this, &HUD::on_campaign_pressed),
                                   .on_select_upgrade = callable_mp(this, &HUD::on_upgrade_card_pressed),
@@ -339,6 +343,8 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
 void HUD::on_next_level_pressed(const String &level_id) { emit_signal("score_screen_next_level", level_id); }
 
 void HUD::on_retry_pressed(const String &level_id) { emit_signal("score_screen_retry", level_id); }
+
+void HUD::on_endless_pressed() { emit_signal("score_screen_endless"); }
 
 void HUD::on_campaign_pressed() { emit_signal("score_screen_campaign"); }
 

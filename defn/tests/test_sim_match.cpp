@@ -107,6 +107,28 @@ LevelDefinition make_test_level(int spawns_per_wave = 4) {
     return level;
 }
 
+// An endless level authors no waves: the schedule generates all of them. Its economy is the same as the campaign's
+// so the run is decided by the escalation rather than by a different purse.
+LevelDefinition make_endless_level() {
+    LevelDefinition level = make_test_level();
+    level.name = "Standing Engagement";
+    level.waves.clear();
+    return level;
+}
+
+EndlessSchedule make_endless_schedule() {
+    EndlessSchedule schedule;
+    schedule.tuning = {
+        // A ramp gentle enough that the policy holds for the length of the test: what is under test is that the
+        // match never ends, not where the difficulty curve lands.
+        .base_budget = 2.0,     .escalation = 1.02,   .bounty_decay = 0.99,    .first_wave_delay = 3.0,      .wave_interval = 10.0,
+        .interval_growth = 1.0, .spawn_stagger = 1.0, .budget_ceiling = 400.0, .wall_clock_ceiling = 3600.0, .survival_bonus_per_wave = 25,
+    };
+    schedule.threat_costs = {{.unit_id = "grime", .cost = 1.0}};
+    schedule.drift = {{.wave = 1, .weights = {{.unit_id = "grime", .weight = 1.0}}}};
+    return schedule;
+}
+
 SimMatchReport run_match(const SimScenario &scenario, const LevelDefinition &level) {
     SimRoster roster = make_match_roster();
     SimMatch match(roster, make_match_globals(), level, scenario, {"breacher", "marksman"}, {});
@@ -199,6 +221,25 @@ DEFN_TEST(sim_match_scrolls_the_camera_when_a_friendly_reaches_the_trigger) {
 
     DEFN_CHECK(with_camera.camera_scroll_events > 0);
     DEFN_CHECK_EQ(without_camera.camera_scroll_events, 0);
+}
+
+// The belt does not run out. Left alone for long enough, a friendly walks the camera clean past where the world used
+// to end -- four viewports out, which is twelve scroll steps from the opening anchor -- and keeps going.
+DEFN_TEST(sim_match_scrolls_the_camera_past_where_the_world_used_to_end) {
+    LevelDefinition quiet_level = make_test_level();
+    for (WaveDefinition &wave : quiet_level.waves) {
+        for (SpawnDefinition &spawn : wave.spawns) {
+            spawn.time += 600.0;
+        }
+    }
+
+    SimScenario scenario;
+    scenario.seed = 5U;
+    scenario.max_seconds = 300.0;
+
+    const SimMatchReport report = run_match(scenario, quiet_level);
+
+    DEFN_CHECK(report.camera_scroll_events > 12);
 }
 
 // The front line settles wherever the two sides meet, which on a short level is well short of the scroll trigger:
@@ -373,6 +414,25 @@ DEFN_TEST(sim_match_mix_policy_still_banks_for_the_expensive_end_when_nothing_is
 
     // Whatever it bought, it did not spend its way past the marksman by stacking the cheap end.
     DEFN_CHECK(deployed("breacher") <= deployed("marksman") + 1);
+}
+
+DEFN_TEST(sim_match_plays_an_endless_run_without_ever_winning) {
+    SimScenario scenario;
+    scenario.level_id = "endless";
+    scenario.seed = 2026U;
+    scenario.policy.kind = "greedy";
+    // Long enough for thirty-odd waves at a ten second interval.
+    scenario.max_seconds = 360.0;
+    scenario.endless = make_endless_schedule();
+
+    const SimMatchReport report = run_match(scenario, make_endless_level());
+
+    // The run either ran out of clock still going, or the base fell. What it must never do is clear the level: an
+    // endless timeline is never spawned out, so the victory condition is never reachable.
+    DEFN_CHECK(!report.victory);
+    DEFN_CHECK(report.waves_reached >= 30);
+    DEFN_CHECK_EQ(static_cast<int>(report.energy_at_wave.size()), report.waves_reached);
+    DEFN_CHECK(report.deployments_total > 0);
 }
 
 DEFN_TEST(sim_match_report_serializes_to_one_json_line) {

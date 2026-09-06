@@ -12,6 +12,8 @@ namespace {
 class FakeProgressionService : public ProgressionService {
   public:
     bool allow_selection = true;
+    bool endless_available = false;
+    bool endless_selected = false;
     std::string selected_level;
 
     [[nodiscard]] int get_total_score() const override { return 0; }
@@ -34,6 +36,14 @@ class FakeProgressionService : public ProgressionService {
             return false;
         }
         selected_level = level_id;
+        return true;
+    }
+    [[nodiscard]] bool is_endless_available() const override { return endless_available; }
+    bool select_endless() override {
+        if (!endless_available) {
+            return false;
+        }
+        endless_selected = true;
         return true;
     }
     [[nodiscard]] ProgressionMatchResult complete_level(const std::string & /*level_id*/, int /*level_score*/, bool /*victory*/) override { return {}; }
@@ -93,6 +103,34 @@ DEFN_TEST(menu_flow_use_case_builds_campaign_map_navigation_request) {
     const MenuFlowResult result = MenuFlowUseCase().request_campaign_map();
     DEFN_REQUIRE(result.navigation.has_value());
     DEFN_CHECK_EQ(result.navigation->destination, SceneNavigationDestination::CampaignMap);
+}
+
+DEFN_TEST(menu_flow_use_case_selects_endless_before_requesting_endless_navigation) {
+    FakeProgressionService progression;
+    progression.endless_available = true;
+    const MenuFlowUseCase flow(&progression);
+
+    const MenuFlowResult result = flow.select_endless();
+
+    DEFN_REQUIRE(result.navigation.has_value());
+    DEFN_CHECK_EQ(result.navigation->destination, SceneNavigationDestination::Endless);
+    // Endless names no level: the mode the service now carries is the whole request.
+    DEFN_CHECK(result.navigation->level_id.empty());
+    DEFN_CHECK(progression.endless_selected);
+}
+
+DEFN_TEST(menu_flow_use_case_refuses_endless_before_it_is_unlocked) {
+    FakeProgressionService progression;
+    const MenuFlowUseCase flow(&progression);
+
+    DEFN_CHECK(!flow.select_endless().navigation.has_value());
+    DEFN_CHECK(!progression.endless_selected);
+}
+
+DEFN_TEST(menu_flow_use_case_refuses_endless_without_a_progression_service) {
+    const MenuFlowUseCase flow;
+
+    DEFN_CHECK(!flow.select_endless().navigation.has_value());
 }
 
 } // namespace defn

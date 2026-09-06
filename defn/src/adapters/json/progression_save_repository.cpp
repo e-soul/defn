@@ -74,6 +74,17 @@ std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path)
         save_data.claimed_rescue_drafts[to_std_string(level_id)] = std::max(0, claimed_count);
     }
 
+    // Absent in a pre-endless save, which loads as an empty record rather than as a failure.
+    const Dictionary endless_waves = data.get("endless_best_wave", Dictionary());
+    for (const Variant &threat_var : Array(endless_waves.keys())) {
+        save_data.endless_best_wave[VariantTools::as_int(threat_var)] = std::max(0, VariantTools::as_int(endless_waves[threat_var]));
+    }
+
+    const Dictionary endless_scores = data.get("endless_best_score", Dictionary());
+    for (const Variant &threat_var : Array(endless_scores.keys())) {
+        save_data.endless_best_score[VariantTools::as_int(threat_var)] = std::max(0, VariantTools::as_int(endless_scores[threat_var]));
+    }
+
     return save_data;
 }
 
@@ -110,6 +121,18 @@ bool ProgressionSaveRepository::save(const String &path, const PlayerProfile &sa
         rescue_drafts_claimed[to_godot_string(level_id)] = claimed_count;
     }
     data["rescue_drafts_claimed"] = rescue_drafts_claimed;
+
+    Dictionary endless_best_wave;
+    for (const auto &[threat_level, wave] : save_data.endless_best_wave) {
+        endless_best_wave[threat_level] = wave;
+    }
+    data["endless_best_wave"] = endless_best_wave;
+
+    Dictionary endless_best_score;
+    for (const auto &[threat_level, score] : save_data.endless_best_score) {
+        endless_best_score[threat_level] = score;
+    }
+    data["endless_best_score"] = endless_best_score;
 
     const String json_text = JSON::stringify(data, "  ");
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);

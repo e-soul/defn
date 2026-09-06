@@ -28,6 +28,11 @@ class MenuFlowUseCase {
 
     [[nodiscard]] static MenuFlowResult handle(const MenuIntent &intent);
     [[nodiscard]] MenuFlowResult select_level(const std::string &level_id) const;
+
+    // The one seam both endless entry points go through -- the campaign map beacon and the score screen button --
+    // so the two cannot drift apart. A sibling of `select_level` rather than a branch inside it: the level id is a
+    // content key everywhere else, and endless has no level to name.
+    [[nodiscard]] MenuFlowResult select_endless() const;
     [[nodiscard]] static MenuFlowResult request_main_menu();
     [[nodiscard]] static MenuFlowResult request_campaign_map();
 

@@ -36,6 +36,14 @@ friendly_spacing_arg = ARGUMENTS.pop("spacing", "")
 seeds_arg = ARGUMENTS.pop("seeds", "")
 out_arg = ARGUMENTS.pop("out", "")
 bisect_arg = ARGUMENTS.pop("bisect", "")
+escalation_arg = ARGUMENTS.pop("escalation", "")
+bounty_decay_arg = ARGUMENTS.pop("decay", "")
+max_seconds_arg = ARGUMENTS.pop("max_seconds", "")
+policies_arg = ARGUMENTS.pop("policies", "")
+base_budget_arg = ARGUMENTS.pop("base_budget", "")
+curve_arg = ARGUMENTS.pop("curve", "")
+damage_growth_arg = ARGUMENTS.pop("dmg", "")
+damage_cap_arg = ARGUMENTS.pop("dmg_cap", "")
 
 sim_scenario_arg = ["--scenario", scenario_arg] if scenario_arg else []
 sim_seeds_arg = ["--seeds", seeds_arg] if seeds_arg else []
@@ -44,6 +52,14 @@ sim_bisect_arg = ["--bisect", bisect_arg] if bisect_arg else []
 matrix_spec_arg = ["--spec", spec_arg] if spec_arg else []
 matrix_separation_arg = ["--separation", separation_arg] if separation_arg else []
 matrix_spacing_arg = ["--friendly-spacing", friendly_spacing_arg] if friendly_spacing_arg else []
+endless_base_budget_arg = ["--base-budget", base_budget_arg] if base_budget_arg else []
+endless_escalation_arg = ["--escalation", escalation_arg] if escalation_arg else []
+endless_decay_arg = ["--bounty-decay", bounty_decay_arg] if bounty_decay_arg else []
+endless_max_seconds_arg = ["--max-seconds", max_seconds_arg] if max_seconds_arg else []
+endless_policies_arg = ["--policies", policies_arg] if policies_arg else []
+endless_curve_arg = ["--escalation-curve", curve_arg] if curve_arg else []
+endless_dmg_arg = ["--hostile-damage-growth", damage_growth_arg] if damage_growth_arg else []
+endless_dmg_cap_arg = ["--hostile-damage-cap", damage_cap_arg] if damage_cap_arg else []
 
 
 # 1. Setup the basic SCons environment
@@ -116,7 +132,7 @@ coverage_hosted_requested = "coverage_hosted" in requested_targets
 coverage_merged_requested = "coverage" in requested_targets
 coverage_targets_requested = coverage_native_requested or coverage_hosted_requested or coverage_merged_requested
 coverage_extension_requested = coverage_hosted_requested or coverage_merged_requested
-hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all", "sim", "conformance", "balance", "matrix"})) or coverage_extension_requested
+hosted_tests_enabled = with_hosted_tests_arg or bool(requested_targets.intersection({"hosted_test", "test_all", "sim", "conformance", "balance", "matrix", "endless"})) or coverage_extension_requested
 
 env["DEFN_GODOT_BIN"] = godot_bin_arg
 
@@ -135,6 +151,7 @@ extension_sources = [
     "src/application/settings/settings_use_case.cpp",
     "src/adapters/json/json_file_loader.cpp",
     "src/adapters/json/campaign_map_data_loader.cpp",
+    "src/adapters/json/endless_schedule_loader.cpp",
     "src/adapters/json/music_playlist_loader.cpp",
     "src/adapters/json/unit_control_config_loader.cpp",
     "src/framework/godot_nodes/attack_target_resolver.cpp",
@@ -161,6 +178,7 @@ extension_sources = [
     "src/adapters/godot/ui/ui_sfx_player.cpp",
     "src/domain/match/match_session.cpp",
     "src/application/match/match_director.cpp",
+    "src/application/match/endless_director.cpp",
     "src/framework/godot_nodes/vfx/bounty_energy_effect.cpp",
     "src/framework/godot_nodes/vfx/field_promotion_effect.cpp",
     "src/framework/godot_nodes/field_promotion_view.cpp",
@@ -206,6 +224,8 @@ extension_sources = [
     "src/adapters/presenters/score_screen_view_model.cpp",
     "src/adapters/godot/ui/score_screen_view.cpp",
     "src/domain/match/spawn_timeline.cpp",
+    "src/domain/content/hostile_scaling.cpp",
+    "src/domain/match/endless_wave_generator.cpp",
     "src/application/match/spawn_scheduler.cpp",
     "src/domain/combat/combat_logic.cpp",
     "src/domain/combat/projectile_rules.cpp",
@@ -218,6 +238,7 @@ extension_sources = [
     "src/adapters/godot/combat/combat_attack_executor.cpp",
     "src/adapters/godot/combat/damage_dispatcher.cpp",
     "src/framework/godot_nodes/combat_component.cpp",
+    "src/domain/content/force_mix.cpp",
     "src/domain/content/unit_runtime_profile.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
     "src/domain/content/unit_animation_state.cpp",
@@ -239,6 +260,7 @@ sim_sources = [
     "src/framework/testing/defn_conformance_runner.cpp",
     "src/framework/testing/defn_balance_runner.cpp",
     "src/framework/testing/defn_matrix_runner.cpp",
+    "src/framework/testing/defn_endless_runner.cpp",
     "src/application/simulation/sim_world.cpp",
     "src/application/simulation/sim_engagement_lab.cpp",
     "src/application/simulation/sim_camera.cpp",
@@ -269,7 +291,10 @@ test_support_sources = [
     "src/domain/match/match_session.cpp",
     "src/domain/match/camera_scroll_controller.cpp",
     "src/domain/match/spawn_timeline.cpp",
+    "src/domain/content/hostile_scaling.cpp",
+    "src/domain/match/endless_wave_generator.cpp",
     "src/application/match/match_director.cpp",
+    "src/application/match/endless_director.cpp",
     "src/application/match/spawn_scheduler.cpp",
     "src/application/match/deployment_service.cpp",
     "src/domain/combat/combat_logic.cpp",
@@ -295,6 +320,7 @@ test_support_sources = [
     "src/adapters/presenters/menu_view_model.cpp",
     "src/adapters/presenters/campaign_map_view_model.cpp",
     "src/adapters/presenters/score_screen_view_model.cpp",
+    "src/domain/content/force_mix.cpp",
     "src/domain/content/unit_runtime_config_resolver.cpp",
     "src/domain/content/unit_runtime_profile.cpp",
     "src/domain/content/unit_animation_state.cpp",
@@ -329,6 +355,9 @@ unit_test_sources = [
     "tests/test_progression_stat_visualization.cpp",
     "tests/test_unit_runtime_config_resolver.cpp",
     "tests/test_spawn_timeline.cpp",
+    "tests/test_hostile_scaling.cpp",
+    "tests/test_endless_wave_generator.cpp",
+    "tests/test_endless_director.cpp",
     "tests/test_menu_flow_use_case.cpp",
     "tests/test_ui_theme.cpp",
     "tests/test_presentation_view_models.cpp",
@@ -860,10 +889,42 @@ def run_matrix(target, source, env):
     return result.returncode
 
 
+def run_endless(target, source, env):
+    godot_executable = resolve_godot_executable(env.get("DEFN_GODOT_BIN", ""))
+    if not godot_executable:
+        print("Unable to locate Godot. Set godot_bin=<path> or GODOT_BIN to run the endless sweep.")
+        return 1
+
+    project_dir = pathlib.Path(".").resolve()
+    script_path = project_dir / "tests" / "godot_endless_runner.gd"
+    run_env = make_hosted_test_environment("endless")
+    prepare_result = prepare_godot_project(godot_executable, project_dir, run_env)
+    if prepare_result != 0:
+        return prepare_result
+
+    command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
+    endless_args = [argument for argument in [endless_base_budget_arg, endless_escalation_arg, endless_decay_arg, endless_curve_arg, endless_dmg_arg, endless_dmg_cap_arg, endless_max_seconds_arg, endless_policies_arg, sim_seeds_arg, sim_out_arg] if argument]
+    if endless_args:
+        command.append("--")
+        for argument in endless_args:
+            command.extend(argument)
+
+    result = subprocess.run(command, check=False, cwd=project_dir, env=run_env)
+    target_path = pathlib.Path(str(target[0]))
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_text(str(result.returncode), encoding="ascii")
+    return result.returncode
+
+
 balance_script = os.path.join("tests", "godot_balance_runner.gd")
 balance_stamp = env.Command(os.path.join("build", "defn_balance.stamp"), [library, balance_script], run_balance)
 AlwaysBuild(balance_stamp)
 env.Alias("balance", balance_stamp)
+
+endless_script = os.path.join("tests", "godot_endless_runner.gd")
+endless_stamp = env.Command(os.path.join("build", "defn_endless.stamp"), [library, endless_script], run_endless)
+AlwaysBuild(endless_stamp)
+env.Alias("endless", endless_stamp)
 
 matrix_script = os.path.join("tests", "godot_matrix_runner.gd")
 matrix_stamp = env.Command(os.path.join("build", "defn_matrix.stamp"), [library, matrix_script], run_matrix)

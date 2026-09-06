@@ -36,8 +36,6 @@ class GridManager : public Object, public GridQueryService {
     [[nodiscard]] double spawn_x() const override;  // hostile spawn: just right of camera
     [[nodiscard]] double sample_belt_y() const override;
 
-    void set_world_width(real_t w);
-    real_t get_world_width() const;
     void set_camera_x(real_t x);
     real_t get_camera_x() const;
 
@@ -50,7 +48,6 @@ class GridManager : public Object, public GridQueryService {
     GameplayRules rules_{};
     StdRandomSource default_random_;
     RandomSource *random_ = &default_random_;
-    real_t world_width_ = rules_.viewport_width * static_cast<real_t>(rules_.world_multiplier);
     real_t camera_x_ = rules_.viewport_width / 2.0F;
 };
 

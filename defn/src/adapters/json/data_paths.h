@@ -18,6 +18,8 @@ inline constexpr auto LEVELS_DIRECTORY = "res://data/levels";
 // differing only in when that threat arrives.
 inline constexpr auto LAB_LEVELS_DIRECTORY = "res://data/lab";
 inline constexpr auto CAMPAIGN_MAP_DATA = "res://data/campaign_map.json";
+// The endless schedule and the ground it is fought on. A measurement, not a preference -- see ENDLESS_MODE.md.
+inline constexpr auto ENDLESS_DATA = "res://data/endless.json";
 inline constexpr auto MENU_DATA = "res://data/menu_data.json";
 inline constexpr auto UI_THEME = "res://data/ui_theme.json";
 inline constexpr auto MUSIC_PLAYLIST_DATA = "res://data/music_playlist.json";

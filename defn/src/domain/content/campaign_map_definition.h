@@ -6,6 +6,7 @@
 
 #include "content_values.h"
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -34,11 +35,23 @@ struct CampaignMapMissionDefinition {
     CampaignPreviewDefinition preview;
 };
 
+// The endless beacon: a place on the map rather than a sixth mission. It is deliberately not a
+// `CampaignMapMissionDefinition` -- the mission list drives the "N / 5 SECURED" count, the chained routes and the
+// initial selection, and none of those should change because a mode was added.
+struct CampaignEndlessDefinition {
+    Vector2 position_normalized;
+    std::string title;
+    std::string tagline;
+    std::string requires_completed;
+    CampaignPreviewDefinition preview;
+};
+
 struct CampaignMapDefinition {
     /// Shown as the map's heading. Content owns what the campaign is called; the theme owns how it reads.
     std::string title;
     CampaignTextureDefinition background;
     std::vector<CampaignMapMissionDefinition> missions;
+    std::optional<CampaignEndlessDefinition> endless;
 };
 
 } // namespace defn

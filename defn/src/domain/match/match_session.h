@@ -25,6 +25,8 @@ struct MatchRuntimeState {
     int initial_integrity = 3;
     int enemies_killed = 0;
     int kill_score = 0;
+    int survival_bonus = 0;
+    int wave_reached = 0;
     int living_enemies = 0;
     bool all_spawned = false;
     bool game_over = false;
@@ -44,6 +46,16 @@ class MatchSession {
     void spend_energy(int amount);
     void tick_energy();
     void set_base_health(int current_health);
+
+    // Income scaling applied on top of what the campaign upgrades already grant. A mode whose difficulty compounds
+    // has to be able to lean on the economy without rebuilding it: the scale moves what a kill pays, and leaves the
+    // score a kill is worth alone.
+    void set_bounty_scale(double scale);
+
+    // Points awarded for reaching a wave rather than for killing anything, so a run's length is legible in its score
+    // instead of living on a second axis.
+    void award_survival_bonus(int points);
+    void record_wave_reached(int wave);
 
     void record_enemy_spawned();
     void mark_all_spawns_complete() { state_.all_spawned = true; }
@@ -69,6 +81,8 @@ class MatchSession {
     static int calculate_hearts_from_health(int health);
 
     MatchConfig config_{};
+    // What the campaign's upgrades alone grant, so a mode scale is applied to that rather than compounding on itself.
+    double base_bounty_multiplier_ = 1.0;
     MatchRuntimeState state_{};
 };
 

@@ -32,10 +32,8 @@ Dictionary make_global_data() {
     Dictionary gameplay_rules;
     gameplay_rules["viewport_width"] = 1280;
     gameplay_rules["viewport_height"] = 720;
-    gameplay_rules["world_multiplier"] = 3;
     gameplay_rules["breach_x"] = 96.0;
     gameplay_rules["spawn_offset"] = 64.0;
-    gameplay_rules["friendly_world_margin"] = 128.0;
     global_data["gameplay_rules"] = gameplay_rules;
 
     return global_data;

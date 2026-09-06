@@ -7,6 +7,9 @@
 #include "sim_roster.h"
 #include "sim_world.h"
 
+#include <span>
+#include <vector>
+
 namespace defn {
 
 namespace {
@@ -185,6 +188,51 @@ DEFN_TEST(engagement_lab_buys_nothing_with_no_budget) {
 
     DEFN_CHECK(allocation.mix.empty());
     DEFN_CHECK_EQ(allocation.energy_spent, 0);
+}
+
+DEFN_TEST(engagement_lab_apportions_fractional_costs) {
+    // Threat costs are ratios against `grime`, not integers, and the whole hostile roster is priced this way.
+    const std::vector<UnitCost> costs = {{.unit_id = "grime", .cost = 1.0}, {.unit_id = "wrecker", .cost = 3.75}};
+    const MixShape shape = {{.unit_id = "grime", .weight = 2.0}, {.unit_id = "wrecker", .weight = 1.0}};
+
+    // 20 along 2:1 is 13.33 of grime and 6.67 of wrecker: 13 grime and 1 wrecker, and the wrecker's 0.78 remainder
+    // beats the grime's 0.33 for what is left.
+    const BudgetAllocation allocation = allocate_budget(std::span<const UnitCost>(costs), shape, 20.0);
+
+    DEFN_CHECK_EQ(count_of(allocation.mix, "grime"), 13);
+    DEFN_CHECK_EQ(count_of(allocation.mix, "wrecker"), 1);
+    DEFN_CHECK_CLOSE(allocation.budget_spent, 16.75, 1e-9);
+}
+
+DEFN_TEST(engagement_lab_keeps_a_fractional_shape_alive_at_a_small_budget) {
+    const std::vector<UnitCost> costs = {{.unit_id = "grime", .cost = 1.0}, {.unit_id = "hound", .cost = 4.76}};
+    const MixShape shape = {{.unit_id = "grime", .weight = 1.0}, {.unit_id = "hound", .weight = 1.0}};
+
+    // 4.5 each. Flooring alone buys four grime and no hound at all -- a mono-stack where the schedule asked for two
+    // kinds of pressure, which is exactly the failure the largest-remainder walk exists to prevent. The hound was
+    // rounded down hardest (0.95 of one), so the leftover 5.0 goes to it.
+    const BudgetAllocation allocation = allocate_budget(std::span<const UnitCost>(costs), shape, 9.0);
+
+    DEFN_CHECK_EQ(count_of(allocation.mix, "grime"), 4);
+    DEFN_CHECK_EQ(count_of(allocation.mix, "hound"), 1);
+    DEFN_CHECK_CLOSE(allocation.budget_spent, 8.76, 1e-9);
+}
+
+DEFN_TEST(engagement_lab_prices_the_catalog_overload_through_the_same_apportionment) {
+    // A regression guard on the matrix numbers: the catalog path now reads costs and hands them to the generalised
+    // walk, and must still buy exactly what it bought before.
+    const SimRoster roster = make_priced_roster();
+    const MixShape shape = {{.unit_id = "cheap", .weight = 2.0}, {.unit_id = "dear", .weight = 1.0}};
+    const std::vector<UnitCost> costs = {{.unit_id = "cheap", .cost = 20.0}, {.unit_id = "dear", .cost = 40.0}, {.unit_id = "grunt", .cost = 0.0}};
+
+    for (const double budget : {20.0, 55.0, 60.0, 100.0, 137.0, 400.0}) {
+        const BudgetAllocation from_catalog = allocate_budget(roster, shape, budget);
+        const BudgetAllocation from_costs = allocate_budget(std::span<const UnitCost>(costs), shape, budget);
+
+        DEFN_CHECK_EQ(count_of(from_catalog.mix, "cheap"), count_of(from_costs.mix, "cheap"));
+        DEFN_CHECK_EQ(count_of(from_catalog.mix, "dear"), count_of(from_costs.mix, "dear"));
+        DEFN_CHECK_EQ(from_catalog.energy_spent, from_costs.energy_spent);
+    }
 }
 
 DEFN_TEST(engagement_lab_bisects_to_a_budget_that_wins) {

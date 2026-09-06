@@ -50,8 +50,17 @@ bool ProgressionCatalog::load_from_data(const Dictionary &data) {
         level_unlocks_.push_back(unlock);
     }
 
+    endless_requires_completed_ = String();
+    const Dictionary endless = data.get("endless", Dictionary());
+    const Variant endless_gate = endless.get("requires_completed", Variant());
+    if (endless_gate.get_type() == Variant::STRING) {
+        endless_requires_completed_ = String(endless_gate);
+    }
+
     return true;
 }
+
+std::string ProgressionCatalog::get_endless_requires_completed() const { return to_std_string(endless_requires_completed_); }
 
 std::vector<ProgressionLevelUnlock> ProgressionCatalog::get_progression_level_unlocks() const {
     std::vector<ProgressionLevelUnlock> result;

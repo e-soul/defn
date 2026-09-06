@@ -7,6 +7,7 @@
 #include "content_repository.h"
 #include "content_validator.h"
 #include "data_paths.h"
+#include "endless_schedule_loader.h"
 #include "json_file_loader.h"
 #include "level_loader.h"
 #include "menu_data_loader.h"
@@ -41,10 +42,8 @@ Dictionary make_global_data() {
     Dictionary gameplay_rules;
     gameplay_rules["viewport_width"] = 1280;
     gameplay_rules["viewport_height"] = 720;
-    gameplay_rules["world_multiplier"] = 3;
     gameplay_rules["breach_x"] = 96.0;
     gameplay_rules["spawn_offset"] = 64.0;
-    gameplay_rules["friendly_world_margin"] = 128.0;
     global_data["gameplay_rules"] = gameplay_rules;
 
     Dictionary field_promotion;
@@ -746,6 +745,65 @@ DEFN_TEST(json_file_loader_reads_dictionary_and_rejects_bad_inputs) {
     remove_test_file(invalid_path);
 }
 
+DEFN_TEST(endless_schedule_loader_reads_the_shipped_level) {
+    const auto definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
+    DEFN_REQUIRE(definition.has_value());
+
+    // The level authors no waves: the generator supplies every one of them, and an empty wave list is also what
+    // makes the HUD read the wave count as unbounded.
+    DEFN_CHECK(definition->level.waves.empty());
+    DEFN_CHECK(!definition->level.background_path.empty());
+    DEFN_CHECK(definition->level.starting_core_resource > 0);
+    DEFN_CHECK(definition->level.base_integrity > 0);
+}
+
+DEFN_TEST(endless_schedule_loader_reads_the_shipped_tuning) {
+    const auto definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
+    DEFN_REQUIRE(definition.has_value());
+
+    const EndlessTuning &tuning = definition->schedule.tuning;
+    DEFN_CHECK(tuning.base_budget > 0.0);
+    // A ramp that does not rise is not a ramp, and a decay that does not fall is not a counter-pressure.
+    DEFN_CHECK(tuning.escalation > 1.0);
+    DEFN_CHECK(tuning.bounty_decay > 0.0);
+    DEFN_CHECK(tuning.bounty_decay <= 1.0);
+    DEFN_CHECK(tuning.budget_ceiling > tuning.base_budget);
+}
+
+DEFN_TEST(endless_schedule_loader_prices_every_unit_the_shipped_shapes_name) {
+    const auto definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
+    DEFN_REQUIRE(definition.has_value());
+
+    // A unit a shape names but nothing prices is silently skipped by the apportionment, so the wave comes out the
+    // wrong shape rather than failing loudly.
+    const auto priced = [&definition](const MixWeight &weight) {
+        return std::ranges::any_of(definition->schedule.threat_costs,
+                                   [&weight](const UnitCost &cost) { return cost.unit_id == weight.unit_id && cost.cost > 0.0; });
+    };
+    const bool drift_is_priced =
+        std::ranges::all_of(definition->schedule.drift, [&priced](const ShapeKeyframe &keyframe) { return std::ranges::all_of(keyframe.weights, priced); });
+    const bool set_pieces_are_priced = std::ranges::all_of(definition->schedule.set_pieces, [&priced](const SetPiece &set_piece) {
+        return set_piece.period > 0 && std::ranges::all_of(set_piece.weights, priced);
+    });
+
+    DEFN_CHECK(!definition->schedule.drift.empty());
+    DEFN_CHECK(!definition->schedule.set_pieces.empty());
+    DEFN_CHECK(drift_is_priced);
+    DEFN_CHECK(set_pieces_are_priced);
+}
+
+DEFN_TEST(endless_schedule_loader_falls_back_to_the_tuning_defaults) {
+    Dictionary data;
+    data["level"] = Dictionary();
+    const auto definition = EndlessScheduleLoader::load_from_data(data);
+
+    DEFN_REQUIRE(definition.has_value());
+    const EndlessTuning defaults;
+    DEFN_CHECK_CLOSE(definition->schedule.tuning.escalation, defaults.escalation, 1e-9);
+    DEFN_CHECK(definition->schedule.threat_costs.empty());
+    DEFN_CHECK(definition->schedule.drift.empty());
+}
+
 DEFN_TEST(progression_save_repository_round_trips_player_profile) {
     const String path = "user://defn_progression_save_roundtrip_test.json";
     remove_test_file(path);
@@ -758,6 +816,8 @@ DEFN_TEST(progression_save_repository_round_trips_player_profile) {
     profile.owned_upgrade_counts["quick_reload"] = 2;
     profile.claimed_level_upgrades["level_01"] = "quick_reload";
     profile.claimed_rescue_drafts["level_02"] = 1;
+    profile.endless_best_wave[0] = 17;
+    profile.endless_best_score[0] = 4820;
 
     DEFN_REQUIRE(ProgressionSaveRepository::save(path, profile));
     const auto loaded = ProgressionSaveRepository::load(path);
@@ -769,6 +829,28 @@ DEFN_TEST(progression_save_repository_round_trips_player_profile) {
     DEFN_CHECK_EQ(loaded->owned_upgrade_counts.at("quick_reload"), 2);
     DEFN_CHECK_EQ(loaded->claimed_level_upgrades.at("level_01"), std::string("quick_reload"));
     DEFN_CHECK_EQ(loaded->claimed_rescue_drafts.at("level_02"), 1);
+    DEFN_CHECK_EQ(loaded->endless_best_wave.at(0), 17);
+    DEFN_CHECK_EQ(loaded->endless_best_score.at(0), 4820);
+
+    remove_test_file(path);
+}
+
+DEFN_TEST(progression_save_repository_loads_a_save_written_before_endless_existed) {
+    const String path = "user://defn_progression_save_pre_endless_test.json";
+    remove_test_file(path);
+
+    // Exactly what the shipped game wrote before the mode existed. It has to load unchanged, with an empty record
+    // rather than a parse failure.
+    write_text_file(path, R"({"total_score": 900, "levels_completed": ["level_01"], "best_level_scores": {"level_01": 350},
+                              "owned_upgrade_counts": {"quick_reload": 2}, "claimed_level_upgrades": {"level_01": "quick_reload"},
+                              "rescue_drafts_claimed": {"level_02": 1}})");
+
+    const auto loaded = ProgressionSaveRepository::load(path);
+    DEFN_REQUIRE(loaded.has_value());
+    DEFN_CHECK_EQ(loaded->total_score, 900);
+    DEFN_CHECK_EQ(loaded->best_level_scores.at("level_01"), 350);
+    DEFN_CHECK(loaded->endless_best_wave.empty());
+    DEFN_CHECK(loaded->endless_best_score.empty());
 
     remove_test_file(path);
 }

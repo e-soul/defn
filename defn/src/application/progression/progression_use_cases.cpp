@@ -155,6 +155,23 @@ void ProgressionUseCases::mark_level_completed(ProgressionProfile &profile, cons
     profile.best_level_scores[level_id] = std::max(level_score, get_highest_level_score(profile, level_id));
 }
 
+EndlessRunRecordResult ProgressionUseCases::record_endless_run(ProgressionProfile &profile, int threat_level, int wave_reached, int score) {
+    const int previous_wave = profile.endless_best_wave.contains(threat_level) ? profile.endless_best_wave.at(threat_level) : 0;
+    const int previous_score = profile.endless_best_score.contains(threat_level) ? profile.endless_best_score.at(threat_level) : 0;
+
+    EndlessRunRecordResult result;
+    result.wave_reached = std::max(wave_reached, 0);
+    result.score = std::max(score, 0);
+    result.record_wave = result.wave_reached > previous_wave;
+    result.record_score = result.score > previous_score;
+    result.record.best_wave = std::max(previous_wave, result.wave_reached);
+    result.record.best_score = std::max(previous_score, result.score);
+
+    profile.endless_best_wave[threat_level] = result.record.best_wave;
+    profile.endless_best_score[threat_level] = result.record.best_score;
+    return result;
+}
+
 bool ProgressionUseCases::claim_level_upgrade(ProgressionProfile &profile, const std::vector<ProgressionUpgradeCard> &cards, const std::string &level_id,
                                               const std::string &upgrade_id) {
     if (level_id.empty() || upgrade_id.empty() || !can_claim_level_upgrade(profile, level_id) || !can_grant_upgrade(profile, cards, upgrade_id)) {
@@ -221,8 +238,23 @@ ProgressionMatchResult ProgressionCampaignUseCases::complete_level(PlayerProfile
     if (victory) {
         result.new_unlock_level_ids = find_new_unlocks(before, profile, level_unlocks, level_id);
         result.next_level_id = find_next_unlocked_level(profile, level_unlocks, level_id);
+        // Edge-triggered the same way the level unlocks are: the gate has to have been shut before this run and open
+        // after it, so replaying the level announces nothing.
+        const std::string endless_gate = progression_catalog_.get_endless_requires_completed();
+        result.endless_unlocked = !endless_gate.empty() && !is_level_completed(before, endless_gate) && is_level_completed(profile, endless_gate);
     }
     result.reward_draft = build_reward_draft(profile, level_id, victory);
+    profile_repository_.save_profile(profile);
+    return result;
+}
+
+bool ProgressionCampaignUseCases::is_endless_available(const PlayerProfile &profile) const {
+    const std::string endless_gate = progression_catalog_.get_endless_requires_completed();
+    return !endless_gate.empty() && is_level_completed(profile, endless_gate);
+}
+
+EndlessRunRecordResult ProgressionCampaignUseCases::record_endless_run(PlayerProfile &profile, int threat_level, int wave_reached, int score) const {
+    const EndlessRunRecordResult result = ProgressionUseCases::record_endless_run(profile, threat_level, wave_reached, score);
     profile_repository_.save_profile(profile);
     return result;
 }
@@ -286,6 +318,15 @@ ProgressionOverviewSnapshot ProgressionCampaignUseCases::build_progression_overv
     const auto cards = upgrade_catalog_.get_progression_upgrade_cards();
     const auto unlocked_units = get_unlocked_units(profile, upgrade_catalog_.get_base_unit_ids(), cards);
     ProgressionOverviewSnapshot result;
+    result.endless_available = is_endless_available(profile);
+    if (result.endless_available) {
+        const auto wave = profile.endless_best_wave.find(DEFAULT_ENDLESS_THREAT_LEVEL);
+        const auto score = profile.endless_best_score.find(DEFAULT_ENDLESS_THREAT_LEVEL);
+        result.endless_record = {
+            .best_wave = wave == profile.endless_best_wave.end() ? 0 : wave->second,
+            .best_score = score == profile.endless_best_score.end() ? 0 : score->second,
+        };
+    }
 
     if (const auto base = unit_catalog.get_unit("base"); base.has_value()) {
         result.entities.push_back(make_character_entity(*base, ProgressionEntityKind::BASE, true, profile, cards));

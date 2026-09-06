@@ -157,6 +157,12 @@ ProgressionStatsScreenViewModel ProgressionStatsPresenter::present(const Progres
              .selected = entity.id == selection});
     }
     result.selected_entity_id = selection;
+    if (snapshot.endless_available) {
+        result.endless_record_label = snapshot.endless_record.best_wave > 0
+                                          ? "STANDING ENGAGEMENT  BEST WAVE " + std::to_string(snapshot.endless_record.best_wave) + "  /  " +
+                                                std::to_string(snapshot.endless_record.best_score)
+                                          : "STANDING ENGAGEMENT  NO WATCH STOOD";
+    }
     if (selected == nullptr) {
         result.title = "Command Roster";
         result.empty_upgrade_message = "No progression entities are available.";

@@ -30,6 +30,9 @@ enum class SimSpawnRejection { NONE, UNKNOWN_UNIT };
 // the match configuration rather than from its unit entry.
 struct SimSpawnOverrides {
     std::optional<int> hp;
+    // A multiple on the unit's catalog damage. Applied through the same `with_damage_scale` the shipped spawn path
+    // uses, so the conformance suite keeps comparing like with like.
+    double damage_scale = 1.0;
 };
 
 // Every point of damage that landed, in the order it landed. The match driver turns these into bounty, base integrity
@@ -115,9 +118,6 @@ class SimWorld {
     GlobalUnitConfig globals_;
     RandomSource &random_;
     SimWorldConfig config_;
-
-    float world_width_ = 0.0F;
-    float friendly_world_margin_ = 0.0F;
 
     std::vector<SimEntity> entities_;
     std::vector<SimProjectile> projectiles_;

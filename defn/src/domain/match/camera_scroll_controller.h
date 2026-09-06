@@ -15,15 +15,16 @@ namespace defn {
 //
 // The target only moves when a unit crosses a trigger strip -- friendlies push it forward, hostiles pull it back. The
 // player has no direct camera control.
+//
+// Forward is unbounded: there is no far edge to arrive at, so `advance_target` always moves and a level lasts as long
+// as its waves do rather than as long as its ground does. Backward stops where the base is standing.
 class CameraScrollController {
   public:
     // The trigger strips are this wide; a unit's hitbox entering one scrolls the camera.
     static constexpr float TRIGGER_WIDTH = 20.0F;
 
-    void configure(const GameplayRules &rules, float world_width);
+    void configure(const GameplayRules &rules);
 
-    [[nodiscard]] float calculate_world_width(float background_display_width) const;
-    [[nodiscard]] float get_world_width() const { return world_width_; }
     [[nodiscard]] float get_trigger_height() const;
     [[nodiscard]] Vector2 get_camera_anchor_position() const;
     [[nodiscard]] Vector2 get_left_trigger_position() const;
@@ -31,15 +32,14 @@ class CameraScrollController {
 
     // One smoothing step toward the current target. Returns where the camera should be after `delta`.
     [[nodiscard]] Vector2 next_camera_position(const Vector2 &current_position, double delta) const;
+    // Both report whether the target actually moved. Advancing always does; retreating stops at the base.
     bool advance_target();
     bool retreat_target();
 
   private:
     [[nodiscard]] float get_min_target_x() const;
-    [[nodiscard]] float get_max_target_x() const;
 
     GameplayRules rules_{};
-    float world_width_ = rules_.viewport_width * static_cast<float>(rules_.world_multiplier);
     float camera_target_x_ = rules_.viewport_width / 2.0F;
 };
 

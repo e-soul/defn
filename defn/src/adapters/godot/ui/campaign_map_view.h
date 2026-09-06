@@ -35,6 +35,9 @@ class CampaignMapView : public godot::Control {
     void _process(double delta) override;
     void configure(ProgressionService *progression, const godot::Callable &deploy_action, const godot::Callable &back_action);
     void configure(CampaignMapViewModel view_model, const godot::Callable &deploy_action, const godot::Callable &back_action);
+    /// Called when endless mode is deployed. Set alongside `deploy_action`; the map itself decides nothing about
+    /// whether endless is available -- the view model already answered that by carrying an endless entry or not.
+    void set_endless_action(const godot::Callable &endless_action) { endless_action_ = endless_action; }
     [[nodiscard]] LoadingState loading_state() const { return loading_state_; }
     [[nodiscard]] const std::string &selected_level_id() const { return selected_level_id_; }
     [[nodiscard]] OperationDossierView *dossier() const { return dossier_; }
@@ -59,9 +62,12 @@ class CampaignMapView : public godot::Control {
     void build_map_content();
     void build_routes(godot::Control *route_layer);
     void build_nodes(godot::Control *node_layer);
+    void build_endless_button(godot::HBoxContainer *header_row);
     void select_level(const godot::String &level_id);
     void activate_level(const godot::String &level_id);
     void deploy_selected();
+    void deploy_endless();
+    void fade_in_dossier();
     void request_back();
     void layout_reference_surface();
     void configure_ambience(const CampaignMissionViewModel &mission);
@@ -83,6 +89,7 @@ class CampaignMapView : public godot::Control {
     std::unordered_map<std::string, godot::Ref<godot::Texture2D>> loaded_textures_;
     godot::Control *reference_surface_ = nullptr;
     OperationDossierView *dossier_ = nullptr;
+    godot::Callable endless_action_;
     godot::CPUParticles2D *ambience_ = nullptr;
     std::vector<CampaignMapNodeView *> node_views_;
 };

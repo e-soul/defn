@@ -8,7 +8,9 @@
 
 namespace defn {
 
-enum class SceneNavigationDestination { MainMenu, CampaignMap, CurrentLevel, Level, Quit };
+// `Endless` lands in the same scene `Level` does; what differs is the mode the campaign service is carrying, which
+// the game scene reads when it composes the match.
+enum class SceneNavigationDestination { MainMenu, CampaignMap, CurrentLevel, Level, Endless, Quit };
 
 struct SceneNavigationRequest {
     SceneNavigationDestination destination = SceneNavigationDestination::MainMenu;

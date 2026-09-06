@@ -27,12 +27,25 @@ class MatchDirector {
   public:
     bool configure(ProgressionService *campaign, const UnitCatalog *unit_catalog, const GridQueryService *grid, RandomSource *random = nullptr);
     void load_level_definition(const LevelDefinition &level_definition, std::string level_id);
+
+    // Extends the running spawn timeline. A coordinator that generates its own content stays ahead of the cursor
+    // with this rather than the director learning what that content is.
+    void append_wave(const WaveDefinition &wave_definition);
+
+    // Scales what a kill pays without touching what it scores.
+    void set_bounty_scale(double scale);
+    void award_survival_bonus(int points);
+
     void begin_match();
     MatchUpdate update(double delta);
     MatchUpdate handle_deploy_request(const std::string &unit_id);
     MatchUpdate handle_enemy_defeated(const EnemyDefeatedReport &report);
     MatchUpdate handle_base_durability_changed(int current_hp);
     MatchUpdate handle_base_destroyed();
+
+    // Ends the match as a defeat with the base still standing, for a run that stops for a reason other than being
+    // overrun.
+    MatchUpdate concede_match();
     MatchUpdate handle_core_resource_tick();
 
     bool is_game_over() const { return match_session_.is_game_over(); }

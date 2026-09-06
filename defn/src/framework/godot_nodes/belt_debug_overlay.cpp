@@ -23,18 +23,20 @@ BeltDebugOverlay::BeltDebugOverlay() {
 
 void BeltDebugOverlay::_bind_methods() {}
 
-void BeltDebugOverlay::configure(godot::real_t world_width, godot::real_t upper_y, godot::real_t lower_y) {
-    world_width_ = world_width;
+void BeltDebugOverlay::configure(godot::real_t viewport_width, godot::real_t upper_y, godot::real_t lower_y) {
+    half_span_ = viewport_width;
     upper_y_ = upper_y;
     lower_y_ = lower_y;
     queue_redraw();
 }
 
+void BeltDebugOverlay::follow_camera(godot::real_t camera_x) { set_position({camera_x, 0.0F}); }
+
 void BeltDebugOverlay::toggle_visibility() { set_visible(!is_visible()); }
 
 void BeltDebugOverlay::_draw() {
-    draw_line({0.0F, upper_y_}, {world_width_, upper_y_}, LINE_COLOR, LINE_WIDTH, true);
-    draw_line({0.0F, lower_y_}, {world_width_, lower_y_}, LINE_COLOR, LINE_WIDTH, true);
+    draw_line({-half_span_, upper_y_}, {half_span_, upper_y_}, LINE_COLOR, LINE_WIDTH, true);
+    draw_line({-half_span_, lower_y_}, {half_span_, lower_y_}, LINE_COLOR, LINE_WIDTH, true);
 }
 
 } // namespace defn

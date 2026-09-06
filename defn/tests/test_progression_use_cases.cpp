@@ -33,8 +33,10 @@ class FakeProfileRepository final : public ProfileRepository {
 class FakeProgressionCatalog final : public ProgressionCatalogPort {
   public:
     std::vector<ProgressionLevelUnlock> levels;
+    std::string endless_requires_completed;
 
     [[nodiscard]] std::vector<ProgressionLevelUnlock> get_progression_level_unlocks() const override { return levels; }
+    [[nodiscard]] std::string get_endless_requires_completed() const override { return endless_requires_completed; }
 };
 
 class FakeUpgradeCatalog final : public UpgradeCatalogPort {
@@ -261,6 +263,82 @@ DEFN_TEST(progression_campaign_use_cases_builds_ordered_overview_with_effective_
     DEFN_CHECK(overview.entities[3].stats[0].contribution_only);
     DEFN_CHECK_EQ(overview.entities[3].stats[0].contribution, 35.0);
     DEFN_CHECK_CLOSE(overview.entities[3].stats[2].contribution, 0.5, 0.0001);
+}
+
+DEFN_TEST(progression_campaign_use_cases_announce_the_endless_unlock_once) {
+    FakeProfileRepository profile_repository;
+    FakeProgressionCatalog progression_catalog;
+    progression_catalog.levels = {{.level_id = "level_01"}, {.level_id = "level_02", .requires_completed = "level_01"}};
+    progression_catalog.endless_requires_completed = "level_02";
+    FakeUpgradeCatalog upgrade_catalog;
+    tests::ScriptedRandomSource random;
+    ProgressionCampaignUseCases use_cases(profile_repository, progression_catalog, upgrade_catalog, random);
+
+    PlayerProfile profile;
+    DEFN_CHECK(!use_cases.is_endless_available(profile));
+    DEFN_CHECK(!use_cases.complete_level(profile, "level_01", 100, true).endless_unlocked);
+
+    // The run that actually opens the gate announces it.
+    DEFN_CHECK(use_cases.complete_level(profile, "level_02", 200, true).endless_unlocked);
+    DEFN_CHECK(use_cases.is_endless_available(profile));
+
+    // Replaying it announces nothing, and losing it announces nothing either.
+    DEFN_CHECK(!use_cases.complete_level(profile, "level_02", 250, true).endless_unlocked);
+    DEFN_CHECK(!use_cases.complete_level(profile, "level_02", 10, false).endless_unlocked);
+    DEFN_CHECK(use_cases.is_endless_available(profile));
+}
+
+DEFN_TEST(progression_campaign_use_cases_leave_endless_unavailable_without_a_gate) {
+    FakeProfileRepository profile_repository;
+    FakeProgressionCatalog progression_catalog;
+    progression_catalog.levels = {{.level_id = "level_01"}};
+    FakeUpgradeCatalog upgrade_catalog;
+    tests::ScriptedRandomSource random;
+    ProgressionCampaignUseCases use_cases(profile_repository, progression_catalog, upgrade_catalog, random);
+
+    PlayerProfile profile;
+    DEFN_CHECK(!use_cases.complete_level(profile, "level_01", 100, true).endless_unlocked);
+    DEFN_CHECK(!use_cases.is_endless_available(profile));
+}
+
+DEFN_TEST(progression_use_cases_keep_the_best_endless_wave_and_score_apart) {
+    ProgressionProfile profile;
+
+    const EndlessRunRecordResult first = ProgressionUseCases::record_endless_run(profile, 0, 12, 3400);
+    DEFN_CHECK(first.record_wave);
+    DEFN_CHECK(first.record_score);
+    DEFN_CHECK_EQ(first.record.best_wave, 12);
+    DEFN_CHECK_EQ(first.record.best_score, 3400);
+
+    // A shorter run that scored better moves one record and not the other: the two are separate axes on purpose.
+    const EndlessRunRecordResult second = ProgressionUseCases::record_endless_run(profile, 0, 9, 4100);
+    DEFN_CHECK(!second.record_wave);
+    DEFN_CHECK(second.record_score);
+    DEFN_CHECK_EQ(second.record.best_wave, 12);
+    DEFN_CHECK_EQ(second.record.best_score, 4100);
+
+    // A different threat level keeps its own record rather than inheriting one.
+    const EndlessRunRecordResult other_threat = ProgressionUseCases::record_endless_run(profile, 1, 3, 200);
+    DEFN_CHECK(other_threat.record_wave);
+    DEFN_CHECK_EQ(other_threat.record.best_wave, 3);
+    DEFN_CHECK_EQ(profile.endless_best_wave.at(0), 12);
+    DEFN_CHECK_EQ(profile.endless_best_wave.at(1), 3);
+}
+
+DEFN_TEST(progression_campaign_use_cases_save_the_endless_record) {
+    FakeProfileRepository profile_repository;
+    FakeProgressionCatalog progression_catalog;
+    FakeUpgradeCatalog upgrade_catalog;
+    tests::ScriptedRandomSource random;
+    ProgressionCampaignUseCases use_cases(profile_repository, progression_catalog, upgrade_catalog, random);
+
+    PlayerProfile profile;
+    const EndlessRunRecordResult result = use_cases.record_endless_run(profile, 0, 21, 5600);
+
+    DEFN_CHECK(result.record_wave);
+    DEFN_REQUIRE(profile_repository.stored_profile.has_value());
+    DEFN_CHECK_EQ(profile_repository.stored_profile->endless_best_wave.at(0), 21);
+    DEFN_CHECK_EQ(profile_repository.stored_profile->endless_best_score.at(0), 5600);
 }
 
 } // namespace defn

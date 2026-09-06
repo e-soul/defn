@@ -33,6 +33,7 @@
 #include "score_screen_view.h"
 #include "scripted_random_source.h"
 #include "selection_indicator.h"
+#include "ui_theme_provider.h"
 #include "unit.h"
 #include "unit_factory.h"
 #include "unit_selection_controller.h"
@@ -482,7 +483,6 @@ GameplayRules make_camera_test_rules() {
     GameplayRules rules;
     rules.viewport_width = 1000.0F;
     rules.viewport_height = 600.0F;
-    rules.world_multiplier = 4;
     rules.belt_top_y = 100.0F;
     rules.belt_bottom_y = 300.0F;
     rules.scroll_trigger_extra_height = 80.0F;
@@ -491,29 +491,29 @@ GameplayRules make_camera_test_rules() {
 }
 
 bool camera_scroll_controller_has_initial_positions(const CameraScrollController &controller) {
-    return nearly_equal(controller.get_world_width(), 3000.0) && nearly_equal(controller.calculate_world_width(700.0F), 2800.0) &&
-           nearly_equal(controller.get_trigger_height(), 280.0) && nearly_equal(controller.get_camera_anchor_position().x, 500.0) &&
+    return nearly_equal(controller.get_trigger_height(), 280.0) && nearly_equal(controller.get_camera_anchor_position().x, 500.0) &&
            nearly_equal(controller.get_camera_anchor_position().y, 300.0) && nearly_equal(controller.get_left_trigger_position().x, 250.0) &&
            nearly_equal(controller.get_left_trigger_position().y, 200.0) && nearly_equal(controller.get_right_trigger_position().x, 750.0) &&
            nearly_equal(controller.get_right_trigger_position().y, 200.0);
 }
 
-bool background_build_matches_rules(const GameBackgroundBuildResult &result, const GameplayRules &rules) {
-    if (result.background == nullptr || result.background->get_child_count() != 1) {
+bool background_build_matches_rules(const Parallax2D *background, const GameplayRules &rules) {
+    if (background == nullptr || background->get_child_count() != 1) {
         return false;
     }
 
-    const auto *sprite = Object::cast_to<Sprite2D>(result.background->get_child(0));
+    const auto *sprite = Object::cast_to<Sprite2D>(background->get_child(0));
     if (sprite == nullptr || !sprite->get_texture().is_valid()) {
         return false;
     }
 
     const godot::Vector2 texture_size = sprite->get_texture()->get_size();
     const real_t expected_scale = rules.viewport_height / texture_size.y;
-    const real_t expected_width = texture_size.x * expected_scale * static_cast<real_t>(rules.world_multiplier);
-    return String(result.background->get_name()) == "Background" && nearly_equal(result.world_width, expected_width) &&
-           nearly_equal(result.background->get_repeat_size().x, texture_size.x * expected_scale) &&
-           result.background->get_repeat_times() == rules.world_multiplier && nearly_equal(sprite->get_scale().x, expected_scale) &&
+    const real_t display_width = texture_size.x * expected_scale;
+    // The repeat is a drawing window, so it is sized to cover the screen rather than to bound a world.
+    const auto expected_repeat = static_cast<int32_t>(std::ceil(rules.viewport_width / display_width)) + GameBackgroundBuilder::REPEAT_MARGIN;
+    return String(background->get_name()) == "Background" && nearly_equal(background->get_repeat_size().x, display_width) &&
+           background->get_repeat_times() == expected_repeat && nearly_equal(sprite->get_scale().x, expected_scale) &&
            nearly_equal(sprite->get_scale().y, expected_scale) && !sprite->is_centered();
 }
 
@@ -652,6 +652,59 @@ DEFN_TEST(score_screen_presenter_handles_null_parent_and_defeat_without_next_lev
     DEFN_REQUIRE(find_button_by_text(view.overlay, "Campaign") != nullptr);
 
     memdelete(parent);
+}
+
+DEFN_TEST(score_screen_presenter_announces_the_endless_unlock_and_offers_it) {
+    auto *parent = memnew(Node);
+
+    ScoreScreenModel unlocked;
+    unlocked.victory = true;
+    unlocked.hearts_total = 4;
+    unlocked.endless = {.unlocked = true, .available = true};
+    const ScoreScreenViewNodes view = ScoreScreenView::show(parent, unlocked, {});
+
+    DEFN_REQUIRE(view.overlay != nullptr);
+    DEFN_CHECK(has_label_text(view.overlay, "NEW UNLOCK: ENDLESS MODE!"));
+    DEFN_CHECK(find_button_by_text(view.overlay, "Endless") != nullptr);
+    DEFN_CHECK(find_button_by_text(view.overlay, "Retry") != nullptr);
+
+    memdelete(parent);
+}
+
+DEFN_TEST(score_screen_presenter_reads_a_finished_run_as_over_rather_than_lost) {
+    auto *parent = memnew(Node);
+
+    ScoreScreenModel run;
+    run.hearts_total = 4;
+    run.survival_bonus = 425;
+    run.level_score = 1325;
+    run.endless = {.available = true, .run = true, .wave_reached = 17, .best_wave = 17, .best_score = 1325, .record_wave = true, .record_score = true};
+    const ScoreScreenViewNodes view = ScoreScreenView::show(parent, run, {});
+
+    DEFN_REQUIRE(view.overlay != nullptr);
+    DEFN_CHECK(has_all_labels(view.overlay, {"RUN OVER", "Wave Reached:", "Survival Bonus:", "Best Run:"}));
+    // The forward action is a fresh run, in the slot the ordinary retry would have taken.
+    DEFN_CHECK(find_button_by_text(view.overlay, "Retry") != nullptr);
+    DEFN_CHECK(find_button_by_text(view.overlay, "Next Level") == nullptr);
+    DEFN_CHECK(find_button_by_text(view.overlay, "Endless") == nullptr);
+
+    memdelete(parent);
+}
+
+DEFN_TEST(hud_reads_an_unbounded_run_as_a_count_rather_than_a_fraction) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
+    // An endless level authors no waves, so the wave count arrives as zero and there is no denominator to show.
+    hud->update_wave(12, 0);
+    DEFN_CHECK(has_all_labels(hud, {"12"}));
+    Node *total = find_node_named(hud, "WaveTotal");
+    if (total != nullptr) {
+        DEFN_CHECK(!Object::cast_to<Control>(total)->is_visible());
+    }
+
+    hud->update_wave(2, 5);
+    DEFN_CHECK(has_all_labels(hud, {"2", "/ 5"}));
 }
 
 DEFN_TEST(hud_builds_instrument_pods_and_tracks_match_state) {
@@ -1235,6 +1288,81 @@ DEFN_TEST(campaign_map_loading_selects_the_presented_initial_mission) {
     DEFN_REQUIRE(campaign_map->dossier() != nullptr);
 }
 
+namespace {
+
+/// A one-mission map carrying the endless entry, ready for inspection.
+CampaignMapView *build_beacon_map(GodotObjectOwner<CampaignMapView> &owner) {
+    CampaignMapView *campaign_map = owner.get();
+    const CampaignTextureDefinition texture{.path = "res://assets/campaign/desert_outpost_preview.jpg"};
+    CampaignMapViewModel view_model{
+        .background = texture,
+        .missions = {{.level_id = "level_01", .name = "First", .preview = {.texture = texture}}},
+        .endless = CampaignEndlessViewModel{.title = "Standing Engagement",
+                                            .tagline = "Hold the line.",
+                                            .preview = {.texture = texture},
+                                            .position_x = 0.685F,
+                                            .position_y = 0.5F,
+                                            .best_wave = 17,
+                                            .best_score = 4820,
+                                            .base_starting_energy = 105,
+                                            .effective_starting_energy = 125,
+                                            .base_integrity = 4,
+                                            .effective_base_integrity = 5,
+                                            .record_label = "BEST  WAVE 17  /  4820",
+                                            .route_from_index = 0},
+        .initial_selected_level_id = "level_01",
+    };
+    campaign_map->configure(std::move(view_model), {}, {});
+    return pump_campaign_map_loading(campaign_map) ? campaign_map : nullptr;
+}
+
+} // namespace
+
+DEFN_TEST(campaign_map_shows_an_endless_mode_button_centred_on_the_header) {
+    GodotObjectOwner<CampaignMapView> owner(memnew(CampaignMapView));
+    CampaignMapView *campaign_map = build_beacon_map(owner);
+    DEFN_REQUIRE(campaign_map != nullptr);
+
+    Node *header_row = campaign_map->get_node_or_null("ReferenceSurface/HeaderRow");
+    DEFN_REQUIRE(header_row != nullptr);
+    Button *endless_button = find_card_by_title(header_row, "Endless Mode");
+    DEFN_REQUIRE(endless_button != nullptr);
+    DEFN_CHECK_EQ(endless_button->get_name(), String("EndlessButton"));
+
+    // The breadcrumb and the secured count sit either side of the button in the header row, so it lands between
+    // them rather than hugging one edge -- an HBoxContainer places children in child order, so this pins that
+    // order without depending on a layout pass having already run.
+    auto *breadcrumb = Object::cast_to<Control>(header_row->get_node_or_null("Breadcrumb"));
+    auto *secured = Object::cast_to<Control>(header_row->get_node_or_null("SecuredCount"));
+    DEFN_REQUIRE(breadcrumb != nullptr);
+    DEFN_REQUIRE(secured != nullptr);
+    DEFN_CHECK(breadcrumb->get_index() < endless_button->get_index());
+    DEFN_CHECK(endless_button->get_index() < secured->get_index());
+}
+
+DEFN_TEST(campaign_map_endless_button_deploys_directly_without_opening_the_dossier) {
+    GodotObjectOwner<CampaignMapView> owner(memnew(CampaignMapView));
+    GodotObjectOwner<Button> deployed_marker(memnew(Button));
+    CampaignMapView *campaign_map = build_beacon_map(owner);
+    DEFN_REQUIRE(campaign_map != nullptr);
+    deployed_marker.get()->show();
+    campaign_map->set_endless_action(Callable(deployed_marker.get(), "hide"));
+
+    Node *header_row = campaign_map->get_node_or_null("ReferenceSurface/HeaderRow");
+    DEFN_REQUIRE(header_row != nullptr);
+    Button *endless_button = find_card_by_title(header_row, "Endless Mode");
+    DEFN_REQUIRE(endless_button != nullptr);
+    OperationDossierView *dossier = campaign_map->dossier();
+    DEFN_REQUIRE(dossier != nullptr);
+
+    // Pressing the header button deploys straight into the run: there is no endless variant to compare it
+    // against the way a mission choice has siblings, so the dossier stays exactly as it was.
+    endless_button->emit_signal("pressed");
+
+    DEFN_CHECK(!deployed_marker.get()->is_visible());
+    DEFN_CHECK(!has_label_containing(dossier, "STANDING ENGAGEMENT"));
+}
+
 DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
     const TreeMountedNode<MenuManager> menu_manager_owner;
     CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
@@ -1421,7 +1549,7 @@ DEFN_TEST(pause_menu_builds_buttons_and_toggles_tree_pause) {
 DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
     const GameplayRules rules = make_camera_test_rules();
     CameraScrollController controller;
-    controller.configure(rules, 3000.0F);
+    controller.configure(rules);
 
     DEFN_CHECK(camera_scroll_controller_has_initial_positions(controller));
     DEFN_CHECK(controller.advance_target());
@@ -1436,6 +1564,30 @@ DEFN_TEST(camera_scroll_controller_positions_triggers_and_updates_grid_camera) {
     DEFN_CHECK_CLOSE(camera_position.y, 300.0, 0.001);
 
     DEFN_CHECK(controller.retreat_target());
+    DEFN_CHECK_CLOSE(controller.get_camera_anchor_position().x, 500.0, 0.001);
+    DEFN_CHECK(!controller.retreat_target());
+}
+
+// The belt has no far edge, so advancing never runs out of room -- and the triggers the camera carries with it stay
+// the same distance apart however far it has gone. Retreating still stops at the base.
+DEFN_TEST(camera_scroll_controller_advances_without_a_far_edge) {
+    const GameplayRules rules = make_camera_test_rules();
+    CameraScrollController controller;
+    controller.configure(rules);
+
+    constexpr int STEPS = 500;
+    for (int step = 0; step < STEPS; ++step) {
+        DEFN_CHECK(controller.advance_target());
+    }
+
+    // 500 quarter-viewport steps from the opening anchor at half a viewport.
+    DEFN_CHECK_CLOSE(controller.get_camera_anchor_position().x, 125500.0, 0.001);
+    DEFN_CHECK_CLOSE(controller.get_right_trigger_position().x - controller.get_left_trigger_position().x, 500.0, 0.001);
+
+    for (int step = 0; step < STEPS; ++step) {
+        DEFN_CHECK(controller.retreat_target());
+    }
+
     DEFN_CHECK_CLOSE(controller.get_camera_anchor_position().x, 500.0, 0.001);
     DEFN_CHECK(!controller.retreat_target());
 }
@@ -1636,12 +1788,11 @@ DEFN_TEST(belt_debug_overlay_starts_hidden_and_toggles_visibility) {
 DEFN_TEST(game_background_builder_builds_parallax_background_from_texture) {
     GameplayRules rules = make_camera_test_rules();
     rules.viewport_height = 360.0F;
-    rules.world_multiplier = 3;
 
-    const GameBackgroundBuildResult result = GameBackgroundBuilder::build("res://assets/backgrounds/middle_east_ruin_tiling.png", rules);
-    DEFN_CHECK(background_build_matches_rules(result, rules));
+    Parallax2D *background = GameBackgroundBuilder::build("res://assets/backgrounds/middle_east_ruin_tiling.png", rules);
+    DEFN_CHECK(background_build_matches_rules(background, rules));
 
-    memdelete(result.background);
+    memdelete(background);
 }
 
 DEFN_TEST(attack_target_resolver_maps_battle_entities_and_rejects_plain_nodes) {

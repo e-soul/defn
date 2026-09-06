@@ -123,6 +123,18 @@ std::optional<CampaignMapDefinition> CampaignMapDataLoader::load_from_data(const
         result.missions.push_back(std::move(mission));
     }
 
+    const Variant endless_value = data.get("endless", Variant());
+    if (endless_value.get_type() == Variant::DICTIONARY) {
+        const Dictionary endless_data = endless_value;
+        CampaignEndlessDefinition endless;
+        endless.position_normalized = parse_vector2(endless_data.get("position", Array()), {});
+        endless.title = to_std_string(String(endless_data.get("title", "")));
+        endless.tagline = to_std_string(String(endless_data.get("tagline", "")));
+        endless.requires_completed = to_std_string(String(endless_data.get("requires_completed", "")));
+        endless.preview = parse_preview(endless_data.get("preview", Dictionary()));
+        result.endless = endless;
+    }
+
     return result;
 }
 

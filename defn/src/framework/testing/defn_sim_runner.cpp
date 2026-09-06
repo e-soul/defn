@@ -13,8 +13,6 @@
 #include "upgrade_catalog.h"
 
 #include <godot_cpp/classes/file_access.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
-#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -134,26 +132,6 @@ std::vector<SimPolicySpec> parse_policies(const Dictionary &data, const SimScena
     return specs;
 }
 
-// The shipped world width comes from the background texture, so measure it here rather than guessing in the kernel.
-std::optional<float> measure_world_width(const std::string &background_path, const GameplayRules &rules) {
-    if (background_path.empty()) {
-        return std::nullopt;
-    }
-
-    Ref<Texture2D> texture = ResourceLoader::get_singleton()->load(to_godot_string(background_path));
-    if (!texture.is_valid()) {
-        return std::nullopt;
-    }
-
-    const godot::Vector2 size = texture->get_size();
-    if (size.y <= 0.0F) {
-        return std::nullopt;
-    }
-
-    const float display_width = static_cast<float>(size.x) * (rules.viewport_height / static_cast<float>(size.y));
-    return display_width * static_cast<float>(rules.world_multiplier);
-}
-
 Dictionary make_failure(const String &message) {
     UtilityFunctions::printerr(message);
     Dictionary result;
@@ -234,11 +212,9 @@ Dictionary DefnSimRunner::run_sweep(const Dictionary &args) {
             return make_failure(String("DefnSimRunner: could not load level: ") + to_godot_string(planned_scenario.level_id));
         }
 
-        const std::optional<float> world_width = measure_world_width(level->background_path, globals.gameplay_rules);
         for (int index = 0; index < seed_count; ++index) {
             SimScenario scenario = planned_scenario;
             scenario.seed = planned_scenario.seed + static_cast<std::uint32_t>(index);
-            scenario.world_width = world_width;
 
             SimMatch match(unit_catalog, globals, *level, scenario, base_unit_ids, upgrade_cards);
             const SimMatchReport report = match.run();
@@ -280,8 +256,7 @@ struct PurseProbe {
 };
 
 PurseProbe probe_purse(const UnitDataLoader &unit_catalog, const GlobalUnitConfig &globals, const LevelDefinition &level, const SimScenario &planned,
-                       const std::vector<std::string> &base_unit_ids, const std::vector<ProgressionUpgradeCard> &upgrade_cards,
-                       const std::optional<float> &world_width, int seed_count, int purse) {
+                       const std::vector<std::string> &base_unit_ids, const std::vector<ProgressionUpgradeCard> &upgrade_cards, int seed_count, int purse) {
     // The purse is the *only* thing the bisection varies, so it is overridden on a copy of the level rather than
     // anywhere downstream: progression, bounties and regen then apply to it exactly as they do in a real match.
     LevelDefinition probed = level;
@@ -292,7 +267,6 @@ PurseProbe probe_purse(const UnitDataLoader &unit_catalog, const GlobalUnitConfi
     for (int index = 0; index < seed_count; ++index) {
         SimScenario scenario = planned;
         scenario.seed = planned.seed + static_cast<std::uint32_t>(index);
-        scenario.world_width = world_width;
 
         SimMatch match(unit_catalog, globals, probed, scenario, base_unit_ids, upgrade_cards);
         const SimMatchReport report = match.run();
@@ -362,11 +336,9 @@ Dictionary DefnSimRunner::run_purse_bisection(const Dictionary &args) {
         if (!level) {
             return make_failure(String("DefnSimRunner: could not load level: ") + to_godot_string(planned.level_id));
         }
-        const std::optional<float> world_width = measure_world_width(level->background_path, globals.gameplay_rules);
-
         // The ceiling first: a cell that still loses there is reported unbounded rather than given a bogus number,
         // which is the contract `critical_budget` already keeps for a matrix cell that never wins.
-        PurseProbe best = probe_purse(unit_catalog, globals, *level, planned, base_unit_ids, upgrade_cards, world_width, seed_count, max_purse);
+        PurseProbe best = probe_purse(unit_catalog, globals, *level, planned, base_unit_ids, upgrade_cards, seed_count, max_purse);
         int probes = 1;
         const bool bounded = best.win_rate >= win_threshold;
         int reported = max_purse;
@@ -376,8 +348,7 @@ Dictionary DefnSimRunner::run_purse_bisection(const Dictionary &args) {
             int high = max_purse;
             for (int iteration = 0; iteration < max_iterations && high - low > tolerance; ++iteration) {
                 const int middle = low + ((high - low) / 2);
-                const PurseProbe measurement =
-                    probe_purse(unit_catalog, globals, *level, planned, base_unit_ids, upgrade_cards, world_width, seed_count, middle);
+                const PurseProbe measurement = probe_purse(unit_catalog, globals, *level, planned, base_unit_ids, upgrade_cards, seed_count, middle);
                 ++probes;
                 if (measurement.win_rate >= win_threshold) {
                     high = middle;

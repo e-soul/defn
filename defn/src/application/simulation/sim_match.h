@@ -4,6 +4,7 @@
 #ifndef SIM_MATCH_H
 #define SIM_MATCH_H
 
+#include "endless_director.h"
 #include "level_definition.h"
 #include "match_director.h"
 #include "player_policy.h"
@@ -69,6 +70,8 @@ class SimMatch {
     SimCamera camera_;
     SimProgression progression_;
     MatchDirector director_;
+    // Set only for an endless run, in which case it drives `director_` and keeps its timeline topped up.
+    std::optional<EndlessDirector> endless_director_;
     SimWorld world_;
     std::unique_ptr<PlayerPolicy> policy_;
     std::vector<UnitConfig> roster_;
@@ -93,6 +96,7 @@ class SimMatch {
     std::vector<float> front_line_trace_;
     std::vector<SimLeakEvent> leak_events_;
     std::vector<double> hostile_spawn_times_;
+    std::vector<int> energy_at_wave_;
     std::vector<bool> death_reported_;
 };
 

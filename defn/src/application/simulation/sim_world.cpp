@@ -3,6 +3,7 @@
 
 #include "sim_world.h"
 
+#include "hostile_scaling.h"
 #include "unit_runtime_config_resolver.h"
 #include "unit_runtime_profile.h"
 
@@ -60,17 +61,15 @@ int take_damage(SimEntity &entity, int amount) {
 } // namespace
 
 SimWorld::SimWorld(const UnitCatalog &catalog, const GlobalUnitConfig &globals, RandomSource &random, const SimWorldConfig &config)
-    : catalog_(catalog), globals_(globals), random_(random), config_(config) {
-    const GameplayRules &rules = globals_.gameplay_rules;
-    world_width_ = rules.viewport_width * static_cast<float>(rules.world_multiplier);
-    friendly_world_margin_ = rules.friendly_world_margin;
-}
+    : catalog_(catalog), globals_(globals), random_(random), config_(config) {}
 
 SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector2 position, const SimSpawnOverrides &overrides) {
-    const std::optional<UnitConfig> config = catalog_.get_unit(unit_id);
-    if (!config.has_value()) {
+    const std::optional<UnitConfig> catalog_config = catalog_.get_unit(unit_id);
+    if (!catalog_config.has_value()) {
         return {.rejection = SimSpawnRejection::UNKNOWN_UNIT};
     }
+
+    const std::optional<UnitConfig> config = with_damage_scale(*catalog_config, overrides.damage_scale);
 
     const UnitRuntimeProfile profile = UnitRuntimeProfile::from_unit_config(*config);
     const ResolvedUnitRuntimeConfig resolved = resolve_unit_runtime_config(to_runtime_range_config(*config), random_);
@@ -381,15 +380,7 @@ void SimWorld::move(SimEntity &entity) const {
     }
 
     const float displacement = entity.move_speed_pixels_per_second * static_cast<float>(config_.fixed_delta_seconds);
-    if (entity.side == UnitSide::FRIENDLY) {
-        const float max_x = world_width_ - friendly_world_margin_;
-        if (entity.position.x < max_x) {
-            entity.position.x = std::min(entity.position.x + displacement, max_x);
-        }
-        return;
-    }
-
-    entity.position.x -= displacement;
+    entity.position.x += entity.side == UnitSide::FRIENDLY ? displacement : -displacement;
 }
 
 // Mirrors DamageDispatcher::apply plus the death handling GameManager wires up through the "died" signal.

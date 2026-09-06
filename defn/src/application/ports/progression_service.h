@@ -28,6 +28,15 @@ class ProgressionService {
     [[nodiscard]] virtual std::string get_frontier_level_id() const = 0;
     [[nodiscard]] virtual int get_highest_level_score(const std::string &level_id) const = 0;
     [[nodiscard]] virtual std::string get_current_level_id() const = 0;
+
+    // Endless mode. Defaulted rather than pure so that a service which only ever plays campaign levels -- the
+    // simulator's, and the fakes in the tests -- does not have to answer for a mode it never enters.
+    [[nodiscard]] virtual MatchMode get_match_mode() const { return MatchMode::CAMPAIGN; }
+    [[nodiscard]] virtual bool is_endless_available() const { return false; }
+    [[nodiscard]] virtual EndlessRecord get_endless_record() const { return {}; }
+    virtual bool select_endless() { return false; }
+    virtual EndlessRunRecordResult record_endless_run(int /*wave_reached*/, int /*score*/) { return {}; }
+
     [[nodiscard]] virtual std::vector<ProgressionLevelUnlock> get_level_unlock_data() const = 0;
 
     // Effective gameplay modifiers derived from owned upgrades

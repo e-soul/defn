@@ -2,10 +2,8 @@
   "gameplay_rules": {
     "viewport_width": 1920.0,
     "viewport_height": 1080.0,
-    "world_multiplier": 4,
     "breach_x": 50.0,
     "spawn_offset": 100.0,
-    "friendly_world_margin": 100.0,
     "scroll_trigger_extra_height": 400.0,
     "camera_scroll_step_factor": 0.25
   },

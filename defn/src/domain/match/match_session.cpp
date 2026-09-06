@@ -10,6 +10,7 @@ namespace defn {
 
 void MatchSession::start(const MatchConfig &config) {
     config_ = config;
+    base_bounty_multiplier_ = config.bounty_multiplier;
     const int base_max_health = std::max(config.initial_integrity, 0) * BASE_HEALTH_PER_HEART;
     state_ = MatchRuntimeState{
         .core_resource = config.starting_core_resource,
@@ -42,6 +43,12 @@ void MatchSession::tick_energy() { state_.core_resource += config_.energy_regen_
 
 void MatchSession::set_base_health(int current_health) { state_.base_health = std::clamp(current_health, 0, state_.base_max_health); }
 
+void MatchSession::set_bounty_scale(double scale) { config_.bounty_multiplier = base_bounty_multiplier_ * std::max(scale, 0.0); }
+
+void MatchSession::award_survival_bonus(int points) { state_.survival_bonus += std::max(points, 0); }
+
+void MatchSession::record_wave_reached(int wave) { state_.wave_reached = std::max(state_.wave_reached, wave); }
+
 void MatchSession::record_enemy_spawned() { ++state_.living_enemies; }
 
 int MatchSession::record_enemy_died(int base_bounty) {
@@ -63,7 +70,9 @@ int MatchSession::calculate_integrity_bonus() const { return get_base_integrity(
 
 int MatchSession::calculate_completion_bonus(bool victory) { return victory ? 100 : 0; }
 
-int MatchSession::calculate_level_score(bool victory) const { return state_.kill_score + calculate_integrity_bonus() + calculate_completion_bonus(victory); }
+int MatchSession::calculate_level_score(bool victory) const {
+    return state_.kill_score + calculate_integrity_bonus() + state_.survival_bonus + calculate_completion_bonus(victory);
+}
 
 MatchSummaryModel MatchSession::build_end_game_summary(bool victory, int new_total_score, const std::string &current_level_id, const std::string &next_level_id,
                                                        const std::vector<std::string> &new_unlocks) const {
@@ -74,9 +83,11 @@ MatchSummaryModel MatchSession::build_end_game_summary(bool victory, int new_tot
     summary.hearts_remaining = get_base_integrity();
     summary.hearts_total = state_.initial_integrity;
     summary.integrity_bonus = calculate_integrity_bonus();
+    summary.survival_bonus = state_.survival_bonus;
     summary.completion_bonus = calculate_completion_bonus(victory);
     summary.level_score = calculate_level_score(victory);
     summary.new_total_score = new_total_score;
+    summary.wave_reached = state_.wave_reached;
     summary.current_level_id = current_level_id;
     summary.next_level_id = next_level_id;
     summary.new_unlocks = new_unlocks;

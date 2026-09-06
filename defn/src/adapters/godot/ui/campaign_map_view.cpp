@@ -7,6 +7,7 @@
 #include "campaign_map_node_view.h"
 #include "campaign_map_view_model.h"
 #include "data_paths.h"
+#include "endless_schedule_loader.h"
 #include "godot_string.h"
 #include "level_loader.h"
 #include "operation_dossier_view.h"
@@ -32,7 +33,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <unordered_set>
 
 namespace defn {
@@ -63,6 +63,8 @@ GColor route_color(CampaignRouteState state) {
         return UiThemeProvider::color("accent");
     case CampaignRouteState::LOCKED:
         return UiThemeProvider::color("route_locked");
+    case CampaignRouteState::STANDING:
+        return UiThemeProvider::color("route_standing");
     }
     return UiThemeProvider::color("state_locked");
 }
@@ -243,7 +245,25 @@ bool CampaignMapView::compose_view_model() {
         fail_loading("No campaign operations are available.");
         return false;
     }
-    view_model_ = CampaignMapPresenter::present(*loaded_map, levels);
+    CampaignEndlessPresentationSource endless;
+    endless.unlocked = progression_->is_endless_available();
+    if (endless.unlocked) {
+        const EndlessRecord record = progression_->get_endless_record();
+        endless.best_wave = record.best_wave;
+        endless.best_score = record.best_score;
+        const auto endless_definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
+        if (!endless_definition.has_value()) {
+            UtilityFunctions::printerr("CampaignMapView: Failed to load the endless definition.");
+            fail_loading("Campaign definitions are incomplete.");
+            return false;
+        }
+        endless.base_starting_energy = endless_definition->level.starting_core_resource;
+        endless.effective_starting_energy = progression_->get_effective_starting_energy(endless_definition->level.starting_core_resource);
+        endless.base_integrity = endless_definition->level.base_integrity;
+        endless.effective_base_integrity = progression_->get_effective_base_integrity(endless_definition->level.base_integrity);
+    }
+
+    view_model_ = CampaignMapPresenter::present(*loaded_map, levels, endless);
     return true;
 }
 
@@ -260,6 +280,9 @@ bool CampaignMapView::queue_texture_requests() {
     unique_paths.insert(view_model_.background.path);
     for (const auto &mission : view_model_.missions) {
         unique_paths.insert(mission.preview.texture.path);
+    }
+    if (view_model_.endless.has_value() && !view_model_.endless->preview.texture.path.empty()) {
+        unique_paths.insert(view_model_.endless->preview.texture.path);
     }
     auto *loader = ResourceLoader::get_singleton();
     for (const std::string &path : unique_paths) {
@@ -446,13 +469,13 @@ void CampaignMapView::build_map_content() {
     header_backplate->set_mouse_filter(MOUSE_FILTER_IGNORE);
     reference_surface_->add_child(header_backplate);
 
-    // Both readings sit on the header's centre line and stop the same distance in from its edges, so the row
-    // stays balanced whatever the reference width becomes.
+    // The breadcrumb and the secured count carry equal expand weight so that whatever sits between them -- here,
+    // the endless button -- lands on the header's centre line regardless of how wide either label is.
     auto *header_row = memnew(HBoxContainer);
     header_row->set_name("HeaderRow");
     header_row->set_position({header_margin, 0.0F});
     header_row->set_size({reference.x - (header_margin * 2.0F), header_height});
-    header_row->set_mouse_filter(MOUSE_FILTER_IGNORE);
+    header_row->set_mouse_filter(MOUSE_FILTER_PASS);
     reference_surface_->add_child(header_row);
 
     auto *breadcrumb = make_label(to_godot_string(view_model_.title), "screen_heading");
@@ -461,9 +484,12 @@ void CampaignMapView::build_map_content() {
     breadcrumb->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
     header_row->add_child(breadcrumb);
 
+    build_endless_button(header_row);
+
     auto *secured = make_label(vformat("%d / %d SECURED", view_model_.completed_count, view_model_.missions.size()), "screen_heading");
     secured->set_name("SecuredCount");
     set_state_tint(secured, "state_success");
+    secured->set_h_size_flags(SIZE_EXPAND_FILL);
     secured->set_vertical_alignment(VERTICAL_ALIGNMENT_CENTER);
     secured->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     header_row->add_child(secured);
@@ -473,6 +499,7 @@ void CampaignMapView::build_map_content() {
     dossier_->set_position({UiThemeProvider::metric("map_dossier_x", 1408), UiThemeProvider::metric("map_dossier_y", 124)});
     dossier_->set_size({UiThemeProvider::metric("operation_dossier_width", 464), UiThemeProvider::metric("operation_dossier_height", 866)});
     dossier_->connect("deploy_requested", callable_mp(this, &CampaignMapView::activate_level));
+    dossier_->connect("endless_requested", callable_mp(this, &CampaignMapView::deploy_endless));
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
     reference_surface_->add_child(dossier_);
 }
@@ -517,6 +544,23 @@ void CampaignMapView::build_nodes(Control *node_layer) {
     }
 }
 
+void CampaignMapView::build_endless_button(HBoxContainer *header_row) {
+    if (!view_model_.endless.has_value()) {
+        return;
+    }
+
+    // A header button rather than a plate squeezed onto the map: it reads as a mode switch, not a sixth mission,
+    // and it does not need to fight the mission chain for a free pocket of art. It deploys directly rather than
+    // opening the dossier first -- there is nothing to compare it against the way a mission choice has siblings.
+    const CardNodes card = make_card({.variant = "secondary", .layout = CardLayout::Horizontal}, callable_mp(this, &CampaignMapView::deploy_endless));
+    card.button->set_name("EndlessButton");
+    card.button->set_h_size_flags(SIZE_SHRINK_CENTER);
+    card.button->set_v_size_flags(SIZE_SHRINK_CENTER);
+    add_card_icon(card, make_icon("wave", UiThemeProvider::metric("map_endless_button_icon_size", 28)));
+    card.text->add_child(make_card_title("Endless Mode"));
+    header_row->add_child(card.button);
+}
+
 void CampaignMapView::select_level(const String &level_id) {
     const std::string selected = to_std_string(level_id);
     const CampaignMissionViewModel *mission = find_mission(selected);
@@ -532,6 +576,10 @@ void CampaignMapView::select_level(const String &level_id) {
     }
     dossier_->configure(*mission, texture_for(mission->preview.texture));
     configure_ambience(*mission);
+    fade_in_dossier();
+}
+
+void CampaignMapView::fade_in_dossier() {
     dossier_->set_modulate(GColor(1, 1, 1, DOSSIER_FADE_FROM_ALPHA));
     Ref<Tween> tween = create_tween();
     tween->tween_property(dossier_, "modulate:a", 1.0F, UiThemeProvider::motion("fast"));
@@ -540,6 +588,13 @@ void CampaignMapView::select_level(const String &level_id) {
 void CampaignMapView::activate_level(const String &level_id) {
     select_level(level_id);
     deploy_selected();
+}
+
+void CampaignMapView::deploy_endless() {
+    if (!view_model_.endless.has_value() || !endless_action_.is_valid()) {
+        return;
+    }
+    endless_action_.call();
 }
 
 void CampaignMapView::deploy_selected() {

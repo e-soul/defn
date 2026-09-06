@@ -4,6 +4,7 @@
 #ifndef SIM_ENGAGEMENT_LAB_H
 #define SIM_ENGAGEMENT_LAB_H
 
+#include "force_mix.h"
 #include "sim_world.h"
 #include "unit_definition.h"
 
@@ -13,24 +14,6 @@
 #include <vector>
 
 namespace defn {
-
-// One entry of a force: a unit id and how many of them stand on the belt.
-struct MixEntry {
-    std::string unit_id;
-    int count = 0;
-};
-
-// A force with explicit counts. This is what the lab actually spawns.
-using ForceMix = std::vector<MixEntry>;
-
-// A force described by *shape* rather than size: relative weights that an energy budget is spent along. Two mixes
-// with the same shape are the same strategy played at different budgets, which is the axis `critical_budget` bisects.
-struct MixWeight {
-    std::string unit_id;
-    double weight = 0.0;
-};
-
-using MixShape = std::vector<MixWeight>;
 
 // Where the two lines stand and how long the lab waits for a decision. Fixed for every measurement, because the only
 // thing that may differ between cells is the compositions.
@@ -70,15 +53,6 @@ struct AveragedEngagement {
     double friendlies_lost = 0.0;
 };
 
-// The order a mix takes the field in. Entries are interleaved round-robin rather than concatenated, so a 2:1 mix does
-// not silently become "the first-listed unit is the whole front line" -- placement decides who trades first, and a
-// concatenated order would measure the ordering rather than the composition.
-[[nodiscard]] std::vector<std::string> expand_mix(const ForceMix &mix);
-
-[[nodiscard]] ForceMix mono_mix(std::string unit_id, int count);
-
-[[nodiscard]] int total_units(const ForceMix &mix);
-
 [[nodiscard]] EngagementOutcome run_engagement_once(const UnitCatalog &catalog, const GlobalUnitConfig &globals, const ForceMix &friendlies,
                                                     const ForceMix &hostiles, std::uint32_t seed, const LabSetup &setup = {});
 
@@ -88,13 +62,9 @@ struct AveragedEngagement {
 // Seeds `2026, 2027, ...`, which is what the balance tables have always averaged over.
 [[nodiscard]] std::vector<std::uint32_t> default_seeds(int count);
 
-struct BudgetAllocation {
-    ForceMix mix;
-    int energy_spent = 0;
-};
-
-// Spends `budget` along `shape`. Largest-remainder allocation, not naive flooring: flooring collapses a 2:1 mix into
-// a mono-stack at small budgets, which would make every low-budget probe of the bisection measure the wrong thing.
+// Spends `budget` along `shape`, pricing each unit at its catalog energy cost. A thin reading of the catalog on top
+// of the generalised apportionment in `force_mix.h`; units the catalog does not price are skipped, which is why a
+// hostile shape -- every hostile carries `bounty` and `cost: 0` -- has to be priced through the span overload.
 [[nodiscard]] BudgetAllocation allocate_budget(const UnitCatalog &catalog, const MixShape &shape, double budget);
 
 struct CriticalBudgetOptions {

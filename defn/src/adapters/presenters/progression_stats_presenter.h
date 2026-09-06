@@ -47,6 +47,8 @@ struct ProgressionStatsScreenViewModel {
     std::vector<ProgressionStatRowViewModel> stats;
     std::vector<ProgressionUpgradeChipViewModel> upgrades;
     std::string empty_upgrade_message;
+    // Empty until endless is unlocked, which is what the view reads to decide whether to show the line at all.
+    std::string endless_record_label;
     std::string all_upgrades_label = "All Owned Upgrades";
     std::string back_label = "Back";
 };

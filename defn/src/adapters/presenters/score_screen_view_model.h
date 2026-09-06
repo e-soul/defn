@@ -19,9 +19,11 @@ struct ScoreScreenPresentationInput {
     int hearts_remaining = 0;
     int hearts_total = 0;
     int integrity_bonus = 0;
+    int survival_bonus = 0;
     int completion_bonus = 0;
     int level_score = 0;
     int new_total_score = 0;
+    ScoreScreenEndlessModel endless;
     std::string next_level_id;
     bool reward_available = false;
     bool reward_requires_selection = false;
@@ -37,7 +39,13 @@ struct ScoreScreenViewModel {
     std::vector<std::pair<std::string, std::string>> stat_rows;
     bool next_level_button_visible = false;
     bool next_level_button_enabled = true;
+    bool retry_button_visible = true;
     bool retry_button_enabled = true;
+    // The one endless action. On a campaign score screen it reads "Endless" and starts the mode; on a run-over
+    // screen it reads "Retry" and starts a fresh run, which is the same call either way.
+    bool endless_button_visible = false;
+    bool endless_button_enabled = true;
+    std::string endless_button_label;
     bool campaign_button_enabled = true;
     bool reward_available = false;
     std::string reward_title;

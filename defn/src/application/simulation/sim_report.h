@@ -49,6 +49,11 @@ struct SimMatchReport {
     int base_max_health = 0;
     int kill_score = 0;
     int level_score = 0;
+    // How far an endless run got. Zero for a campaign level, where the wave count is authored rather than reached.
+    int waves_reached = 0;
+    // Energy held when each wave opened. A run whose economy is snowballing shows this trending up; the endless
+    // bounty decay is tuned until it does not.
+    std::vector<int> energy_at_wave;
 
     // Wasted economy: the integral of unspent energy over time. High means the player banked what it could have spent.
     double energy_idle_integral = 0.0;
