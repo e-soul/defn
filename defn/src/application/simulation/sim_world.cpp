@@ -97,6 +97,7 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     const Vector2 anchor = muzzle_anchor(*config);
     entity.muzzle_offset = {.x = anchor.x * config->scale, .y = anchor.y * config->scale};
     entity.move_speed_pixels_per_second = config->move_speed_pixels_per_second;
+    entity.belt_slide_speed_pixels_per_second = config->belt_slide_speed_pixels_per_second;
     entity.combat_enabled = profile.enable_combat;
     entity.movement_enabled = profile.enable_movement;
     entity.animation.configure(config->animations);
@@ -221,6 +222,9 @@ void SimWorld::apply_commands(SimEntity &entity, const std::vector<CombatCommand
             break;
         case CombatCommandType::MOVE:
             move(entity);
+            break;
+        case CombatCommandType::SLIDE_BELT:
+            slide_belt(entity, command.target_position.y);
             break;
         case CombatCommandType::PLAY_POSE:
             apply_pose(entity, command.pose);
@@ -381,6 +385,15 @@ void SimWorld::move(SimEntity &entity) const {
 
     const float displacement = entity.move_speed_pixels_per_second * static_cast<float>(config_.fixed_delta_seconds);
     entity.position.x += entity.side == UnitSide::FRIENDLY ? displacement : -displacement;
+}
+
+// Mirrors MovementComponent::slide_toward_belt_y, off the same domain step.
+void SimWorld::slide_belt(SimEntity &entity, float target_y) const {
+    if (entity.belt_slide_speed_pixels_per_second <= 0.0F) {
+        return;
+    }
+
+    entity.position.y = advance_belt_slide(entity.position.y, target_y, entity.belt_slide_speed_pixels_per_second, config_.fixed_delta_seconds);
 }
 
 // Mirrors DamageDispatcher::apply plus the death handling GameManager wires up through the "died" signal.

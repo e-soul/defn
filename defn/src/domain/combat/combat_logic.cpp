@@ -17,6 +17,20 @@ float get_forward_distance(UnitSide side, const Vector2 &origin, const Vector2 &
     return origin.x - target_position.x;
 }
 
+float advance_belt_slide(float current_y, float target_y, float speed_pixels_per_second, double delta, float epsilon) {
+    if (speed_pixels_per_second <= 0.0F || delta <= 0.0) {
+        return current_y;
+    }
+
+    const float remaining = target_y - current_y;
+    if (std::abs(remaining) <= std::max(epsilon, 0.0F)) {
+        return target_y;
+    }
+
+    const float step = speed_pixels_per_second * static_cast<float>(delta);
+    return current_y + std::copysign(std::min(step, std::abs(remaining)), remaining);
+}
+
 // A sensor is never allowed to be tighter than the gun. An `aggro_range` left at its default of zero therefore means
 // "see exactly as far as you shoot", which is every unit shipped before pursuit existed and is why turning the
 // mechanism on changes nothing until a catalog entry widens it.
@@ -90,8 +104,11 @@ struct BestTargets {
     EntityId ranged_id;
     Vector2 ranged_position;
     float ranged_score = std::numeric_limits<float>::max();
-    // A preferred-role candidate that is sensed but cannot be attacked from here yet. The reason to keep walking.
+    // The nearest preferred-role candidate that is sensed but cannot be attacked from here yet. The reason to keep
+    // walking, and -- for a melee-only pursuer, whose whole approach happens on this path -- the only lane there is
+    // to slide toward.
     bool preferred_ahead = false;
+    Vector2 preferred_ahead_position;
     // Whether the best thing that *can* be attacked is itself preferred, which is when there is nothing to wait for.
     bool best_is_preferred = false;
 };
@@ -100,6 +117,7 @@ BestTargets scan_targets(const Vector2 &origin, const CombatConfig &config, std:
     BestTargets best;
     float closest_melee_distance = std::numeric_limits<float>::max();
     float best_ranged_score = std::numeric_limits<float>::max();
+    float closest_preferred_ahead_distance = std::numeric_limits<float>::max();
     bool best_is_preferred = false;
 
     for (const CombatTargetSnapshot &snapshot : targets) {
@@ -137,8 +155,10 @@ BestTargets scan_targets(const Vector2 &origin, const CombatConfig &config, std:
         // a minimum range is for.
         if (classify_target_by_distance(config, distance) != AttackMode::NONE) {
             best_is_preferred = true;
-        } else if (distance <= resolve_aggro_range(config)) {
+        } else if (distance <= resolve_aggro_range(config) && distance < closest_preferred_ahead_distance) {
+            closest_preferred_ahead_distance = distance;
             best.preferred_ahead = true;
+            best.preferred_ahead_position = snapshot.position;
         }
     }
 
@@ -183,10 +203,43 @@ bool clears_retarget_margin(float candidate_score, float retained_score) {
     return candidate_score < retained_score - (RANGED_RETARGET_MARGIN * std::abs(retained_score));
 }
 
+// The first enemy this unit will walk into: nearest ahead, inside the sensor, whatever it is. Not a targeting rule --
+// nothing chooses to attack by this -- only the answer to "what is this unit walking at", for a unit that has not
+// picked anything yet because there is nothing it can reach.
+struct NearestAhead {
+    bool found = false;
+    Vector2 position;
+};
+
+NearestAhead find_nearest_ahead(const Vector2 &origin, const CombatConfig &config, std::span<const CombatTargetSnapshot> targets) {
+    NearestAhead nearest;
+    float closest_distance = std::numeric_limits<float>::max();
+
+    for (const CombatTargetSnapshot &snapshot : targets) {
+        if (!snapshot.id.is_valid() || snapshot.dead || snapshot.side == config.side) {
+            continue;
+        }
+
+        const float distance = get_forward_distance(config.side, origin, snapshot.position);
+        if (distance < 0.0F || distance > resolve_aggro_range(config) || distance >= closest_distance) {
+            continue;
+        }
+
+        closest_distance = distance;
+        nearest.found = true;
+        nearest.position = snapshot.position;
+    }
+
+    return nearest;
+}
+
 } // namespace
 
-CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
-                                                   std::span<const CombatTargetSnapshot> targets) {
+namespace {
+
+// Who this unit attacks, if anything. The approach lane is decided separately, below.
+CombatTargetSelection choose_target(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
+                                    std::span<const CombatTargetSnapshot> targets) {
     const RetainedTarget retained = find_retained_target(origin, config, current_target_id, targets);
 
     // Contact is sticky. Who you are standing next to is not a choice a preference gets to revisit, and letting one
@@ -209,7 +262,7 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
     // it out of a fight it is in the middle of is a movement change rather than a targeting one. Nothing declares a
     // preferred role in the shipped catalog yet, so `preferred_ahead` is false everywhere and this never fires.
     if (best.preferred_ahead && !best.best_is_preferred) {
-        return {.pursuing = true};
+        return {.target_position = best.preferred_ahead_position, .pursuing = true};
     }
 
     // Ranged fire re-asks the question, but only answers differently when the answer is clearly better. Below the
@@ -242,6 +295,28 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
     }
 
     return {};
+}
+
+} // namespace
+
+CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
+                                                   std::span<const CombatTargetSnapshot> targets) {
+    CombatTargetSelection selection = choose_target(origin, config, current_target_id, targets);
+
+    // Whatever it settled on is also what it is walking at.
+    if (selection.target_id.is_valid() || selection.pursuing) {
+        selection.has_approach_target = true;
+        selection.approach_position = selection.target_position;
+        return selection;
+    }
+
+    // Nothing in reach and nothing worth declining: the unit walks forward regardless, so the lane it steers for is
+    // the first enemy it is going to arrive at. This is the ordinary case for a rusher for most of its run -- it can
+    // see the line from hundreds of pixels out and cannot select any of it until it is in contact.
+    const NearestAhead nearest = find_nearest_ahead(origin, config, targets);
+    selection.has_approach_target = nearest.found;
+    selection.approach_position = nearest.position;
+    return selection;
 }
 
 namespace {
@@ -309,6 +384,14 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
         step.state.engaged = false;
         step.state.target_id = {};
         return step;
+    }
+
+    // Decided once, before any of the branches below, because the depth axis is independent of what happens on the
+    // forward one: a unit that has stopped to swing should still finish nosing onto its target's lane, and a unit
+    // frozen for a projectile's spawn frame is not thereby facing the wrong way. It reads the approach lane rather
+    // than the selected target, so the curve is spread across the whole run-in.
+    if (input.selection.has_approach_target) {
+        step.intent.belt_slide = {.active = true, .target_y = input.selection.approach_position.y};
     }
 
     const bool mode_changed = input.selection.attack_mode != input.state.attack_mode;

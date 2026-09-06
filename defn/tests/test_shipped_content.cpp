@@ -294,4 +294,26 @@ DEFN_TEST(shipped_mason_costs_the_breacher_twice_what_grime_does) {
     DEFN_CHECK(versus_mason.seconds < versus_grime.seconds);
 }
 
+// The depth axis is opt-in, and the hound is the only unit that has opted in. Pinned as a pair, because either half
+// alone is a weaker claim: a hound that lost its rate would run at a sniper and bite the air a lane above it, and a
+// catalog that quietly handed the rate to everything would make every line converge into a single file.
+//
+// The rate itself is read against the hound's 120 px/s advance and the belt's ~178 px depth: gentle enough to read as
+// a drift rather than a strafe, and quick enough to finish inside the run-in its 600 px aggro range buys it.
+DEFN_TEST(shipped_hound_is_the_only_unit_that_slides_along_the_belt) {
+    UnitDataLoader catalog;
+    DEFN_REQUIRE(catalog.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
+
+    const auto hound = catalog.get_unit("hound");
+    DEFN_REQUIRE(hound.has_value());
+    DEFN_CHECK_EQ(hound->belt_slide_speed_pixels_per_second, 40.0F);
+    DEFN_CHECK(hound->belt_slide_speed_pixels_per_second < hound->move_speed_pixels_per_second);
+
+    for (const char *unit_id : {"base", "breacher", "marksman", "impact", "operator", "grime", "mason", "wrecker", "jackal"}) {
+        const auto other = catalog.get_unit(unit_id);
+        DEFN_REQUIRE(other.has_value());
+        DEFN_CHECK_EQ(other->belt_slide_speed_pixels_per_second, 0.0F);
+    }
+}
+
 } // namespace defn

@@ -328,6 +328,8 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     config.role = parse_unit_role(String(unit_dict.get("role", "none")));
     config.preferred_roles = parse_preferred_roles(unit_dict);
     config.aggro_range = VariantTools::as_float(unit_dict.get("aggro_range", config.aggro_range));
+    config.belt_slide_speed_pixels_per_second =
+        VariantTools::as_float(unit_dict.get("belt_slide_speed_pixels_per_second", config.belt_slide_speed_pixels_per_second));
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
     config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));

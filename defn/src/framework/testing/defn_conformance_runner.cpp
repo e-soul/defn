@@ -84,7 +84,7 @@ bool DefnConformanceRunner::load_content() {
     globals.ranged_attack_range_variation = {.min = 1.0F, .max = 1.0F};
 
     std::vector<UnitConfig> shipped;
-    for (const char *unit_id : {"breacher", "marksman", "grime", "wrecker", "mason"}) {
+    for (const char *unit_id : {"breacher", "marksman", "grime", "wrecker", "mason", "hound", "operator"}) {
         auto config = loader.get_unit(unit_id);
         if (!config) {
             failures_.emplace_back(std::string("missing unit: ") + unit_id);
@@ -182,6 +182,52 @@ bool DefnConformanceRunner::load_content() {
         scenarios_.push_back(scenario);
     }
 
+    // 6. The belt's depth axis, on the pursuit path: a hound spawned off the marksman's lane, which it declines to
+    // stop for anything else and slides onto across the whole run-in. Every scenario before this one stands on a
+    // single BELT_Y, so 6 and 7 are the only places the two sides can be caught disagreeing about y.
+    //
+    // The pair is deliberately small and deliberately starts inside both sensors -- 297 px apart against the
+    // marksman's 650 and the hound's 600 -- and only ever closes, so no sensor edge is crossed during the run. That
+    // constraint exists because the two sides do not model the sensor identically: the game overlaps an `Area2D`
+    // against the target's hitbox circle, while the kernel measures centre to centre, so the game acquires up to one
+    // hitbox radius (5 px, about three frames of closing) earlier. On a single belt line the difference is invisible,
+    // because a target is sensed long before the forward distance lets anyone attack it. Off-lane it is not, and a
+    // scenario that straddled a sensor edge would fail on that gap rather than on anything about y. The gap predates
+    // this scenario -- the same spawns diverge identically with the slide rate zeroed -- and closing it belongs to
+    // whoever takes on the sensor model.
+    {
+        Scenario scenario;
+        scenario.name = "belt_slide";
+        scenario.globals = globals;
+        scenario.roster = shipped;
+        scenario.spawns = {
+            {.unit_id = "marksman", .side = UnitSide::FRIENDLY, .position = {.x = 700.0F, .y = BELT_Y - 80.0F}},
+            {.unit_id = "hound", .side = UnitSide::HOSTILE, .position = {.x = 950.0F, .y = BELT_Y + 80.0F}},
+        };
+        scenario.frames = 900;
+        scenarios_.push_back(scenario);
+    }
+
+    // 7. The same axis on the ordinary path, which is the one nearly every hound in a real match takes. The operator
+    // is a specialist, so nothing about it is preferred and the hound never enters pursuit; it is also melee-only,
+    // so it cannot select the operator either, until the last 100 px. For 200 px of run-in it has *nothing selected
+    // and nothing pursued* and is steering purely by what it is walking at -- the case scenario 6 does not reach.
+    //
+    // Same sensor-edge discipline as scenario 6: 340 px apart against the operator's 380 px sensor and the hound's
+    // 600, closing from the first frame, so neither side crosses an acquisition boundary mid-run.
+    {
+        Scenario scenario;
+        scenario.name = "belt_slide_approach";
+        scenario.globals = globals;
+        scenario.roster = shipped;
+        scenario.spawns = {
+            {.unit_id = "operator", .side = UnitSide::FRIENDLY, .position = {.x = 700.0F, .y = BELT_Y - 80.0F}},
+            {.unit_id = "hound", .side = UnitSide::HOSTILE, .position = {.x = 1000.0F, .y = BELT_Y + 80.0F}},
+        };
+        scenario.frames = 900;
+        scenarios_.push_back(scenario);
+    }
+
     return true;
 }
 
@@ -256,6 +302,7 @@ void DefnConformanceRunner::sample_game(int tick) {
 
         sample.alive = !unit->is_dead();
         sample.x = static_cast<float>(unit->get_global_position().x);
+        sample.y = static_cast<float>(unit->get_global_position().y);
         sample.hp = unit->get_current_hp();
         if (auto *animation = Object::cast_to<AnimationController>(unit->get_node_or_null("AnimationController"))) {
             sample.pose = to_int(animation->get_anim_state());
@@ -368,6 +415,7 @@ void DefnConformanceRunner::run_kernel() {
                 if (entity != nullptr) {
                     sample.alive = !entity->dead;
                     sample.x = entity->position.x;
+                    sample.y = entity->position.y;
                     sample.hp = std::max(entity->hp, 0);
                     sample.pose = to_int(entity->animation.get_pose());
                     sample.engaged = entity->combat_state.engaged;
@@ -402,6 +450,10 @@ bool DefnConformanceRunner::compare_entity(std::size_t index, const std::string 
         const int tick = kernel[sample].tick;
         if (std::fabs(game[sample].x - kernel[sample].x) > POSITION_EPSILON) {
             fail(std::format("entity {} tick {} x {:.2f} vs {:.2f}", index, tick, game[sample].x, kernel[sample].x));
+            return false;
+        }
+        if (std::fabs(game[sample].y - kernel[sample].y) > POSITION_EPSILON) {
+            fail(std::format("entity {} tick {} y {:.2f} vs {:.2f}", index, tick, game[sample].y, kernel[sample].y));
             return false;
         }
         if (game[sample].hp != kernel[sample].hp) {

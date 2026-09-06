@@ -14,6 +14,10 @@ void append_movement_commands(const CombatLogicIntent &intent, std::vector<Comba
         commands.push_back({.type = CombatCommandType::MOVE});
     }
 
+    if (intent.belt_slide.active) {
+        commands.push_back({.type = CombatCommandType::SLIDE_BELT, .target_position = {.x = 0.0F, .y = intent.belt_slide.target_y}});
+    }
+
     if (intent.pose != CombatPoseIntent::NONE) {
         commands.push_back({.type = CombatCommandType::PLAY_POSE, .pose = intent.pose});
     }

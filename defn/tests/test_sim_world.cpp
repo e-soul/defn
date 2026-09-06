@@ -774,4 +774,53 @@ DEFN_TEST(sim_world_reports_an_undecided_run_when_the_clock_runs_out) {
     DEFN_CHECK_EQ(report.hostile.alive, 1);
 }
 
+namespace {
+
+// A rusher shaped like the hound: contact only, a sensor far wider than its reach, and legs it never uses here --
+// the forward axis is pinned at zero so the only thing that can move is the slide.
+SimRoster make_belt_slide_roster(float belt_slide_speed) {
+    SimRoster roster;
+
+    UnitConfig rusher = make_unit("rusher", UnitSide::HOSTILE, 200, 15);
+    rusher.move_speed_pixels_per_second = 0.0F;
+    rusher.aggro_range = 600.0F;
+    rusher.belt_slide_speed_pixels_per_second = belt_slide_speed;
+    roster.add(rusher);
+
+    roster.add(make_dummy("post", UnitSide::FRIENDLY, 500));
+
+    return roster;
+}
+
+// The post sits 360 px ahead: sensed from the first tick, and far outside the rusher's 100 px reach for every tick
+// after it. Nothing is ever selected, so whatever happens to y is the approach curve and nothing else.
+float belt_y_after_one_second(float belt_slide_speed) {
+    SimRoster roster = make_belt_slide_roster(belt_slide_speed);
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    const EntityId rusher = world.spawn("rusher", UnitSide::HOSTILE, {.x = 400.0F, .y = BELT_Y + 100.0F}).id;
+    world.spawn("post", UnitSide::FRIENDLY, {.x = 40.0F, .y = BELT_Y});
+    world.begin_run();
+
+    for (int tick = 0; tick < 60; ++tick) {
+        world.tick();
+    }
+
+    const SimEntity *entity = world.find_entity(rusher);
+    DEFN_REQUIRE(entity != nullptr);
+    DEFN_CHECK(!entity->combat_state.engaged);
+    return entity->position.y;
+}
+
+} // namespace
+
+// Sixty ticks at 40 px/s is 40 px off a 100 px gap, closing toward the lane of something it cannot attack yet. This
+// is the curve: a rusher that only started sliding once it had a target would still be sitting on its spawn lane.
+// The tolerance is a hair wider than the rest of the file's because this is sixty accumulated float steps, not one.
+DEFN_TEST(sim_world_slides_toward_a_target_lane_it_cannot_reach_yet) { DEFN_CHECK_CLOSE(belt_y_after_one_second(40.0F), BELT_Y + 60.0, 0.01); }
+
+// The opt-in is the whole safety net for the rest of the catalog: without a rate the unit never leaves the lane it
+// spawned on, however long it has been walking at something.
+DEFN_TEST(sim_world_leaves_a_unit_without_a_slide_rate_on_its_spawn_lane) { DEFN_CHECK_CLOSE(belt_y_after_one_second(0.0F), BELT_Y + 100.0, 0.001); }
+
 } // namespace defn

@@ -675,6 +675,7 @@
       "ranged_damage": 0,
       "ranged_attack_range": 400.0,
       "move_speed_pixels_per_second": 120.0,
+      "belt_slide_speed_pixels_per_second": 40.0,
       "cost": 0,
       "bounty": 5,
       "scale": 0.285,

@@ -112,6 +112,11 @@ void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
             movement->move(delta);
         }
         break;
+    case CombatCommandType::SLIDE_BELT:
+        if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
+            movement->slide_toward_belt_y(static_cast<real_t>(command.target_position.y), delta);
+        }
+        break;
     case CombatCommandType::PLAY_POSE:
         if (animation_ == nullptr) {
             break;

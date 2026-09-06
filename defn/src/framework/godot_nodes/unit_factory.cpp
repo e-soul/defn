@@ -88,7 +88,8 @@ MovementComponent *create_movement_component(Unit *unit) {
     auto *movement = memnew(MovementComponent);
     movement->set_name("MovementComponent");
     unit->add_child(movement);
-    movement->configure(unit, unit->get_side(), unit->get_unit_config().move_speed_pixels_per_second);
+    movement->configure(unit, unit->get_side(), unit->get_unit_config().move_speed_pixels_per_second,
+                        unit->get_unit_config().belt_slide_speed_pixels_per_second);
     return movement;
 }
 

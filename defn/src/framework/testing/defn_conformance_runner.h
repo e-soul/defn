@@ -60,6 +60,7 @@ class DefnConformanceRunner : public Node {
     struct Sample {
         int tick = 0;
         float x = 0.0F;
+        float y = 0.0F;
         int hp = 0;
         int pose = 0;
         int attack_mode = 0;

@@ -120,6 +120,9 @@ struct UnitConfig {
     float minimum_ranged_attack_range = 0.0F;
     RangeVariationConfig ranged_attack_range_variation;
     float move_speed_pixels_per_second = 64.0F;
+    // How fast this unit closes the gap on the belt's depth axis once it holds a target, in pixels per second. Zero is
+    // "does not slide", which is every unit that has not opted in, and leaves its y exactly where it spawned.
+    float belt_slide_speed_pixels_per_second = 0.0F;
     // How hard this unit pulls enemy fire, and which enemy it reaches for itself. The two levers that make a unit's
     // value depend on what else is on the field; both default to no effect.
     float threat_weight = 1.0F;

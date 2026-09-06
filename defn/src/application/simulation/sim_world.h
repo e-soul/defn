@@ -109,6 +109,7 @@ class SimWorld {
     void apply_commands(SimEntity &entity, const std::vector<CombatCommand> &commands);
     static void apply_pose(SimEntity &entity, CombatPoseIntent pose);
     void move(SimEntity &entity) const;
+    void slide_belt(SimEntity &entity, float target_y) const;
     void apply_damage(SimEntity &source, EntityId target_id, int base_damage);
     static void record_effective_damage_dealt(SimEntity &source, int effective_damage);
     [[nodiscard]] bool is_target_out_of_range(const SimEntity &viewer) const;

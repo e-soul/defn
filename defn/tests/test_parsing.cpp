@@ -674,6 +674,31 @@ DEFN_TEST(unit_data_loader_reads_roles_preferences_and_aggro_range) {
     DEFN_CHECK_EQ(parsed->preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::TANK))), 1.0F);
 }
 
+// The depth axis is opt-in, and the opt-in is one JSON key. A key that stopped parsing would leave the rusher on the
+// lane it spawned on and read as "the slide does nothing" rather than "the slide was never configured".
+DEFN_TEST(unit_data_loader_reads_the_belt_slide_speed_and_defaults_it_to_off) {
+    UnitDataLoader loader;
+    Dictionary units;
+    Dictionary hound;
+    hound["side"] = "hostile";
+    hound["belt_slide_speed_pixels_per_second"] = 40.0;
+    units["hound"] = hound;
+    Dictionary plodder;
+    plodder["side"] = "hostile";
+    units["plodder"] = plodder;
+    Dictionary data;
+    data["units"] = units;
+
+    DEFN_REQUIRE(loader.load_from_data(data, Dictionary()));
+    const auto slider = loader.get_unit("hound");
+    const auto plain = loader.get_unit("plodder");
+    DEFN_REQUIRE(slider.has_value());
+    DEFN_REQUIRE(plain.has_value());
+
+    DEFN_CHECK_EQ(slider->belt_slide_speed_pixels_per_second, 40.0F);
+    DEFN_CHECK_EQ(plain->belt_slide_speed_pixels_per_second, 0.0F);
+}
+
 // An unreadable role is not a load failure: the unit keeps playing, visibly wrong, rather than taking the game down.
 DEFN_TEST(unit_data_loader_falls_back_to_no_role_for_an_unknown_name) {
     UnitDataLoader loader;

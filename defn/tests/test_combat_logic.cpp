@@ -7,7 +7,10 @@
 #include "combat_use_cases.h"
 #include "projectile_rules.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
+#include <cstdint>
 
 namespace defn {
 
@@ -939,6 +942,191 @@ DEFN_TEST(advance_combat_returns_projectile_spawn_command_for_projectile_attack)
     DEFN_CHECK_EQ(output.commands[2].projectile.impact_damage.value_or(0), 44);
     DEFN_CHECK_EQ(output.commands[3].type, CombatCommandType::PLAY_EFFECT);
     DEFN_CHECK_EQ(output.commands[3].effect, CombatEffectType::RANGED_SHOOT);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The belt's depth axis.
+// ---------------------------------------------------------------------------------------------------------------
+
+DEFN_TEST(belt_slide_closes_the_gap_at_the_configured_rate) {
+    DEFN_CHECK_CLOSE(advance_belt_slide(100.0F, 200.0F, 40.0F, 0.5), 120.0, 0.001);
+    DEFN_CHECK_CLOSE(advance_belt_slide(200.0F, 100.0F, 40.0F, 0.5), 180.0, 0.001);
+}
+
+// The step is clamped to what is left, so the slide lands on the lane instead of skating past it and coming back.
+DEFN_TEST(belt_slide_never_overshoots_its_lane) {
+    DEFN_CHECK_CLOSE(advance_belt_slide(100.0F, 105.0F, 400.0F, 1.0), 105.0, 0.001);
+    DEFN_CHECK_CLOSE(advance_belt_slide(105.0F, 100.0F, 400.0F, 1.0), 100.0, 0.001);
+}
+
+DEFN_TEST(belt_slide_holds_still_without_a_rate_or_a_frame) {
+    DEFN_CHECK_CLOSE(advance_belt_slide(100.0F, 200.0F, 0.0F, 0.5), 100.0, 0.001);
+    DEFN_CHECK_CLOSE(advance_belt_slide(100.0F, 200.0F, 40.0F, 0.0), 100.0, 0.001);
+}
+
+DEFN_TEST(belt_slide_snaps_once_it_is_inside_the_arrival_epsilon) { DEFN_CHECK_CLOSE(advance_belt_slide(100.0F, 100.001F, 40.0F, 0.5), 100.001, 0.0001); }
+
+namespace {
+
+// A rusher: contact only, and a sensor far wider than the reach. Nothing outside 40 px can be attacked, which is the
+// state a hound spends almost all of its run in.
+CombatConfig make_rusher_config() {
+    CombatConfig config = make_combat_config();
+    config.attack_range = 40.0F;
+    config.ranged_range = -1.0F;
+    config.aggro_range = 600.0F;
+    return config;
+}
+
+CombatTargetSnapshot hostile_at(std::uint64_t entity_id, float pos_x, float pos_y) {
+    return {.id = {.value = entity_id}, .side = UnitSide::HOSTILE, .position = {.x = pos_x, .y = pos_y}};
+}
+
+} // namespace
+
+// The whole point of the mechanic. A rusher cannot *select* anything until it is in contact, so a slide that waited
+// for a selected target would leave it charging down its own lane for the entire run and stepping sideways on
+// arrival. It steers by what it is walking at instead, from the moment it senses it.
+DEFN_TEST(the_approach_lane_is_set_by_an_enemy_that_cannot_be_attacked_yet) {
+    const std::array<CombatTargetSnapshot, 1> field{hostile_at(1, 300.0F, 90.0F)};
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_rusher_config(), {}, field);
+
+    DEFN_CHECK(!selection.engaged);
+    DEFN_CHECK(!selection.target_id.is_valid());
+    DEFN_CHECK(selection.has_approach_target);
+    DEFN_CHECK_CLOSE(selection.approach_position.y, 90.0, 0.001);
+}
+
+// The first thing it will arrive at, which is the one it is going to fight.
+DEFN_TEST(the_approach_lane_is_the_nearest_enemy_ahead) {
+    const std::array<CombatTargetSnapshot, 3> field{
+        hostile_at(1, 300.0F, 90.0F),
+        hostile_at(2, 150.0F, -40.0F),
+        hostile_at(3, 500.0F, 20.0F),
+    };
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_rusher_config(), {}, field);
+
+    DEFN_CHECK(selection.has_approach_target);
+    DEFN_CHECK_CLOSE(selection.approach_position.y, -40.0, 0.001);
+}
+
+// Nothing sensed is nothing to steer for. Behind counts as nothing: a belt unit never turns around on its own.
+DEFN_TEST(there_is_no_approach_lane_past_the_sensor_or_behind_the_unit) {
+    const std::array<CombatTargetSnapshot, 1> too_far{hostile_at(1, 900.0F, 90.0F)};
+    DEFN_CHECK(!select_target_from_snapshots(Vector2{}, make_rusher_config(), {}, too_far).has_approach_target);
+
+    const std::array<CombatTargetSnapshot, 1> behind{hostile_at(1, -50.0F, 90.0F)};
+    DEFN_CHECK(!select_target_from_snapshots(Vector2{}, make_rusher_config(), {}, behind).has_approach_target);
+}
+
+// Once it is in contact the lane is its target's, not the nearest sensed thing's -- that is the one it is fighting.
+DEFN_TEST(the_approach_lane_follows_the_target_once_there_is_one) {
+    const std::array<CombatTargetSnapshot, 2> field{
+        hostile_at(1, 20.0F, 70.0F),
+        hostile_at(2, 300.0F, -30.0F),
+    };
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_rusher_config(), {}, field);
+
+    DEFN_CHECK_EQ(selection.attack_mode, AttackMode::MELEE);
+    DEFN_CHECK_EQ(selection.target_id.value, 1U);
+    DEFN_CHECK(selection.has_approach_target);
+    DEFN_CHECK_CLOSE(selection.approach_position.y, 70.0, 0.001);
+}
+
+// The pursuit return carries no target id, so its lane has to come from somewhere: the candidate being run at.
+DEFN_TEST(pursuit_reports_where_the_pursued_target_stands) {
+    auto field = make_role_field(UnitRole::ASSAULT, UnitRole::SNIPER);
+    field[2].position.y = 55.0F;
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_pursuit_config(3.0F), {}, field);
+
+    DEFN_CHECK(selection.pursuing);
+    DEFN_CHECK(!selection.target_id.is_valid());
+    DEFN_CHECK(selection.has_approach_target);
+    DEFN_CHECK_CLOSE(selection.approach_position.y, 55.0, 0.001);
+}
+
+// Two preferred candidates ahead: the nearer one is the one being run at.
+DEFN_TEST(pursuit_reports_the_nearest_preferred_candidate) {
+    auto field = make_role_field(UnitRole::ASSAULT, UnitRole::SNIPER);
+    field[1].role = UnitRole::SNIPER; // x = 60, ahead of the far candidate at x = 100
+    field[1].position.y = 20.0F;
+    field[2].position.y = 90.0F;
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_pursuit_config(3.0F), {}, field);
+
+    DEFN_CHECK(selection.pursuing);
+    DEFN_CHECK_CLOSE(selection.approach_position.y, 20.0, 0.001);
+}
+
+DEFN_TEST(belt_slide_intent_follows_the_approach_lane) {
+    CombatLogicInput input;
+    input.selection = {.has_approach_target = true, .approach_position = {.x = 300.0F, .y = 64.0F}};
+    input.delta = 1.0 / 60.0;
+
+    const CombatLogicStep step = advance_combat_logic(make_combat_config(), input);
+
+    DEFN_CHECK(step.intent.belt_slide.active);
+    DEFN_CHECK_CLOSE(step.intent.belt_slide.target_y, 64.0, 0.001);
+}
+
+DEFN_TEST(belt_slide_intent_is_absent_without_anything_to_walk_at) {
+    CombatLogicInput input;
+    input.delta = 1.0 / 60.0;
+
+    DEFN_CHECK(!advance_combat_logic(make_combat_config(), input).intent.belt_slide.active);
+}
+
+// A unit under a manual order, or a dead one, is not steering toward anything.
+DEFN_TEST(belt_slide_intent_yields_to_manual_reposition_and_to_death) {
+    CombatLogicInput input;
+    input.selection = {.has_approach_target = true, .approach_position = {.x = 300.0F, .y = 64.0F}};
+    input.delta = 1.0 / 60.0;
+
+    input.manual_repositioning = true;
+    DEFN_CHECK(!advance_combat_logic(make_combat_config(), input).intent.belt_slide.active);
+
+    input.manual_repositioning = false;
+    input.unit_dead = true;
+    DEFN_CHECK(!advance_combat_logic(make_combat_config(), input).intent.belt_slide.active);
+}
+
+namespace {
+
+bool has_slide_belt_command(const AdvanceCombatOutput &output, float expected_target_y) {
+    return std::ranges::any_of(output.commands, [expected_target_y](const CombatCommand &command) {
+        return command.type == CombatCommandType::SLIDE_BELT && std::fabs(command.target_position.y - expected_target_y) < 0.001F;
+    });
+}
+
+} // namespace
+
+// The two axes are independent: stopping to swing does not stop the unit finishing its slide onto the lane, and
+// walking forward does not replace it either.
+DEFN_TEST(slide_belt_command_rides_alongside_both_stop_and_move) {
+    CombatLogicInput engaged;
+    engaged.selection = {.engaged = true,
+                         .attack_mode = AttackMode::MELEE,
+                         .target_id = {.value = 7},
+                         .target_position = {.x = 30.0F, .y = 64.0F},
+                         .has_approach_target = true,
+                         .approach_position = {.x = 30.0F, .y = 64.0F}};
+    engaged.delta = 1.0 / 60.0;
+
+    const AdvanceCombatOutput stopped = advance_combat(make_combat_config(), engaged);
+    DEFN_CHECK_EQ(stopped.commands[0].type, CombatCommandType::STOP);
+    DEFN_CHECK(has_slide_belt_command(stopped, 64.0F));
+
+    CombatLogicInput approaching;
+    approaching.selection = {.has_approach_target = true, .approach_position = {.x = 300.0F, .y = 12.0F}};
+    approaching.delta = 1.0 / 60.0;
+
+    const AdvanceCombatOutput walking = advance_combat(make_combat_config(), approaching);
+    DEFN_CHECK_EQ(walking.commands[0].type, CombatCommandType::MOVE);
+    DEFN_CHECK(has_slide_belt_command(walking, 12.0F));
 }
 
 DEFN_TEST(resolve_projectile_impact_applies_direct_and_filtered_splash_damage) {

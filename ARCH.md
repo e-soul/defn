@@ -325,7 +325,7 @@ Target combat flow:
 
 1. A Godot component collects target snapshots from areas and entity adapters.
 2. A combat use case advances deterministic combat state.
-3. The use case returns commands: stop, move, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
+3. The use case returns commands: stop, move, slide belt, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
 4. The Godot component applies commands to `MovementComponent`, `AnimationController`, `HealthComponent`, `ProjectileAttack`, and VFX/audio adapters.
 
 Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. Animation timing is owned by `UnitAnimationState`, an engine-free model of which animation is current and how far its `AnimationClock` has run, built from the `AnimConfig` a unit declares. It answers whether an attack or shoot animation is on screen, whether it is still inside its `windup_frames`, and when a shot leaves the muzzle; those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. `AnimationController` owns one such state and is pure presentation around it: the `AnimatedSprite2D` never runs an animation of its own, it is parked on whichever frame the state has reached. The frame index therefore remains the single source of truth for what the player sees, the same index is available without Godot, and the simulator drives the identical code rather than a second copy of it.
@@ -344,6 +344,28 @@ Projectile flight is `ProjectileFlight`, an engine-free straight line at a fixed
 the shot left the muzzle. There is no homing, so a target that keeps walking is missed by the blast -- though the direct
 target still takes impact damage, which `resolve_projectile_impact` applies by identity rather than by proximity.
 `ProjectileAttack` is the humble object around that model: sprite, explosion, audio and `queue_free`, nothing else.
+
+The belt has a depth axis as well as a forward one, and the two move independently. A unit slides along Y toward the
+lane of whatever it is walking at, so a rusher curves onto its victim's line across the whole approach and arrives
+beside it rather than a hundred pixels above it. The split follows the forward axis exactly: the domain decides *which*
+lane (`BeltSlideIntent` on `CombatLogicIntent`, carried out as a `SLIDE_BELT` command), and whatever is doing the moving
+owns *how fast* (`belt_slide_speed_pixels_per_second`, held by `MovementComponent` in the game and by `SimEntity` in the
+kernel, both stepping the same `advance_belt_slide`). The rate defaults to zero, which is "does not slide" and is every
+unit that has not opted in.
+
+What it steers by is the *approach lane*, not the selected target, and the difference between those two is the
+difference between a curve and a sidestep. `CombatTargetSelection` therefore reports `approach_position` alongside
+whatever it selected: the target being fought, the candidate being pursued, or -- having neither -- the nearest enemy
+ahead inside the sensor. A unit only selects a target once it can attack it, so a melee rusher has nothing selected for
+almost its entire run; steering by selection would send it straight down its spawn lane and step it sideways on
+arrival. Steering by what it is walking at bends the run from the moment the line comes into sensor range.
+
+`SLIDE_BELT` rides alongside `STOP` and `MOVE` rather than replacing either, because an engaged unit has stopped
+walking and is still expected to finish closing the lane. It is not blocked by the attack windup: that rule exists so a
+committed swing cannot be walked out of, which is a statement about the forward axis, and range classification never
+reads Y. The step is clamped to the remaining gap, so convergence is monotone and cannot oscillate. Y is invisible to
+range classification but not to sensing, which is a circle on both sides; that is why the kernel slides too, and why
+`scons conformance` now traces Y alongside X.
 
 While an attack animation runs, the unit holds position and is never re-posed. Its windup frames always play. Past them the backswing is cancelable in exactly one case: nothing is in range and the last target is alive, which means it fled and must be chased. A target that died leaves nothing to chase, so the animation finishes before the unit walks on. Target selection re-engages any other target in range before the disengaged path is ever reached, so re-targeting mid-backswing needs no special handling, and a shorter attack period simply restarts the animation at frame 0. `CombatRuntime` remembers the last selected target so a target that flees during the windup is still recognised as a chase once the windup ends. Manual reposition remains the only override, cancelling the presentation outright while still preserving the cooldown.
 
@@ -371,11 +393,14 @@ facts those rules would otherwise read off nodes:
 
 - `SimEntity` flattens what `Unit` spreads across health, movement, combat and animation components.
 - `SimWorld::build_snapshots` replaces the `Area2D` overlap query with a radius scan, and re-adds the retained target
-  the way `CombatTargetSelector` does, so the chase decision still sees a target that left the sensor.
+  the way `CombatTargetSelector` does, so the chase decision still sees a target that left the sensor. The scan
+  measures centre to centre while the game's overlap includes the target's hitbox circle, so the game acquires up to
+  one hitbox radius earlier. On a single belt line that is invisible, because a target is sensed long before the
+  forward distance lets anyone attack it; off-lane, where sensing can be the binding constraint, it is not.
 - `SimWorld::apply_commands` mirrors `CombatRuntime::apply_command` case for case; the presentation-only commands are
   the only ones it drops.
-- Movement and damage are the ten-line equivalents of `MovementComponent::move`, `HealthComponent::take_damage` and
-  `DamageDispatcher::apply`.
+- Movement and damage are the ten-line equivalents of `MovementComponent::move`,
+  `MovementComponent::slide_toward_belt_y`, `HealthComponent::take_damage` and `DamageDispatcher::apply`.
 - `SimProjectile` carries what `ProjectileAttack` carries, and `SimWorld::build_impact_snapshots` gathers blast
   candidates in the order the shipped game walks the entity container, direct target first. That order is
   load-bearing: `resolve_projectile_impact` trims its candidate list from the back, so splash victims are chosen by

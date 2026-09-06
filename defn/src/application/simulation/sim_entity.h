@@ -48,6 +48,8 @@ struct SimEntity {
     // every shipped unit today, but a long-range shooter with a real offset would otherwise mistime its flights.
     Vector2 muzzle_offset;
     float move_speed_pixels_per_second = 0.0F;
+    // The depth axis. Zero for every unit that has not opted in, which leaves its y at whatever it spawned on.
+    float belt_slide_speed_pixels_per_second = 0.0F;
     int bounty = 0;
     bool combat_enabled = true;
     bool movement_enabled = true;
