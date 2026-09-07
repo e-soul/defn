@@ -251,7 +251,7 @@ DEFN_TEST(endless_generator_ramps_hostile_damage_onto_the_wave_it_generates) {
     DEFN_CHECK_CLOSE(generator.hostile_damage_scale(500), 3.0, 1e-9);
 
     // And it has to reach the wave, not only the arithmetic -- this is what the spawn paths read.
-    DEFN_CHECK_CLOSE(generator.generate(3, random).damage_scale, 1.05 * 1.05, 1e-9);
+    DEFN_CHECK_CLOSE(generator.generate(3, random).scale.damage, 1.05 * 1.05, 1e-9);
 }
 
 DEFN_TEST(endless_generator_leaves_hostile_damage_alone_by_default) {
@@ -264,7 +264,7 @@ DEFN_TEST(endless_generator_leaves_hostile_damage_alone_by_default) {
     for (int wave = 1; wave < 60; ++wave) {
         DEFN_CHECK_CLOSE(generator.hostile_damage_scale(wave), 1.0, 1e-9);
     }
-    DEFN_CHECK_CLOSE(generator.generate(20, random).damage_scale, 1.0, 1e-9);
+    DEFN_CHECK_CLOSE(generator.generate(20, random).scale.damage, 1.0, 1e-9);
 }
 
 DEFN_TEST(endless_generator_reproduces_the_geometric_ramp_at_curve_one) {
@@ -315,6 +315,169 @@ DEFN_TEST(endless_generator_outgrows_its_own_income_above_curve_one) {
     for (int wave = 1; wave < 60; ++wave) {
         DEFN_CHECK(generator.budget(wave + 1) > generator.budget(wave));
     }
+}
+
+namespace {
+
+// The shipped schedule plus an elite ramp: a quarter of every wave from wave 5, at three times hit points.
+EndlessSchedule make_elite_schedule() {
+    EndlessSchedule schedule = make_schedule();
+    schedule.tuning.elite_first_wave = 5;
+    schedule.tuning.elite_fraction_growth = 0.05;
+    schedule.tuning.elite_fraction_cap = 0.25;
+    schedule.tuning.elite_hp = 2.0;
+    schedule.tuning.elite_hp_growth = 1.10;
+    schedule.tuning.elite_hp_cap = 6.0;
+    schedule.tuning.elite_size = 1.35;
+    return schedule;
+}
+
+int count_elites(const WaveDefinition &wave) {
+    return static_cast<int>(std::ranges::count_if(wave.spawns, [](const SpawnDefinition &spawn) { return spawn.scale.hp > 1.0; }));
+}
+
+} // namespace
+
+DEFN_TEST(endless_generator_widens_the_supply_allowance_with_the_wave) {
+    EndlessWaveGenerator generator;
+    EndlessSchedule schedule = make_schedule();
+    schedule.tuning.supply_start = 7.0;
+    schedule.tuning.supply_growth = 0.4;
+    generator.configure(schedule);
+
+    DEFN_CHECK_EQ(generator.supply_cap(1), 7);
+    DEFN_CHECK_EQ(generator.supply_cap(11), 11);
+    DEFN_CHECK_EQ(generator.supply_cap(41), 23);
+}
+
+DEFN_TEST(endless_generator_leaves_the_supply_allowance_alone_by_default) {
+    // Zero start means the schedule has no opinion, and the level's own cap stands. Every authored level is this.
+    EndlessWaveGenerator generator;
+    generator.configure(make_schedule());
+
+    for (int wave = 1; wave < 50; ++wave) {
+        DEFN_CHECK_EQ(generator.supply_cap(wave), 0);
+    }
+}
+
+DEFN_TEST(endless_generator_promotes_no_one_before_the_first_elite_wave) {
+    EndlessWaveGenerator generator;
+    generator.configure(make_elite_schedule());
+    StdRandomSource random(7);
+
+    for (int wave = 1; wave < 5; ++wave) {
+        DEFN_CHECK_CLOSE(generator.elite_fraction(wave), 0.0, 1e-9);
+        DEFN_CHECK_EQ(count_elites(generator.generate(wave, random)), 0);
+    }
+}
+
+DEFN_TEST(endless_generator_elites_are_inert_by_default) {
+    // Every authored level and the shipped default leave elites off entirely, so a mode that knows nothing about
+    // them cannot have its waves quietly reshaped.
+    EndlessWaveGenerator generator;
+    generator.configure(make_schedule());
+    StdRandomSource random(7);
+
+    for (int wave = 1; wave < 60; ++wave) {
+        DEFN_CHECK_CLOSE(generator.elite_fraction(wave), 0.0, 1e-9);
+        DEFN_CHECK_CLOSE(generator.elite_cost_multiplier(wave), 1.0, 1e-9);
+        DEFN_CHECK_EQ(count_elites(generator.generate(wave, random)), 0);
+    }
+}
+
+DEFN_TEST(endless_generator_grows_the_elite_share_and_caps_it) {
+    EndlessWaveGenerator generator;
+    generator.configure(make_elite_schedule());
+
+    DEFN_CHECK_CLOSE(generator.elite_fraction(5), 0.0, 1e-9);
+    DEFN_CHECK_CLOSE(generator.elite_fraction(7), 0.10, 1e-9);
+    DEFN_CHECK_CLOSE(generator.elite_fraction(10), 0.25, 1e-9);
+    // Capped, or a long run reaches a wave that is nothing but elites and the composition question stops being asked.
+    DEFN_CHECK_CLOSE(generator.elite_fraction(200), 0.25, 1e-9);
+}
+
+DEFN_TEST(endless_generator_grows_elite_hit_points_and_caps_them) {
+    EndlessWaveGenerator generator;
+    generator.configure(make_elite_schedule());
+
+    DEFN_CHECK_CLOSE(generator.elite_scale(5).hp, 2.0, 1e-9);
+    DEFN_CHECK_CLOSE(generator.elite_scale(7).hp, 2.0 * 1.10 * 1.10, 1e-9);
+    DEFN_CHECK_CLOSE(generator.elite_scale(500).hp, 6.0, 1e-9);
+
+    // The sprite marks the category and does not track the multiple, so an elite is legible at both ends of a run.
+    DEFN_CHECK_CLOSE(generator.elite_scale(7).size, 1.35, 1e-9);
+    DEFN_CHECK_CLOSE(generator.elite_scale(500).size, 1.35, 1e-9);
+
+    // Nothing about an elite makes it hit harder: hit points multiply every attacker's work by the same factor and
+    // so leave the roster's counters where they were measured, which is the whole reason this is the hp channel.
+    DEFN_CHECK_CLOSE(generator.elite_scale(30).damage, 1.0, 1e-9);
+}
+
+DEFN_TEST(endless_generator_charges_the_budget_for_the_elites_it_promotes) {
+    EndlessWaveGenerator plain;
+    plain.configure(make_schedule());
+    EndlessWaveGenerator elite;
+    elite.configure(make_elite_schedule());
+    StdRandomSource plain_random(3);
+    StdRandomSource elite_random(3);
+
+    const EndlessSchedule schedule = make_schedule();
+    const WaveDefinition plain_wave = plain.generate(30, plain_random);
+    const WaveDefinition elite_wave = elite.generate(30, elite_random);
+
+    // An elite is priced at its hit-point multiple, so promoting bodies buys *fewer* of them for the same measured
+    // threat rather than adding difficulty the schedule never paid for. That is what keeps the late game a wave the
+    // screen can hold instead of a body count no ramp can reach.
+    DEFN_CHECK(elite_wave.spawns.size() < plain_wave.spawns.size());
+    DEFN_CHECK(count_elites(elite_wave) > 0);
+
+    // And the elite wave is worth about what the plain one is, once each elite is counted at its multiple.
+    const double plain_threat = wave_threat(schedule, plain_wave);
+    double elite_threat = 0.0;
+    for (const SpawnDefinition &spawn : elite_wave.spawns) {
+        for (const UnitCost &cost : schedule.threat_costs) {
+            if (cost.unit_id == spawn.type) {
+                elite_threat += cost.cost * spawn.scale.hp;
+            }
+        }
+    }
+    DEFN_CHECK(std::abs(elite_threat - plain_threat) < plain_threat * 0.2);
+}
+
+DEFN_TEST(endless_generator_promotes_the_same_bodies_for_the_same_wave_whatever_the_seed) {
+    // Composition is a pure function of `(schedule, wave)`, and which bodies are elite is part of the composition.
+    // The seed decides only who walks in first.
+    EndlessWaveGenerator generator;
+    generator.configure(make_elite_schedule());
+
+    StdRandomSource first_random(1);
+    StdRandomSource second_random(99);
+    const WaveDefinition first = generator.generate(24, first_random);
+    const WaveDefinition second = generator.generate(24, second_random);
+
+    DEFN_CHECK_EQ(counts_of(first), counts_of(second));
+    DEFN_CHECK_EQ(count_elites(first), count_elites(second));
+}
+
+DEFN_TEST(endless_generator_spreads_promotions_across_the_mix_rather_than_one_unit_type) {
+    // `expand_mix` interleaves the types, so striding through the line lands on a representative sample. Promoting
+    // a block would silently turn every elite wave into a set piece of whichever type was listed first.
+    EndlessWaveGenerator generator;
+    EndlessSchedule schedule = make_elite_schedule();
+    schedule.tuning.elite_fraction_cap = 0.5;
+    schedule.tuning.elite_fraction_growth = 0.5;
+    generator.configure(schedule);
+    StdRandomSource random(5);
+
+    const WaveDefinition wave = generator.generate(30, random);
+    std::map<std::string, int> elite_types;
+    for (const SpawnDefinition &spawn : wave.spawns) {
+        if (spawn.scale.hp > 1.0) {
+            ++elite_types[spawn.type];
+        }
+    }
+
+    DEFN_CHECK(elite_types.size() > 1);
 }
 
 } // namespace defn

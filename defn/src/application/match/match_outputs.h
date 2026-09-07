@@ -4,6 +4,7 @@
 #ifndef MATCH_OUTPUTS_H
 #define MATCH_OUTPUTS_H
 
+#include "hostile_scaling.h"
 #include "match_summary.h"
 #include "unit_runtime_config_resolver.h"
 #include "unit_runtime_profile.h"
@@ -27,9 +28,9 @@ struct SpawnUnitIntent {
     MatchPosition position;
     UnitRuntimeProfile runtime_profile;
     ResolvedUnitRuntimeConfig resolved_runtime_config;
-    // A multiple on the unit's catalog damage, applied identically by both spawn paths. One for everything the
-    // player deploys and for every authored wave.
-    double damage_scale = 1.0;
+    // What this body is multiplied by, applied identically by both spawn paths. Identity for everything the player
+    // deploys and for every authored wave.
+    HostileScale scale;
 };
 
 struct ResourceChanged {

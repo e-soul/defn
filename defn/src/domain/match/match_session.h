@@ -16,6 +16,16 @@ struct MatchConfig {
     int initial_integrity = 3;
     double bounty_multiplier = 1.0;
     int energy_regen_rate = 1;
+    // The reserve the player may hold, once they have spent down to it. Zero is uncapped, which is every authored
+    // campaign level. See `MatchSession::apply_energy_ceiling` for why it engages rather than clamping from the
+    // first tick.
+    int energy_cap = 0;
+    // The most friendlies that may stand on the belt at once. Zero is unlimited.
+    //
+    // This is the one rule that bounds what the player accumulates. Friendlies persist between waves and hostiles do
+    // not, so without a cap the standing line integrates the whole difficulty ramp and settles at a fixed multiple
+    // of any wave -- which is why no escalation rate alone can overrun it. See `ENDLESS_MODE.md`.
+    int supply_cap = 0;
 };
 
 struct MatchRuntimeState {
@@ -28,6 +38,9 @@ struct MatchRuntimeState {
     int survival_bonus = 0;
     int wave_reached = 0;
     int living_enemies = 0;
+    int living_friendlies = 0;
+    // Latched the first time the reserve falls to the cap, and never released.
+    bool energy_ceiling_engaged = false;
     bool all_spawned = false;
     bool game_over = false;
 };
@@ -45,6 +58,19 @@ class MatchSession {
     bool can_spend_energy(int amount) const;
     void spend_energy(int amount);
     void tick_energy();
+
+    // Whether another friendly may take the field. Separate from affordability so a caller can tell the two apart:
+    // a player who cannot afford a unit waits, and a player who is at the supply cap has to lose one first.
+    [[nodiscard]] bool has_supply_room() const;
+    void record_friendly_deployed();
+    void record_friendly_died();
+
+    // Raises or lowers the standing-line allowance mid-match. A mode whose difficulty compounds needs the line to
+    // grow with it, or the only settings that keep the middle of a run tense are the ones that end it in eight
+    // minutes -- measured, see `ENDLESS_MODE.md`. Never below what is already deployed: a cap that fell past the
+    // living line would refuse deployments until the player was killed down to it, which reads as the game breaking
+    // rather than as a rule.
+    void set_supply_cap(int cap);
     void set_base_health(int current_health);
 
     // Income scaling applied on top of what the campaign upgrades already grant. A mode whose difficulty compounds
@@ -70,6 +96,10 @@ class MatchSession {
     int get_enemies_killed() const { return state_.enemies_killed; }
     int get_kill_score() const { return state_.kill_score; }
     int get_living_enemies() const { return state_.living_enemies; }
+    int get_living_friendlies() const { return state_.living_friendlies; }
+    int get_supply_cap() const { return config_.supply_cap; }
+    int get_energy_cap() const { return config_.energy_cap; }
+    bool is_energy_ceiling_engaged() const { return state_.energy_ceiling_engaged; }
 
     int calculate_integrity_bonus() const;
     static int calculate_completion_bonus(bool victory);
@@ -79,10 +109,18 @@ class MatchSession {
 
   private:
     static int calculate_hearts_from_health(int health);
+    // Adds to the reserve and returns what actually landed there, which is less than `amount` under the ceiling and
+    // is what a caller should report to the player -- an energy pop for bounty the reserve could not hold would be
+    // the readout lying about the rule.
+    int credit_energy(int amount);
+    void apply_energy_ceiling();
 
     MatchConfig config_{};
     // What the campaign's upgrades alone grant, so a mode scale is applied to that rather than compounding on itself.
     double base_bounty_multiplier_ = 1.0;
+    // The largest line the level itself allows. A schedule may widen the allowance up to this and no further, so a
+    // growth rate cannot quietly repeal the level's own rule.
+    int supply_cap_ceiling_ = 0;
     MatchRuntimeState state_{};
 };
 

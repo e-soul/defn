@@ -68,6 +68,10 @@ SimMatch::SimMatch(const UnitCatalog &catalog, const GlobalUnitConfig &globals, 
 
 void SimMatch::begin() {
     director_.begin_match();
+    if (endless_director_.has_value()) {
+        // After `begin_match`, which is where the session learns its ceilings, exactly as `GameManager` does.
+        endless_director_->begin_run();
+    }
     roster_ = director_.build_available_friendlies();
 
     // The base is a stationary entity carrying the "base" unit entry, with the health the match configuration decided.
@@ -125,7 +129,7 @@ void SimMatch::apply_match_update(const MatchUpdate &update) {
     for (const SpawnUnitIntent &intent : update.spawn_unit_intents) {
         const SimSpawnResult spawned =
             world_.spawn(intent.unit_id, to_unit_side(intent.side), {.x = static_cast<float>(intent.position.x), .y = static_cast<float>(intent.position.y)},
-                         {.damage_scale = intent.damage_scale});
+                         {.scale = intent.scale});
         if (!spawned.succeeded()) {
             continue;
         }
@@ -137,6 +141,11 @@ void SimMatch::apply_match_update(const MatchUpdate &update) {
     }
 
     if (update.wave_changed.has_value()) {
+        // Closed on the wave boundary rather than sampled, so a loss is attributed to the wave it happened in.
+        if (current_wave_ > 0) {
+            friendly_deaths_at_wave_.push_back(friendly_deaths_this_wave_);
+        }
+        friendly_deaths_this_wave_ = 0;
         current_wave_ = update.wave_changed->current_wave;
         energy_at_wave_.push_back(director_.get_core_resource());
     }
@@ -160,9 +169,15 @@ void SimMatch::run_policy() {
         }
 
         const int energy_before = director_.get_core_resource();
+        // Asked before the request, because a refusal carries no reason and the two refusals mean opposite things:
+        // out of energy is a wait, and out of supply is a line that has to lose something first.
+        const bool had_supply_room = director_.has_supply_room();
         const MatchUpdate update = director_.handle_deploy_request(command.unit_id);
         if (update.spawn_unit_intents.empty()) {
-            continue; // unaffordable, unknown, or the match is over: the request simply does nothing
+            if (!had_supply_room) {
+                ++deployments_blocked_;
+            }
+            continue; // capped, unaffordable, unknown, or the match is over: the request simply does nothing
         }
 
         const int spent = energy_before - director_.get_core_resource();
@@ -211,7 +226,12 @@ void SimMatch::report_deaths() {
         }
         if (death.side == UnitSide::HOSTILE) {
             apply_match_update(director_.handle_enemy_defeated({.bounty = death.bounty}));
+            continue;
         }
+        // A friendly leaving the field frees a supply slot, exactly as `GameManager::on_friendly_died` does. The
+        // base is already handled above, so nothing here can double-count it.
+        ++friendly_deaths_this_wave_;
+        apply_match_update(director_.handle_friendly_defeated());
     }
 
     // The base reports its durability whenever it changes; polling once a tick reaches the same state.
@@ -225,10 +245,16 @@ void SimMatch::sample_metrics() {
     energy_idle_integral_ += static_cast<double>(director_.get_core_resource()) * delta;
 
     int live_hostiles = 0;
+    int live_friendlies = 0;
     float front_line = 0.0F;
     bool has_front_line = false;
     for (const SimEntity &entity : world_.get_entities()) {
-        if (entity.dead || entity.side != UnitSide::HOSTILE) {
+        if (entity.dead) {
+            continue;
+        }
+        if (entity.side != UnitSide::HOSTILE) {
+            // The base stands on the friendly side and is not part of the line the supply cap governs.
+            live_friendlies += entity.id == base_id_ ? 0 : 1;
             continue;
         }
         ++live_hostiles;
@@ -238,6 +264,10 @@ void SimMatch::sample_metrics() {
         }
     }
     peak_concurrent_enemies_ = std::max(peak_concurrent_enemies_, live_hostiles);
+    peak_friendlies_ = std::max(peak_friendlies_, live_friendlies);
+    if (first_capped_wave_ == 0 && !director_.has_supply_room()) {
+        first_capped_wave_ = current_wave_;
+    }
 
     front_line_sample_accumulator_ += delta;
     if (front_line_sample_accumulator_ >= FRONT_LINE_SAMPLE_SECONDS) {
@@ -296,10 +326,14 @@ SimMatchReport SimMatch::build_report() const {
     if (endless_director_.has_value()) {
         report.waves_reached = current_wave_;
         report.energy_at_wave = energy_at_wave_;
+        report.friendly_deaths_at_wave = friendly_deaths_at_wave_;
+        report.first_capped_wave = first_capped_wave_;
     }
 
     report.energy_idle_integral = energy_idle_integral_;
     report.peak_concurrent_enemies = peak_concurrent_enemies_;
+    report.peak_friendlies = peak_friendlies_;
+    report.deployments_blocked = deployments_blocked_;
     report.peak_window_5s = peak_spawn_window(hostile_spawn_times_);
     report.energy_spent = energy_spent_;
     report.front_line_trace = front_line_trace_;

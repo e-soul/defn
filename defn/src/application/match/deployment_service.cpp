@@ -61,6 +61,14 @@ DeploymentResult DeploymentService::deploy_friendly(const std::string &unit_id) 
     }
 
     result.unit_cost = config->cost;
+    // Checked before affordability so a capped player is told they are capped rather than told to save up for a
+    // deployment that would be refused with the energy in hand.
+    if (!match_session_->has_supply_room()) {
+        result.failure_reason = DeploymentFailureReason::SUPPLY_CAPPED;
+        result.remaining_energy = match_session_->get_core_resource();
+        return result;
+    }
+
     if (!match_session_->can_spend_energy(config->cost)) {
         result.failure_reason = DeploymentFailureReason::INSUFFICIENT_ENERGY;
         result.remaining_energy = match_session_->get_core_resource();
@@ -74,6 +82,7 @@ DeploymentResult DeploymentService::deploy_friendly(const std::string &unit_id) 
     }
 
     match_session_->spend_energy(config->cost);
+    match_session_->record_friendly_deployed();
     const double spawn_x_pos = grid_->deploy_x();
     const double spawn_y_pos = grid_->sample_belt_y();
 

@@ -70,7 +70,7 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
         return {.rejection = SimSpawnRejection::UNKNOWN_UNIT};
     }
 
-    const std::optional<UnitConfig> config = with_damage_scale(*catalog_config, overrides.damage_scale);
+    const std::optional<UnitConfig> config = with_hostile_scale(*catalog_config, overrides.scale);
 
     const UnitRuntimeProfile profile = UnitRuntimeProfile::from_unit_config(*config);
     const ResolvedUnitRuntimeConfig resolved = resolve_unit_runtime_config(to_runtime_range_config(*config), random_);

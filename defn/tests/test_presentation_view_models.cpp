@@ -308,4 +308,59 @@ DEFN_TEST(menu_view_model_builds_standard_progression_screen) {
     DEFN_CHECK_EQ(progression.back_button.intent.type, MenuIntentType::GotoMenu);
 }
 
+DEFN_TEST(hud_presenter_refuses_every_deploy_card_once_the_line_is_full) {
+    HudPresentationInput input;
+    input.energy = 500; // plenty; affordability is not what is being tested
+    input.supply_cap = 7;
+    input.deploy_cards = {
+        {.unit_id = "breacher", .title = "Breacher", .cost = 20},
+        {.unit_id = "marksman", .title = "Marksman", .cost = 27},
+    };
+
+    input.supply_used = 6;
+    for (const HudDeployCardModel &card : HudPresenter::build(input).deploy_cards) {
+        DEFN_CHECK(card.enabled);
+    }
+
+    // At the cap every card is refused whatever the purse holds, and the card has to say so: a player clicking a
+    // card that looks available and getting nothing reads as the game being broken.
+    input.supply_used = 7;
+    const HudModel full = HudPresenter::build(input);
+    DEFN_CHECK(full.supply.at_cap);
+    for (const HudDeployCardModel &card : full.deploy_cards) {
+        DEFN_CHECK(!card.enabled);
+    }
+}
+
+DEFN_TEST(hud_presenter_reads_supply_against_the_allowance_in_force) {
+    HudPresentationInput input;
+    input.energy = 100;
+    input.supply_used = 7;
+
+    // The allowance widens with the wave in endless, so what arrives here is what it is *now*. Handing the
+    // presenter the level ceiling instead produced "7 / 24" for a player who was full at seven, with every card
+    // clickable and every click refused.
+    input.supply_cap = 7;
+    const HudModel full = HudPresenter::build(input);
+    DEFN_CHECK_EQ(full.supply_text, std::string("7"));
+    DEFN_CHECK_EQ(full.supply.cap_text, std::string("/ 7"));
+    DEFN_CHECK(full.supply.at_cap);
+
+    input.supply_cap = 11;
+    const HudModel room = HudPresenter::build(input);
+    DEFN_CHECK_EQ(room.supply.cap_text, std::string("/ 11"));
+    DEFN_CHECK(!room.supply.at_cap);
+}
+
+DEFN_TEST(hud_presenter_hides_the_supply_reading_when_the_match_is_uncapped) {
+    HudPresentationInput input;
+    input.energy = 100;
+    input.supply_used = 12;
+    input.supply_cap = 0;
+
+    const HudModel model = HudPresenter::build(input);
+    DEFN_CHECK(!model.supply.visible);
+    DEFN_CHECK(!model.supply.at_cap);
+}
+
 } // namespace defn

@@ -139,10 +139,12 @@ std::vector<PlayerCommand> PatiencePolicy::decide(const MatchObservation &observ
     return {};
 }
 
+namespace {
+
 // The share each unit already holds of the field, so a target weight can be compared against something.
-std::vector<PlayerCommand> MixPolicy::decide(const MatchObservation &observation) {
+std::vector<PlayerCommand> decide_on_mix(const std::map<std::string, double> &weights, const MatchObservation &observation) {
     double total_weight = 0.0;
-    for (const auto &[unit_id, weight] : weights_) {
+    for (const auto &[unit_id, weight] : weights) {
         total_weight += std::max(weight, 0.0);
     }
     if (total_weight <= 0.0) {
@@ -152,7 +154,7 @@ std::vector<PlayerCommand> MixPolicy::decide(const MatchObservation &observation
     std::map<std::string, int> on_field;
     int total_on_field = 0;
     for (const SimEntity &entity : observation.entities) {
-        if (entity.dead || entity.side != UnitSide::FRIENDLY || !weights_.contains(entity.unit_id)) {
+        if (entity.dead || entity.side != UnitSide::FRIENDLY || !weights.contains(entity.unit_id)) {
             continue;
         }
         ++on_field[entity.unit_id];
@@ -169,8 +171,8 @@ std::vector<PlayerCommand> MixPolicy::decide(const MatchObservation &observation
     const UnitConfig *affordable = nullptr;
     std::pair<double, int> best_affordable_key = {-std::numeric_limits<double>::max(), 0};
     for (const UnitConfig &unit : observation.roster) {
-        const auto target = weights_.find(unit.name);
-        if (target == weights_.end() || target->second <= 0.0) {
+        const auto target = weights.find(unit.name);
+        if (target == weights.end() || target->second <= 0.0) {
             continue;
         }
 
@@ -210,6 +212,28 @@ std::vector<PlayerCommand> MixPolicy::decide(const MatchObservation &observation
     }
 
     return {}; // bank toward the unit the shape is short of
+}
+
+} // namespace
+
+std::vector<PlayerCommand> MixPolicy::decide(const MatchObservation &observation) { return decide_on_mix(weights_, observation); }
+
+TransitionPolicy::TransitionPolicy(std::vector<MixKeyframe> keyframes) : keyframes_(std::move(keyframes)) {
+    std::ranges::stable_sort(keyframes_, [](const MixKeyframe &left, const MixKeyframe &right) { return left.wave < right.wave; });
+}
+
+std::vector<PlayerCommand> TransitionPolicy::decide(const MatchObservation &observation) {
+    // The last keyframe the run has reached. Before the first one there is nothing to play, which only happens if
+    // the keyframes start past wave 1.
+    const std::map<std::string, double> *active = nullptr;
+    for (const MixKeyframe &keyframe : keyframes_) {
+        if (observation.current_wave < keyframe.wave) {
+            break;
+        }
+        active = &keyframe.weights;
+    }
+
+    return active == nullptr ? std::vector<PlayerCommand>{} : decide_on_mix(*active, observation);
 }
 
 } // namespace defn

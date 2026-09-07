@@ -81,8 +81,8 @@ UiThemeData make_valid_ui_theme() {
     theme.medallions["frontier"] = {.mark = "res://mark.svg", .color_role = "accent"};
     theme.medallions["locked"] = {.mark = "res://mark.svg", .color_role = "text_secondary"};
     theme.medallions["standing"] = {.mark = "res://mark.svg", .color_role = "accent"};
-    for (const char *icon :
-         {"battery", "bulwark", "cadence", "energy", "generic", "integrity", "level", "plating", "recruit", "salvage", "score", "speed", "target", "wave"}) {
+    for (const char *icon : {"battery", "bulwark", "cadence", "energy", "generic", "integrity", "level", "plating", "recruit", "salvage", "score", "speed",
+                             "squad", "target", "wave"}) {
         theme.icons[icon] = {.mark = "res://mark.svg", .color_role = "accent"};
     }
     for (const char *control_icon : {"choice_off", "choice_on", "slider_knob", "slider_knob_disabled", "slider_knob_hot"}) {

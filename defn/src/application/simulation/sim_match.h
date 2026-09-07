@@ -89,6 +89,8 @@ class SimMatch {
     // Metrics
     double energy_idle_integral_ = 0.0;
     int peak_concurrent_enemies_ = 0;
+    int peak_friendlies_ = 0;
+    int deployments_blocked_ = 0;
     int energy_spent_ = 0;
     std::map<std::string, int> deployment_counts_;
     std::map<std::string, int> deployment_energy_;
@@ -97,6 +99,9 @@ class SimMatch {
     std::vector<SimLeakEvent> leak_events_;
     std::vector<double> hostile_spawn_times_;
     std::vector<int> energy_at_wave_;
+    std::vector<int> friendly_deaths_at_wave_;
+    int friendly_deaths_this_wave_ = 0;
+    int first_capped_wave_ = 0;
     std::vector<bool> death_reported_;
 };
 

@@ -27,32 +27,106 @@
         "no waves at all: the generator supplies every one of them, and an empty wave list is also what makes the HUD",
         "read the wave count as unbounded rather than as a denominator."
     ],
+    "_caps_are_what_bound_the_player": [
+        "supply_cap is the rule that makes the mode losable. Friendlies persist between waves and hostiles do not, so",
+        "an uncapped line integrates the whole difficulty ramp: measured 2026-09-06, a transitioning player reaches the",
+        "budget ceiling at 4/4 integrity with 212 friendlies standing, and no escalation rate reaches that because",
+        "income rises with the budget it is supposed to answer. Capped, every composition on the slate is overrun.",
+        "It is a *ceiling* on the schedule's own allowance rather than the allowance itself: supply_start and",
+        "supply_growth in the tuning below decide how wide the line may be at each wave, and this is as far as they",
+        "may ever open it. A flat cap was measured 2026-09-07 and is what made waves 6-12 free -- see ENDLESS_MODE.md.",
+        "energy_cap is a ratchet rather than a clamp: the 105 opening grant is above it and is kept until it is spent,",
+        "and from the first moment the reserve falls to 100 it is a ceiling on regeneration and bounty alike. Both are",
+        "level properties rather than endless ones -- they are ordinary match rules, and a mode with no base at all",
+        "may want either."
+    ],
     "level": {
         "name": "Standing Engagement",
         "background": "res://assets/backgrounds/background_feldkirchen_tiling.png",
         "starting_core_resource": 105,
         "base_integrity": 4,
+        "energy_cap": 100,
+        "supply_cap": 24,
         "base_position": [0.06, 0.65],
         "belt_width": [0.66, 0.825]
     },
 
+    "_density_2026_09_07": [
+        "Waves closer together and carrying more bodies. Both asks turned out to be one number each, and neither was",
+        "the obvious one.",
+        "Spacing: the interval now *shrinks* 2.5% a wave from 19s rather than growing 0.8%, so wave 20 opens 11.8s",
+        "after wave 19 where it used to be 22.1s. Starting lower was measured and is worse: at 16s the run ends before",
+        "it reaches the waves where bodies accumulate, so peak hostiles falls to 29 against 45, and the opening dies --",
+        "`defensive` at wave 3 rather than 7-33. A gentler opening that tapers hard beats a uniformly tight one.",
+        "Body count: the drift was the suppressor, not the budget. Late waves cost 3.13 threat per body because the mix",
+        "drifts to expensive units -- a mason is 3.57 where a grime is 1.0 -- so a growing budget bought steadily fewer",
+        "hostiles. Grime and hound weights up across the keyframes brings that to 2.51, about 25% more bodies for the",
+        "same measured threat, with the mason weights untouched.",
+        "base_budget was left at 12: at 16 every policy dies in the opening (`defensive` wave 3, `transition` wave 8)."
+    ],
+    "_toughness_was_pushed_to_its_ceiling_2026_09_07": [
+        "Asked for maximum toughness, accepting short runs. The result is that the two obvious knobs both have a",
+        "difficulty *peak* and the shipped values sit on it, so 'more' was not available from either.",
+        "elite_hp peaks near 3: elites are charged their hp multiple, so a wave of 6x elites buys a sixth as many",
+        "bodies and delivers less damage in total -- swept 3/4/6/8, the run got LONGER, 23-42 to 42-44, and 6 and 8",
+        "are identical because elite_hp_cap truncates at 8.",
+        "escalation peaks near 1.06: a bigger wave pays more bounty than it costs, so 1.08 also ran LONGER than 1.06.",
+        "elite_fraction_cap is inert at any value the run reaches, because elite_fraction_growth of 0.03 per wave",
+        "never gets there -- raise the growth, not the cap.",
+        "What did work is bounty_decay 0.985 -> 0.88, which halves deployments. The line is bounded now, so buying",
+        "replacements is the player's only recovery and cutting income cuts exactly that. This reverses the pre-cap",
+        "finding that decay is a weak lever on survival: back then the standing army held the line whatever the",
+        "income was."
+    ],
+    "_escalation_was_re_derived_2026_09_07": [
+        "1.055, down from 1.06, because the roster got tougher in the same commit: elites at 2.5x hit points rather",
+        "than 2x, and masons from wave 8 instead of 18 at three times the share. Elite hit points are not the",
+        "texture knob the budget pricing assumes -- a body that lives 2.5x as long also shoots for 2.5x as long, and",
+        "the threat price counts only what it costs to kill. Left at 1.06 the same roster ended a transitioning run",
+        "at wave 18-25 instead of 40-44.",
+        "The elite multiple is 2.5 rather than 3.0 for variance, not for difficulty: at 3.0 the run landed anywhere",
+        "between wave 22 and 52 on the same settings, because an all-mason set piece carrying 3x elites can take a",
+        "supply-capped line apart in one wave. 2.5 reads 29-44 across five seeds."
+    ],
     "_base_budget_was_swept_2026_09_06": [
         "12 threat, priced in the new grime. Swept 6 / 9 / 12 / 16 at 3 seeds: at 6 every marksman-bearing pair reaches the",
         "ceiling at full integrity, at 9 impact+operator clears wave 40 on every seed, at 16 only operator lines survive the",
         "opening. At 12 every fixed composition dies -- sniper lines at waves 3-5, operator lines at 36-39 -- and none",
         "reaches wave 40. See ENDLESS_MODE.md, the 2026-09-06 section."
     ],
+    "_elites_are_escalation_that_does_not_cost_bodies": [
+        "A share of each wave from elite_first_wave arrives with a multiple of its catalog hit points and a larger",
+        "sprite. An elite is charged its hp multiple against the wave budget, so promoting bodies buys fewer of them:",
+        "a wave of elites is a smaller wave worth the same measured threat. That is the point. With the supply cap on",
+        "and no elites, wave size is what carries the ramp and the late game reaches 553 hostiles on screen, which no",
+        "screen can hold and no player can read.",
+        "Hit points rather than damage: hp multiplies every attacker's time-to-kill by the same factor, so the roster's",
+        "counters stay exactly where DIVERSITY_AND_BALANCE.md measured them, while the damage ramp crosses one-shot",
+        "thresholds and is knife-edge between inert and instant. Bounty is not scaled either -- an elite paying a normal",
+        "bounty for several times the work is the income throttle.",
+        "elite_size is a category marker, not a readout of the multiple: the player has to see which bodies are the",
+        "hard ones before they are in contact."
+    ],
     "tuning": {
         "base_budget": 12.0,
         "escalation": 1.06,
-        "bounty_decay": 0.985,
+        "bounty_decay": 0.88,
         "first_wave_delay": 3.0,
         "wave_interval": 19.0,
-        "interval_growth": 1.008,
+        "interval_growth": 0.975,
         "spawn_stagger": 0.8,
         "budget_ceiling": 600.0,
         "wall_clock_ceiling": 3600.0,
-        "survival_bonus_per_wave": 25
+        "survival_bonus_per_wave": 25,
+        "elite_first_wave": 6,
+        "elite_fraction_growth": 0.03,
+        "elite_fraction_cap": 0.55,
+        "elite_hp": 3.0,
+        "elite_hp_growth": 1.07,
+        "elite_hp_cap": 8.0,
+        "elite_size": 1.35,
+        "supply_start": 7.0,
+        "supply_growth": 0.4
     },
 
     "_weights_are_bodies_not_budget": [
@@ -69,9 +143,9 @@
     ],
     "drift": [
         {"wave": 1, "weights": {"grime": 5.0, "hound": 1.0}},
-        {"wave": 8, "weights": {"grime": 4.0, "hound": 2.0, "wrecker": 1.0}},
-        {"wave": 18, "weights": {"grime": 3.0, "hound": 2.0, "wrecker": 2.0, "jackal": 2.0, "mason": 1.0}},
-        {"wave": 35, "weights": {"grime": 2.0, "hound": 2.0, "wrecker": 3.0, "jackal": 3.0, "mason": 3.0}}
+        {"wave": 8, "weights": {"grime": 7.0, "hound": 3.0, "wrecker": 1.0, "mason": 1.0}},
+        {"wave": 18, "weights": {"grime": 7.0, "hound": 3.0, "wrecker": 2.0, "jackal": 2.0, "mason": 3.0}},
+        {"wave": 35, "weights": {"grime": 8.0, "hound": 4.0, "wrecker": 3.0, "jackal": 3.0, "mason": 5.0}}
     ],
 
     "_set_pieces_break_the_treadmill": [
@@ -82,6 +156,6 @@
     "set_pieces": [
         {"period": 7, "offset": 0, "weights": {"hound": 1.0}},
         {"period": 11, "offset": 0, "weights": {"jackal": 1.0}},
-        {"period": 13, "offset": 0, "weights": {"mason": 1.0}}
+        {"period": 9, "offset": 0, "weights": {"mason": 1.0}}
     ]
 }

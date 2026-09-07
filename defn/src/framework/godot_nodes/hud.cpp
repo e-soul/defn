@@ -113,6 +113,12 @@ void HUD::build_energy_plate() {
     group.row->add_child(make_readout_label("ENERGY", "hud_label"));
     energy_value_label = {.label = make_readout_label("0", "hud_value"), .floor_digits = value_digit_floor()};
     group.row->add_child(energy_value_label.label);
+    // The ceiling reads as a denominator on the number it constrains, the same way the wave counter shows its
+    // total. Hidden on an uncapped match, and on a capped one until the reserve has actually fallen to the cap.
+    energy_cap_label = make_readout_label("", "hud_wave_total");
+    energy_cap_label->set_name("EnergyCap");
+    energy_cap_label->set_visible(false);
+    group.row->add_child(energy_cap_label);
     plate->add_child(group.row);
 }
 
@@ -142,6 +148,23 @@ void HUD::build_info_plate() {
     wave_total_label->set_name("WaveTotal");
     wave_group.row->add_child(wave_total_label);
     row->add_child(wave_group.row);
+
+    // Supply sits between the wave and the score: it is the reading the player checks before every deployment, and
+    // on an uncapped level it is not there at all. The squad mark is the recruit figure without its plus: the plus
+    // reads as "add a unit type" on the upgrade cards that use `recruit`, and as noise on a live count of how many
+    // units are standing.
+    const ReadoutRow supply_readout = make_readout("squad");
+    supply_group = supply_readout.row;
+    supply_group->set_name("SupplyGroup");
+    supply_medallion = supply_readout.medallion;
+    supply_group->add_child(make_readout_label("SUPPLY", "hud_label"));
+    supply_current_label = {.label = make_readout_label("0", "hud_wave")};
+    supply_group->add_child(supply_current_label.label);
+    supply_cap_label = make_readout_label("", "hud_wave_total");
+    supply_cap_label->set_name("SupplyCap");
+    supply_group->add_child(supply_cap_label);
+    supply_group->set_visible(false);
+    row->add_child(supply_group);
 
     const ReadoutRow score_group = make_readout("score");
     score_group.row->add_child(make_readout_label("SCORE", "hud_label"));
@@ -189,6 +212,14 @@ void HUD::refresh() {
 
 void HUD::render(const HudModel &model) {
     energy_value_label.set_value(to_godot_string(model.energy_text));
+    energy_cap_label->set_text(to_godot_string(model.energy_cap.cap_text));
+    energy_cap_label->set_visible(model.energy_cap.visible);
+
+    supply_current_label.set_value(to_godot_string(model.supply_text));
+    supply_cap_label->set_text(to_godot_string(model.supply.cap_text));
+    supply_group->set_visible(model.supply.visible);
+    render_supply_state(model.supply);
+
     wave_current_label.set_value(to_godot_string(model.wave.current_text));
     score_label.set_value(to_godot_string(model.score_text));
     wave_total_label->set_text(to_godot_string(model.wave.total_text));
@@ -199,6 +230,21 @@ void HUD::render(const HudModel &model) {
 
     render_integrity(model.integrity);
     render_deploy_cards(model.deploy_cards);
+}
+
+void HUD::render_supply_state(const HudCapModel &supply) {
+    // A full line is the one state the player has to read at a glance: every deploy card is refused until something
+    // dies, and the difference between "waiting for energy" and "waiting for a casualty" is the whole decision.
+    // Re-tinting rebuilds a style box and reloads the mark, so it only happens when the state actually flips.
+    if (supply_at_cap.has_value() && *supply_at_cap == supply.at_cap) {
+        return;
+    }
+    supply_at_cap = supply.at_cap;
+
+    const godot::Color color = UiThemeProvider::color(supply.at_cap ? "state_warning" : "accent");
+    apply_icon_medallion(supply_medallion, theme_icon("squad"), color);
+    supply_current_label.label->add_theme_color_override("font_color", color);
+    supply_cap_label->add_theme_color_override("font_color", color);
 }
 
 void HUD::render_integrity(const HudIntegrityModel &integrity) {
@@ -260,6 +306,18 @@ void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_request
 
 void HUD::update_core_resource(int value) {
     hud_input_.energy = value;
+    refresh();
+}
+
+void HUD::set_energy_cap(int energy_cap) {
+    hud_input_.energy_cap = energy_cap;
+    refresh();
+}
+
+void HUD::update_supply(int used, int cap, bool energy_ceiling_engaged) {
+    hud_input_.supply_used = used;
+    hud_input_.supply_cap = cap;
+    hud_input_.energy_ceiling_engaged = energy_ceiling_engaged;
     refresh();
 }
 

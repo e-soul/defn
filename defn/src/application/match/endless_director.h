@@ -28,6 +28,14 @@ class EndlessDirector {
     // clears the timeline -- and before the match begins, or the timeline starts empty and completes at once.
     void seed_first_wave();
 
+    // Applies wave 1's rules to a match that has just begun. Must be called *after* `MatchDirector::begin_match`,
+    // because the session learns its ceilings there and ignores a rule set before it has them.
+    //
+    // Without this the opening frames run under the level's raw numbers rather than the schedule's: the supply
+    // allowance reads as the level's ceiling until the first wave changes it, so the HUD claims room the player
+    // does not have and every deploy card looks available.
+    void begin_run();
+
     // Advances the run by `delta`, topping the timeline up first so the director never sees the end of it.
     MatchUpdate update(double delta);
 
@@ -40,6 +48,8 @@ class EndlessDirector {
     [[nodiscard]] double elapsed_seconds() const { return elapsed_seconds_; }
 
   private:
+    // The per-wave counter-pressures, in one place so the opening and every wave after it cannot drift apart.
+    void apply_wave_rules(int wave);
     void top_up();
     [[nodiscard]] bool should_stop() const;
 

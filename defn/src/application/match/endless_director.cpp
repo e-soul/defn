@@ -35,6 +35,24 @@ void EndlessDirector::configure(MatchDirector *director, ProgressionService *pro
 
 void EndlessDirector::seed_first_wave() { top_up(); }
 
+void EndlessDirector::begin_run() { apply_wave_rules(1); }
+
+void EndlessDirector::apply_wave_rules(int wave) {
+    if (director_ == nullptr) {
+        return;
+    }
+
+    // Income compounds with difficulty unless something pushes back, and the push-back is per wave rather than per
+    // kill so that it is legible in the same units the sweep tunes.
+    director_->set_bounty_scale(generator_.bounty_multiplier(wave));
+    // The allowance widens with the wave, on the same signal and for the same reason as the bounty decay: both are
+    // per-wave counter-pressures. `MatchSession` clamps this against the level's own cap, so the schedule can only
+    // ever open the line up to what the level already allowed.
+    if (const int cap = generator_.supply_cap(wave); cap > 0) {
+        director_->set_supply_cap(cap);
+    }
+}
+
 MatchUpdate EndlessDirector::update(double delta) {
     if (director_ == nullptr) {
         return {};
@@ -53,9 +71,7 @@ MatchUpdate EndlessDirector::update(double delta) {
     MatchUpdate result = director_->update(delta);
     if (result.wave_changed.has_value()) {
         current_wave_ = result.wave_changed->current_wave;
-        // Income compounds with difficulty unless something pushes back, and the push-back is per wave rather than
-        // per kill so that it is legible in the same units the sweep tunes.
-        director_->set_bounty_scale(generator_.bounty_multiplier(current_wave_));
+        apply_wave_rules(current_wave_);
         director_->award_survival_bonus(generator_.tuning().survival_bonus_per_wave);
     }
 

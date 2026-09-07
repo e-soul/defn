@@ -44,6 +44,16 @@ base_budget_arg = ARGUMENTS.pop("base_budget", "")
 curve_arg = ARGUMENTS.pop("curve", "")
 damage_growth_arg = ARGUMENTS.pop("dmg", "")
 damage_cap_arg = ARGUMENTS.pop("dmg_cap", "")
+elite_fraction_arg = ARGUMENTS.pop("elite", "")
+elite_hp_arg = ARGUMENTS.pop("elite_hp", "")
+elite_start_arg = ARGUMENTS.pop("elite_start", "")
+elite_hp_base_arg = ARGUMENTS.pop("elite_hp_base", "")
+wave_interval_arg = ARGUMENTS.pop("interval", "")
+interval_growth_arg = ARGUMENTS.pop("interval_growth", "")
+supply_start_arg = ARGUMENTS.pop("supply_start", "")
+supply_growth_arg = ARGUMENTS.pop("supply_growth", "")
+supply_cap_arg = ARGUMENTS.pop("supply", "")
+energy_cap_arg = ARGUMENTS.pop("energy_cap", "")
 
 sim_scenario_arg = ["--scenario", scenario_arg] if scenario_arg else []
 sim_seeds_arg = ["--seeds", seeds_arg] if seeds_arg else []
@@ -60,6 +70,16 @@ endless_policies_arg = ["--policies", policies_arg] if policies_arg else []
 endless_curve_arg = ["--escalation-curve", curve_arg] if curve_arg else []
 endless_dmg_arg = ["--hostile-damage-growth", damage_growth_arg] if damage_growth_arg else []
 endless_dmg_cap_arg = ["--hostile-damage-cap", damage_cap_arg] if damage_cap_arg else []
+endless_elite_arg = ["--elite-fraction-cap", elite_fraction_arg] if elite_fraction_arg else []
+endless_elite_hp_arg = ["--elite-hp-growth", elite_hp_arg] if elite_hp_arg else []
+endless_elite_start_arg = ["--elite-first-wave", elite_start_arg] if elite_start_arg else []
+endless_elite_hp_base_arg = ["--elite-hp", elite_hp_base_arg] if elite_hp_base_arg else []
+endless_interval_arg = ["--wave-interval", wave_interval_arg] if wave_interval_arg else []
+endless_interval_growth_arg = ["--interval-growth", interval_growth_arg] if interval_growth_arg else []
+endless_supply_start_arg = ["--supply-start", supply_start_arg] if supply_start_arg else []
+endless_supply_growth_arg = ["--supply-growth", supply_growth_arg] if supply_growth_arg else []
+endless_supply_arg = ["--supply-cap", supply_cap_arg] if supply_cap_arg else []
+endless_energy_cap_arg = ["--energy-cap", energy_cap_arg] if energy_cap_arg else []
 
 
 # 1. Setup the basic SCons environment
@@ -903,7 +923,7 @@ def run_endless(target, source, env):
         return prepare_result
 
     command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
-    endless_args = [argument for argument in [endless_base_budget_arg, endless_escalation_arg, endless_decay_arg, endless_curve_arg, endless_dmg_arg, endless_dmg_cap_arg, endless_max_seconds_arg, endless_policies_arg, sim_seeds_arg, sim_out_arg] if argument]
+    endless_args = [argument for argument in [endless_base_budget_arg, endless_escalation_arg, endless_decay_arg, endless_curve_arg, endless_dmg_arg, endless_dmg_cap_arg, endless_elite_arg, endless_elite_hp_arg, endless_elite_hp_base_arg, endless_elite_start_arg, endless_interval_arg, endless_interval_growth_arg, endless_supply_start_arg, endless_supply_growth_arg, endless_supply_arg, endless_energy_cap_arg, endless_max_seconds_arg, endless_policies_arg, sim_seeds_arg, sim_out_arg] if argument]
     if endless_args:
         command.append("--")
         for argument in endless_args:

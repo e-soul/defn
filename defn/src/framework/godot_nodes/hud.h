@@ -53,6 +53,14 @@ class HUD : public CanvasLayer {
     void set_friendly_units(const std::vector<UnitConfig> &units);
     void set_level(const String &level_name);
     void update_core_resource(int value);
+    // The reserve ceiling this match plays under. Fixed for the match, so it is pushed once.
+    void set_energy_cap(int energy_cap);
+    // The line: how much of the allowance is standing, and what the allowance currently *is*.
+    //
+    // The allowance is pushed on every refresh rather than once at match start, because in endless it widens with
+    // the wave. Sending it once sends the level's ceiling, and the readout then says "7 / 24" while the player is
+    // in fact full at seven and every deploy card is refused -- which is how this was shipped and reported.
+    void update_supply(int used, int cap, bool energy_ceiling_engaged);
     void update_wave(int current, int total);
     void update_integrity(int health, int max_health);
     void update_score(int score);
@@ -71,6 +79,7 @@ class HUD : public CanvasLayer {
     void build_integrity_plate();
     void refresh();
     void render(const HudModel &model);
+    void render_supply_state(const HudCapModel &supply);
     void render_integrity(const HudIntegrityModel &integrity);
     void render_deploy_cards(const std::vector<HudDeployCardModel> &cards);
     void clear_deploy_cards();
@@ -83,12 +92,18 @@ class HUD : public CanvasLayer {
 
     // Energy plate
     HudValueLabel energy_value_label;
+    Label *energy_cap_label = nullptr;
 
     // Info plate
     HBoxContainer *level_group = nullptr;
     Label *level_label = nullptr;
     HudValueLabel wave_current_label;
     Label *wave_total_label = nullptr;
+    HBoxContainer *supply_group = nullptr;
+    IconMedallionNodes supply_medallion;
+    HudValueLabel supply_current_label;
+    Label *supply_cap_label = nullptr;
+    std::optional<bool> supply_at_cap;
     HudValueLabel score_label;
 
     // Integrity plate

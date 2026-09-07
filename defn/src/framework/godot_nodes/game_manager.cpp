@@ -180,6 +180,10 @@ void GameManager::_ready() {
     hud->set_friendly_units(match_director_.build_available_friendlies());
     hud->set_level(to_godot_string(match_director_.get_level_name()));
     hud->update_core_resource(match_director_.get_core_resource());
+    hud->set_energy_cap(match_director_.get_energy_cap());
+    // Seeded rather than left to the first energy tick: a level whose opening grant is already at its cap has an
+    // engaged ceiling before the player does anything, and the readout has to say so from the first frame.
+    refresh_supply_readout();
     hud->update_wave(1, match_director_.get_total_waves());
     hud->update_integrity(match_director_.get_base_health(), match_director_.get_base_max_health());
     hud->update_score(0);
@@ -258,6 +262,10 @@ bool GameManager::compose_match(const String &level_id) {
     }
 
     match_director_.begin_match();
+    if (endless_director_.has_value()) {
+        // After `begin_match`, which is where the session learns its ceilings.
+        endless_director_->begin_run();
+    }
     return true;
 }
 
@@ -503,10 +511,12 @@ void GameManager::apply_match_update(MatchUpdate update) {
         endless_director_->finalize_ended_run(update);
     }
 
+    bool friendly_count_changed = false;
     for (const SpawnUnitIntent &intent : update.spawn_unit_intents) {
         Unit *unit = materialize_spawn_intent(intent);
         if (intent.side == MatchUnitSide::Friendly) {
             add_friendly_unit(unit);
+            friendly_count_changed = true;
         } else {
             add_enemy_unit(unit);
         }
@@ -524,6 +534,11 @@ void GameManager::apply_match_update(MatchUpdate update) {
         }
         if (update.score_changed.has_value()) {
             hud->update_score(update.score_changed->kill_score);
+        }
+        // The energy ceiling latches on a spend or a credit rather than on an event of its own, and the supply
+        // allowance widens on a wave change, so the readout is refreshed alongside anything that moves either.
+        if (friendly_count_changed || update.resource_changed.has_value() || update.wave_changed.has_value()) {
+            refresh_supply_readout();
         }
     }
 
@@ -659,7 +674,19 @@ void GameManager::on_enemy_died(Node *unit) {
 }
 
 void GameManager::on_friendly_died(Node * /*unit*/) {
-    // Defender died — no special handling needed beyond removal
+    // Nothing but the supply count moves. The signal is connected in `add_friendly_unit`, which runs only for a
+    // deployed unit -- the base is a `BaseObjective` and never reaches it -- so this counts exactly what the
+    // deployment path counted up.
+    apply_match_update(match_director_.handle_friendly_defeated());
+    refresh_supply_readout();
+}
+
+void GameManager::refresh_supply_readout() {
+    if (hud != nullptr) {
+        // The allowance is read live rather than cached: in endless it widens with the wave, so a cached value is
+        // the level's ceiling and the readout would claim room the player does not have.
+        hud->update_supply(match_director_.get_living_friendlies(), match_director_.get_supply_cap(), match_director_.is_energy_ceiling_engaged());
+    }
 }
 
 void GameManager::on_base_durability_changed(int current_hp, int /*max_hp*/) { apply_match_update(match_director_.handle_base_durability_changed(current_hp)); }

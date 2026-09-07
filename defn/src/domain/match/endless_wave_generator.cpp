@@ -25,6 +25,13 @@ constexpr double SPAWN_JITTER_FRACTION = 0.5;
 // Income decays but never reaches zero: a long run has to stay a game rather than becoming a countdown.
 constexpr double MINIMUM_BOUNTY_MULTIPLIER = 0.05;
 
+// One body of a wave being built, before its spawn time is known. The promotion travels with the body through the
+// shuffle, which is the whole reason this is a struct rather than two parallel vectors.
+struct PlannedBody {
+    std::string unit_id;
+    bool elite = false;
+};
+
 double cost_of(std::span<const UnitCost> costs, const std::string &unit_id) {
     const auto found = std::ranges::find_if(costs, [&unit_id](const UnitCost &entry) { return entry.unit_id == unit_id; });
     return found == costs.end() ? 0.0 : found->cost;
@@ -116,21 +123,42 @@ WaveDefinition EndlessWaveGenerator::generate(int wave_number, RandomSource &ran
     const int wave = std::max(wave_number, 1);
     WaveDefinition definition;
     definition.wave_number = wave;
-    definition.damage_scale = hostile_damage_scale(wave);
+    definition.scale.damage = hostile_damage_scale(wave);
 
     const std::span<const UnitCost> costs(schedule_.threat_costs);
-    const BudgetAllocation allocation = allocate_budget(costs, to_budget_shape(shape(wave), costs), budget(wave));
-    std::vector<std::string> line = expand_mix(allocation.mix);
-    if (line.empty()) {
+    // The budget is deflated by what the elite share costs before it is spent, so promoting bodies buys fewer of
+    // them rather than adding difficulty the schedule never priced. A wave of elites is a smaller wave worth the
+    // same measured threat, which is the only way this ramp stays playable at a wave count the screen can hold.
+    const BudgetAllocation allocation = allocate_budget(costs, to_budget_shape(shape(wave), costs), budget(wave) / elite_cost_multiplier(wave));
+    const std::vector<std::string> mix_line = expand_mix(allocation.mix);
+    if (mix_line.empty()) {
         return definition;
     }
 
-    // Fisher-Yates over the round-robin line. Composition is already fixed by the budget and the shape; what varies
-    // between two runs of the same wave is only who walks in first.
+    std::vector<PlannedBody> line;
+    line.reserve(mix_line.size());
+    for (const std::string &unit_id : mix_line) {
+        line.push_back({.unit_id = unit_id, .elite = false});
+    }
+
+    // Which bodies are promoted is decided before the shuffle and by arithmetic alone, because composition is a pure
+    // function of `(schedule, wave)` and the elite share is part of the composition. `expand_mix` interleaves the
+    // types round-robin, so striding through the line promotes across the whole mix rather than a block of one type.
+    const auto elite_count =
+        static_cast<std::size_t>(std::clamp(std::llround(elite_fraction(wave) * static_cast<double>(line.size())), 0LL, static_cast<long long>(line.size())));
+    for (std::size_t index = 0; index < elite_count; ++index) {
+        line[(((2 * index) + 1) * line.size()) / (2 * elite_count)].elite = true;
+    }
+
+    // Fisher-Yates over the round-robin line, carrying each body's promotion with it. Composition is already fixed
+    // by the budget, the shape and the promotion above; what varies between two runs of the same wave is only who
+    // walks in first.
     for (std::size_t index = line.size(); index > 1; --index) {
         const auto swap_with = static_cast<std::size_t>(random.range_int(0, static_cast<int>(index) - 1));
         std::swap(line[index - 1], line[swap_with]);
     }
+
+    const HostileScale promotion = elite_scale(wave);
 
     const double start = wave_start_time(wave);
     const double window = wave_interval(wave) * SPAWN_WINDOW_FRACTION;
@@ -143,7 +171,7 @@ WaveDefinition EndlessWaveGenerator::generate(int wave_number, RandomSource &ran
     for (std::size_t index = 0; index < line.size(); ++index) {
         const double jitter = random.range_real(0.0F, static_cast<float>(stagger * SPAWN_JITTER_FRACTION));
         const double time = std::clamp(start + (static_cast<double>(index) * stagger) + jitter, start, start + window);
-        definition.spawns.push_back({.time = time, .type = line[index]});
+        definition.spawns.push_back({.time = time, .type = line[index].unit_id, .scale = line[index].elite ? promotion : HostileScale{}});
     }
 
     std::ranges::stable_sort(definition.spawns, [](const SpawnDefinition &left, const SpawnDefinition &right) { return left.time < right.time; });
@@ -166,6 +194,48 @@ double EndlessWaveGenerator::hostile_damage_scale(int wave_number) const {
     const int index = std::max(wave_number, 1) - 1;
     const double grown = std::pow(schedule_.tuning.hostile_damage_growth, static_cast<double>(index));
     return std::clamp(grown, 1.0, std::max(1.0, schedule_.tuning.hostile_damage_cap));
+}
+
+int EndlessWaveGenerator::supply_cap(int wave_number) const {
+    if (schedule_.tuning.supply_start <= 0.0) {
+        return 0;
+    }
+
+    const auto waves_in = static_cast<double>(std::max(wave_number, 1) - 1);
+    return std::max(1, static_cast<int>(std::lround(schedule_.tuning.supply_start + (schedule_.tuning.supply_growth * waves_in))));
+}
+
+double EndlessWaveGenerator::elite_fraction(int wave_number) const {
+    const EndlessTuning &tuning = schedule_.tuning;
+    if (tuning.elite_first_wave <= 0 || wave_number < tuning.elite_first_wave) {
+        return 0.0;
+    }
+
+    const auto waves_in = static_cast<double>(wave_number - tuning.elite_first_wave);
+    return std::clamp(waves_in * tuning.elite_fraction_growth, 0.0, std::clamp(tuning.elite_fraction_cap, 0.0, 1.0));
+}
+
+HostileScale EndlessWaveGenerator::elite_scale(int wave_number) const {
+    const EndlessTuning &tuning = schedule_.tuning;
+    if (tuning.elite_first_wave <= 0 || wave_number < tuning.elite_first_wave) {
+        return {};
+    }
+
+    const auto waves_in = static_cast<double>(wave_number - tuning.elite_first_wave);
+    const double grown = tuning.elite_hp * std::pow(tuning.elite_hp_growth, waves_in);
+    return {.hp = std::clamp(grown, 1.0, std::max(1.0, tuning.elite_hp_cap)), .size = std::max(tuning.elite_size, 0.01)};
+}
+
+double EndlessWaveGenerator::elite_cost_multiplier(int wave_number) const {
+    // Hit points are very nearly what a body costs to *kill*, so an elite is priced at its hp multiple.
+    //
+    // **The approximation is not small, and it is not linear.** A body that lives three times as long also shoots
+    // for three times as long, and the price captures none of that damage. Measured 2026-09-07: raising `elite_hp`
+    // from 2.0 to 3.0 -- which this function calls a wash, since the wave simply buys proportionally fewer bodies --
+    // cut a transitioning run from 40-44 waves to 18-25 at an unchanged escalation. Treat every change to
+    // `elite_hp` as a change to the difficulty ramp and re-sweep `escalation` in the same commit.
+    const double fraction = elite_fraction(wave_number);
+    return 1.0 + (fraction * (elite_scale(wave_number).hp - 1.0));
 }
 
 double EndlessWaveGenerator::bounty_multiplier(int wave_number) const {

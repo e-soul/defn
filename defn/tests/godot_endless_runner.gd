@@ -13,9 +13,19 @@ func _parse_args() -> Dictionary:
 		"--escalation-curve": "escalation_curve",
 		"--hostile-damage-growth": "hostile_damage_growth",
 		"--hostile-damage-cap": "hostile_damage_cap",
+		"--elite-fraction-cap": "elite_fraction_cap",
+		"--elite-hp-growth": "elite_hp_growth",
+		"--elite-hp": "elite_hp",
+		"--elite-first-wave": "elite_first_wave",
+		"--wave-interval": "wave_interval",
+		"--interval-growth": "interval_growth",
+		"--supply-start": "supply_start",
+		"--supply-growth": "supply_growth",
+		"--supply-cap": "supply_cap",
+		"--energy-cap": "energy_cap",
 	}
 
-	var parsed := {"seeds": 5, "out": "", "max_seconds": 1800.0, "base_budget": [], "escalation": [], "bounty_decay": [], "escalation_curve": [], "hostile_damage_growth": [], "hostile_damage_cap": [], "policy_labels": []}
+	var parsed := {"seeds": 5, "out": "", "max_seconds": 1800.0, "base_budget": [], "escalation": [], "bounty_decay": [], "escalation_curve": [], "hostile_damage_growth": [], "hostile_damage_cap": [], "elite_fraction_cap": [], "elite_hp_growth": [], "elite_hp": [], "elite_first_wave": [], "wave_interval": [], "interval_growth": [], "supply_start": [], "supply_growth": [], "supply_cap": [], "energy_cap": [], "policy_labels": []}
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var index := 0
 	while index < args.size():

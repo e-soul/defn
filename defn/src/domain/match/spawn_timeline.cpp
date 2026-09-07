@@ -23,7 +23,7 @@ void SpawnTimeline::load(const SpawnTimelineDefinition &definition) {
                 .time = spawn.time,
                 .type = spawn.type,
                 .wave = wave.wave_number,
-                .damage_scale = wave.damage_scale,
+                .scale = spawn.scale.composed_with(wave.scale),
             });
         }
     }
@@ -37,7 +37,7 @@ void SpawnTimeline::append(const SpawnTimelineWave &wave) {
             .time = spawn.time,
             .type = spawn.type,
             .wave = wave.wave_number,
-            .damage_scale = wave.damage_scale,
+            .scale = spawn.scale.composed_with(wave.scale),
         });
     }
 
@@ -74,7 +74,7 @@ SpawnTimelineUpdate SpawnTimeline::advance(double delta) {
         update.due_spawns.push_back({
             .type = spawn.type,
             .wave = spawn.wave,
-            .damage_scale = spawn.damage_scale,
+            .scale = spawn.scale,
         });
         ++next_spawn_idx_;
     }

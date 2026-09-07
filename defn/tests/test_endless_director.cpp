@@ -52,6 +52,9 @@ LevelDefinition make_endless_level() {
     level.name = "Standing Engagement";
     level.starting_core_resource = 105;
     level.base_integrity = 4;
+    // The ceiling the schedule's allowance is clamped against; the schedule itself decides how much of it is open
+    // at each wave.
+    level.supply_cap = 24;
     // Deliberately empty: an endless level authors no waves, which is also what makes the HUD read the wave count as
     // unbounded instead of as a denominator.
     return level;
@@ -79,6 +82,14 @@ EndlessSchedule make_schedule() {
     return schedule;
 }
 
+// The shipped shape of the endless allowance: a line that starts small and widens with the wave.
+EndlessSchedule make_schedule_with_supply_growth() {
+    EndlessSchedule schedule = make_schedule();
+    schedule.tuning.supply_start = 7.0;
+    schedule.tuning.supply_growth = 0.4;
+    return schedule;
+}
+
 // A whole endless run, headless and without a world: every hostile that spawns is reported dead on the same tick, so
 // the only thing standing between the match and a victory is the timeline never running out.
 struct EndlessHarness {
@@ -101,6 +112,9 @@ struct EndlessHarness {
         endless.configure(&director, &progression, schedule, &random);
         endless.seed_first_wave();
         director.begin_match();
+        // Exactly the order `GameManager` and `SimMatch` use: the session learns its ceilings in `begin_match`, and
+        // the schedule's opening rules are applied against them straight after.
+        endless.begin_run();
     }
 
     // Returns the match end, if the run finished on this tick.
@@ -111,7 +125,7 @@ struct EndlessHarness {
             if (intent.side != MatchUnitSide::Hostile) {
                 continue;
             }
-            hostile_damage_scales.emplace_back(endless.current_wave(), intent.damage_scale);
+            hostile_damage_scales.emplace_back(endless.current_wave(), intent.scale.damage);
             const auto config = roster.get_unit(intent.unit_id);
             const MatchUpdate death = director.handle_enemy_defeated({.bounty = config.has_value() ? config->bounty : 0});
             if (death.score_changed.has_value()) {
@@ -241,6 +255,27 @@ DEFN_TEST(endless_director_pays_a_survival_bonus_per_wave) {
     DEFN_CHECK_EQ(ended->summary_model.survival_bonus, 6 * 25);
     DEFN_CHECK_EQ(ended->summary_model.wave_reached, 6);
     DEFN_CHECK(ended->summary_model.level_score >= ended->summary_model.survival_bonus);
+}
+
+DEFN_TEST(endless_director_applies_the_opening_allowance_before_the_first_wave_arrives) {
+    const EndlessHarness harness(make_schedule_with_supply_growth());
+
+    // Wave 1's rules are in force from the first frame, not from whenever the first spawn happens to land. Left to
+    // the wave-changed signal, the opening seconds run under the level's raw ceiling: the HUD claims a line the
+    // player cannot field and every deploy card looks available.
+    DEFN_CHECK_EQ(harness.director.get_supply_cap(), 7);
+}
+
+DEFN_TEST(endless_director_widens_the_allowance_as_the_run_goes_on) {
+    EndlessHarness harness(make_schedule_with_supply_growth());
+
+    const int opening = harness.director.get_supply_cap();
+    for (int tick = 0; tick < 4000 && harness.endless.current_wave() < 6; ++tick) {
+        harness.tick();
+    }
+
+    DEFN_CHECK(harness.endless.current_wave() >= 6);
+    DEFN_CHECK(harness.director.get_supply_cap() > opening);
 }
 
 } // namespace defn

@@ -595,7 +595,9 @@ case; judge those in the tempo lab.
 
 **8. Divers bypass tanks completely, and nothing stops them.** Unchanged in mechanism. The hound's cap makes the
 bypass matter more, because approach fire from a sniper line no longer kills it; the answer is the counter-puncher's
-swing, and it is the answer only one hound at a time (problem 3).
+swing, and it is the answer only one hound at a time (problem 3). The diver is the one unit allowed to cross the
+front rank, kept for now and not a template: the battle line is the core mechanic (`GDD.md`), and no further hostile
+or difficulty lever may bypass it.
 
 **9. Two game-feel changes are unreviewed on screen**, and there is now a third: the evasive profile has no
 presentation at all. A 19 landing as 6 is invisible unless the damage number or the flash says so, and a player who

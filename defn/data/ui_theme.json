@@ -169,6 +169,7 @@
         "plating":   { "mark": "res://assets/ui/icons/plating.svg", "color": "state_success" },
         "speed":     { "mark": "res://assets/ui/icons/speed.svg",   "color": "accent" },
         "recruit":   { "mark": "res://assets/ui/icons/recruit.svg", "color": "accent" },
+        "squad":     { "mark": "res://assets/ui/icons/squad.svg", "color": "accent" },
         "target":    { "mark": "res://assets/ui/icons/target.svg",  "color": "state_danger" },
         "bulwark":   { "mark": "res://assets/ui/icons/bulwark.svg", "color": "state_success" },
         "salvage":   { "mark": "res://assets/ui/icons/salvage.svg", "color": "accent" },

@@ -5,6 +5,7 @@
 #define ENDLESS_WAVE_GENERATOR_H
 
 #include "force_mix.h"
+#include "hostile_scaling.h"
 #include "level_definition.h"
 #include "random_source.h"
 
@@ -45,6 +46,51 @@ struct EndlessTuning {
     // friendly dies to one hit and the composition question stops being asked at all.
     double hostile_damage_growth = 1.0; // per wave
     double hostile_damage_cap = 8.0;
+
+    // Elites: a share of each wave arrives with a multiple of its catalog hit points and a larger sprite.
+    //
+    // This is the escalation that fits a game whose core mechanic is the battle line. Every lever has to act *at*
+    // the line -- on what arrives there and on how much work it is to hold -- because nothing may route around it
+    // or treat a base as a destination (`GDD.md`). Buying more bodies runs into a body-count wall; buying tougher
+    // ones does not, and an elite is priced in the same measured threat as the bodies it replaces, so a wave of
+    // elites is a *smaller* wave that costs the same. That is the whole trick: the threat curve keeps climbing
+    // while the number of things on screen stays playable.
+    //
+    // Hit points rather than damage, because hit points multiply every attacker's time-to-kill by the same factor
+    // and so leave the roster's counter structure exactly where `DIVERSITY_AND_BALANCE.md` measured it, while the
+    // damage ramp crosses one-shot thresholds and is knife-edge between inert and instant.
+    //
+    // Inert by default: `elite_first_wave = 0` disables elites entirely, which is what every authored level wants.
+    int elite_first_wave = 0;
+    // Added to the elite share for each wave past the first, then clamped. A share is a fraction of the bodies in
+    // the wave, so 0.25 is one body in four.
+    double elite_fraction_growth = 0.0;
+    double elite_fraction_cap = 0.0;
+    // What an elite's hit points are multiplied by: `elite_hp * elite_hp_growth^(n - elite_first_wave)`, clamped to
+    // `elite_hp_cap`. Capped for the same reason the damage ramp is: uncapped, a long run reaches a body no line can
+    // kill inside a wave interval, and the fight stops being a fight.
+    double elite_hp = 1.0;
+    double elite_hp_growth = 1.0;
+    double elite_hp_cap = 1.0;
+    // The sprite multiple that telegraphs an elite. A category marker rather than a readout of the hit-point
+    // multiple: the player has to be able to see which bodies are the hard ones before they are in contact, and a
+    // size that tracked the multiple exactly would be illegible at both ends of a long run.
+    double elite_size = 1.0;
+
+    // How large a line the player may hold, as a function of the wave: `supply_start + supply_growth * (n - 1)`,
+    // never above the level's own `supply_cap`.
+    //
+    // A flat cap forces a choice the mode should not have to make. The dead stretch a player reports as boredom is
+    // the wave budget being small against a *full* line, and it is early -- waves 6 to 12 -- so nothing that scales
+    // with the wave number reaches it: steepening the curve, tightening the spacing and promoting more elites all
+    // leave those waves byte-identical. Measured, the only flat cap with no dead stretch is about 8, and it ends
+    // the run in eight minutes; the caps that give a full-length run all restore the dead stretch.
+    //
+    // Growing the allowance answers both. The line starts small enough that the opening waves are a fight, and it
+    // widens roughly as fast as the budget does, so the ratio that decides whether anything dies stays put instead
+    // of collapsing the moment the player fills a fixed allowance. Zero growth reproduces the flat cap exactly.
+    double supply_start = 0.0;
+    double supply_growth = 0.0;
     double bounty_decay = 0.985;   // d
     double first_wave_delay = 3.0; // when wave 1 opens
     double wave_interval = 18.0;
@@ -114,6 +160,24 @@ class EndlessWaveGenerator {
     // What every hostile in this wave hits for, as a multiple of its catalog damage. Never below 1: the ramp only
     // ever makes the run harder.
     [[nodiscard]] double hostile_damage_scale(int wave_number) const;
+
+    // The line the player may hold during this wave. Zero means the schedule has no opinion and the level's own cap
+    // stands unchanged.
+    [[nodiscard]] int supply_cap(int wave_number) const;
+
+    // The share of this wave's bodies that arrive as elites, in [0, 1].
+    [[nodiscard]] double elite_fraction(int wave_number) const;
+
+    // What one elite of this wave is multiplied by. Identity before `elite_first_wave`.
+    [[nodiscard]] HostileScale elite_scale(int wave_number) const;
+
+    // What the average body of this wave costs, as a multiple of its threat cost, once the elite share is priced in.
+    // The budget is divided by this before it is spent, which is what makes an elite cost the bodies it is worth
+    // instead of arriving free on top of a wave that was already paid for.
+    //
+    // It prices what an elite costs to kill and not what it deals while dying, so it is an *under*-estimate that
+    // grows with the multiple. `elite_hp` is a difficulty knob, not a texture knob -- see the implementation.
+    [[nodiscard]] double elite_cost_multiplier(int wave_number) const;
 
   private:
     // Rescales an authored count ratio into the budget ratio `allocate_budget` spends along.

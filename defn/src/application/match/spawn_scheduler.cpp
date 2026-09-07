@@ -15,12 +15,13 @@ MatchUnitSide to_match_unit_side(UnitSide side) { return side == UnitSide::FRIEN
 SpawnTimelineWave to_spawn_timeline_wave(const WaveDefinition &wave_definition) {
     SpawnTimelineWave wave;
     wave.wave_number = wave_definition.wave_number;
-    wave.damage_scale = wave_definition.damage_scale;
+    wave.scale = wave_definition.scale;
     wave.spawns.reserve(wave_definition.spawns.size());
     for (const auto &spawn_definition : wave_definition.spawns) {
         wave.spawns.push_back({
             .time = spawn_definition.time,
             .type = spawn_definition.type,
+            .scale = spawn_definition.scale,
         });
     }
     return wave;
@@ -80,7 +81,7 @@ SpawnSchedulerUpdate SpawnScheduler::update(double delta) {
             .position = {.x = spawn_x_pos, .y = spawn_y_pos},
             .runtime_profile = UnitRuntimeProfile::from_unit_config(*config),
             .resolved_runtime_config = resolve_unit_runtime_config(to_runtime_range_config(*config), *random_),
-            .damage_scale = spawn.damage_scale,
+            .scale = spawn.scale,
         });
     }
 

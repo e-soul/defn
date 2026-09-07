@@ -31,6 +31,15 @@ HudWaveModel build_wave(int current_wave, int total_waves) {
     };
 }
 
+// A denominator that is only shown when it constrains anything. An uncapped match hides it, and an energy cap the
+// player is still above is not yet a fact about their reserve -- see `MatchSession::apply_energy_ceiling`.
+HudCapModel build_cap(int used, int cap, bool engaged) {
+    if (cap <= 0 || !engaged) {
+        return {};
+    }
+    return {.cap_text = "/ " + std::to_string(cap), .visible = true, .at_cap = used >= cap};
+}
+
 IntegrityTier integrity_tier(double filled_segments, int segments) {
     if (filled_segments >= static_cast<double>(segments)) {
         return IntegrityTier::INTACT;
@@ -63,6 +72,11 @@ HudIntegrityModel build_integrity(int health, int max_health) {
 HudModel HudPresenter::build(const HudPresentationInput &input) {
     HudModel model;
     model.energy_text = std::to_string(std::max(0, input.energy));
+    model.energy_cap = build_cap(input.energy, input.energy_cap, input.energy_ceiling_engaged);
+    // Supply has no equivalent of the energy ratchet: a cap on the line is in force from the first deployment, so
+    // the readout appears as soon as the match declares one.
+    model.supply_text = std::to_string(std::max(0, input.supply_used));
+    model.supply = build_cap(input.supply_used, input.supply_cap, input.supply_cap > 0);
     model.wave = build_wave(input.current_wave, input.total_waves);
     model.integrity = build_integrity(input.base_health, input.base_max_health);
     model.score_text = std::to_string(std::max(0, input.score));
@@ -72,9 +86,11 @@ HudModel HudPresenter::build(const HudPresentationInput &input) {
     model.deploy_cards.reserve(input.deploy_cards.size());
     for (const auto &card_input : input.deploy_cards) {
         DeployCardViewModel card = build_deploy_card_view_model(card_input);
+        // A card the player cannot act on is disabled whichever rule stops them: at the supply cap every card is
+        // unavailable, however much energy is banked.
         model.deploy_cards.push_back({
             .card = std::move(card),
-            .enabled = input.energy >= card_input.cost,
+            .enabled = input.energy >= card_input.cost && !model.supply.at_cap,
         });
     }
 

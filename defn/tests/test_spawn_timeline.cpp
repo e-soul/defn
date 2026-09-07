@@ -115,4 +115,30 @@ DEFN_TEST(spawn_timeline_does_not_advance_when_stopped) {
     DEFN_CHECK(after_stop.due_spawns.empty());
 }
 
+DEFN_TEST(spawn_timeline_composes_a_body_scale_with_its_waves) {
+    SpawnTimeline timeline;
+    SpawnTimelineDefinition definition;
+    // A wave-wide ramp with one promoted body in it. The two are different granularities of the same thing, so the
+    // promoted body has to carry both -- an elite that lost its wave's ramp would be the wrong body twice over.
+    definition.waves.push_back({.wave_number = 1,
+                                .spawns =
+                                    {
+                                        {.time = 0.5, .type = "grime"},
+                                        {.time = 1.0, .type = "wrecker", .scale = {.hp = 3.0, .size = 1.35}},
+                                    },
+                                .scale = {.damage = 2.0}});
+    timeline.load(definition);
+    timeline.start();
+
+    const SpawnTimelineUpdate update = timeline.advance(1.5);
+    DEFN_CHECK_EQ(update.due_spawns.size(), std::size_t{2});
+
+    DEFN_CHECK_CLOSE(update.due_spawns[0].scale.damage, 2.0, 1e-9);
+    DEFN_CHECK_CLOSE(update.due_spawns[0].scale.hp, 1.0, 1e-9);
+
+    DEFN_CHECK_CLOSE(update.due_spawns[1].scale.damage, 2.0, 1e-9);
+    DEFN_CHECK_CLOSE(update.due_spawns[1].scale.hp, 3.0, 1e-9);
+    DEFN_CHECK_CLOSE(update.due_spawns[1].scale.size, 1.35, 1e-9);
+}
+
 } // namespace defn

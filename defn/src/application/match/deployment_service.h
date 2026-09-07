@@ -22,6 +22,9 @@ enum class DeploymentFailureReason {
     MISSING_DEPENDENCY,
     UNKNOWN_UNIT,
     INSUFFICIENT_ENERGY,
+    // The line is already as large as this match allows. Distinct from INSUFFICIENT_ENERGY because the answer is
+    // different: energy is a wait, and the supply cap is a loss the player has to take first.
+    SUPPLY_CAPPED,
     MISSING_GRID,
 };
 

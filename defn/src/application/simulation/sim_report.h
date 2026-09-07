@@ -54,6 +54,14 @@ struct SimMatchReport {
     // Energy held when each wave opened. A run whose economy is snowballing shows this trending up; the endless
     // bounty decay is tuned until it does not.
     std::vector<int> energy_at_wave;
+    // Friendlies lost during each wave. This is the reading that says whether the *middle* of a run is a fight, and
+    // no other number here does: a run can end at the right wave, in the right minutes, at zero integrity, and
+    // still be twenty waves of hostiles evaporating against a line that never loses a body. A long run of zeroes
+    // here is that run, and it is a difficulty failure the run-length table cannot see.
+    std::vector<int> friendly_deaths_at_wave;
+    // The wave the line first reached the supply cap, or 0 if it never did. Together with the trace above it dates
+    // the moment the player stopped making decisions: at the cap, with nothing dying, there is nothing left to do.
+    int first_capped_wave = 0;
 
     // Wasted economy: the integral of unspent energy over time. High means the player banked what it could have spent.
     double energy_idle_integral = 0.0;
@@ -62,6 +70,16 @@ struct SimMatchReport {
     int peak_window_5s = 0;
 
     int deployments_total = 0;
+    // Deployments the policy asked for and the supply cap refused. Zero on an uncapped match, and the direct reading
+    // of whether the cap is binding at all -- a cap the player never reaches is a cap that changes nothing.
+    //
+    // Counted per decision tick rather than per distinct intention: a policy asks every tick, so a line that sits at
+    // the cap for a minute registers thousands. Read it as "how much of the run was spent capped", not as a number
+    // of deployments the player meant to make.
+    int deployments_blocked = 0;
+    // The largest the player's line ever got. Against the cap it says how much of the allowance was in use; without
+    // one it is the number the mode's arithmetic could not bound.
+    int peak_friendlies = 0;
     int energy_spent = 0;
     std::vector<SimDeploymentStat> deployments;
     std::vector<SimUnitStat> per_unit;

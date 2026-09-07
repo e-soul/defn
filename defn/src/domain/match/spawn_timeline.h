@@ -4,6 +4,8 @@
 #ifndef SPAWN_TIMELINE_H
 #define SPAWN_TIMELINE_H
 
+#include "hostile_scaling.h"
+
 #include <optional>
 #include <string>
 #include <vector>
@@ -13,12 +15,13 @@ namespace defn {
 struct SpawnTimelineSpawn {
     double time = 0.0;
     std::string type;
+    HostileScale scale;
 };
 
 struct SpawnTimelineWave {
     int wave_number = 0;
     std::vector<SpawnTimelineSpawn> spawns;
-    double damage_scale = 1.0;
+    HostileScale scale;
 };
 
 struct SpawnTimelineDefinition {
@@ -28,7 +31,8 @@ struct SpawnTimelineDefinition {
 struct DueSpawn {
     std::string type;
     int wave = 0;
-    double damage_scale = 1.0;
+    // The wave's scale and the body's own, already composed: a caller spawning this never has to know there were two.
+    HostileScale scale;
 };
 
 struct SpawnTimelineUpdate {
@@ -58,7 +62,7 @@ class SpawnTimeline {
         double time = 0.0;
         std::string type;
         int wave = 0;
-        double damage_scale = 1.0;
+        HostileScale scale;
     };
 
     std::vector<FlatSpawn> all_spawns_;

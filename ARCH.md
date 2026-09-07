@@ -234,6 +234,21 @@ flowchart TB
 Current files that map into this module:
 
 - `MatchSession` is the seed for `MatchState`, `EconomyRules`, and `ScoreRules`.
+  It also owns the two match-wide ceilings, both level properties defaulting to
+  uncapped: the **supply cap** on how many friendlies may stand at once, and the
+  **energy cap**, a ratchet that engages the first time the reserve falls to it
+  and is a hard ceiling on regeneration and bounty from then on. The supply cap
+  is the rule that bounds what a player accumulates -- friendlies persist between
+  waves and hostiles do not, so an uncapped line integrates the whole difficulty
+  ramp. Deployment counts up, `MatchDirector::handle_friendly_defeated` counts
+  down, and both spawn paths report through it.
+- `HostileScale` (`domain/content/hostile_scaling`) is what a spawned hostile is
+  multiplied by: damage, hit points and sprite size. It rides on a
+  `WaveDefinition` for the whole wave and on a `SpawnDefinition` for one body,
+  and the timeline composes the two -- one concept at two granularities rather
+  than two mechanisms. One function applies it, called from both `SimWorld::spawn`
+  and `UnitFactory::materialize`, because the conformance suite compares them tick
+  for tick.
 - `EndlessWaveGenerator` (`domain/match`) is pure: `(schedule, wave_number)`
   decides a wave's composition, and the injected `RandomSource` decides only
   spawn order and jitter. It returns the same `WaveDefinition` `LevelLoader`
@@ -252,7 +267,7 @@ Current files that map into this module:
 
 Match outputs are plain values:
 
-- `SpawnUnitIntent { unit_id, side, position, runtime_profile }`
+- `SpawnUnitIntent { unit_id, side, position, runtime_profile, scale }`
 - `ResourceChanged { energy }`
 - `WaveChanged { current_wave, total_waves }`
 - `ScoreChanged { kill_score, total_score }`

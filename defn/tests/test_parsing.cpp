@@ -817,6 +817,50 @@ DEFN_TEST(endless_schedule_loader_prices_every_unit_the_shipped_shapes_name) {
     DEFN_CHECK(set_pieces_are_priced);
 }
 
+DEFN_TEST(endless_schedule_loader_reads_the_elite_ramp_and_the_match_caps) {
+    Dictionary tuning;
+    tuning["elite_first_wave"] = 14;
+    tuning["elite_fraction_growth"] = 0.02;
+    tuning["elite_fraction_cap"] = 0.3;
+    tuning["elite_hp"] = 2.5;
+    tuning["elite_hp_growth"] = 1.05;
+    tuning["elite_hp_cap"] = 7.0;
+    tuning["elite_size"] = 1.4;
+
+    Dictionary level;
+    level["energy_cap"] = 100;
+    level["supply_cap"] = 16;
+
+    Dictionary data;
+    data["level"] = level;
+    data["tuning"] = tuning;
+    const auto definition = EndlessScheduleLoader::load_from_data(data);
+    DEFN_REQUIRE(definition.has_value());
+
+    const EndlessTuning &parsed = definition->schedule.tuning;
+    DEFN_CHECK_EQ(parsed.elite_first_wave, 14);
+    DEFN_CHECK_CLOSE(parsed.elite_fraction_cap, 0.3, 1e-9);
+    DEFN_CHECK_CLOSE(parsed.elite_hp, 2.5, 1e-9);
+    DEFN_CHECK_CLOSE(parsed.elite_hp_cap, 7.0, 1e-9);
+    DEFN_CHECK_CLOSE(parsed.elite_size, 1.4, 1e-9);
+
+    // The caps travel on the level rather than on the schedule: they are ordinary match rules, and any level or
+    // mode may want either.
+    DEFN_CHECK_EQ(definition->level.energy_cap, 100);
+    DEFN_CHECK_EQ(definition->level.supply_cap, 16);
+}
+
+DEFN_TEST(level_loader_leaves_an_authored_level_uncapped) {
+    // Every campaign level omits both, and absent has to mean uncapped or the caps would silently reshape content
+    // written before they existed.
+    Dictionary data;
+    const auto level = LevelLoader::load_from_data(data);
+    DEFN_REQUIRE(level.has_value());
+
+    DEFN_CHECK_EQ(level->energy_cap, 0);
+    DEFN_CHECK_EQ(level->supply_cap, 0);
+}
+
 DEFN_TEST(endless_schedule_loader_falls_back_to_the_tuning_defaults) {
     Dictionary data;
     data["level"] = Dictionary();
@@ -825,6 +869,8 @@ DEFN_TEST(endless_schedule_loader_falls_back_to_the_tuning_defaults) {
     DEFN_REQUIRE(definition.has_value());
     const EndlessTuning defaults;
     DEFN_CHECK_CLOSE(definition->schedule.tuning.escalation, defaults.escalation, 1e-9);
+    // Elites default to inert, so a schedule that says nothing about them promotes nobody.
+    DEFN_CHECK_EQ(definition->schedule.tuning.elite_first_wave, 0);
     DEFN_CHECK(definition->schedule.threat_costs.empty());
     DEFN_CHECK(definition->schedule.drift.empty());
 }

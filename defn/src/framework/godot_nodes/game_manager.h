@@ -62,6 +62,7 @@ class GameManager : public Node2D {
     void update_camera_scroll(double delta);
     Unit *materialize_spawn_intent(const SpawnUnitIntent &intent);
     void add_friendly_unit(Unit *unit);
+    void refresh_supply_readout();
     void add_enemy_unit(Unit *unit);
     [[nodiscard]] bool compose_match(const String &level_id);
     void apply_match_update(MatchUpdate update);

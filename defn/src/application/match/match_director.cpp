@@ -52,6 +52,8 @@ void MatchDirector::append_wave(const WaveDefinition &wave_definition) { spawn_s
 
 void MatchDirector::set_bounty_scale(double scale) { match_session_.set_bounty_scale(scale); }
 
+void MatchDirector::set_supply_cap(int cap) { match_session_.set_supply_cap(cap); }
+
 void MatchDirector::award_survival_bonus(int points) { match_session_.award_survival_bonus(points); }
 
 void MatchDirector::begin_match() {
@@ -64,6 +66,8 @@ void MatchDirector::begin_match() {
         .initial_integrity = campaign_->get_effective_base_integrity(spawn_scheduler_.get_base_integrity()),
         .bounty_multiplier = campaign_->get_effective_bounty_multiplier(),
         .energy_regen_rate = campaign_->get_effective_energy_regen(),
+        .energy_cap = spawn_scheduler_.get_energy_cap(),
+        .supply_cap = spawn_scheduler_.get_supply_cap(),
     };
 
     match_session_.start(match_config);
@@ -146,6 +150,13 @@ MatchUpdate MatchDirector::handle_enemy_defeated(const EnemyDefeatedReport &repo
     const int career_score = campaign_ != nullptr ? campaign_->get_total_score() : 0;
     update_result.score_changed = ScoreChanged{.kill_score = kill_score, .total_score = career_score + kill_score, .bounty_awarded = bounty_awarded};
     return update_result;
+}
+
+MatchUpdate MatchDirector::handle_friendly_defeated() {
+    match_session_.record_friendly_died();
+    // No update to publish: nothing on the HUD reads a friendly's death directly, and the supply readout is
+    // refreshed by the same poll that refreshes the energy one.
+    return {};
 }
 
 MatchUpdate MatchDirector::handle_base_durability_changed(int current_hp) {

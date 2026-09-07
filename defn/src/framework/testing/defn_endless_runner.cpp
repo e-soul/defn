@@ -16,6 +16,8 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 #include <format>
 #include <string>
 #include <vector>
@@ -72,14 +74,42 @@ SimPolicySpec parse_policy(const Dictionary &policy) {
     return spec;
 }
 
-// The default slate. The four standard policies say how long a run lasts; the mono mixes are the not-solved gate,
-// and there has to be one per friendly unit or the gate cannot see the mix that solves the mode.
+// The composition a transitioning player is expected to pass through, and the waves they pass through it at.
+//
+// Authored rather than derived, and it is the drift schedule's own question read back: the light half of the roster
+// answers an opening of evasive swarm, and the heavy half is what the armoured tail needs. The waves are where
+// `data/endless.json` moves its keyframes, so this policy changes its mind roughly when the hostiles do.
+std::vector<MixKeyframe> transition_keyframes(const std::vector<std::string> &friendly_unit_ids) {
+    const auto has = [&friendly_unit_ids](const char *unit_id) { return std::ranges::find(friendly_unit_ids, unit_id) != friendly_unit_ids.end(); };
+    if (!has("operator") || !has("breacher") || !has("marksman") || !has("impact")) {
+        return {};
+    }
+
+    return {
+        {.wave = 1, .weights = {{"operator", 2.0}, {"breacher", 1.0}}},
+        {.wave = 12, .weights = {{"operator", 1.0}, {"breacher", 1.0}, {"impact", 1.0}}},
+        {.wave = 22, .weights = {{"breacher", 1.0}, {"impact", 1.0}, {"marksman", 1.0}}},
+        {.wave = 32, .weights = {{"breacher", 1.0}, {"marksman", 2.0}}},
+    };
+}
+
+// The default slate. The three standard policies say how long a run lasts; the mono mixes and pairs are the
+// not-solved gate, and there has to be one per friendly unit or the gate cannot see the mix that solves the mode.
+//
+// `transition` is the row the gate is actually about. Every other entry fixes its composition for the whole run,
+// and a fixed composition is what a drifting schedule is built to punish -- so without this the sweep measures how
+// long each wrong answer survives and never measures the right one. `ENDLESS_MODE.md` recorded the mode's ceiling
+// as unmeasured for exactly this reason.
 std::vector<SimPolicySpec> default_policies(const std::vector<std::string> &friendly_unit_ids) {
     std::vector<SimPolicySpec> policies = {
         {.kind = "greedy", .label = "greedy"},
         {.kind = "defensive", .label = "defensive"},
         {.kind = "patience", .label = "patience"},
     };
+
+    if (std::vector<MixKeyframe> keyframes = transition_keyframes(friendly_unit_ids); !keyframes.empty()) {
+        policies.push_back({.kind = "transition", .transition = std::move(keyframes), .label = "transition"});
+    }
 
     for (const std::string &unit_id : friendly_unit_ids) {
         policies.push_back({.kind = "mix", .weights = {{unit_id, 1.0}}, .label = "mono:" + unit_id});
@@ -163,28 +193,88 @@ struct KnobSet {
     double bounty_decay = 0.0;
     double hostile_damage_growth = 0.0;
     double hostile_damage_cap = 0.0;
+    double elite_fraction_cap = 0.0;
+    double elite_hp_growth = 0.0;
+    double elite_first_wave = 0.0;
+    double wave_interval = 0.0;
+    double interval_growth = 0.0;
+    double supply_start = 0.0;
+    double supply_growth = 0.0;
+    double elite_hp = 0.0;
+    // Level rules rather than schedule ones, and swept here anyway: they are what the schedule is tuned *against*,
+    // so a cell that does not carry them is measuring a different game.
+    double supply_cap = 0.0;
+    double energy_cap = 0.0;
 };
 
-std::vector<KnobSet> expand_knobs(const std::vector<double> &base_budgets, const std::vector<double> &escalations, const std::vector<double> &curves,
-                                  const std::vector<double> &decays, const std::vector<double> &growths, const std::vector<double> &caps) {
+// The knobs a cell varies, each as the list of values to try. Bundled because the expansion below is a product over
+// all of them and a positional parameter list of ten `std::vector<double>` is a bug waiting to be written.
+constexpr std::size_t KNOB_AXIS_COUNT = 16;
+
+struct KnobAxes {
+    std::vector<double> base_budgets;
+    std::vector<double> escalations;
+    std::vector<double> curves;
+    std::vector<double> decays;
+    std::vector<double> growths;
+    std::vector<double> damage_caps;
+    std::vector<double> elite_fractions;
+    std::vector<double> elite_hp_growths;
+    std::vector<double> elite_hps;
+    std::vector<double> elite_first_waves;
+    std::vector<double> wave_intervals;
+    std::vector<double> interval_growths;
+    std::vector<double> supply_starts;
+    std::vector<double> supply_growths;
+    std::vector<double> supply_caps;
+    std::vector<double> energy_caps;
+};
+
+std::vector<KnobSet> expand_knobs(const KnobAxes &axes) {
+    // An odometer over the axes rather than one loop per knob. The nested form was already the deepest function in
+    // this file at six knobs, and every knob added made it worse; this way a new axis is one entry in each of the
+    // two tables below and the control flow never changes.
+    const std::array<const std::vector<double> *, KNOB_AXIS_COUNT> values = {
+        &axes.base_budgets,  &axes.escalations,       &axes.curves,          &axes.decays,
+        &axes.growths,       &axes.damage_caps,       &axes.elite_fractions, &axes.elite_hp_growths,
+        &axes.elite_hps,     &axes.elite_first_waves, &axes.wave_intervals,  &axes.interval_growths,
+        &axes.supply_starts, &axes.supply_growths,    &axes.supply_caps,     &axes.energy_caps,
+    };
+
+    // `parse_doubles` substitutes the shipped value for an omitted flag, so every axis holds at least one entry.
+    // An empty one would mean a caller built `KnobAxes` by hand and left an axis out, and the product of zero cells
+    // is no sweep rather than a sweep of the defaults -- say so by returning nothing instead of indexing past it.
+    std::size_t total = 1;
+    for (const std::vector<double> *axis : values) {
+        if (axis->empty()) {
+            return {};
+        }
+        total *= axis->size();
+    }
+
     std::vector<KnobSet> cells;
-    cells.reserve(base_budgets.size() * escalations.size() * curves.size() * decays.size() * growths.size() * caps.size());
-    for (const double base_budget : base_budgets) {
-        for (const double escalation : escalations) {
-            for (const double curve : curves) {
-                for (const double decay : decays) {
-                    for (const double growth : growths) {
-                        for (const double cap : caps) {
-                            cells.push_back({.base_budget = base_budget,
-                                             .escalation = escalation,
-                                             .escalation_curve = curve,
-                                             .bounty_decay = decay,
-                                             .hostile_damage_growth = growth,
-                                             .hostile_damage_cap = cap});
-                        }
-                    }
-                }
+    cells.reserve(total);
+    std::array<std::size_t, KNOB_AXIS_COUNT> cursor{};
+    for (std::size_t cell = 0; cell < total; ++cell) {
+        KnobSet knobs;
+        const std::array<double *, KNOB_AXIS_COUNT> fields = {
+            &knobs.base_budget,        &knobs.escalation,         &knobs.escalation_curve, &knobs.bounty_decay,  &knobs.hostile_damage_growth,
+            &knobs.hostile_damage_cap, &knobs.elite_fraction_cap, &knobs.elite_hp_growth,  &knobs.elite_hp,      &knobs.elite_first_wave,
+            &knobs.wave_interval,      &knobs.interval_growth,    &knobs.supply_start,     &knobs.supply_growth, &knobs.supply_cap,
+            &knobs.energy_cap,
+        };
+        for (std::size_t axis = 0; axis < KNOB_AXIS_COUNT; ++axis) {
+            *fields.at(axis) = values.at(axis)->at(cursor.at(axis));
+        }
+        cells.push_back(knobs);
+
+        // Carry, least significant axis first, so the last axis varies fastest and a sweep reads in the order it
+        // was written on the command line.
+        for (std::size_t axis = KNOB_AXIS_COUNT; axis-- > 0;) {
+            if (++cursor.at(axis) < values.at(axis)->size()) {
+                break;
             }
+            cursor.at(axis) = 0;
         }
     }
     return cells;
@@ -203,10 +293,10 @@ std::string deaths_trace(const std::vector<SimUnitStat> &per_unit) {
     return trace + "}";
 }
 
-std::string energy_trace(const std::vector<int> &energy_at_wave) {
+std::string int_trace(const std::vector<int> &values) {
     std::string trace = "[";
-    for (std::size_t index = 0; index < energy_at_wave.size(); ++index) {
-        trace += (index == 0 ? "" : ",") + std::to_string(energy_at_wave[index]);
+    for (std::size_t index = 0; index < values.size(); ++index) {
+        trace += (index == 0 ? "" : ",") + std::to_string(values[index]);
     }
     return trace + "]";
 }
@@ -216,13 +306,21 @@ std::string energy_trace(const std::vector<int> &energy_at_wave) {
 // of the tuning, and the analysis needs the tuning on every row to group by it.
 std::string run_to_jsonl(const std::string &policy, std::uint32_t seed, const KnobSet &knobs, const SimMatchReport &report) {
     return std::format(R"({{"policy":"{}","seed":{},"base_budget":{:.2f},"escalation":{:.4f},"bounty_decay":{:.4f},)"
-                       R"("escalation_curve":{:.4f},"hostile_damage_growth":{:.4f},"hostile_damage_cap":{:.2f},"waves_reached":{},"level_score":{},)"
-                       R"("clear_time_s":{:.1f},"decided":{},"remaining_integrity":{},"energy_spent":{},"deployments_total":{},"peak_enemies":{},)"
-                       R"("energy_at_wave":{},"spawned_deaths":{}}})",
+                       R"("escalation_curve":{:.4f},"hostile_damage_growth":{:.4f},"hostile_damage_cap":{:.2f},)"
+                       R"("elite_fraction_cap":{:.4f},"elite_hp_growth":{:.4f},"elite_hp":{:.2f},"elite_first_wave":{},)"
+                       R"("wave_interval":{:.2f},"interval_growth":{:.4f},"supply_start":{:.1f},"supply_growth":{:.3f},)"
+                       R"("supply_cap":{},"energy_cap":{},)"
+                       R"("waves_reached":{},"level_score":{},)"
+                       R"("clear_time_s":{:.1f},"decided":{},"remaining_integrity":{},"energy_spent":{},"deployments_total":{},)"
+                       R"("deployments_blocked":{},"peak_friendlies":{},"peak_enemies":{},"first_capped_wave":{},)"
+                       R"("energy_at_wave":{},"friendly_deaths_at_wave":{},"spawned_deaths":{}}})",
                        policy, seed, knobs.base_budget, knobs.escalation, knobs.bounty_decay, knobs.escalation_curve, knobs.hostile_damage_growth,
-                       knobs.hostile_damage_cap, report.waves_reached, report.level_score, report.clear_time_seconds, report.decided ? "true" : "false",
-                       report.remaining_integrity, report.energy_spent, report.deployments_total, report.peak_concurrent_enemies,
-                       energy_trace(report.energy_at_wave), deaths_trace(report.per_unit));
+                       knobs.hostile_damage_cap, knobs.elite_fraction_cap, knobs.elite_hp_growth, knobs.elite_hp, static_cast<int>(knobs.elite_first_wave),
+                       knobs.wave_interval, knobs.interval_growth, knobs.supply_start, knobs.supply_growth, static_cast<int>(knobs.supply_cap),
+                       static_cast<int>(knobs.energy_cap), report.waves_reached, report.level_score, report.clear_time_seconds,
+                       report.decided ? "true" : "false", report.remaining_integrity, report.energy_spent, report.deployments_total, report.deployments_blocked,
+                       report.peak_friendlies, report.peak_concurrent_enemies, report.first_capped_wave, int_trace(report.energy_at_wave),
+                       int_trace(report.friendly_deaths_at_wave), deaths_trace(report.per_unit));
 }
 
 } // namespace
@@ -250,12 +348,24 @@ Dictionary DefnEndlessRunner::run_sweep(const Dictionary &args) {
     }
 
     const EndlessTuning &shipped = endless_definition->schedule.tuning;
-    const std::vector<double> base_budgets = parse_doubles(args.get("base_budget", Array()), shipped.base_budget);
-    const std::vector<double> escalations = parse_doubles(args.get("escalation", Array()), shipped.escalation);
-    const std::vector<double> decays = parse_doubles(args.get("bounty_decay", Array()), shipped.bounty_decay);
-    const std::vector<double> curves = parse_doubles(args.get("escalation_curve", Array()), shipped.escalation_curve);
-    const std::vector<double> growths = parse_doubles(args.get("hostile_damage_growth", Array()), shipped.hostile_damage_growth);
-    const std::vector<double> caps = parse_doubles(args.get("hostile_damage_cap", Array()), shipped.hostile_damage_cap);
+    const KnobAxes axes{
+        .base_budgets = parse_doubles(args.get("base_budget", Array()), shipped.base_budget),
+        .escalations = parse_doubles(args.get("escalation", Array()), shipped.escalation),
+        .curves = parse_doubles(args.get("escalation_curve", Array()), shipped.escalation_curve),
+        .decays = parse_doubles(args.get("bounty_decay", Array()), shipped.bounty_decay),
+        .growths = parse_doubles(args.get("hostile_damage_growth", Array()), shipped.hostile_damage_growth),
+        .damage_caps = parse_doubles(args.get("hostile_damage_cap", Array()), shipped.hostile_damage_cap),
+        .elite_fractions = parse_doubles(args.get("elite_fraction_cap", Array()), shipped.elite_fraction_cap),
+        .elite_hp_growths = parse_doubles(args.get("elite_hp_growth", Array()), shipped.elite_hp_growth),
+        .elite_hps = parse_doubles(args.get("elite_hp", Array()), shipped.elite_hp),
+        .elite_first_waves = parse_doubles(args.get("elite_first_wave", Array()), shipped.elite_first_wave),
+        .wave_intervals = parse_doubles(args.get("wave_interval", Array()), shipped.wave_interval),
+        .interval_growths = parse_doubles(args.get("interval_growth", Array()), shipped.interval_growth),
+        .supply_starts = parse_doubles(args.get("supply_start", Array()), shipped.supply_start),
+        .supply_growths = parse_doubles(args.get("supply_growth", Array()), shipped.supply_growth),
+        .supply_caps = parse_doubles(args.get("supply_cap", Array()), endless_definition->level.supply_cap),
+        .energy_caps = parse_doubles(args.get("energy_cap", Array()), endless_definition->level.energy_cap),
+    };
     const std::vector<SimPolicySpec> policies =
         filter_by_label(parse_policies(args.get("policies", Array()), deployable_friendly_ids(unit_catalog)), args.get("policy_labels", Array()));
 
@@ -267,7 +377,7 @@ Dictionary DefnEndlessRunner::run_sweep(const Dictionary &args) {
     String lines;
     int runs = 0;
     int max_wave = 0;
-    for (const KnobSet &knobs : expand_knobs(base_budgets, escalations, curves, decays, growths, caps)) {
+    for (const KnobSet &knobs : expand_knobs(axes)) {
         EndlessSchedule schedule = endless_definition->schedule;
         schedule.tuning.base_budget = knobs.base_budget;
         schedule.tuning.escalation = knobs.escalation;
@@ -275,6 +385,20 @@ Dictionary DefnEndlessRunner::run_sweep(const Dictionary &args) {
         schedule.tuning.bounty_decay = knobs.bounty_decay;
         schedule.tuning.hostile_damage_growth = knobs.hostile_damage_growth;
         schedule.tuning.hostile_damage_cap = knobs.hostile_damage_cap;
+        schedule.tuning.elite_fraction_cap = knobs.elite_fraction_cap;
+        schedule.tuning.elite_hp_growth = knobs.elite_hp_growth;
+        schedule.tuning.elite_hp = knobs.elite_hp;
+        schedule.tuning.elite_first_wave = static_cast<int>(knobs.elite_first_wave);
+        schedule.tuning.wave_interval = knobs.wave_interval;
+        schedule.tuning.interval_growth = knobs.interval_growth;
+        schedule.tuning.supply_start = knobs.supply_start;
+        schedule.tuning.supply_growth = knobs.supply_growth;
+
+        // The caps are level rules, so a cell varies the level rather than the schedule. Both are part of the same
+        // measurement: what the mode asks and what the player is allowed to answer with.
+        LevelDefinition level = endless_definition->level;
+        level.supply_cap = static_cast<int>(knobs.supply_cap);
+        level.energy_cap = static_cast<int>(knobs.energy_cap);
 
         for (const SimPolicySpec &policy : policies) {
             for (int index = 0; index < seed_count; ++index) {
@@ -286,7 +410,7 @@ Dictionary DefnEndlessRunner::run_sweep(const Dictionary &args) {
                 scenario.owned_upgrades = owned_upgrades;
                 scenario.endless = schedule;
 
-                SimMatch match(unit_catalog, globals, endless_definition->level, scenario, base_unit_ids, upgrade_cards);
+                SimMatch match(unit_catalog, globals, level, scenario, base_unit_ids, upgrade_cards);
                 const SimMatchReport report = match.run();
                 max_wave = std::max(max_wave, report.waves_reached);
                 ++runs;

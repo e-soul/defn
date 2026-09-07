@@ -148,9 +148,8 @@ Unit *UnitFactory::create(const UnitConfig &config, const godot::Vector2 &positi
 }
 
 Unit *UnitFactory::materialize(const SpawnUnitIntent &intent, const UnitConfig &config, const FieldPromotionRules &promotion_rules) {
-    return create(with_damage_scale(config, intent.damage_scale),
-                  godot::Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)), intent.runtime_profile,
-                  intent.resolved_runtime_config, promotion_rules);
+    return create(with_hostile_scale(config, intent.scale), godot::Vector2(static_cast<real_t>(intent.position.x), static_cast<real_t>(intent.position.y)),
+                  intent.runtime_profile, intent.resolved_runtime_config, promotion_rules);
 }
 
 void UnitFactory::initialize(Unit *unit) {

@@ -18,6 +18,9 @@ std::unique_ptr<PlayerPolicy> make_policy(const SimPolicySpec &spec) {
     if (spec.kind == "mix") {
         return std::make_unique<MixPolicy>(spec.weights);
     }
+    if (spec.kind == "transition") {
+        return std::make_unique<TransitionPolicy>(spec.transition);
+    }
 
     return std::make_unique<GreedyPolicy>();
 }

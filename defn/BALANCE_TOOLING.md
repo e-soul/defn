@@ -420,7 +420,31 @@ python scripts/analyze_endless.py defn/build/endless.jsonl --target-wave 40
 | `base_budget` | shipped `B0` | Comma-separated opening-wave sizes to sweep. **Sweep this before `r`** -- see below. |
 | `escalation` | shipped `r` | Comma-separated values of `r` to sweep. |
 | `decay` | shipped `d` | Comma-separated values of `d` to sweep. |
-| `policies` | every label | Comma-separated labels, to narrow the slate: `greedy`, `mono:<unit>`, `mix:<a>+<b>`. |
+| `elite` | shipped | Elite share cap: what fraction of a late wave arrives promoted. |
+| `elite_hp` | shipped | Per-wave growth of an elite's hit-point multiple. |
+| `supply` | shipped | Ceiling on the standing line: the most a schedule may ever open the allowance to. `0` is uncapped. |
+| `supply_start` | shipped | The line allowed at wave 1. With `supply_growth`, this is the knob that decides whether the middle of a run is a fight. |
+| `supply_growth` | shipped | How much wider the allowance gets per wave. `0` reproduces a flat cap. |
+| `elite_start` | shipped | First wave that promotes elites. |
+| `interval` / `interval_growth` | shipped | Seconds between waves, and its per-wave multiplier. |
+| `energy_cap` | shipped | Reserve ceiling, once the player has spent down to it. `0` is uncapped. |
+| `policies` | every label | Comma-separated labels, to narrow the slate: `greedy`, `transition`, `mono:<unit>`, `mix:<a>+<b>`. |
+
+`supply` and `energy_cap` are level properties rather than schedule ones, and the sweep varies them anyway: they
+are what the schedule is tuned *against*, so a cell that holds them fixed is measuring a different game.
+
+**`friendly_deaths_at_wave` is the reading that says whether the middle of a run is a fight, and nothing else here
+does.** Run length, integrity, the economy trend and the not-solved gate are all end-of-run readings, and a run can
+end at the right wave, in the right minutes, at zero integrity, and still be twenty waves of hostiles evaporating on
+contact. Render it one character per wave, `.` for a wave in which the player lost nobody, and read the longest
+*consecutive* stretch of them -- not the share, which barely moves. Seven in a row is the run asleep; that is what a
+player reports as boredom, and `first_capped_wave` dates when it started. Three
+columns read them back. `peak_friendlies` is how large the line actually got -- against a cap it says how much of
+the allowance was in use, and without one it is the number the escalation could not bound. `deployments_blocked`
+counts the deployments the supply cap refused, which is the direct test of whether the cap binds at all: a cap the
+player never reaches changes nothing whatever the run length says. It counts per decision tick rather than per
+distinct intention -- a policy asks every tick, so a line sitting at the cap for a minute registers thousands. Read
+it as how much of the run was spent capped, not as deployments the player meant to make.
 
 **Sweeps are cheap; if one is not, suspect the runner rather than the simulation.** A full 53-wave run of the
 strongest composition is about seven seconds and a thirty-run sweep is under a minute. `peak_enemies`, reported on
@@ -440,8 +464,12 @@ break" without paying for the tail.
 > simulation got slow" diagnoses were this one bug, and two plausible-sounding performance theories were invented to
 > explain it. The parser is table-driven now so a flag cannot be added without its advance -- keep it that way.
 
-**The slate is the measurement.** `greedy`, `defensive` and `patience` say how long a run lasts; one `mono:` per
-friendly unit and one `mix:` per unordered pair are what the not-solved gate is read over. Every run owns every
+**The slate is the measurement, and `transition` is the row that matters.** `greedy`, `defensive` and `patience`
+say how long a run lasts; one `mono:` per friendly unit and one `mix:` per unordered pair are what the not-solved
+gate is read over. Every one of those fixes its composition for the whole run, and a fixed composition is exactly
+what a drifting hostile schedule is built to punish -- so a slate of them measures how long each wrong answer
+survives and never measures the right one. `transition` plays a composition that is a function of the wave, which
+is how the mode is actually played. Read it first: it is the row that decides whether the mode has a ceiling. Every run owns every
 unit-unlock upgrade, because a player reaching endless has cleared the campaign — without that only the base unit is
 deployable and every policy is silently the same policy.
 

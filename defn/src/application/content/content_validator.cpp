@@ -287,8 +287,8 @@ void validate_ui_theme(const UiThemeData &theme, const std::vector<std::string> 
 
     // Everything the UI tints live shares one map: the HUD instruments, the stat meter's marks and the icons
     // an upgrade card names. A stat and a plate that both mean "integrity" then draw the same shape.
-    static const std::array<std::string, 14> required_icons = {"battery", "bulwark", "cadence", "energy", "generic", "integrity", "level",
-                                                               "plating", "recruit", "salvage", "score",  "speed",   "target",    "wave"};
+    static const std::array<std::string, 15> required_icons = {"battery", "bulwark", "cadence", "energy", "generic", "integrity", "level", "plating",
+                                                               "recruit", "salvage", "score",   "speed",  "squad",   "target",    "wave"};
     validate_mark_set(theme, theme.icons, required_icons, "icon", issues);
 
     static const std::array<std::string, 5> required_control_icons = {"choice_off", "choice_on", "slider_knob", "slider_knob_disabled", "slider_knob_hot"};

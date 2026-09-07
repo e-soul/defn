@@ -20,6 +20,9 @@ std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &dat
     level_definition.name = to_std_string(String(data.get("name", "")));
     level_definition.starting_core_resource = VariantTools::as_int(data.get("starting_core_resource", 100));
     level_definition.base_integrity = VariantTools::as_int(data.get("base_integrity", 3));
+    // Absent means uncapped, which is every authored campaign level.
+    level_definition.energy_cap = VariantTools::as_int(data.get("energy_cap", 0));
+    level_definition.supply_cap = VariantTools::as_int(data.get("supply_cap", 0));
     const Array base_position = data.get("base_position", Array());
     if (base_position.size() >= 2) {
         level_definition.base_position_ratio = {

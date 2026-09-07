@@ -20,23 +20,33 @@ int scale_damage(int damage, double scale) {
     return std::max(1, static_cast<int>(std::lround(static_cast<double>(damage) * scale)));
 }
 
+// Same floor, same reasoning: a body with no hit points at all is dead on arrival rather than weak.
+int scale_hp(int hit_points, double scale) {
+    if (hit_points <= 0) {
+        return hit_points;
+    }
+    return std::max(1, static_cast<int>(std::lround(static_cast<double>(hit_points) * scale)));
+}
+
 } // namespace
 
-UnitConfig with_damage_scale(const UnitConfig &config, double scale) {
-    if (scale == 1.0) {
+UnitConfig with_hostile_scale(const UnitConfig &config, const HostileScale &scale) {
+    if (scale.is_identity()) {
         return config;
     }
 
     UnitConfig scaled = config;
-    scaled.melee_damage = scale_damage(config.melee_damage, scale);
-    scaled.ranged_damage = scale_damage(config.ranged_damage, scale);
+    scaled.hp = scale_hp(config.hp, scale.hp);
+    scaled.scale = static_cast<float>(static_cast<double>(config.scale) * scale.size);
+    scaled.melee_damage = scale_damage(config.melee_damage, scale.damage);
+    scaled.ranged_damage = scale_damage(config.ranged_damage, scale.damage);
     if (scaled.projectile_attack.has_value()) {
         ProjectileAttackConfig &projectile = *scaled.projectile_attack;
         if (projectile.impact_damage.has_value()) {
-            projectile.impact_damage = scale_damage(*projectile.impact_damage, scale);
+            projectile.impact_damage = scale_damage(*projectile.impact_damage, scale.damage);
         }
         if (projectile.splash_damage.has_value()) {
-            projectile.splash_damage = scale_damage(*projectile.splash_damage, scale);
+            projectile.splash_damage = scale_damage(*projectile.splash_damage, scale.damage);
         }
     }
     return scaled;

@@ -5,6 +5,7 @@
 #define SIM_WORLD_H
 
 #include "combat_use_cases.h"
+#include "hostile_scaling.h"
 #include "projectile_rules.h"
 #include "random_source.h"
 #include "sim_entity.h"
@@ -29,10 +30,12 @@ enum class SimSpawnRejection { NONE, UNKNOWN_UNIT };
 // Overrides for a spawn the level data does not describe on its own -- today only the base, whose health comes from
 // the match configuration rather than from its unit entry.
 struct SimSpawnOverrides {
+    // Applied after the scale, so a base whose health comes from the match configuration is not also multiplied by
+    // a wave's escalation.
     std::optional<int> hp;
-    // A multiple on the unit's catalog damage. Applied through the same `with_damage_scale` the shipped spawn path
-    // uses, so the conformance suite keeps comparing like with like.
-    double damage_scale = 1.0;
+    // What this body is multiplied by. Applied through the same `with_hostile_scale` the shipped spawn path uses,
+    // so the conformance suite keeps comparing like with like.
+    HostileScale scale;
 };
 
 // Every point of damage that landed, in the order it landed. The match driver turns these into bounty, base integrity

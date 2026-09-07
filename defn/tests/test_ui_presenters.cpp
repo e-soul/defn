@@ -707,6 +707,59 @@ DEFN_TEST(hud_reads_an_unbounded_run_as_a_count_rather_than_a_fraction) {
     DEFN_CHECK(has_all_labels(hud, {"2", "/ 5"}));
 }
 
+DEFN_TEST(hud_hides_both_cap_readouts_on_an_uncapped_match) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
+    // Every authored campaign level is uncapped, and a ceiling that is not there must not appear as one the player
+    // has to learn to ignore.
+    hud->set_energy_cap(0);
+    hud->update_supply(3, 0, false);
+
+    Node *supply_group = find_node_named(hud, "SupplyGroup");
+    if (supply_group != nullptr) {
+        DEFN_CHECK(!Object::cast_to<Control>(supply_group)->is_visible());
+    }
+    Node *energy = find_node_named(hud, "EnergyCap");
+    if (energy != nullptr) {
+        DEFN_CHECK(!Object::cast_to<Control>(energy)->is_visible());
+    }
+}
+
+DEFN_TEST(hud_shows_the_supply_reading_at_once_and_the_energy_ceiling_only_once_it_engages) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
+    hud->set_energy_cap(100);
+    hud->update_core_resource(120);
+    // A supply cap is in force from the first deployment, so its reading is there straight away. The energy cap is
+    // a ratchet: while the reserve is still above it, it is not yet a fact about the player's purse.
+    hud->update_supply(3, 20, false);
+    DEFN_CHECK(has_all_labels(hud, {"3", "/ 20"}));
+    Node *energy = find_node_named(hud, "EnergyCap");
+    if (energy != nullptr) {
+        DEFN_CHECK(!Object::cast_to<Control>(energy)->is_visible());
+    }
+
+    hud->update_core_resource(95);
+    hud->update_supply(3, 20, true);
+    DEFN_CHECK(has_all_labels(hud, {"95", "/ 100"}));
+}
+
+DEFN_TEST(hud_supply_reads_against_the_allowance_in_force_rather_than_the_level_ceiling) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+
+    // Endless widens the allowance with the wave, so the HUD is told what it is now. Showing the level's ceiling
+    // instead reads as "7 / 24" to a player who is in fact full at seven, with every deploy card refused.
+    hud->set_energy_cap(100);
+    hud->update_supply(7, 7, true);
+    DEFN_CHECK(has_all_labels(hud, {"7", "/ 7"}));
+
+    hud->update_supply(7, 11, true);
+    DEFN_CHECK(has_all_labels(hud, {"7", "/ 11"}));
+}
+
 DEFN_TEST(hud_builds_instrument_pods_and_tracks_match_state) {
     const TreeMountedNode<HUD> owner;
     HUD *hud = owner.get();

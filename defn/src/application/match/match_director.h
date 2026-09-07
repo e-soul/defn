@@ -34,12 +34,19 @@ class MatchDirector {
 
     // Scales what a kill pays without touching what it scores.
     void set_bounty_scale(double scale);
+
+    // The standing line the player is allowed to hold from here on.
+    void set_supply_cap(int cap);
     void award_survival_bonus(int points);
 
     void begin_match();
     MatchUpdate update(double delta);
     MatchUpdate handle_deploy_request(const std::string &unit_id);
     MatchUpdate handle_enemy_defeated(const EnemyDefeatedReport &report);
+
+    // A friendly left the field. Only the supply count moves: a friendly pays no bounty and scores nothing, and the
+    // count is what decides whether the player may deploy again.
+    MatchUpdate handle_friendly_defeated();
     MatchUpdate handle_base_durability_changed(int current_hp);
     MatchUpdate handle_base_destroyed();
 
@@ -50,6 +57,11 @@ class MatchDirector {
 
     bool is_game_over() const { return match_session_.is_game_over(); }
     int get_core_resource() const { return match_session_.get_core_resource(); }
+    int get_living_friendlies() const { return match_session_.get_living_friendlies(); }
+    bool has_supply_room() const { return match_session_.has_supply_room(); }
+    int get_supply_cap() const { return match_session_.get_supply_cap(); }
+    int get_energy_cap() const { return match_session_.get_energy_cap(); }
+    bool is_energy_ceiling_engaged() const { return match_session_.is_energy_ceiling_engaged(); }
     int get_base_health() const { return match_session_.get_base_health(); }
     int get_base_max_health() const { return match_session_.get_base_max_health(); }
     const std::string &get_level_name() const { return spawn_scheduler_.get_level_name(); }

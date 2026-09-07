@@ -18,12 +18,14 @@
 namespace defn {
 
 struct SimPolicySpec {
-    // "scripted", "greedy", "defensive", "patience" or "mix".
+    // "scripted", "greedy", "defensive", "patience", "mix" or "transition".
     std::string kind = "greedy";
     std::vector<ScriptedCommand> script;
     int energy_reserve = 15;
     // "mix" only: the composition to play, as relative weights per unit id.
     std::map<std::string, double> weights;
+    // "transition" only: the compositions to pass through, each from its wave until the next one's.
+    std::vector<MixKeyframe> transition;
     // What this policy is called in a sweep record, defaulting to `kind`. A scenario may run two policies of the
     // same kind -- two mixes, say -- and `aggregate_sim.py` groups by this name, so without it the two are silently
     // pooled into one row and the comparison the second one was added for cannot be read.

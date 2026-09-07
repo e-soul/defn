@@ -89,6 +89,32 @@ class MixPolicy final : public PlayerPolicy {
     std::map<std::string, double> weights_;
 };
 
+// A composition a run passes through, from `wave` until the next keyframe's.
+struct MixKeyframe {
+    int wave = 1;
+    std::map<std::string, double> weights;
+};
+
+// Plays a different composition as the run goes on: `MixPolicy` with weights that are a function of the wave.
+//
+// Every other policy on the slate fixes its composition at the start and never revisits it, and a fixed composition
+// is exactly what a drifting hostile schedule is built to punish -- so a sweep of them measures how long each wrong
+// answer survives rather than whether the mode can be solved. A player who transitions is not on the slate at all,
+// which is why `ENDLESS_MODE.md` records the mode's real ceiling as unmeasured. This is the row that measures it.
+//
+// The keyframes step rather than interpolate. A player switches what they are buying; they do not buy 0.4 of a
+// marksman, and a stepped switch is also the thing a human can actually execute.
+class TransitionPolicy final : public PlayerPolicy {
+  public:
+    explicit TransitionPolicy(std::vector<MixKeyframe> keyframes);
+
+    [[nodiscard]] const char *name() const override { return "transition"; }
+    std::vector<PlayerCommand> decide(const MatchObservation &observation) override;
+
+  private:
+    std::vector<MixKeyframe> keyframes_;
+};
+
 } // namespace defn
 
 #endif

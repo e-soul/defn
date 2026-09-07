@@ -177,11 +177,17 @@ and every marksman that spawns also dies -- and the base still takes **zero dama
 decay the line is genuinely inert: 8 deaths against 324 deployments.
 
 **So making the player's army die is not sufficient.** At `d = 0.90` the line is churning hard and the base is still
-untouched, because the flow of replacements grinds each wave down before anything arrives. The target for a roster
-change is therefore not "make friendlies die" -- starvation, boons and banes and attrition generally all do that,
-and none of them reach the base -- but **letting hostiles through a line that is still fighting**: bypassing,
-outranging or outrunning the front rather than grinding against it. `defensive` does degrade with decay (41 -> 33
-waves), so the lever is not inert; it just cannot touch the one composition that decides the gate.
+untouched, because the flow of replacements grinds each wave down before anything arrives. Starvation, boons and
+banes and attrition generally all make friendlies die, and none of them reach the base. The first reading of this
+result was that a hostile should bypass, outrange or outrun the front. **That reading is withdrawn on design
+grounds (2026-09-06).** The battle line is the game's core mechanic and units do not pass through it in either
+direction; the base is a property of a level rather than of the game, a mode may have none or several, and nothing
+may treat it as a destination -- see the battle-line section of [`GDD.md`](../GDD.md). Every endless lever
+therefore acts *at the line*: on what arrives there, on how much it takes to kill, and on how large a line the
+player can hold. What the measurement above then says is that removing the standing army is not enough on its own;
+what has to shrink is the player's ability to *replace* the line faster than the wave arrives at it. `defensive`
+does degrade with decay (41 -> 33 waves), so the lever is not inert; it just cannot touch the one composition that
+decides the gate.
 
 ---
 
@@ -285,6 +291,313 @@ that composition at wave 5-7 while `1.18` is bimodal across seeds -- dead at 6 o
 
 ---
 
+## The mode became losable (2026-09-06)
+
+Everything above is the record of trying to overrun a competent player by changing what *arrives* -- the budget
+ramp, the escalation rate, the bounty decay, a uniform damage ramp -- and finding that none of them reach. This
+section is the change that does, and the measurement that finally saw the problem.
+
+**The slate could not see the mode's real failure until it carried a transitioning player.** Every policy the sweep
+ran fixed its composition at the start, and a fixed composition is what a drifting schedule is built to punish, so
+the table above reads as "every fixed line dies" and was taken as the gate passing. It is not the gate passing. With
+a `transition` policy on the slate -- operators and breachers into the evasive opening, impacts and marksmen as the
+armoured tail arrives, four keyframes stepping at waves 1, 12, 22 and 32 -- the mode reads:
+
+| policy | waves reached | integrity | minutes | peak friendlies |
+|---|---|---|---|---|
+| `greedy` | 3, 4, 3 | 0/4 | 0.9 | 5 |
+| `mix:breacher+marksman` | 4, 5, 4 | 0/4 | 1.1 | 6 |
+| `defensive` | 36, 41, 42 | 0/4 | 12.9 | 61 |
+| **`transition`** | **68, 68, 68** | **4/4** | **28.5** | **212** |
+
+68 is the budget ceiling. A player who changes composition inside the match runs out of *schedule* at full integrity
+with two hundred and twelve friendlies standing. That is the mode's actual state, it was true the whole time, and no
+row of any earlier sweep could show it.
+
+**The unbounded quantity was never the wave; it was the line.** Friendlies persist between waves and hostiles do
+not, so the standing army integrates the entire difficulty ramp. Bounty income is proportional to `B(n)`, so the
+army settles at a fixed multiple of any wave -- which is why the `r/(r-1)` bound holds for every escalation rate and
+why bounty decay kills the player's whole line without the base taking a point. Every lever tried before acted on
+one side of a ratio whose other side rose with it.
+
+**A supply cap is the rule that bounds it, and it acts at the battle line.** The most friendlies that may stand at
+once, as a level property rather than an endless one. Nothing routes around the front, nothing outruns it, nothing
+treats a base as a destination -- the fight stays where it was, and what changes is how much line the player is
+allowed to hold while the waves keep growing. Swept 3 seeds at the shipped ramp:
+
+| `supply_cap` | `transition` | `defensive` | minutes | peak hostiles |
+|---|---|---|---|---|
+| none | **68, 68, 68 at 4/4** | 36, 41, 42 | 28.5 | 351 |
+| 30 | 53, 54, 56 | 61, 61, 61 | 22.0-24.6 | 1140 |
+| **20 (shipped)** | 44, 46, 46 | 51, 52, 52 | 17.5-19.9 | 553 |
+| 14 | 32, 37, 41 | 33, 37, 40 | 14.9-15.1 | 221 |
+| 10 | 25, 25, 25 | 23, 23, 24 | 8.3-8.6 | 104 |
+
+**Every capped cell ends at 0/4 integrity.** The mode is losable by construction now rather than by tuning, which
+is the thing four earlier attempts could not buy at any setting.
+
+**And the cap alone puts the wrong number on screen.** Read the last column: with the line bounded, wave size is
+what carries the ramp, and the late game reaches 553 hostiles at cap 20 and 1140 at cap 30. That is the body-count
+wall from the section above arriving from the other direction -- the budget has to keep climbing, and bodies were
+the only thing it could buy.
+
+**Elites are what the budget buys instead.** A share of each wave arrives with a multiple of its catalog hit points
+and a 1.35x sprite, and is *charged its multiple against the wave budget* -- so a wave of elites is a smaller wave
+worth the same measured threat. Hit points rather than damage, because hit points multiply every attacker's
+time-to-kill by the same factor and leave the roster's counters exactly where `DIVERSITY_AND_BALANCE.md` measured
+them, while the damage ramp crosses one-shot thresholds and is knife-edge between inert and instant. Swept at
+`supply_cap = 20`, 3 seeds:
+
+| share cap | hp growth | `transition` | `defensive` | peak hostiles | minutes |
+|---|---|---|---|---|---|
+| 0 (off) | -- | 27, 40, 42 | 44, 44, 44 | 325 | 15.6-16.6 |
+| 0.25 | 1.00 | 29, 27, 34 | 38, 44, 45 | 291 | 12.0-16.8 |
+| 0.25 | 1.06 | 28, 37, 40 | 45, 46, 46 | 159 | 14.9-17.6 |
+| 0.45 | 1.00 | 29, 27, 34 | 41, 44, 45 | 249 | 12.1-16.8 |
+| **0.45 (shipped)** | **1.06** | 28, 37, 46 | 49, 46, 53 | **107** | 17.4-20.4 |
+
+Peak hostiles falls from 325 to 107 while the run stays in the 15-25 minute band and every cell still ends at 0/4.
+The share cap and the hit-point growth do different jobs and both are needed: the share decides how many bodies the
+budget stops buying, and the growth decides how much each promoted body is worth. At growth 1.00 the elites are only
+twice a normal body, so the budget barely notices them and the wave hardly shrinks.
+
+**The energy cap is the third rule, and it is aimed at the transitioning player specifically.** A ceiling on the
+reserve, engaging the first time the player spends down to it rather than clamping from the first tick -- so the 105
+opening grant is theirs until they spend it, and from then on 100 is a hard ceiling on regeneration and bounty
+alike. Swept at the shipped caps and elite ramp, 3 seeds:
+
+| `energy_cap` | `transition` | `defensive` | `greedy` | transition spend | transition deployments |
+|---|---|---|---|---|---|
+| none | 49, 54, 54 | 51, 53, 54 | 3, 4, 3 | 2784 | 123 |
+| **100 (shipped)** | 28, 37, 46 | 46, 49, 53 | 3, 4, 3 | 1962 | 88 |
+
+It costs the transitioning line 30% of its spend and a third of its deployments, and leaves `defensive` almost
+untouched. That asymmetry is the point rather than a side effect: banking across waves is exactly what a player
+switching composition does, and a reserve that can only ever be refilled to the same number turns every kill into
+"spend it or lose it". It is also where `transition`'s seed spread comes from -- 49-54 becomes 28-46 -- because
+whether a keyframe switch lands with a full purse now depends on what died just before it.
+
+**What the not-solved gate now means.** It was written to ask whether any composition survives forever, and the
+answer is now structurally no rather than measured no: an unbounded run against a bounded line ends. The remaining
+question is pacing -- whether the loss arrives inside the 15-25 minute band and reads as being overrun rather than
+as a switch being thrown -- so read the run-length table first and treat the target wave as derived from it.
+
+**What is not yet tuned.** `transition` spreads 28 to 46 waves across three seeds at the shipped values, which is a
+wider band than any fixed composition shows. That is the schedule's set pieces landing at different points in a
+transitioning player's keyframes, and it is a pacing question rather than a correctness one. `B0` and `r` have not
+been re-swept against the capped line at all -- everything above holds them at the values tuned for an unbounded
+one.
+
+---
+
+## The dead zone, and why a flat cap caused it (2026-09-07)
+
+The supply cap made the mode losable. It did not make it *interesting*, and the difference is the whole of this
+section. Played to wave 27, the run reads: the opening is a fight, the line fills at wave 6-7, and then roughly
+twenty waves pass in which the hostiles evaporate on contact. The run still ends at zero integrity in the right
+number of minutes, so **every reading the sweep took said it was fine**.
+
+**No metric here could see it, and that is the first thing that had to change.** Run length, integrity, the
+economy trend and the not-solved gate are all end-of-run readings; a run can end correctly and be twenty waves of
+nothing happening. `friendly_deaths_at_wave` -- friendlies lost during each wave -- is the reading that sees it,
+with `first_capped_wave` to date the moment the line stopped changing. Rendered as one character per wave, `.` for
+a wave in which the player lost nobody, the shipped mode looked like this:
+
+```
+supply 20 flat   ...1.......1.2.###11.11342#1.#2.1.3##211111111
+                     ^^^^^^^ seven consecutive waves with no losses at all
+```
+
+**Three plausible fixes were measured and all three do nothing.** Each was tried because it sounds like it should
+work, and the traces are the argument that it does not.
+
+| lever | swept over | longest quiet stretch |
+|---|---|---|
+| `escalation_curve` | 1.0, 1.15, 1.20, 1.25 | 6, 6, 6, 6 |
+| `interval_growth` | 1.008, 0.99, 0.97, 0.95 | 6, 6, 6, 6 |
+| elite share and start | to 55% from wave 6 | unchanged |
+
+`escalation_curve` cannot reach it *by construction*: it raises `(n-1)` to a power, so its divergence is late by
+design -- the knob's own comment says the divergence has to sit late -- and the dead zone is waves 6 to 12. Wave
+spacing compresses the run in wall-clock time and changes nothing about what happens in it: at `0.95` the same
+run finishes in a quarter of the time with an identical loss trace. Elites are charged their hit-point multiple
+against the wave budget, so they are threat-neutral by construction: they change what a wave is made of, never
+what it is worth. **A lever that is neutral by design cannot be a difficulty lever, however it is tuned.**
+
+**The dead zone was never in the schedule.** It is the ratio of wave size to line size, and the line is what moves:
+the player goes from about three units at wave 3 to a full twenty at wave 6, quadrupling their power in three waves,
+while the budget grows six percent per wave. It does not reach twice its wave-5 value until wave 17. Nothing done to
+the hostile side closes a gap that size, and the arithmetic says how much would be needed -- pressuring twenty units
+at wave 6 takes roughly 70 threat against an opening of 12, and an opening anywhere near that kills every
+composition in three waves (`B0 = 16` at a cap of 8: `defensive` dies at waves 2-4).
+
+**Swept flat, the cap forces a choice between the two halves of a good run.**
+
+| flat `supply_cap` | `transition` waves | minutes | longest quiet stretch |
+|---|---|---|---|
+| 8 | 22, 23, 22 | 7.8 | **2** |
+| 12 | 25, 25, 27 | 9.3 | 7 |
+| 16 | 26, 28, 30 | 10.7 | 7 |
+| 20 (was shipped) | 28, 37, 46 | 17.4 | 7 |
+
+Eight is the only value with no dead stretch and it ends the run in eight minutes, under the band. Everything long
+enough restores the dead stretch. Lowering the escalation to buy back the length restores it too, harder: at `8` and
+`r = 1.03` the run reaches 24.7 minutes and the quiet stretch is back to 7.
+
+**A growing allowance answers both, because it holds the ratio still.** `supply_start` and `supply_growth` make the
+line the player may hold a function of the wave, bounded above by the level's own `supply_cap`. The allowance widens
+at roughly the rate the budget does, so the quantity that decides whether anything dies stops collapsing the moment
+a fixed allowance is filled. Zero growth reproduces the flat cap exactly, so authored levels are untouched. Swept at
+5 seeds, `transition`:
+
+| `supply_start` | `supply_growth` | waves | minutes | longest quiet |
+|---|---|---|---|---|
+| 6 | 0.35 | 24-40 | 14.9 | 4 |
+| 6 | 0.40 | 36-41 | 15.3 | 5 |
+| 7 | 0.35 | 35-42 | 15.7 | 5 |
+| **7** | **0.40 (shipped)** | **40-44** | **16.6** | **4** |
+| 8 | 0.35 | 36-43 | 16.1 | 7 |
+| 8 | 0.40 | 42-45 | 16.8 | 5 |
+
+Below 7 the opening turns on the seed -- `defensive` reads 7, 4, 8, 8, 39 at a start of 6 -- and at 8 the dead zone
+is already back, which dates the failure precisely: **a starting line of eight is the point at which the opening
+waves stop being a fight.** At the shipped pair the run is 40-44 waves across every seed, inside the 15-25 band, and
+the trace is the point of the whole exercise:
+
+```
+was   supply 20 flat  ...1.......1.2.###11.11342#1.#2.1.3##211111111
+now   start 7, +0.4   ...1..1...11.1113#..2..11.124#33#111111111
+```
+
+**What this costs, and what it does not.** The player's line is smaller for most of the run and reaches 24 rather
+than 20 by the end, so the late-game army is bigger than before and the early one much smaller. The elite ramp was
+brought forward to wave 6 and up to a 55% share in the same commit: it does not close the dead zone and was never
+going to, but it keeps the body count readable now that waves are being cleared under pressure rather than
+instantly. Wave spacing was left alone -- it costs run length and buys no measured pressure, and the run is already
+at the bottom of the band.
+
+**The standing warning.** `quiet%` -- the share of post-cap waves with no losses -- sits at 32-36% both before and
+after, while the longest *consecutive* quiet stretch fell from 7 to 4. Read the consecutive figure. A third of waves
+being free is fine and always was; seven in a row is the run going to sleep, and only one of those two numbers
+noticed.
+
+---
+
+## Tougher hostiles, more masons, and what elite hit points really cost (2026-09-07)
+
+Three changes asked for after a play session, and one of them turned out not to be the knob it looks like.
+
+**The elite price is an under-estimate, and it grows with the multiple.** `elite_cost_multiplier` charges an elite
+its hit-point multiple, on the theory that hit points are what a body costs to kill. A body that lives 2.5 times as
+long also *shoots* for 2.5 times as long, and the price counts none of that. The comment here used to say the
+approximation errs "slightly" toward the harder side. Measured: raising `elite_hp` from 2.0 to 3.0 -- which the
+pricing calls a wash, since the wave simply buys proportionally fewer bodies -- cut a transitioning run from **40-44
+waves to 18-25** at an unchanged escalation. **`elite_hp` is a difficulty knob. Re-sweep `escalation` in the same
+commit, every time.**
+
+**So the rate came down with the roster going up.** Swept against the tougher roster:
+
+| `escalation` | `transition` waves | minutes | reading |
+|---|---|---|---|
+| 1.02-1.04 | 71, 71, 71 | 30.0 | hits the wall clock at 4/4 -- the hostiles cannot win |
+| 1.048 | 19-56 | 22.2 | in band on the median, wild across seeds |
+| **1.055 (shipped)** | **29-44** | **12.6-16.7** | overrun on every seed |
+| 1.06 | 18-40 | 14.8 | median falls to 26 |
+
+One hundredth on the rate moves a run by more than ten minutes here, which is much tighter than the same sweep was
+before the roster changed -- concentrating a wave's threat into fewer, harder bodies narrows the window between
+"the line holds forever" and "the line folds fast".
+
+**The elite multiple is 2.5 rather than 3.0 for variance, not for difficulty.** At 3.0 the run landed anywhere from
+wave 22 to 52 on identical settings, a 2.4x spread, because an all-mason set piece carrying 3x elites can take a
+supply-capped line apart in a single wave. At 2.5 the same slate reads 29, 31, 35, 36, 44 -- a 1.5x spread. Both are
+"tougher"; only one of them is a difficulty curve rather than a lottery. Some spread is wanted in an endless mode,
+and this is the reading to watch if the mason share rises again.
+
+**Masons arrive earlier and heavier**, since splash is the roster's question to a line parked in one lane and a
+supply-capped line is packed by construction: into the wave-8 keyframe at weight 1, tripled to 3 at wave 18, 5 at
+wave 35, and the mason set piece every 9 waves instead of 13.
+
+---
+
+## Both toughness knobs have a peak, and the shipped values sit on it (2026-09-07)
+
+Asked for maximum toughness with short runs explicitly accepted. The finding is that "more" was not available from
+the levers it looks like it should come from: **`elite_hp` and `escalation` each have a difficulty maximum, and past
+it more is less.**
+
+| lever | swept | `transition` waves | direction |
+|---|---|---|---|
+| `elite_hp` | 3, 4, 6, 8 | 23-42, 38-43, 42-44, 42-44 | **easier** above 3 |
+| `escalation` | 1.06, 1.07, 1.08 | 18-25, 24-26, 26-27 | **easier** above 1.06 |
+| `elite_fraction_cap` | 0.55, 0.80 | identical | inert |
+
+**Why `elite_hp` turns around.** A hostile threatens the line in two ways: how long it takes to kill, and how much
+damage it deals meanwhile. `elite_cost_multiplier` prices only the first. Multiplying hit points scales durability
+linearly and leaves per-body damage flat, while the wave shrinks in proportion -- so total incoming damage per wave
+*falls*. At 3x the two effects roughly cancel; above it the wave is weaker. 6 and 8 are byte-identical because
+`elite_hp_cap` truncates at 8.
+
+**Why `escalation` turns around.** A bigger wave pays more bounty than it costs. Income is proportional to what
+dies, so past a point a faster ramp funds replacements faster than the extra hostiles kill.
+
+**Why the share cap is inert.** `elite_fraction_growth` is 0.03 a wave from wave 6, so a 27-wave run reaches about
+0.57 and never touches a cap of 0.55, let alone 0.80. **Raise the growth, not the cap.**
+
+**What did work: starving the economy.** `bounty_decay` 0.985 -> 0.88, swept at a fixed line of 7:
+
+| `bounty_decay` | `transition` waves | minutes | deployments |
+|---|---|---|---|
+| 0.985 | 23, 26, 42 | 15.6 | 63 |
+| 0.94 | 23, 26, 33 | 11.9 | 45 |
+| **0.88 (shipped)** | 18, 21, 23, 27, 28 | 9.6 | 36 |
+
+**This reverses an earlier finding in this document, and the reversal is the point.** The bounty sweep above --
+"a real lever on spend and a weak one on survival" -- was measured when the standing army was unbounded, and an
+unbounded army holds the line whatever the income is. With `supply_cap` in place the player's only recovery is
+buying replacements, so income *is* the line. **A measurement taken before a structural change is evidence about
+the old structure, not the new one.**
+
+**A `supply_start` of 5 was rejected.** It reads 17-25 waves, barely harder than 7, and kills `defensive` at wave 3
+on every seed -- the opening stops being a fight and becomes a coin toss.
+
+**What this costs, stated plainly.** The longest quiet stretch goes back up to 6-7 waves, from 4. Under a starved
+economy the player fields far fewer units, so there are fewer bodies to lose and `friendly_deaths_at_wave` reads
+quiet -- **but quiet here is not idle.** The metric cannot tell "nothing is threatening me" from "I cannot afford to
+answer", and under starvation it is usually the second. That is a real limitation of the instrument at this end of
+the tuning range, and a run trace should be read alongside `deployments_total` before concluding the mode has gone
+back to sleep.
+
+---
+
+## Closer waves and more bodies (2026-09-07)
+
+Two asks, and for each the obvious lever was the wrong one.
+
+**Tightening the interval from the first wave makes waves *less* dense, not more.** Swept at a fixed budget:
+
+| spacing | `transition` waves | minutes | peak hostiles | gap at wave 20 | `defensive` |
+|---|---|---|---|---|---|
+| 13s, -1%/wave | 17-22 | 4.3 | 27 | 10.6s | dies wave 4 |
+| 16s, -1%/wave | 22-28 | 6.4 | 29 | 13.2s | dies wave 3-7 |
+| 19s, -1.5%/wave | 23-32 | 8.1 | 41 | 14.1s | 4-32 |
+| **19s, -2.5%/wave (shipped)** | 20-31 | 6.9 | **45** | **11.8s** | 7-33 |
+
+A wave arriving sooner is not more bodies on the belt; each wave is still the same size, and the run ends before it
+reaches the waves where the budget is large enough to be crowded. **The gentler opening that tapers hard beats the
+uniformly tight one on every reading** -- more hostiles on screen, closer late waves, and an opening that survives.
+
+**Body count is set by the drift, not the budget.** The composition drifts toward expensive units, so the cost of a
+body climbs as the run goes: 1.23 threat per body at wave 1 against 3.13 by wave 35. A growing budget was buying
+steadily fewer hostiles. Raising the `grime` and `hound` weights across the keyframes brings the wave-35 figure to
+2.51 -- about **25% more bodies for the same measured threat** -- with the mason weights untouched, so the splash
+pressure the drift was changed for in the first place is unaffected.
+
+**`base_budget` stays at 12.** At 16 the extra bodies arrive and immediately end the run: `defensive` at wave 3 on
+every seed and `transition` by wave 8.
+
+---
+
 ## Where the mode lives
 
 Two entry points, both inside the campaign flow, and deliberately none in the main menu: endless is the campaign's
@@ -355,6 +668,33 @@ tables do. When unit stats change:
 4. `escalation_curve`, `hostile_damage_growth` and `hostile_damage_cap` all default to inert. Do not set any of them
    in `data/endless.json` without a sweep in the same commit: the first has never been measured at all, and the
    second is knife-edge between "no effect" and "dead by wave 6".
+5. **Every lever acts at the battle line.** No hostile, elite or schedule rule may route around the front, outrun it,
+   or target the base as a destination, and none may assume a base exists at all (`GDD.md`, the battle-line
+   section). The diver is the one standing exception and is not a template.
+6. **Run the slate with `transition` on it, and read that row first.** A slate of fixed compositions cannot see
+   whether the mode has a ceiling -- it measures how long each wrong answer survives. This is how the mode shipped
+   unwinnable-for-the-hostiles for as long as it did.
+7. **`supply_cap` and the elite ramp are tuned together.** The cap decides whether the run ends; the elite share
+   decides whether the wave that ends it is a number of bodies the screen can hold. Moving one without re-reading
+   `peak_enemies` on the other trades a losable mode for an unreadable one.
+8. **Read `friendly_deaths_at_wave` before any of the end-of-run numbers.** A run that ends at the right wave, in
+   the right minutes, at zero integrity can still be twenty waves of nothing happening, and every other reading
+   here will call that a pass. Read the longest *consecutive* run of waves with no losses, not the share.
+9. **`elite_hp` is a difficulty knob, not a texture knob.** The budget prices an elite at what it costs to kill and
+   never at what it deals while dying, so the error grows with the multiple. Re-sweep `escalation` in the same
+   commit, and read the seed *spread* as well as the median: concentrating threat into fewer bodies raises variance
+   faster than it raises difficulty.
+10. **Sweep both directions before concluding a knob is maxed.** `elite_hp` and `escalation` both have a difficulty
+    peak, and past it more is less -- an elite shrinks the wave in proportion to its toughness, and a bigger wave
+    pays more bounty than it costs. Neither turnaround is visible from a one-sided sweep.
+11. **A reading taken before a structural change is evidence about the old structure.** Bounty decay was measured
+    as weak on survival when the army was unbounded; with the line capped it is the strongest lever there is.
+12. **"More hostiles" is a drift question before it is a budget question.** Cost per body climbs as the mix drifts
+    to heavy units, so a growing budget can buy *fewer* bodies. Read threat-per-body across the keyframes before
+    reaching for `base_budget`, which at any useful size ends the run in the opening.
+13. **The line is a difficulty knob, and usually the decisive one.** When the middle of a run goes quiet, suspect
+   `supply_start` and `supply_growth` before touching anything on the hostile side: what decides whether a wave is
+   a fight is its size against the line's, and the line is the half that moves in steps.
 
 Treat `data/endless.json` the way `DIVERSITY_AND_BALANCE.md` asks the catalog to be treated: when a sweep disagrees
 with the committed numbers, suspect a stat that rode along in an unrelated commit before concluding the file is
