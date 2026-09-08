@@ -12,10 +12,9 @@
       "spawns": [
         {"time": 3.0, "type": "grime"},
         {"time": 4.0, "type": "wrecker"},
-        {"time": 5.0, "type": "mason"},
+        {"time": 5.0, "type": "grime"},
         {"time": 5.5, "type": "hound"},
         {"time": 6.0, "type": "grime"},
-        {"time": 7.0, "type": "jackal"},
         {"time": 8.0, "type": "wrecker"}
       ]
     },
@@ -24,11 +23,9 @@
       "spawns": [
         {"time": 21.0, "type": "grime"},
         {"time": 21.9, "type": "wrecker"},
-        {"time": 22.8, "type": "jackal"},
         {"time": 23.7, "type": "grime"},
         {"time": 24.1, "type": "hound"},
         {"time": 24.6, "type": "mason"},
-        {"time": 25.5, "type": "jackal"},
         {"time": 26.4, "type": "wrecker"}
       ]
     },
@@ -36,13 +33,12 @@
       "wave_number": 3,
       "spawns": [
         {"time": 43.0, "type": "grime"},
-        {"time": 43.8, "type": "wrecker"},
         {"time": 44.6, "type": "mason"},
         {"time": 45.4, "type": "jackal"},
         {"time": 45.8, "type": "hound"},
-        {"time": 46.2, "type": "grime"},
-        {"time": 47.0, "type": "wrecker"},
-        {"time": 47.8, "type": "jackal"}
+        {"time": 47.2, "type": "grime"},
+        {"time": 48.0, "type": "wrecker"},
+        {"time": 49.8, "type": "jackal"}
       ]
     },
     {
@@ -50,14 +46,12 @@
       "spawns": [
         {"time": 69.0, "type": "grime"},
         {"time": 69.7, "type": "wrecker"},
-        {"time": 70.4, "type": "jackal"},
         {"time": 70.8, "type": "hound"},
-        {"time": 71.1, "type": "mason"},
+        {"time": 71.1, "type": "grime"},
         {"time": 71.8, "type": "grime"},
-        {"time": 72.5, "type": "jackal"},
-        {"time": 72.9, "type": "hound"},
-        {"time": 73.2, "type": "wrecker"},
-        {"time": 73.9, "type": "mason"}
+        {"time": 73.5, "type": "jackal"},
+        {"time": 74.2, "type": "wrecker"},
+        {"time": 75.9, "type": "mason"}
       ]
     },
     {
@@ -69,11 +63,11 @@
         {"time":  98.8, "type": "hound"},
         {"time":  99.1, "type": "mason"},
         {"time":  99.8, "type": "jackal"},
-        {"time": 100.5, "type": "wrecker"},
-        {"time": 101.2, "type": "grime"},
-        {"time": 101.6, "type": "hound"},
-        {"time": 101.9, "type": "jackal"},
-        {"time": 102.6, "type": "mason"}
+        {"time": 101.5, "type": "wrecker"},
+        {"time": 102.2, "type": "grime"},
+        {"time": 103.6, "type": "hound"},
+        {"time": 104.9, "type": "jackal"},
+        {"time": 105.6, "type": "mason"}
       ]
     }
   ]
