@@ -132,8 +132,6 @@ std::optional<MenuContentData> MenuDataLoader::load(const String &path) {
 
 std::optional<MenuContentData> MenuDataLoader::load_from_data(const Dictionary &data) {
     MenuContentData menu_data;
-    menu_data.background = to_std_string(String(data.get("background", "")));
-
     const Dictionary menus = data.get("menus", Dictionary());
     const Array menu_names = menus.keys();
     menu_data.menus.reserve(menu_names.size());

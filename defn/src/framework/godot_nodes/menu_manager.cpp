@@ -23,9 +23,7 @@
 #include <godot_cpp/classes/h_slider.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/option_button.hpp>
-#include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
-#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -335,7 +333,7 @@ void MenuManager::_ready() {
     ui_layer_->set_name("UILayer");
     add_child(ui_layer_);
 
-    setup_background();
+    setup_backdrop();
     build_career_score();
 
     if (SceneNavigator::consume_campaign_map_request()) {
@@ -355,29 +353,12 @@ bool MenuManager::load_menu_data() {
     return true;
 }
 
-void MenuManager::setup_background() {
-    const String bg_path = to_godot_string(menu_data_.background);
-    if (bg_path.is_empty()) {
-        return;
-    }
+void MenuManager::setup_backdrop() {
+    backdrop_ = memnew(MenuBackdrop);
+    ui_layer_->add_child(backdrop_);
 
-    auto *loader = ResourceLoader::get_singleton();
-    Ref<Texture2D> tex = loader->load(bg_path);
-    if (!tex.is_valid()) {
-        UtilityFunctions::printerr("MenuManager: Failed to load background: ", bg_path);
-        return;
-    }
-
-    background_ = memnew(TextureRect);
-    background_->set_texture(tex);
-    background_->set_anchors_preset(Control::PRESET_FULL_RECT);
-    background_->set_stretch_mode(TextureRect::STRETCH_KEEP_ASPECT_COVERED);
-    background_->set_expand_mode(TextureRect::EXPAND_IGNORE_SIZE);
-    background_->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    ui_layer_->add_child(background_);
-
-    // Background must render behind buttons
-    ui_layer_->move_child(background_, 0);
+    // Backdrop must render behind buttons
+    ui_layer_->move_child(backdrop_, 0);
 }
 
 /// The career score is the same instrument the HUD carries: an `hud_pod` plate holding a score readout. Sharing

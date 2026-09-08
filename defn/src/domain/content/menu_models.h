@@ -49,7 +49,6 @@ struct MenuDefinition {
 };
 
 struct MenuContentData {
-    std::string background;
     std::vector<MenuDefinition> menus;
 
     const MenuDefinition *find_menu(const std::string &menu_name) const {

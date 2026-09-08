@@ -4,6 +4,7 @@
 #ifndef MENU_MANAGER_H
 #define MENU_MANAGER_H
 
+#include "menu_backdrop.h"
 #include "menu_flow_use_case.h"
 #include "menu_models.h"
 #include "menu_view_model.h"
@@ -17,7 +18,6 @@
 #include <godot_cpp/classes/node2d.hpp>
 #include <godot_cpp/classes/option_button.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
-#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/string.hpp>
@@ -49,7 +49,7 @@ class MenuManager : public Node2D {
 
   private:
     bool load_menu_data();
-    void setup_background();
+    void setup_backdrop();
     void build_career_score();
     void show_menu(const String &menu_name);
     void show_level_select();
@@ -68,7 +68,7 @@ class MenuManager : public Node2D {
     SettingsState settings_state_;
 
     CanvasLayer *ui_layer_ = nullptr;
-    TextureRect *background_ = nullptr;
+    MenuBackdrop *backdrop_ = nullptr;
     PanelContainer *career_score_plate_ = nullptr;
     Label *total_score_label_ = nullptr;
     Control *active_screen_ = nullptr;

@@ -303,7 +303,7 @@ struct ContentRepositoryFixture {
             R"({"background":{"path":"res://assets/campaign/map_background_v2.jpg"},"missions":[{"level_id":"level_01","position":[0.2,0.3],"tagline":"Test operation.","threat":"low","ambience":"dust","preview":{"path":"res://assets/campaign/desert_outpost_preview.jpg","focus":[0.38,0.5],"node_zoom":1.0,"dossier_zoom":1.0}}]})");
         write_text_file(
             menu_path,
-            R"({"background":"res://background.png","menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
+            R"({"menus":{"main_menu":{"entries":[{"id":"start","label":"Start","action":"start_game"}]},"game_menu":{"entries":[]},"options_menu":{"type":"options","settings":[]},"pause_menu":{"entries":[]}}})");
         write_text_file(music_playlist_path, R"({"volume_linear":0.5,"delay_seconds":2.0,"tracks":["res://theme01.mp3","res://theme02.mp3"]})");
         write_text_file(progression_path, R"({"level_unlocks":[{"level_id":"level_01"}]})");
         write_text_file(
@@ -506,14 +506,12 @@ DEFN_TEST(menu_data_loader_maps_actions_to_plain_models) {
     menus["main_menu"] = main_menu;
 
     Dictionary data;
-    data["background"] = "res://background.png";
     data["menus"] = menus;
 
     const auto loaded = MenuDataLoader::load_from_data(data);
     DEFN_REQUIRE(loaded.has_value());
     DEFN_REQUIRE(loaded->menus.size() == 1);
     DEFN_REQUIRE(loaded->menus[0].entries.size() == 1);
-    DEFN_CHECK_EQ(loaded->background, std::string("res://background.png"));
     DEFN_CHECK_EQ(loaded->menus[0].entries[0].action_type, MenuActionType::START_GAME);
     DEFN_CHECK_EQ(loaded->menus[0].entries[0].target, std::string("level_01"));
     DEFN_CHECK_EQ(loaded->menus[0].title, std::string("DEFN"));

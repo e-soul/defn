@@ -22,6 +22,7 @@
 #include "hud.h"
 #include "hud_meters.h"
 #include "match_result_cutscene_view_model.h"
+#include "menu_backdrop.h"
 #include "menu_manager.h"
 #include "operation_dossier_view.h"
 #include "pause_menu.h"
@@ -450,15 +451,17 @@ CampaignMapView *show_campaign_map(const TreeMountedNode<MenuManager> &owner) {
     return campaign_map;
 }
 
-bool menu_manager_background_covers_viewport(MenuManager *menu_manager) {
-    std::vector<TextureRect *> texture_rects;
-    collect_nodes(menu_manager, texture_rects);
-    if (texture_rects.empty()) {
+bool menu_manager_backdrop_covers_viewport(MenuManager *menu_manager) {
+    std::vector<MenuBackdrop *> backdrops;
+    collect_nodes(menu_manager, backdrops);
+    if (backdrops.size() != 1) {
         return false;
     }
 
-    TextureRect *background = texture_rects.front();
-    return background->get_stretch_mode() == TextureRect::STRETCH_KEEP_ASPECT_COVERED && background->get_expand_mode() == TextureRect::EXPAND_IGNORE_SIZE;
+    // Index 0 is what keeps it behind the menu column, and the full-rect anchors are what make it cover the screen.
+    MenuBackdrop *backdrop = backdrops.front();
+    return backdrop->get_index() == 0 && Math::is_equal_approx(backdrop->get_anchor(SIDE_RIGHT), 1.0F) &&
+           Math::is_equal_approx(backdrop->get_anchor(SIDE_BOTTOM), 1.0F);
 }
 
 bool base_objective_has_basic_stack(BaseObjective *objective) {
@@ -1274,7 +1277,7 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     auto *menu_manager = ready_menu_manager(menu_manager_owner);
 
     DEFN_CHECK(menu_manager_shows_main_menu(menu_manager));
-    DEFN_CHECK(menu_manager_background_covers_viewport(menu_manager));
+    DEFN_CHECK(menu_manager_backdrop_covers_viewport(menu_manager));
 
     menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "game_menu");
     DEFN_CHECK(menu_manager_shows_game_menu(menu_manager));

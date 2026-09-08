@@ -214,6 +214,7 @@ extension_sources = [
     "src/domain/match/camera_scroll_controller.cpp",
     "src/adapters/godot/game_background_builder.cpp",
     "src/adapters/json/menu_data_loader.cpp",
+    "src/adapters/godot/ui/menu_backdrop.cpp",
     "src/domain/content/ui_theme_models.cpp",
     "src/adapters/json/ui_theme_loader.cpp",
     "src/adapters/godot/ui/ui_theme_provider.cpp",
