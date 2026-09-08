@@ -37,6 +37,7 @@ class CombatRuntime {
 
   private:
     void update_target();
+    void face_backward(bool backward);
     void try_spawn_pending_projectile();
     void apply_commands(const AdvanceCombatOutput &output, double delta);
     void apply_command(const CombatCommand &command, double delta);
@@ -53,6 +54,9 @@ class CombatRuntime {
     EntityId last_target_id_{};
     PendingProjectileSpawn pending_projectile_{};
     bool manual_repositioning_ = false;
+    // Which way the sprite is turned, as far as automatic combat is concerned. Kept here rather than asked of the
+    // animation controller so that turning round costs a comparison per frame instead of a re-applied clip offset.
+    bool facing_backward_ = false;
 };
 
 } // namespace defn

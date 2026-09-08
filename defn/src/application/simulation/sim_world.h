@@ -111,7 +111,7 @@ class SimWorld {
     void build_impact_snapshots(EntityId direct_target_id);
     void apply_commands(SimEntity &entity, const std::vector<CombatCommand> &commands);
     static void apply_pose(SimEntity &entity, CombatPoseIntent pose);
-    void move(SimEntity &entity) const;
+    void move(SimEntity &entity, float direction) const;
     void slide_belt(SimEntity &entity, float target_y) const;
     void apply_damage(SimEntity &source, EntityId target_id, int base_damage, DamageDelivery delivery);
     static void record_effective_damage_dealt(SimEntity &source, int effective_damage);

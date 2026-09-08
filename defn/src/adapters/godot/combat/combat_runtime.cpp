@@ -27,6 +27,7 @@ void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, Anima
     pending_projectile_ = {};
     last_target_id_ = {};
     manual_repositioning_ = false;
+    facing_backward_ = false;
 }
 
 void CombatRuntime::update(double delta) {
@@ -68,11 +69,26 @@ void CombatRuntime::end_manual_reposition() {
     manual_repositioning_ = false;
     selection_ = {};
     last_target_id_ = {};
+    // `UnitControlComponent` turns the unit forward again as it hands control back, so the cache is re-synced rather
+    // than left believing whatever it last applied itself.
+    facing_backward_ = false;
 }
 
 void CombatRuntime::apply_field_promotion(const FieldPromotionRules &rules) {
     config_.melee_attack_period_seconds = apply_promoted_attack_period(config_.melee_attack_period_seconds, rules);
     config_.ranged_attack_period_seconds = apply_promoted_attack_period(config_.ranged_attack_period_seconds, rules);
+}
+
+// Manual reposition drives facing through `UnitControlComponent` and suspends combat while it does, so the two never
+// argue over the sprite. Idempotent by hand rather than by `AnimationController`, because turning round re-applies the
+// clip offset and the muzzle anchor, and every walking unit would pay for that every frame.
+void CombatRuntime::face_backward(bool backward) {
+    if (animation_ == nullptr || facing_backward_ == backward) {
+        return;
+    }
+
+    facing_backward_ = backward;
+    animation_->set_facing(backward ? FacingDirection::BACKWARD : FacingDirection::FORWARD);
 }
 
 void CombatRuntime::update_target() {
@@ -103,13 +119,23 @@ void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
 
     switch (command.type) {
     case CombatCommandType::STOP:
+        face_backward(false);
         if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
             movement->stop();
         }
         break;
     case CombatCommandType::MOVE:
+        face_backward(false);
         if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
             movement->move(delta);
+        }
+        break;
+    case CombatCommandType::MOVE_BACKWARD:
+        // The one place automatic combat turns a unit round. Nothing else walks against its side's advance, and a
+        // rusher moonwalking back to the line it overran would read as a bug rather than as a manoeuvre.
+        face_backward(true);
+        if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
+            movement->move_backward(delta);
         }
         break;
     case CombatCommandType::SLIDE_BELT:

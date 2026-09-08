@@ -312,6 +312,214 @@ DEFN_TEST(the_hound_senses_a_sniper_far_outside_the_reach_it_kills_with) {
     DEFN_CHECK(200.0F > HOUND_MELEE_RANGE);               // the spacing the measurement in 2.11 had to use
 }
 
+// Falling back. Pursuit is what lets a unit end up past the line it was walking into -- it declines everything it
+// could have stopped for -- so pursuit is also what owes it a way back once the thing it declined for is dead. The
+// field below is that moment: a melee rusher standing where the backline used to be, with the rest of the enemy army
+// behind it and nothing but open belt in front.
+namespace {
+
+// The rusher shape, and the hound one: melee only, contact at 100, sensing four times as far. Sitting at the origin,
+// so a candidate x *is* its forward distance for a friendly and the negative of it for a hostile.
+CombatConfig make_rusher_config(UnitSide side) {
+    CombatConfig config;
+    config.side = side;
+    config.attack_range = 100.0F;
+    config.ranged_range = -1.0F;
+    config.melee_attack_period_seconds = 1.0;
+    config.aggro_range = 400.0F;
+    config.role_bias.fill(1.0F);
+    config.role_bias.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))) = 3.0F;
+    return config;
+}
+
+CombatTargetSnapshot make_enemy(uint64_t entity_id, float position_x, UnitRole role) {
+    return {.id = {.value = entity_id}, .side = UnitSide::HOSTILE, .position = {.x = position_x, .y = 0.0F}, .health = 100, .role = role};
+}
+
+CombatLogicInput make_fall_back_input(const CombatTargetSelection &selection, bool already_falling_back) {
+    CombatLogicInput input;
+    input.state = {.falling_back = already_falling_back};
+    input.selection = selection;
+    input.current_pose = CombatPoseState::WALK;
+    input.delta = 1.0 / 60.0;
+    return input;
+}
+
+} // namespace
+
+DEFN_TEST(a_pursuer_reports_an_army_it_has_walked_past) {
+    // One enemy left, 200 behind: the rusher overshot it while the sniper it wanted was still ahead.
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, -200.0F, UnitRole::ASSAULT)};
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, make_rusher_config(UnitSide::FRIENDLY), {}, field);
+
+    DEFN_CHECK(!selection.engaged);
+    DEFN_CHECK(!selection.army_ahead);
+    DEFN_CHECK(selection.has_unpassed_army);
+    DEFN_CHECK_EQ(selection.unpassed_army_position.x, -200.0F);
+}
+
+// The direction is the side one, not the screen one: a hostile advances toward -x, so the army it has overrun is the
+// one at a *larger* x than it.
+DEFN_TEST(overrun_is_measured_along_the_side_that_is_advancing) {
+    std::array<CombatTargetSnapshot, 2> field{make_enemy(1, -200.0F, UnitRole::ASSAULT), make_enemy(2, 200.0F, UnitRole::ASSAULT)};
+    const CombatTargetSelection friendly = select_target_from_snapshots(Vector2{}, make_rusher_config(UnitSide::FRIENDLY), {}, field);
+
+    // The same two positions, seen by a unit walking the other way.
+    field[0].side = UnitSide::FRIENDLY;
+    field[1].side = UnitSide::FRIENDLY;
+    const CombatTargetSelection hostile = select_target_from_snapshots(Vector2{}, make_rusher_config(UnitSide::HOSTILE), {}, field);
+
+    DEFN_CHECK_EQ(hostile.unpassed_army_position.x, 200.0F); // a hostile advances toward -x, so +200 is behind it
+    DEFN_CHECK_EQ(friendly.unpassed_army_position.x, -200.0F);
+}
+
+// Nothing else in the roster can get behind the line on purpose, so nothing else is asked the question -- which is
+// what keeps every unit that declares no preference walking exactly as it did.
+DEFN_TEST(a_unit_that_never_declines_a_target_is_never_asked_where_the_army_went) {
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, -200.0F, UnitRole::ASSAULT)};
+    CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    config.role_bias.fill(1.0F);
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK(!selection.has_unpassed_army);
+}
+
+// The reason the scan drops structures. A base standing in front of a rusher that has just eaten the backline is the
+// nearest thing it could walk into, and taking it would leave the army alive behind it for the rest of the match.
+DEFN_TEST(a_base_ahead_is_not_a_reason_to_leave_the_army_behind) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 2> field{make_enemy(1, 300.0F, UnitRole::STRUCTURE), make_enemy(2, -200.0F, UnitRole::ASSAULT)};
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK(!selection.army_ahead); // the base does not count as the army
+    DEFN_CHECK(selection.has_unpassed_army);
+    DEFN_CHECK_EQ(advance_combat_logic(config, make_fall_back_input(selection, false)).intent.movement, CombatMovementIntent::FALL_BACK);
+}
+
+// A live enemy still in front is the whole reason not to turn round, base or no base.
+DEFN_TEST(army_still_ahead_keeps_the_unit_walking_forward) {
+    const std::array<CombatTargetSnapshot, 2> field{make_enemy(1, 300.0F, UnitRole::ASSAULT), make_enemy(2, -200.0F, UnitRole::ASSAULT)};
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK(selection.army_ahead);
+    DEFN_CHECK_EQ(advance_combat_logic(config, make_fall_back_input(selection, false)).intent.movement, CombatMovementIntent::MOVE);
+}
+
+// The two halves of the mode, and the reason it is a mode. Starting it asks whether anything is in front at all;
+// ending it asks whether anything is a full standoff in front. A rusher that stopped at the crossing would swing from
+// on top of the body it just walked over, so the crossing is not the end of the manoeuvre.
+DEFN_TEST(the_crossing_does_not_end_the_fall_back) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    // Just crossed: the enemy is in front, and already inside a contact reach that starts at zero.
+    const std::array<CombatTargetSnapshot, 1> crossed{make_enemy(1, 20.0F, UnitRole::ASSAULT)};
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, crossed);
+    DEFN_CHECK(selection.engaged); // selection alone would have it swinging from here
+    DEFN_CHECK(selection.army_ahead);
+    DEFN_CHECK(!selection.army_beyond_standoff);
+
+    const CombatLogicStep step = advance_combat_logic(config, make_fall_back_input(selection, true));
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::FALL_BACK);
+    DEFN_CHECK(step.state.falling_back);
+    DEFN_CHECK(!step.state.engaged); // and it holds fire until it is round the front
+    DEFN_CHECK(!step.state.target_id.is_valid());
+}
+
+// A full contact reach past it, which is where an ordinary approach would have stopped: the manoeuvre is over and the
+// unit turns and fights from the position it was walking back for.
+DEFN_TEST(a_standoff_past_the_victim_ends_the_fall_back) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 1> in_front{make_enemy(1, 100.0F, UnitRole::ASSAULT)};
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, in_front);
+    DEFN_CHECK(selection.army_beyond_standoff);
+
+    const CombatLogicStep step = advance_combat_logic(config, make_fall_back_input(selection, true));
+    DEFN_CHECK(!step.state.falling_back);
+    DEFN_CHECK(step.state.engaged);
+    DEFN_CHECK_EQ(step.state.attack_mode, AttackMode::MELEE);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::STOP);
+}
+
+// The same 20px crossing, entered fresh rather than mid-manoeuvre, is an ordinary contact: the entry rule is "nothing
+// in front", and there is something in front. Without this the mode would be self-starting and a unit could be pulled
+// out of a fight it walked into honestly.
+DEFN_TEST(a_unit_not_already_falling_back_fights_what_is_in_front_of_it) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, 20.0F, UnitRole::ASSAULT)};
+
+    const CombatLogicStep step = advance_combat_logic(config, make_fall_back_input(select_target_from_snapshots(Vector2{}, config, {}, field), false));
+
+    DEFN_CHECK(!step.state.falling_back);
+    DEFN_CHECK(step.state.engaged);
+}
+
+// The depth axis follows the enemy being returned to rather than the selection, which by then points at whatever lies
+// further forward -- so the run back is also the curve onto its lane.
+DEFN_TEST(falling_back_steers_the_belt_lane_at_the_enemy_it_is_returning_to) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    std::array<CombatTargetSnapshot, 2> field{make_enemy(1, 300.0F, UnitRole::STRUCTURE), make_enemy(2, -200.0F, UnitRole::ASSAULT)};
+    field[0].position.y = 40.0F;
+    field[1].position.y = -60.0F;
+
+    const CombatLogicStep step = advance_combat_logic(config, make_fall_back_input(select_target_from_snapshots(Vector2{}, config, {}, field), false));
+
+    DEFN_CHECK(step.intent.belt_slide.active);
+    DEFN_CHECK_EQ(step.intent.belt_slide.target_y, -60.0F);
+}
+
+// Nothing behind either: the unit has genuinely run out of army, and walking on into the base is the right answer.
+DEFN_TEST(an_empty_field_behind_leaves_the_unit_walking_forward) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, 300.0F, UnitRole::STRUCTURE)};
+
+    const CombatLogicStep step = advance_combat_logic(config, make_fall_back_input(select_target_from_snapshots(Vector2{}, config, {}, field), false));
+
+    DEFN_CHECK(!step.state.falling_back);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::MOVE);
+}
+
+// Sensed means sensed on the way back too, and at the same reach: the sensor is a circle, and only the forward
+// distance sign ever hid the half of it behind the unit.
+DEFN_TEST(an_army_past_the_sensor_is_not_worth_turning_round_for) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, -500.0F, UnitRole::ASSAULT)}; // the sensor is 400
+
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field);
+
+    DEFN_CHECK(!selection.has_unpassed_army);
+}
+
+// Manual control outranks the manoeuvre, as it outranks every other automatic decision.
+DEFN_TEST(a_manual_reposition_clears_the_fall_back) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, -200.0F, UnitRole::ASSAULT)};
+    CombatLogicInput input = make_fall_back_input(select_target_from_snapshots(Vector2{}, config, {}, field), true);
+    input.manual_repositioning = true;
+
+    const CombatLogicStep step = advance_combat_logic(config, input);
+
+    DEFN_CHECK(!step.state.falling_back);
+    DEFN_CHECK_EQ(step.intent.movement, CombatMovementIntent::NONE);
+}
+
+// And the intent reaches the outside world as its own command, because whoever carries it out also has to turn the
+// unit round.
+DEFN_TEST(falling_back_is_carried_out_as_a_backward_move) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 1> field{make_enemy(1, -200.0F, UnitRole::ASSAULT)};
+
+    const AdvanceCombatOutput output = advance_combat(config, make_fall_back_input(select_target_from_snapshots(Vector2{}, config, {}, field), false));
+
+    DEFN_CHECK(std::ranges::any_of(output.commands, [](const CombatCommand &command) { return command.type == CombatCommandType::MOVE_BACKWARD; }));
+    DEFN_CHECK(std::ranges::none_of(output.commands, [](const CombatCommand &command) { return command.type == CombatCommandType::MOVE; }));
+}
+
 // The sensor can never be tighter than the gun, so an unset aggro range means "no pursuit" rather than "blind".
 DEFN_TEST(aggro_range_is_floored_at_the_ranged_range) {
     CombatConfig config = make_combat_config();

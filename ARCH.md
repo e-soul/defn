@@ -340,7 +340,7 @@ Target combat flow:
 
 1. A Godot component collects target snapshots from areas and entity adapters.
 2. A combat use case advances deterministic combat state.
-3. The use case returns commands: stop, move, slide belt, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
+3. The use case returns commands: stop, move, move backward, slide belt, play pose, hide muzzle flash, deal damage, spawn projectile, play effect.
 4. The Godot component applies commands to `MovementComponent`, `AnimationController`, `HealthComponent`, `ProjectileAttack`, and VFX/audio adapters.
 
 Attack rate and attack presentation are independent. The attack period rate-limits the next attack and is never refunded, so a target dying or slipping out of range cannot buy a free strike. Animation timing is owned by `UnitAnimationState`, an engine-free model of which animation is current and how far its `AnimationClock` has run, built from the `AnimConfig` a unit declares. It answers whether an attack or shoot animation is on screen, whether it is still inside its `windup_frames`, and when a shot leaves the muzzle; those observations enter `CombatLogicInput` alongside the existing pose and pending-projectile facts. `AnimationController` owns one such state and is pure presentation around it: the `AnimatedSprite2D` never runs an animation of its own, it is parked on whichever frame the state has reached. The frame index therefore remains the single source of truth for what the player sees, the same index is available without Godot, and the simulator drives the identical code rather than a second copy of it.
@@ -392,6 +392,28 @@ committed swing cannot be walked out of, which is a statement about the forward 
 reads Y. The step is clamped to the remaining gap, so convergence is monotone and cannot oscillate. Y is invisible to
 range classification but not to sensing, which is a circle on both sides; that is why the kernel slides too, and why
 `scons conformance` now traces Y alongside X.
+
+Pursuit is what lets a unit end up *behind* the line it was walking into, so pursuit is also what owes it a way back.
+Everything else stops at the first thing it can attack and is therefore always in front of the fight; a unit that
+declines a target it could have taken walks through the line and, once the thing it declined for is dead, has an empty
+belt in front of it and a live army behind. Forward movement from there is movement out of the match. `CombatLogicState`
+therefore carries a `falling_back` mode, and `CombatMovementIntent::FALL_BACK` is carried out as a `MOVE_BACKWARD`
+command -- the one time automatic combat walks a unit against its side's advance, and the one time it turns the sprite
+round.
+
+The mode is hysteretic, and the two rules are deliberately different. It **starts** when no part of the enemy army is in
+front any more, and **ends** only once some of the army is a full `engagement_standoff` in front -- the same distance a
+forward approach comes to rest at. Ending it at the crossing instead would leave a melee rusher swinging from on top of
+the body it just walked over, because a contact reach covers everything from zero; and starting it at the same distance
+would pull a unit out of a fight it had walked into honestly. While the mode is on the unit holds fire and steers its
+belt lane at the enemy it is returning to, so the run back is also the curve onto that lane.
+
+**Neither rule counts structures.** A base in front of a rusher that has just eaten the backline is the nearest thing it
+could walk into and the cheapest thing it could kill, and taking it would leave the army alive behind it for the rest of
+the match. The army is always the better fight, and the base is not going anywhere. `CombatTargetSelection` reports the
+three facts this needs -- `army_ahead`, `army_beyond_standoff`, `unpassed_army_position` -- and fills them only for a
+unit that declares a role preference, which is exactly the set of units that can overrun a line at all. Every other unit
+sees them unset and moves bit-identically to before.
 
 While an attack animation runs, the unit holds position and is never re-posed. Its windup frames always play. Past them the backswing is cancelable in exactly one case: nothing is in range and the last target is alive, which means it fled and must be chased. A target that died leaves nothing to chase, so the animation finishes before the unit walks on. Target selection re-engages any other target in range before the disengaged path is ever reached, so re-targeting mid-backswing needs no special handling, and a shorter attack period simply restarts the animation at frame 0. `CombatRuntime` remembers the last selected target so a target that flees during the windup is still recognised as a chase once the windup ends. Manual reposition remains the only override, cancelling the presentation outright while still preserving the cooldown.
 

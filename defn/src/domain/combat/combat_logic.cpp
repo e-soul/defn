@@ -36,6 +36,10 @@ float advance_belt_slide(float current_y, float target_y, float speed_pixels_per
 // mechanism on changes nothing until a catalog entry widens it.
 float resolve_aggro_range(const CombatConfig &config) { return config.aggro_range > config.ranged_range ? config.aggro_range : config.ranged_range; }
 
+// A unit with no attack of a kind carries -1 for that range, so the max is taken against zero as well: the standoff
+// is a distance, never a sign.
+float engagement_standoff(const CombatConfig &config) { return std::max({config.attack_range, config.ranged_range, 0.0F}); }
+
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance) {
     if (distance < 0.0F) {
         return AttackMode::NONE;
@@ -233,6 +237,49 @@ NearestAhead find_nearest_ahead(const Vector2 &origin, const CombatConfig &confi
     return nearest;
 }
 
+// Where the enemy army stands relative to this unit, ignoring structures entirely. A base is not part of the line a
+// unit walks into, does not chase, and cannot be walked past -- and it is the thing a unit that has overrun the line
+// would otherwise settle for, which is exactly the trade the fall-back rule exists to refuse.
+struct ArmyLine {
+    bool ahead = false;
+    bool beyond_standoff = false;
+    bool unpassed = false;
+    Vector2 unpassed_position;
+};
+
+ArmyLine scan_army_line(const Vector2 &origin, const CombatConfig &config, std::span<const CombatTargetSnapshot> targets) {
+    ArmyLine line;
+    const float sensor = resolve_aggro_range(config);
+    const float standoff = engagement_standoff(config);
+    // The *least* overrun candidate: the one nearest to being properly in front, which for a unit walking backward is
+    // the first it will reach. Signed, so a negative distance is behind and this maximum starts below every one of them.
+    float nearest_unpassed_distance = std::numeric_limits<float>::lowest();
+
+    for (const CombatTargetSnapshot &snapshot : targets) {
+        if (!snapshot.id.is_valid() || snapshot.dead || snapshot.side == config.side || snapshot.role == UnitRole::STRUCTURE) {
+            continue;
+        }
+
+        const float distance = get_forward_distance(config.side, origin, snapshot.position);
+        // Behind counts, and counts at the same reach: the sensor is a circle on the field, and only the forward
+        // distance's sign was ever making the half of it behind the unit invisible.
+        if (std::abs(distance) > sensor) {
+            continue;
+        }
+
+        line.ahead = line.ahead || distance >= 0.0F;
+        line.beyond_standoff = line.beyond_standoff || distance >= standoff;
+
+        if (distance < standoff && distance > nearest_unpassed_distance) {
+            nearest_unpassed_distance = distance;
+            line.unpassed = true;
+            line.unpassed_position = snapshot.position;
+        }
+    }
+
+    return line;
+}
+
 } // namespace
 
 namespace {
@@ -303,6 +350,16 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
                                                    std::span<const CombatTargetSnapshot> targets) {
     CombatTargetSelection selection = choose_target(origin, config, current_target_id, targets);
 
+    // Only a unit that can decline an enemy it could already attack is able to end up behind one, so only such a unit
+    // is asked where the line it walked through has got to.
+    if (config.has_role_preference()) {
+        const ArmyLine line = scan_army_line(origin, config, targets);
+        selection.army_ahead = line.ahead;
+        selection.army_beyond_standoff = line.beyond_standoff;
+        selection.has_unpassed_army = line.unpassed;
+        selection.unpassed_army_position = line.unpassed_position;
+    }
+
     // Whatever it settled on is also what it is walking at.
     if (selection.target_id.is_valid() || selection.pursuing) {
         selection.has_approach_target = true;
@@ -346,8 +403,28 @@ void apply_engaged_intents(const CombatConfig &config, const CombatLogicInput &i
     }
 }
 
-// Reached only when nothing at all is in range, because target selection already re-engages anything that is.
-void apply_disengaged_intents(const CombatLogicInput &input, CombatLogicStep &step) {
+// Whether the unit is walking back to the line it has overrun. The rule that starts it and the rule that ends it are
+// deliberately different, which is why this is a mode and not a per-frame test.
+//
+// It starts when no part of the enemy army is in front any more -- the unit has run out of fight in the direction it
+// was walking, and everything it could still kill is behind it. It ends only once some of the army is a full standoff
+// in front, so the unit walks *past* its victim and turns around into the position an ordinary approach would have
+// left it in. Ending it at the crossing instead would stop a melee rusher on top of the body it is about to swing at,
+// because contact reach covers everything from zero.
+//
+// Neither rule counts structures, so a base standing between the unit and the map edge is not an excuse to keep
+// walking: the army is always the better fight, and the base is not going anywhere.
+bool decide_fall_back(const CombatLogicState &state, const CombatTargetSelection &selection) {
+    if (!selection.has_unpassed_army) {
+        return false;
+    }
+
+    return state.falling_back ? !selection.army_beyond_standoff : !selection.army_ahead;
+}
+
+// Reached only when nothing at all is in range, because target selection already re-engages anything that is. `walk`
+// is which way: forward into the fight, or back toward the one this unit has left behind it.
+void apply_disengaged_intents(const CombatLogicInput &input, CombatMovementIntent walk, CombatLogicStep &step) {
     step.state.engaged = false;
     step.state.target_id = {};
     step.state.attack_mode = AttackMode::NONE;
@@ -361,7 +438,7 @@ void apply_disengaged_intents(const CombatLogicInput &input, CombatLogicStep &st
     }
 
     step.intent.hide_muzzle_flash = true;
-    step.intent.movement = CombatMovementIntent::MOVE;
+    step.intent.movement = walk;
     if (input.current_pose == CombatPoseState::ATTACK || input.current_pose == CombatPoseState::SHOOT) {
         step.intent.pose = CombatPoseIntent::WALK;
     }
@@ -383,23 +460,37 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
         step.state.attack_mode = AttackMode::NONE;
         step.state.engaged = false;
         step.state.target_id = {};
+        step.state.falling_back = false;
         return step;
     }
+
+    const bool falling_back = decide_fall_back(input.state, input.selection);
+    step.state.falling_back = falling_back;
 
     // Decided once, before any of the branches below, because the depth axis is independent of what happens on the
     // forward one: a unit that has stopped to swing should still finish nosing onto its target's lane, and a unit
     // frozen for a projectile's spawn frame is not thereby facing the wrong way. It reads the approach lane rather
     // than the selected target, so the curve is spread across the whole run-in.
-    if (input.selection.has_approach_target) {
+    //
+    // A unit falling back reads its lane off the enemy it is walking back to rather than off the selection, which by
+    // then is either empty or pointing at whatever lies further forward. Same rule as the approach: steer at the thing
+    // you are travelling toward, so the curve is spread over the whole run instead of snapping on arrival.
+    if (falling_back) {
+        step.intent.belt_slide = {.active = true, .target_y = input.selection.unpassed_army_position.y};
+    } else if (input.selection.has_approach_target) {
         step.intent.belt_slide = {.active = true, .target_y = input.selection.approach_position.y};
     }
 
-    const bool mode_changed = input.selection.attack_mode != input.state.attack_mode;
-    step.state.engaged = input.selection.engaged;
-    step.state.target_id = input.selection.target_id;
-    step.state.attack_mode = input.selection.attack_mode;
+    // Falling back holds fire. The unit is on the wrong side of its victim, so anything it could select from here is
+    // something it would rather attack from in front -- and a melee reach that starts at zero would otherwise let it
+    // engage the instant it crossed, which is the whole thing the manoeuvre exists to avoid.
+    const AttackMode attack_mode = falling_back ? AttackMode::NONE : input.selection.attack_mode;
+    const bool mode_changed = attack_mode != input.state.attack_mode;
+    step.state.engaged = input.selection.engaged && !falling_back;
+    step.state.target_id = falling_back ? EntityId{} : input.selection.target_id;
+    step.state.attack_mode = attack_mode;
 
-    if (!input.attack_animation_playing && mode_changed && input.selection.attack_mode != AttackMode::RANGED) {
+    if (!input.attack_animation_playing && mode_changed && attack_mode != AttackMode::RANGED) {
         step.intent.hide_muzzle_flash = true;
     }
 
@@ -408,12 +499,12 @@ CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLog
         return step;
     }
 
-    if (input.selection.engaged && input.selection.target_id.is_valid()) {
+    if (step.state.engaged && step.state.target_id.is_valid()) {
         apply_engaged_intents(config, input, step);
         return step;
     }
 
-    apply_disengaged_intents(input, step);
+    apply_disengaged_intents(input, falling_back ? CombatMovementIntent::FALL_BACK : CombatMovementIntent::MOVE, step);
     return step;
 }
 

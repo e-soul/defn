@@ -17,7 +17,11 @@ void MovementComponent::configure(Node2D *owner_node, UnitSide side, real_t spee
     belt_slide_speed_pixels_per_second_ = belt_slide_speed_pixels_per_second;
 }
 
-void MovementComponent::move(double delta) {
+void MovementComponent::move(double delta) { walk(delta, 1.0F); }
+
+void MovementComponent::move_backward(double delta) { walk(delta, -1.0F); }
+
+void MovementComponent::walk(double delta, real_t direction) {
     if (owner_node_ == nullptr || speed_pixels_per_second_ <= 0.0F || delta <= 0.0) {
         stop();
         return;
@@ -25,7 +29,7 @@ void MovementComponent::move(double delta) {
 
     // Each side walks toward the other, and neither runs out of ground: the belt is unbounded to the right, and a
     // friendly that advances into the trigger strip takes the camera with it.
-    const real_t displacement = speed_pixels_per_second_ * static_cast<real_t>(delta);
+    const real_t displacement = speed_pixels_per_second_ * static_cast<real_t>(delta) * direction;
     godot::Vector2 position = owner_node_->get_position();
     position.x += side_ == UnitSide::FRIENDLY ? displacement : -displacement;
     owner_node_->set_position(position);

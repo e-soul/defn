@@ -12,6 +12,8 @@ void append_movement_commands(const CombatLogicIntent &intent, std::vector<Comba
         commands.push_back({.type = CombatCommandType::STOP});
     } else if (intent.movement == CombatMovementIntent::MOVE) {
         commands.push_back({.type = CombatCommandType::MOVE});
+    } else if (intent.movement == CombatMovementIntent::FALL_BACK) {
+        commands.push_back({.type = CombatCommandType::MOVE_BACKWARD});
     }
 
     if (intent.belt_slide.active) {

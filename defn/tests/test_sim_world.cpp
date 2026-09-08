@@ -391,6 +391,96 @@ float shooter_x_after_pursuit(float sniper_bias) {
 
 } // namespace
 
+namespace {
+
+// The dive, all the way through and back: a rusher walks past a guard it could have killed, kills the backline sniper
+// it declined for, and then -- with nothing left in front of it but a base -- turns round, walks back past the guard
+// and fights it from the front. The whole failure this fixture exists for is the last third: with everything alive
+// behind it, forward movement is movement away from the match.
+struct DiveOutcome {
+    float rusher_x = 0.0F;
+    float guard_x = 0.0F;
+    int guard_damage = 0;
+    bool sniper_alive = true;
+};
+
+DiveOutcome run_dive(bool with_a_base_ahead) {
+    SimRoster roster;
+
+    UnitConfig rusher = make_unit("rusher", UnitSide::HOSTILE, 500, 40);
+    rusher.role = UnitRole::DIVER;
+    rusher.aggro_range = 800.0F; // sees the backline from four contact reaches away, which is what it declines for
+    rusher.move_speed_pixels_per_second = 200.0F;
+    rusher.preferred_roles.fill(1.0F);
+    rusher.preferred_roles.at(static_cast<std::size_t>(unit_role_index(UnitRole::SNIPER))) = 3.0F;
+    roster.add(rusher);
+
+    UnitConfig guard = make_dummy("guard", UnitSide::FRIENDLY, 100000);
+    guard.role = UnitRole::TANK;
+    roster.add(guard);
+
+    UnitConfig sniper = make_dummy("sniper", UnitSide::FRIENDLY, 40);
+    sniper.role = UnitRole::SNIPER;
+    roster.add(sniper);
+
+    // Threat weight and hit points a base carries in the shipped catalog: the least attractive thing on the field, and
+    // still the only thing in front once the backline is dead.
+    UnitConfig base = make_dummy("base", UnitSide::FRIENDLY, 100000);
+    base.role = UnitRole::STRUCTURE;
+    base.threat_weight = 0.25F;
+    roster.add(base);
+
+    StdRandomSource random(1U);
+    SimWorld world(roster, make_globals(), random);
+    world.spawn("rusher", UnitSide::HOSTILE, {.x = 1800.0F, .y = BELT_Y});
+    world.spawn("guard", UnitSide::FRIENDLY, {.x = 1200.0F, .y = BELT_Y});
+    world.spawn("sniper", UnitSide::FRIENDLY, {.x = 800.0F, .y = BELT_Y});
+    if (with_a_base_ahead) {
+        world.spawn("base", UnitSide::FRIENDLY, {.x = 400.0F, .y = BELT_Y});
+    }
+    world.begin_run();
+    run_engagement(world, 20.0);
+
+    DiveOutcome outcome;
+    for (const SimEntity &entity : world.get_entities()) {
+        if (entity.unit_id == "rusher") {
+            outcome.rusher_x = entity.position.x;
+        } else if (entity.unit_id == "guard") {
+            outcome.guard_x = entity.position.x;
+            outcome.guard_damage = entity.damage_taken;
+        } else if (entity.unit_id == "sniper") {
+            outcome.sniper_alive = !entity.dead;
+        }
+    }
+
+    return outcome;
+}
+
+} // namespace
+
+DEFN_TEST(a_rusher_that_eats_the_backline_comes_back_for_the_rest_of_the_army) {
+    const DiveOutcome outcome = run_dive(false);
+
+    DEFN_CHECK(!outcome.sniper_alive);              // the dive landed
+    DEFN_CHECK(outcome.rusher_x > outcome.guard_x); // and it is back on the side it attacks from
+    DEFN_CHECK(outcome.guard_damage > 0);           // fighting rather than standing next to it
+
+    // And standing where an ordinary approach would have left it: a contact reach in front, not on top of the body.
+    // One tick of travel is 3.34px at this speed, which is the slack.
+    DEFN_CHECK(outcome.rusher_x - outcome.guard_x >= 96.0F);
+    DEFN_CHECK(outcome.rusher_x - outcome.guard_x <= 104.0F);
+}
+
+// The point of leaving structures out of the scan. A base is closer than the guard, cannot chase, and is worth a
+// quarter of the threat -- and taking it first would mean walking away from a live army for the rest of the match.
+DEFN_TEST(a_base_in_front_does_not_buy_the_army_behind_a_reprieve) {
+    const DiveOutcome outcome = run_dive(true);
+
+    DEFN_CHECK(!outcome.sniper_alive);
+    DEFN_CHECK(outcome.rusher_x > outcome.guard_x);
+    DEFN_CHECK(outcome.guard_damage > 0);
+}
+
 DEFN_TEST(sim_world_carries_a_role_preference_and_aggro_range_from_the_catalog) {
     const float held_by_the_blocker = shooter_x_after_pursuit(1.0F);
     const float walked_past_it = shooter_x_after_pursuit(3.0F);

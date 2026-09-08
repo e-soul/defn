@@ -244,7 +244,10 @@ void SimWorld::apply_commands(SimEntity &entity, const std::vector<CombatCommand
             // MovementComponent::stop() only exists to be overridden by presentation; it moves nothing.
             break;
         case CombatCommandType::MOVE:
-            move(entity);
+            move(entity, 1.0F);
+            break;
+        case CombatCommandType::MOVE_BACKWARD:
+            move(entity, -1.0F);
             break;
         case CombatCommandType::SLIDE_BELT:
             slide_belt(entity, command.target_position.y);
@@ -401,12 +404,14 @@ void SimWorld::build_impact_snapshots(EntityId direct_target_id) {
 }
 
 // Mirrors MovementComponent::move.
-void SimWorld::move(SimEntity &entity) const {
+// Mirrors MovementComponent::walk, including the sign the fall-back manoeuvre walks under. Facing is presentation and
+// so has no counterpart here.
+void SimWorld::move(SimEntity &entity, float direction) const {
     if (!entity.movement_enabled || entity.move_speed_pixels_per_second <= 0.0F || config_.fixed_delta_seconds <= 0.0) {
         return;
     }
 
-    const float displacement = entity.move_speed_pixels_per_second * static_cast<float>(config_.fixed_delta_seconds);
+    const float displacement = entity.move_speed_pixels_per_second * static_cast<float>(config_.fixed_delta_seconds) * direction;
     entity.position.x += entity.side == UnitSide::FRIENDLY ? displacement : -displacement;
 }
 

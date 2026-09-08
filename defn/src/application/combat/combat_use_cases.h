@@ -12,7 +12,10 @@ namespace defn {
 
 // SLIDE_BELT carries its destination in `target_position.y` and is emitted alongside STOP or MOVE rather than instead
 // of either: the belt's depth axis moves independently of the forward one.
-enum class CombatCommandType { STOP, MOVE, SLIDE_BELT, PLAY_POSE, HIDE_MUZZLE_FLASH, DEAL_DAMAGE, SPAWN_PROJECTILE, PLAY_EFFECT };
+//
+// MOVE_BACKWARD is MOVE against the side's advance: a unit that has overrun the enemy line walking back to it. Whoever
+// carries it out also turns the unit round, because it is the only time anything walks the wrong way on its own.
+enum class CombatCommandType { STOP, MOVE, MOVE_BACKWARD, SLIDE_BELT, PLAY_POSE, HIDE_MUZZLE_FLASH, DEAL_DAMAGE, SPAWN_PROJECTILE, PLAY_EFFECT };
 enum class CombatEffectType { NONE, MELEE_ATTACK, RANGED_SHOOT, DAMAGE_FLASH };
 
 struct CombatCommand {

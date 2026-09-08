@@ -44,9 +44,26 @@ struct CombatTargetSelection {
     // lane and then stepping sideways on arrival. Steering by what it is walking at bends the whole approach.
     bool has_approach_target = false;
     Vector2 approach_position;
+    // Where the enemy *army* stands relative to this unit, which is a different question from where its next target
+    // is: structures are left out of all three, because a base is never a reason to give up on the army and is
+    // exactly what a unit that has walked past the line would otherwise wander off toward.
+    //
+    // `army_ahead` is set while any of it is still in front at all; `army_beyond_standoff` while some of it is far
+    // enough in front to walk into rather than merely on the correct side; `unpassed_army_position` is the nearest
+    // enemy this unit has not yet put properly in front of itself -- the first one it meets on the way back.
+    //
+    // Only filled for a unit that can decline a target it could attack, because declining is the only way to end up
+    // behind one. See `CombatConfig::has_role_preference`.
+    bool army_ahead = false;
+    bool army_beyond_standoff = false;
+    bool has_unpassed_army = false;
+    Vector2 unpassed_army_position;
 };
 
-enum class CombatMovementIntent { NONE, MOVE, STOP };
+// FALL_BACK is MOVE with the sign flipped: the unit walks against its side's advance, back toward the line it has
+// overrun. Nothing else in the game moves that way of its own accord, which is why it is a separate intent rather
+// than a direction on MOVE -- the presentation has to turn the sprite round for it.
+enum class CombatMovementIntent { NONE, MOVE, FALL_BACK, STOP };
 
 // Where the unit wants to stand on the belt's depth axis. Only the destination: how fast it gets there is a property
 // of whatever is doing the moving, exactly as the forward axis already splits.
@@ -63,6 +80,10 @@ struct CombatLogicState {
     AttackMode attack_mode = AttackMode::NONE;
     bool engaged = false;
     EntityId target_id;
+    // Walking backward toward the enemy line this unit has overrun, and holding fire until it is in front again.
+    // A mode rather than a per-frame test because the rule that starts it and the rule that ends it are different
+    // ones: see `advance_combat_logic`.
+    bool falling_back = false;
 };
 
 struct CombatLogicInput {
@@ -107,6 +128,11 @@ float advance_belt_slide(float current_y, float target_y, float speed_pixels_per
 // How far this unit senses, which is its aggro range floored at its ranged range. The detection sensor on both the
 // real unit and the kernel is built from this, so widening aggro widens what target selection is even shown.
 float resolve_aggro_range(const CombatConfig &config);
+
+// Where this unit comes to rest against a target: the furthest it can reach with anything, which is exactly where
+// walking forward stops. Read as a *destination* by the fall-back rule, so a unit that overran the line ends the
+// manoeuvre standing where an ordinary approach would have left it instead of on top of its victim.
+float engagement_standoff(const CombatConfig &config);
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance);
 CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
                                                    std::span<const CombatTargetSnapshot> targets);

@@ -83,6 +83,18 @@ struct CombatConfig {
     // NONE is never preferred, whatever the table says. Otherwise one stray entry would make every unit that never
     // declared a role into a pursuit target, which is the opposite of an opt-in mechanic.
     [[nodiscard]] bool prefers_role(UnitRole role) const { return role != UnitRole::NONE && bias_for_role(role) > 1.0F; }
+
+    // Whether this unit ever declines an enemy it could already attack. The same question as "can this unit end up
+    // *behind* the line it was walking into": everything else stops at the first thing in reach and so can only ever
+    // be in front of the fight, which is why the fall-back rule is asked of a pursuer and of nobody else.
+    [[nodiscard]] bool has_role_preference() const {
+        for (int index = 0; index < UNIT_ROLE_COUNT; ++index) {
+            if (index != unit_role_index(UnitRole::NONE) && role_bias.at(static_cast<std::size_t>(index)) > 1.0F) {
+                return true;
+            }
+        }
+        return false;
+    }
 };
 
 } // namespace defn
