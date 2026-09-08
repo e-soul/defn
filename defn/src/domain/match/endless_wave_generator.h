@@ -91,11 +91,63 @@ struct EndlessTuning {
     // of collapsing the moment the player fills a fixed allowance. Zero growth reproduces the flat cap exactly.
     double supply_start = 0.0;
     double supply_growth = 0.0;
-    double bounty_decay = 0.985;   // d
+    // What a kill pays, as a function of the wave: `bounty(n) = max(d^((n-1)^k), bounty_floor)`. It scales what a
+    // kill *pays* and never what it *scores*.
+    //
+    // Income compounds with difficulty on its own -- a bounty scales with kills and kills scale with `B(n)` -- so
+    // without a counter-pressure here the mode resolves into a runaway defence.
+    double bounty_decay = 0.985; // d
+
+    // The curve the wave index is raised to before the decay is applied, exactly as `escalation_curve` is applied to
+    // the budget ramp.
+    //
+    // `k = 1.0` is the plain geometric decay and the historical behaviour; 0.85 ships. `k < 1` spreads the same
+    // reduction over a longer run, `k > 1` front-loads it harder. Swept 2026-09-08: 1.0 -> 0.85 buys +6.4%
+    // deployments and +6.4% energy spent over 12 seeds with median run length unchanged, which is relief in what
+    // the player can afford rather than in how long they survive. `k = 0` is degenerate rather than useful -- it
+    // pays `d` flat from wave 1, including wave 1.
+    //
+    // Waves 1 and 2 are `k`-independent whatever it is set to, because the index is raised to the power before the
+    // rate is, and 0 and 1 are both fixed points of that. So `k` is a knob on wave 3 onwards and the opening pair
+    // stays exactly where it was tuned; `d` is the only thing that moves them.
+    //
+    // **Read this against the quantization before sweeping it.** A kill pays `ceil(base_bounty * multiplier)` on
+    // bounties of 4 to 7 (`MatchSession::record_enemy_died`), so the curve the player experiences is a staircase
+    // and a multiplier below 0.25 pays 1 for every hostile in the game. Two `k` values that never cross a step are
+    // the same game. See `ENDLESS_MODE.md`.
+    double bounty_decay_curve = 0.85; // k
+
+    // Income decays but never below this. Not the "never a countdown" guarantee its old comment claimed -- that is
+    // already supplied by the `ceil` on the award, which pays 1 energy at any positive multiplier -- but a hard
+    // stop that props income at a constant from the wave the rate falls through it.
+    //
+    // Measured inert as shipped, for two arithmetic reasons. `4 * 0.25` is exactly 1.0 and grime is 41% of the
+    // drift, so no floor below 0.26 changes what the commonest body pays; and at `k = 1` the 0.05 floor was not
+    // reached until wave 25 while runs end at 24-26. Swept at values that do clear the step, it works -- 0.30 binds
+    // from wave 11 and buys +5.7% deployments, 0.40 buys +9.5% -- but it substitutes for `k` rather than adding to
+    // it, and a constant floor is a snowball risk if run length is ever retuned longer. Raise it only then.
+    double bounty_floor = 0.05;
     double first_wave_delay = 3.0; // when wave 1 opens
     double wave_interval = 18.0;
     double interval_growth = 1.01;
-    double spawn_stagger = 0.8;    // seconds between spawns within a wave
+    double spawn_stagger = 0.8; // seconds between spawns within a wave
+
+    // How long the player is left looking at an empty belt. Once nothing hostile is standing, the gap to the next
+    // arrival is closed to this rather than run out in full.
+    //
+    // The interval is a difficulty knob for a player who is still fighting -- it decides how much of a wave is
+    // still alive when the next one opens. For a player who has already cleared it, it is dead air, and dead air is
+    // the one thing a wave-based mode has no way to make interesting. So the spacing is authored for the fight and
+    // spent only while there is one.
+    //
+    // It closes only gaps already longer than itself, so the stagger inside a wave is untouched at any sane value,
+    // and it moves the *schedule* clock rather than the wall clock: the run reaches the same wave against the same
+    // budget, sooner, having earned only the income of the seconds actually played. Clearing fast is therefore a
+    // real trade -- more waves per hour, less regeneration between them -- rather than a free skip.
+    //
+    // Zero keeps the schedule's own spacing exactly, which is the right answer for a schedule being measured.
+    double cleared_field_grace = 0.0;
+
     double budget_ceiling = 600.0; // hard stop; above this the run is unwinnable by construction
     double wall_clock_ceiling = 3600.0;
     int survival_bonus_per_wave = 25;
@@ -154,7 +206,8 @@ class EndlessWaveGenerator {
 
     [[nodiscard]] WaveDefinition generate(int wave_number, RandomSource &random) const;
 
-    // Income decays as difficulty compounds, or the mode resolves into a runaway defence. Always positive.
+    // Income decays as difficulty compounds, or the mode resolves into a runaway defence. Never below
+    // `bounty_floor`, and never negative.
     [[nodiscard]] double bounty_multiplier(int wave_number) const;
 
     // What every hostile in this wave hits for, as a multiple of its catalog damage. Never below 1: the ramp only

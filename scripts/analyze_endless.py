@@ -76,6 +76,52 @@ def is_mix(policy):
     return policy.startswith("mono:") or policy.startswith("mix:")
 
 
+# Every knob a sweep cell can vary, and the short name each is labelled with. A run carries all of them whether or
+# not it was swept, so the reports group by the ones that actually differ across the file -- grouping by the rest
+# gives one row per cell with nothing to compare it against, and hard-coding `(r, d)` silently collapses a sweep of
+# anything else into a single row that averages the cells together.
+KNOB_COLUMNS = {
+    "base_budget": "B0",
+    "escalation": "r",
+    "escalation_curve": "a",
+    "bounty_decay": "d",
+    "bounty_decay_curve": "k",
+    "bounty_floor": "floor",
+    "hostile_damage_growth": "dmg",
+    "hostile_damage_cap": "dmg_cap",
+    "elite_fraction_cap": "elite",
+    "elite_hp_growth": "elite_hp_g",
+    "elite_hp": "elite_hp",
+    "elite_first_wave": "elite_at",
+    "wave_interval": "interval",
+    "interval_growth": "interval_g",
+    "supply_start": "sup0",
+    "supply_growth": "sup_g",
+    "supply_cap": "sup_cap",
+    "energy_cap": "e_cap",
+}
+
+# What a single-cell file is labelled with. It has nothing varying to group by, and the two knobs the mode is named
+# on are the ones worth stating anyway.
+DEFAULT_COLUMNS = ("escalation", "bounty_decay")
+
+
+def knob_labeller(runs):
+    """Group key and aligned label for the knobs this file actually swept."""
+    columns = tuple(name for name in KNOB_COLUMNS if name in runs[0] and len({run.get(name) for run in runs}) > 1)
+    columns = columns or tuple(name for name in DEFAULT_COLUMNS if name in runs[0])
+
+    def key(run):
+        return tuple(run.get(name) for name in columns)
+
+    def text(group_key):
+        return "  ".join(f"{KNOB_COLUMNS[name]}={value:g}" for name, value in zip(columns, group_key))
+
+    width = max((len(text(key(run))) for run in runs), default=len("knobs"))
+    width = max(width, len("knobs"))
+    return key, (lambda group_key: text(group_key).ljust(width)), width
+
+
 def group_by(runs, key):
     grouped = collections.defaultdict(list)
     for run in runs:
@@ -87,10 +133,11 @@ def median_waves(runs):
     return statistics.median(run["waves_reached"] for run in runs)
 
 
-def report_run_length(runs, first_delay, interval, growth):
+def report_run_length(runs, first_delay, interval, growth, knobs):
+    key, label, width = knobs
     print("run length -- the wave a competent policy reaches, in minutes")
-    print("knobs            policy        runs  waves med/min/max      minutes  band")
-    for (escalation, decay), knob_runs in sorted(group_by(runs, lambda run: (run["escalation"], run["bounty_decay"])).items()):
+    print(f"{'knobs'.ljust(width)}  policy        runs  waves med/min/max      minutes  band")
+    for group_key, knob_runs in sorted(group_by(runs, key).items()):
         for policy, policy_runs in sorted(group_by(knob_runs, lambda run: run["policy"]).items()):
             if is_mix(policy):
                 continue
@@ -98,15 +145,16 @@ def report_run_length(runs, first_delay, interval, growth):
             median = statistics.median(waves)
             minutes = wave_start_seconds(int(median), first_delay, interval, growth) / 60.0
             band = "PASS" if TARGET_MINUTES[0] <= minutes <= TARGET_MINUTES[1] else ("SHORT" if minutes < TARGET_MINUTES[0] else "LONG")
-            print(f"r={escalation:.3f} d={decay:.3f}  {policy:<12}  {len(policy_runs):>4}  {median:>5.0f} {waves[0]:>3} {waves[-1]:>4}  {minutes:>11.1f}  {band}")
+            print(f"{label(group_key)}  {policy:<12}  {len(policy_runs):>4}  {median:>5.0f} {waves[0]:>3} {waves[-1]:>4}  {minutes:>11.1f}  {band}")
     print()
 
 
-def report_not_solved(runs, target_wave):
+def report_not_solved(runs, target_wave, knobs):
+    key, label, width = knobs
     print(f"not solved -- no single friendly mix reaches wave {target_wave} on every seed  [SHIP GATE]")
-    print("knobs            mix                     runs  med  max  reached target")
+    print(f"{'knobs'.ljust(width)}  mix                     runs  med  max  reached target")
     failed = False
-    for (escalation, decay), knob_runs in sorted(group_by(runs, lambda run: (run["escalation"], run["bounty_decay"])).items()):
+    for group_key, knob_runs in sorted(group_by(runs, key).items()):
         mixes = {policy: policy_runs for policy, policy_runs in group_by(knob_runs, lambda run: run["policy"]).items() if is_mix(policy)}
         if not mixes:
             continue
@@ -116,13 +164,13 @@ def report_not_solved(runs, target_wave):
             waves = [run["waves_reached"] for run in policy_runs]
             every_seed = all(wave >= target_wave for wave in waves)
             failed = failed or every_seed
-            print(f"r={escalation:.3f} d={decay:.3f}  {policy:<22}  {len(waves):>4}  {medians[policy]:>3.0f}  {max(waves):>3}  {'SOLVED' if every_seed else 'no'}")
+            print(f"{label(group_key)}  {policy:<22}  {len(waves):>4}  {medians[policy]:>3.0f}  {max(waves):>3}  {'SOLVED' if every_seed else 'no'}")
 
         best = max(medians.values())
         field = statistics.median(sorted(medians.values())[:-1]) if len(medians) > 1 else best
         spread = best / field if field > 0 else float("inf")
         verdict = "PASS" if spread <= SOLVED_SPREAD else "MISS"
-        print(f"r={escalation:.3f} d={decay:.3f}  best mix outlasts the field by {spread:.2f}x  {verdict}")
+        print(f"{label(group_key)}  best mix outlasts the field by {spread:.2f}x  {verdict}")
     print()
     return not failed
 
@@ -138,22 +186,23 @@ def slope(values):
     return numerator / denominator if denominator else 0.0
 
 
-def report_economy(runs):
+def report_economy(runs, knobs):
+    key, label, width = knobs
     print("economy -- energy held when each wave opened; an upward slope is the bounty snowball")
-    print("knobs            policy        mean slope  mean held  verdict")
-    for (escalation, decay), knob_runs in sorted(group_by(runs, lambda run: (run["escalation"], run["bounty_decay"])).items()):
+    print(f"{'knobs'.ljust(width)}  policy        mean slope  mean held  verdict")
+    for group_key, knob_runs in sorted(group_by(runs, key).items()):
         for policy, policy_runs in sorted(group_by(knob_runs, lambda run: run["policy"]).items()):
             if is_mix(policy):
                 continue
             traces = [run.get("energy_at_wave", []) for run in policy_runs]
             traces = [trace for trace in traces if len(trace) >= MINIMUM_ECONOMY_WAVES]
             if not traces:
-                print(f"r={escalation:.3f} d={decay:.3f}  {policy:<12}  {'too short to read':>22}  (died inside {MINIMUM_ECONOMY_WAVES} waves)")
+                print(f"{label(group_key)}  {policy:<12}  {'too short to read':>22}  (died inside {MINIMUM_ECONOMY_WAVES} waves)")
                 continue
             mean_slope = statistics.fmean(slope(trace) for trace in traces)
             mean_held = statistics.fmean(statistics.fmean(trace) for trace in traces)
             verdict = "PASS" if mean_slope <= 0.0 else "SNOWBALL"
-            print(f"r={escalation:.3f} d={decay:.3f}  {policy:<12}  {mean_slope:>10.3f}  {mean_held:>9.1f}  {verdict}")
+            print(f"{label(group_key)}  {policy:<12}  {mean_slope:>10.3f}  {mean_held:>9.1f}  {verdict}")
     print()
 
 
@@ -172,9 +221,10 @@ def main():
         return 1
 
     print(f"{len(runs)} run(s) from {arguments.jsonl}\n")
-    report_run_length(runs, arguments.first_delay, arguments.interval, arguments.growth)
-    not_solved = report_not_solved(runs, arguments.target_wave)
-    report_economy(runs)
+    knobs = knob_labeller(runs)
+    report_run_length(runs, arguments.first_delay, arguments.interval, arguments.growth, knobs)
+    not_solved = report_not_solved(runs, arguments.target_wave, knobs)
+    report_economy(runs, knobs)
     return 0 if not_solved else 1
 
 

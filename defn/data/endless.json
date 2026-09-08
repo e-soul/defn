@@ -78,6 +78,17 @@
         "finding that decay is a weak lever on survival: back then the standing army held the line whatever the",
         "income was."
     ],
+    "_spacing_is_spent_only_while_there_is_a_fight_2026_09_08": [
+        "cleared_field_grace closes the gap to the next wave to 1.5s once nothing hostile is standing. The interval",
+        "is authored for a player who is still fighting -- 19s decides how much of a wave is still alive when the",
+        "next one opens -- and for a player who cleared it in 6s the remaining 13s is dead air, which is the one",
+        "thing a wave-based mode cannot make interesting.",
+        "It moves the schedule clock, not the wall clock: the same wave against the same budget, sooner. So it is",
+        "not free -- the skipped seconds are energy regeneration the player does not collect, and clearing fast now",
+        "buys tempo at the price of income. It only closes gaps longer than itself, so spawn_stagger at 0.8s is",
+        "untouched and a wave still arrives as a group rather than as a drip feed."
+    ],
+
     "_escalation_was_re_derived_2026_09_07": [
         "1.055, down from 1.06, because the roster got tougher in the same commit: elites at 2.5x hit points rather",
         "than 2x, and masons from wave 8 instead of 18 at three times the share. Elite hit points are not the",
@@ -107,14 +118,37 @@
         "elite_size is a category marker, not a readout of the multiple: the player has to see which bodies are the",
         "hard ones before they are in contact."
     ],
+    "_the_income_curve_was_swept_and_softened_2026_09_08": [
+        "bounty_decay_curve (k) and bounty_floor were pulled out of the code so the income ramp is tunable as a",
+        "shape and not only as a rate: bounty(n) = max(d^((n-1)^k), bounty_floor). k 1.0 is the geometric decay",
+        "every earlier measurement in ENDLESS_MODE.md was taken on.",
+        "Shipping k = 0.85 for a slight relief. 12 seeds on transition: deployments 28.7 -> 30.5 and energy spent",
+        "595 -> 633, both +6.4%, with median run length unchanged at wave 24. That is the shape of relief wanted --",
+        "the player affords more replacements, the mode does not get easier to survive. Full slate at 5 seeds keeps",
+        "the not-solved gate passing and the economy slope negative, and the 6.25x best-mix spread is unmoved.",
+        "bounty_floor stays at 0.05 because it is measured inert, not because it is untested. Two reasons, both",
+        "arithmetic. A kill pays ceil(bounty * multiplier) -- see match_session.cpp -- and hostile bounties are 4 to",
+        "7, so any multiplier at or below 0.25 pays a grime exactly 1 energy and grime is 41% of the drift. A floor",
+        "under 0.26 therefore cannot change what the commonest body pays at all. And at k = 1 the 0.05 floor was",
+        "only reached at wave 25 while runs end at wave 24-26, so it bound for a wave or two at most.",
+        "Swept anyway: floor 0.30 (binds from wave 11, grime pays 2) gives +5.7% deployments and 0.40 gives +9.5%,",
+        "so it does work once it clears the quantization step. It is not shipped because a floor props income at a",
+        "constant forever, and 0.30 is six times the current one -- if the run length is ever retuned longer that",
+        "becomes a snowball risk, where k keeps decaying at every wave. Reach for the floor only if runs lengthen.",
+        "Read deployments_total and energy_spent on any change here, not waves_reached: both knobs move what the",
+        "player can afford and neither moves how long they survive, and run length at 5 seeds is mostly seed noise."
+    ],
     "tuning": {
         "base_budget": 12.0,
         "escalation": 1.06,
         "bounty_decay": 0.88,
+        "bounty_decay_curve": 0.85,
+        "bounty_floor": 0.05,
         "first_wave_delay": 3.0,
         "wave_interval": 19.0,
         "interval_growth": 0.975,
         "spawn_stagger": 0.8,
+        "cleared_field_grace": 1.5,
         "budget_ceiling": 600.0,
         "wall_clock_ceiling": 3600.0,
         "survival_bonus_per_wave": 25,

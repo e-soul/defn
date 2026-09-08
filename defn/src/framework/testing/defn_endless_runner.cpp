@@ -191,6 +191,8 @@ struct KnobSet {
     double escalation = 0.0;
     double escalation_curve = 0.0;
     double bounty_decay = 0.0;
+    double bounty_decay_curve = 0.0;
+    double bounty_floor = 0.0;
     double hostile_damage_growth = 0.0;
     double hostile_damage_cap = 0.0;
     double elite_fraction_cap = 0.0;
@@ -209,13 +211,15 @@ struct KnobSet {
 
 // The knobs a cell varies, each as the list of values to try. Bundled because the expansion below is a product over
 // all of them and a positional parameter list of ten `std::vector<double>` is a bug waiting to be written.
-constexpr std::size_t KNOB_AXIS_COUNT = 16;
+constexpr std::size_t KNOB_AXIS_COUNT = 18;
 
 struct KnobAxes {
     std::vector<double> base_budgets;
     std::vector<double> escalations;
     std::vector<double> curves;
     std::vector<double> decays;
+    std::vector<double> decay_curves;
+    std::vector<double> bounty_floors;
     std::vector<double> growths;
     std::vector<double> damage_caps;
     std::vector<double> elite_fractions;
@@ -235,10 +239,9 @@ std::vector<KnobSet> expand_knobs(const KnobAxes &axes) {
     // this file at six knobs, and every knob added made it worse; this way a new axis is one entry in each of the
     // two tables below and the control flow never changes.
     const std::array<const std::vector<double> *, KNOB_AXIS_COUNT> values = {
-        &axes.base_budgets,  &axes.escalations,       &axes.curves,          &axes.decays,
-        &axes.growths,       &axes.damage_caps,       &axes.elite_fractions, &axes.elite_hp_growths,
-        &axes.elite_hps,     &axes.elite_first_waves, &axes.wave_intervals,  &axes.interval_growths,
-        &axes.supply_starts, &axes.supply_growths,    &axes.supply_caps,     &axes.energy_caps,
+        &axes.base_budgets,   &axes.escalations,      &axes.curves,          &axes.decays,           &axes.decay_curves, &axes.bounty_floors,
+        &axes.growths,        &axes.damage_caps,      &axes.elite_fractions, &axes.elite_hp_growths, &axes.elite_hps,    &axes.elite_first_waves,
+        &axes.wave_intervals, &axes.interval_growths, &axes.supply_starts,   &axes.supply_growths,   &axes.supply_caps,  &axes.energy_caps,
     };
 
     // `parse_doubles` substitutes the shipped value for an omitted flag, so every axis holds at least one entry.
@@ -258,10 +261,12 @@ std::vector<KnobSet> expand_knobs(const KnobAxes &axes) {
     for (std::size_t cell = 0; cell < total; ++cell) {
         KnobSet knobs;
         const std::array<double *, KNOB_AXIS_COUNT> fields = {
-            &knobs.base_budget,        &knobs.escalation,         &knobs.escalation_curve, &knobs.bounty_decay,  &knobs.hostile_damage_growth,
-            &knobs.hostile_damage_cap, &knobs.elite_fraction_cap, &knobs.elite_hp_growth,  &knobs.elite_hp,      &knobs.elite_first_wave,
-            &knobs.wave_interval,      &knobs.interval_growth,    &knobs.supply_start,     &knobs.supply_growth, &knobs.supply_cap,
-            &knobs.energy_cap,
+            &knobs.base_budget,           &knobs.escalation,         &knobs.escalation_curve,
+            &knobs.bounty_decay,          &knobs.bounty_decay_curve, &knobs.bounty_floor,
+            &knobs.hostile_damage_growth, &knobs.hostile_damage_cap, &knobs.elite_fraction_cap,
+            &knobs.elite_hp_growth,       &knobs.elite_hp,           &knobs.elite_first_wave,
+            &knobs.wave_interval,         &knobs.interval_growth,    &knobs.supply_start,
+            &knobs.supply_growth,         &knobs.supply_cap,         &knobs.energy_cap,
         };
         for (std::size_t axis = 0; axis < KNOB_AXIS_COUNT; ++axis) {
             *fields.at(axis) = values.at(axis)->at(cursor.at(axis));
@@ -306,7 +311,8 @@ std::string int_trace(const std::vector<int> &values) {
 // of the tuning, and the analysis needs the tuning on every row to group by it.
 std::string run_to_jsonl(const std::string &policy, std::uint32_t seed, const KnobSet &knobs, const SimMatchReport &report) {
     return std::format(R"({{"policy":"{}","seed":{},"base_budget":{:.2f},"escalation":{:.4f},"bounty_decay":{:.4f},)"
-                       R"("escalation_curve":{:.4f},"hostile_damage_growth":{:.4f},"hostile_damage_cap":{:.2f},)"
+                       R"("escalation_curve":{:.4f},"bounty_decay_curve":{:.4f},"bounty_floor":{:.4f},)"
+                       R"("hostile_damage_growth":{:.4f},"hostile_damage_cap":{:.2f},)"
                        R"("elite_fraction_cap":{:.4f},"elite_hp_growth":{:.4f},"elite_hp":{:.2f},"elite_first_wave":{},)"
                        R"("wave_interval":{:.2f},"interval_growth":{:.4f},"supply_start":{:.1f},"supply_growth":{:.3f},)"
                        R"("supply_cap":{},"energy_cap":{},)"
@@ -314,13 +320,13 @@ std::string run_to_jsonl(const std::string &policy, std::uint32_t seed, const Kn
                        R"("clear_time_s":{:.1f},"decided":{},"remaining_integrity":{},"energy_spent":{},"deployments_total":{},)"
                        R"("deployments_blocked":{},"peak_friendlies":{},"peak_enemies":{},"first_capped_wave":{},)"
                        R"("energy_at_wave":{},"friendly_deaths_at_wave":{},"spawned_deaths":{}}})",
-                       policy, seed, knobs.base_budget, knobs.escalation, knobs.bounty_decay, knobs.escalation_curve, knobs.hostile_damage_growth,
-                       knobs.hostile_damage_cap, knobs.elite_fraction_cap, knobs.elite_hp_growth, knobs.elite_hp, static_cast<int>(knobs.elite_first_wave),
-                       knobs.wave_interval, knobs.interval_growth, knobs.supply_start, knobs.supply_growth, static_cast<int>(knobs.supply_cap),
-                       static_cast<int>(knobs.energy_cap), report.waves_reached, report.level_score, report.clear_time_seconds,
-                       report.decided ? "true" : "false", report.remaining_integrity, report.energy_spent, report.deployments_total, report.deployments_blocked,
-                       report.peak_friendlies, report.peak_concurrent_enemies, report.first_capped_wave, int_trace(report.energy_at_wave),
-                       int_trace(report.friendly_deaths_at_wave), deaths_trace(report.per_unit));
+                       policy, seed, knobs.base_budget, knobs.escalation, knobs.bounty_decay, knobs.escalation_curve, knobs.bounty_decay_curve,
+                       knobs.bounty_floor, knobs.hostile_damage_growth, knobs.hostile_damage_cap, knobs.elite_fraction_cap, knobs.elite_hp_growth,
+                       knobs.elite_hp, static_cast<int>(knobs.elite_first_wave), knobs.wave_interval, knobs.interval_growth, knobs.supply_start,
+                       knobs.supply_growth, static_cast<int>(knobs.supply_cap), static_cast<int>(knobs.energy_cap), report.waves_reached, report.level_score,
+                       report.clear_time_seconds, report.decided ? "true" : "false", report.remaining_integrity, report.energy_spent, report.deployments_total,
+                       report.deployments_blocked, report.peak_friendlies, report.peak_concurrent_enemies, report.first_capped_wave,
+                       int_trace(report.energy_at_wave), int_trace(report.friendly_deaths_at_wave), deaths_trace(report.per_unit));
 }
 
 } // namespace
@@ -353,6 +359,8 @@ Dictionary DefnEndlessRunner::run_sweep(const Dictionary &args) {
         .escalations = parse_doubles(args.get("escalation", Array()), shipped.escalation),
         .curves = parse_doubles(args.get("escalation_curve", Array()), shipped.escalation_curve),
         .decays = parse_doubles(args.get("bounty_decay", Array()), shipped.bounty_decay),
+        .decay_curves = parse_doubles(args.get("bounty_decay_curve", Array()), shipped.bounty_decay_curve),
+        .bounty_floors = parse_doubles(args.get("bounty_floor", Array()), shipped.bounty_floor),
         .growths = parse_doubles(args.get("hostile_damage_growth", Array()), shipped.hostile_damage_growth),
         .damage_caps = parse_doubles(args.get("hostile_damage_cap", Array()), shipped.hostile_damage_cap),
         .elite_fractions = parse_doubles(args.get("elite_fraction_cap", Array()), shipped.elite_fraction_cap),
@@ -383,6 +391,8 @@ Dictionary DefnEndlessRunner::run_sweep(const Dictionary &args) {
         schedule.tuning.escalation = knobs.escalation;
         schedule.tuning.escalation_curve = knobs.escalation_curve;
         schedule.tuning.bounty_decay = knobs.bounty_decay;
+        schedule.tuning.bounty_decay_curve = knobs.bounty_decay_curve;
+        schedule.tuning.bounty_floor = knobs.bounty_floor;
         schedule.tuning.hostile_damage_growth = knobs.hostile_damage_growth;
         schedule.tuning.hostile_damage_cap = knobs.hostile_damage_cap;
         schedule.tuning.elite_fraction_cap = knobs.elite_fraction_cap;

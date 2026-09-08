@@ -38,6 +38,8 @@ out_arg = ARGUMENTS.pop("out", "")
 bisect_arg = ARGUMENTS.pop("bisect", "")
 escalation_arg = ARGUMENTS.pop("escalation", "")
 bounty_decay_arg = ARGUMENTS.pop("decay", "")
+bounty_decay_curve_arg = ARGUMENTS.pop("decay_curve", "")
+bounty_floor_arg = ARGUMENTS.pop("bounty_floor", "")
 max_seconds_arg = ARGUMENTS.pop("max_seconds", "")
 policies_arg = ARGUMENTS.pop("policies", "")
 base_budget_arg = ARGUMENTS.pop("base_budget", "")
@@ -65,6 +67,8 @@ matrix_spacing_arg = ["--friendly-spacing", friendly_spacing_arg] if friendly_sp
 endless_base_budget_arg = ["--base-budget", base_budget_arg] if base_budget_arg else []
 endless_escalation_arg = ["--escalation", escalation_arg] if escalation_arg else []
 endless_decay_arg = ["--bounty-decay", bounty_decay_arg] if bounty_decay_arg else []
+endless_decay_curve_arg = ["--bounty-decay-curve", bounty_decay_curve_arg] if bounty_decay_curve_arg else []
+endless_bounty_floor_arg = ["--bounty-floor", bounty_floor_arg] if bounty_floor_arg else []
 endless_max_seconds_arg = ["--max-seconds", max_seconds_arg] if max_seconds_arg else []
 endless_policies_arg = ["--policies", policies_arg] if policies_arg else []
 endless_curve_arg = ["--escalation-curve", curve_arg] if curve_arg else []
@@ -923,7 +927,7 @@ def run_endless(target, source, env):
         return prepare_result
 
     command = [godot_executable, "--headless", "--path", str(project_dir), "--script", str(script_path)]
-    endless_args = [argument for argument in [endless_base_budget_arg, endless_escalation_arg, endless_decay_arg, endless_curve_arg, endless_dmg_arg, endless_dmg_cap_arg, endless_elite_arg, endless_elite_hp_arg, endless_elite_hp_base_arg, endless_elite_start_arg, endless_interval_arg, endless_interval_growth_arg, endless_supply_start_arg, endless_supply_growth_arg, endless_supply_arg, endless_energy_cap_arg, endless_max_seconds_arg, endless_policies_arg, sim_seeds_arg, sim_out_arg] if argument]
+    endless_args = [argument for argument in [endless_base_budget_arg, endless_escalation_arg, endless_decay_arg, endless_decay_curve_arg, endless_bounty_floor_arg, endless_curve_arg, endless_dmg_arg, endless_dmg_cap_arg, endless_elite_arg, endless_elite_hp_arg, endless_elite_hp_base_arg, endless_elite_start_arg, endless_interval_arg, endless_interval_growth_arg, endless_supply_start_arg, endless_supply_growth_arg, endless_supply_arg, endless_energy_cap_arg, endless_max_seconds_arg, endless_policies_arg, sim_seeds_arg, sim_out_arg] if argument]
     if endless_args:
         command.append("--")
         for argument in endless_args:

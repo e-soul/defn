@@ -54,6 +54,15 @@ class SpawnTimeline {
     void stop();
     [[nodiscard]] SpawnTimelineUpdate advance(double delta);
 
+    // Brings the next spawn that has not been handed out to `lead` seconds away, by moving the clock forward, and
+    // returns how much time was skipped. Zero when nothing is pending, when the timeline is stopped, or when the
+    // wait is already `lead` or shorter.
+    //
+    // The clock only ever moves forward here, so this cannot delay anything, and a gap already tighter than `lead`
+    // is left exactly as authored -- the stagger inside a wave is not a gap this is meant to close. The timeline
+    // has no opinion about *why* a caller wants the gap closed; it only knows how to close one.
+    [[nodiscard]] double pull_next_spawn_forward(double lead);
+
     [[nodiscard]] bool is_running() const { return running_; }
     [[nodiscard]] bool all_spawns_spawned() const { return next_spawn_idx_ >= all_spawns_.size(); }
 

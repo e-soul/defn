@@ -128,9 +128,17 @@ Current boundary ownership:
   it. It owns an `EndlessWaveGenerator`, appends each generated wave one wave
   ahead of the spawn cursor, and scales the bounty and survival bonus through
   narrow seams on the director. `MatchDirector` itself knows nothing about the
-  mode: it gained `append_wave`, `set_bounty_scale`, `award_survival_bonus` and
-  `concede_match`, all of which are meaningful without endless mode existing.
-  `GameManager` reads the mode once, when it composes the match.
+  mode: it gained `append_wave`, `set_bounty_scale`, `award_survival_bonus`,
+  `pull_next_spawn_forward` and `concede_match`, all of which are meaningful
+  without endless mode existing. `GameManager` reads the mode once, when it
+  composes the match.
+- The run's pacing is `EndlessDirector`'s too, and it is why the run has two
+  clocks. `elapsed_seconds` is what the player has played, and is what the
+  wall-clock ceiling reads; `schedule_seconds` adds every idle gap the
+  cleared-field rule closed, and is what wave start times, the top-up and the
+  budget ceiling read. The timeline's own clock is kept equal to the second, so
+  a skip is applied to both or to neither. Deciding *when* a gap is idle stays
+  in the coordinator: the timeline only knows how to close one.
 - `ContentValidator` consumes `ContentValidationInput`, a plain value model of
   campaign-map, menu, progression, upgrade, unit, and level data, and returns
   `std::vector<std::string>` issues. `JsonContentRepository` converts parsed
@@ -256,6 +264,9 @@ Current files that map into this module:
 - `SpawnTimeline::append` extends a running timeline. `all_spawns_completed`
   keeps its meaning exactly: an endless run avoids it by staying ahead of the
   cursor rather than by a mode flag inside the timeline.
+  `SpawnTimeline::pull_next_spawn_forward` moves the clock forward to close a
+  gap and reports how much it skipped, for the same reason: the timeline holds
+  no opinion about why a caller wants one closed.
 - `force_mix` (`domain/content`) holds the budget apportionment both the
   engagement lab and the wave generator spend through. It moved inward from the
   simulation lab when the generator needed it, because a domain module may not

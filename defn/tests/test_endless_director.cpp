@@ -90,8 +90,18 @@ EndlessSchedule make_schedule_with_supply_growth() {
     return schedule;
 }
 
+// The shipped pacing rule: dead air between a cleared wave and the next arrival is closed to a fixed lead.
+EndlessSchedule make_schedule_with_cleared_field_grace() {
+    EndlessSchedule schedule = make_schedule();
+    schedule.tuning.cleared_field_grace = 1.0;
+    return schedule;
+}
+
 // A whole endless run, headless and without a world: every hostile that spawns is reported dead on the same tick, so
 // the only thing standing between the match and a victory is the timeline never running out.
+//
+// `clear_hostiles = false` is the other half of that -- a run where nothing ever dies, which is what a player still
+// fighting looks like to anything reading the field.
 struct EndlessHarness {
     SimRoster roster = make_roster();
     StdRandomSource random{2026};
@@ -105,7 +115,9 @@ struct EndlessHarness {
     // Every hostile that reached a spawn intent, with the damage scale it was carrying.
     std::vector<std::pair<int, double>> hostile_damage_scales;
 
-    explicit EndlessHarness(const EndlessSchedule &schedule) {
+    bool clear_hostiles = true;
+
+    explicit EndlessHarness(const EndlessSchedule &schedule, bool clear_hostiles_on_spawn = true) : clear_hostiles(clear_hostiles_on_spawn) {
         progression.configure({"breacher"}, {}, {});
         director.configure(&progression, &roster, &grid, &random);
         director.load_level_definition(make_endless_level(), "endless");
@@ -126,6 +138,9 @@ struct EndlessHarness {
                 continue;
             }
             hostile_damage_scales.emplace_back(endless.current_wave(), intent.scale.damage);
+            if (!clear_hostiles) {
+                continue;
+            }
             const auto config = roster.get_unit(intent.unit_id);
             const MatchUpdate death = director.handle_enemy_defeated({.bounty = config.has_value() ? config->bounty : 0});
             if (death.score_changed.has_value()) {
@@ -276,6 +291,67 @@ DEFN_TEST(endless_director_widens_the_allowance_as_the_run_goes_on) {
 
     DEFN_CHECK(harness.endless.current_wave() >= 6);
     DEFN_CHECK(harness.director.get_supply_cap() > opening);
+}
+
+DEFN_TEST(endless_director_opens_the_next_wave_as_soon_as_the_field_is_cleared) {
+    EndlessHarness paced(make_schedule_with_cleared_field_grace());
+    EndlessHarness unpaced(make_schedule());
+
+    paced.run_for(30.0);
+    unpaced.run_for(30.0);
+
+    // Waves open at 2, 12 and 22 seconds when the spacing is run out in full, whatever the player does.
+    DEFN_CHECK_EQ(unpaced.endless.current_wave(), 3);
+    // Cleared on the tick each body lands, a wave costs its own spawn window plus the one second lead.
+    DEFN_CHECK(paced.endless.current_wave() >= 6);
+}
+
+DEFN_TEST(endless_director_keeps_the_authored_spacing_while_hostiles_are_still_standing) {
+    EndlessHarness harness(make_schedule_with_cleared_field_grace(), false);
+
+    harness.run_for(30.0);
+
+    // Nothing has died, so nothing is dead air. The interval is a difficulty knob for a player who is still
+    // fighting, and this is that player.
+    DEFN_CHECK_EQ(harness.endless.current_wave(), 3);
+    DEFN_CHECK_CLOSE(harness.endless.schedule_seconds(), harness.endless.elapsed_seconds(), 1e-9);
+}
+
+DEFN_TEST(endless_director_leaves_the_opening_delay_alone) {
+    EndlessHarness harness(make_schedule_with_cleared_field_grace());
+
+    harness.run_for(1.5);
+
+    // The field is empty before wave 1 by construction, so an ungated rule would read the opening delay as dead air
+    // and start the run at one second rather than two -- before the player has read the board.
+    DEFN_CHECK_EQ(harness.endless.current_wave(), 0);
+    DEFN_CHECK_CLOSE(harness.endless.schedule_seconds(), harness.endless.elapsed_seconds(), 1e-9);
+}
+
+DEFN_TEST(endless_director_charges_a_closed_gap_to_the_schedule_and_not_to_the_wall_clock) {
+    EndlessHarness harness(make_schedule_with_cleared_field_grace());
+
+    harness.run_for(30.0);
+
+    // The two clocks are what separates "the run got shorter" from "the run got easier": the schedule is where the
+    // budget and the wave numbers are read, and the wall clock is how long the player has actually been at it.
+    DEFN_CHECK_CLOSE(harness.endless.elapsed_seconds(), 30.0, 0.05);
+    DEFN_CHECK(harness.endless.schedule_seconds() > harness.endless.elapsed_seconds() + 20.0);
+}
+
+DEFN_TEST(endless_director_ends_a_paced_run_on_the_same_wave_as_an_unpaced_one) {
+    EndlessSchedule schedule = make_schedule_with_cleared_field_grace();
+    // The same ceiling as the unpaced budget-ceiling test: 12 * 1.1^(n-1) first passes 20 at wave 7.
+    schedule.tuning.budget_ceiling = 20.0;
+    EndlessHarness harness(schedule);
+
+    const std::optional<MatchEnded> ended = harness.run_for(200.0);
+
+    DEFN_REQUIRE(ended.has_value());
+    DEFN_CHECK(!ended->victory);
+    // Closing the gaps buys tempo, not schedule: the run reaches the same wave against the same budget, sooner.
+    DEFN_CHECK_EQ(harness.endless.current_wave(), 6);
+    DEFN_CHECK(harness.endless.elapsed_seconds() < 40.0);
 }
 
 } // namespace defn

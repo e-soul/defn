@@ -795,6 +795,20 @@ DEFN_TEST(endless_schedule_loader_reads_the_shipped_tuning) {
     DEFN_CHECK(tuning.budget_ceiling > tuning.base_budget);
 }
 
+// Split from the test above rather than added to it: three knobs of one curve are their own concern, and the
+// combined test was already at the cognitive-complexity threshold.
+DEFN_TEST(endless_schedule_loader_reads_a_usable_income_curve) {
+    const auto definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
+    DEFN_REQUIRE(definition.has_value());
+
+    // The kind of typo a hand-edited tuning block invites: a curve at or below zero stops the decay being a decay,
+    // and a floor at or above 1 cancels it outright. Both leave a mode that still loads and no longer counters.
+    const EndlessTuning &tuning = definition->schedule.tuning;
+    DEFN_CHECK(tuning.bounty_decay_curve > 0.0);
+    DEFN_CHECK(tuning.bounty_floor >= 0.0);
+    DEFN_CHECK(tuning.bounty_floor < 1.0);
+}
+
 DEFN_TEST(endless_schedule_loader_prices_every_unit_the_shipped_shapes_name) {
     const auto definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
     DEFN_REQUIRE(definition.has_value());

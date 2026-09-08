@@ -87,4 +87,18 @@ SpawnTimelineUpdate SpawnTimeline::advance(double delta) {
     return update;
 }
 
+double SpawnTimeline::pull_next_spawn_forward(double lead) {
+    if (!running_ || next_spawn_idx_ >= all_spawns_.size()) {
+        return 0.0;
+    }
+
+    const double skip = all_spawns_[next_spawn_idx_].time - level_timer_ - std::max(lead, 0.0);
+    if (skip <= 0.0) {
+        return 0.0;
+    }
+
+    level_timer_ += skip;
+    return skip;
+}
+
 } // namespace defn

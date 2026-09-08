@@ -19,6 +19,10 @@ namespace defn {
 // The run ends the same way a campaign level does -- through `MatchDirector`'s own end path -- either because the
 // base fell, or because the escalation passed the budget the schedule declares unwinnable, or because the run hit
 // the wall-clock ceiling.
+//
+// It also owns the run's pacing: the schedule authors the spacing between waves for a player who is still fighting,
+// and this closes it for one who is not. That makes the run's clock a schedule clock rather than a wall clock --
+// see `schedule_seconds`.
 class EndlessDirector {
   public:
     // No pointer is owned; all must outlive this.
@@ -45,12 +49,21 @@ class EndlessDirector {
 
     [[nodiscard]] int current_wave() const { return current_wave_; }
     [[nodiscard]] int appended_through_wave() const { return appended_through_wave_; }
+
+    // Seconds the run has actually been played. The wall-clock ceiling is measured against this.
     [[nodiscard]] double elapsed_seconds() const { return elapsed_seconds_; }
+
+    // Where the schedule's clock stands: the seconds played plus every idle gap the cleared-field rule closed. Wave
+    // start times, the budget ceiling and the spawn timeline all read this one, so a run that clears fast arrives at
+    // the same wave against the same budget in less real time.
+    [[nodiscard]] double schedule_seconds() const { return elapsed_seconds_ + skipped_seconds_; }
 
   private:
     // The per-wave counter-pressures, in one place so the opening and every wave after it cannot drift apart.
     void apply_wave_rules(int wave);
     void top_up();
+    // Closes the dead air between a wave the player has already cleared and the next arrival.
+    void close_cleared_gap();
     [[nodiscard]] bool should_stop() const;
 
     MatchDirector *director_ = nullptr;
@@ -63,6 +76,9 @@ class EndlessDirector {
     // drains, and the run is conceded on the tick it would have opened.
     int final_wave_ = 0;
     double elapsed_seconds_ = 0.0;
+    // Schedule time skipped by `close_cleared_gap`, kept apart from the seconds played so the wall-clock ceiling
+    // stays a reading of how long the player has been at it.
+    double skipped_seconds_ = 0.0;
     bool stopped_ = false;
     bool recorded_ = false;
 };

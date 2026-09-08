@@ -141,4 +141,44 @@ DEFN_TEST(spawn_timeline_composes_a_body_scale_with_its_waves) {
     DEFN_CHECK_CLOSE(update.due_spawns[1].scale.size, 1.35, 1e-9);
 }
 
+DEFN_TEST(spawn_timeline_pulls_an_idle_gap_closed_and_leaves_a_tight_one_alone) {
+    SpawnTimeline timeline;
+    timeline.load({.waves = {
+                       {.wave_number = 1, .spawns = {{.time = 1.0, .type = "first"}, {.time = 1.5, .type = "second"}}},
+                       {.wave_number = 2, .spawns = {{.time = 30.0, .type = "far"}}},
+                   }});
+    timeline.start();
+
+    // Wave 1 is 0.5s apart, which is tighter than the lead: a gap that is already tight is not a gap to close, or
+    // the stagger inside a wave would be flattened into the lead as well.
+    DEFN_CHECK_CLOSE(timeline.pull_next_spawn_forward(2.0), 0.0, 1e-9);
+
+    SpawnTimelineUpdate update = timeline.advance(1.6);
+    DEFN_CHECK_EQ(update.due_spawns.size(), static_cast<size_t>(2));
+
+    // 28.4s of nothing until wave 2, closed to the 2s lead.
+    DEFN_CHECK_CLOSE(timeline.pull_next_spawn_forward(2.0), 26.4, 1e-9);
+    DEFN_CHECK(timeline.advance(1.9).due_spawns.empty());
+    update = timeline.advance(0.2);
+    DEFN_REQUIRE(update.wave_changed.has_value());
+    DEFN_CHECK_EQ(*update.wave_changed, 2);
+    DEFN_CHECK_EQ(update.due_spawns.size(), static_cast<size_t>(1));
+    DEFN_CHECK_EQ(update.due_spawns[0].type, std::string("far"));
+}
+
+DEFN_TEST(spawn_timeline_pulls_nothing_forward_with_an_empty_or_stopped_timeline) {
+    SpawnTimeline timeline;
+    timeline.load({.waves = {{.wave_number = 1, .spawns = {{.time = 5.0, .type = "only"}}}}});
+
+    // Not started: the clock is not running, so there is nothing to move it against.
+    DEFN_CHECK_CLOSE(timeline.pull_next_spawn_forward(1.0), 0.0, 1e-9);
+
+    timeline.start();
+    DEFN_CHECK_EQ(timeline.advance(6.0).due_spawns.size(), static_cast<size_t>(1));
+
+    // Drained: a timeline with nothing pending has no gap, and closing one it does not have would run the clock off
+    // the end of the run.
+    DEFN_CHECK_CLOSE(timeline.pull_next_spawn_forward(1.0), 0.0, 1e-9);
+}
+
 } // namespace defn

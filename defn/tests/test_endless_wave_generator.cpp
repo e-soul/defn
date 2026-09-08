@@ -225,6 +225,60 @@ DEFN_TEST(endless_generator_decays_the_bounty_without_reaching_zero) {
     DEFN_CHECK(generator.bounty_multiplier(10000) > 0.0);
 }
 
+DEFN_TEST(endless_generator_honours_the_bounty_floor) {
+    EndlessSchedule schedule = make_schedule();
+    schedule.tuning.bounty_decay = 0.5;
+    schedule.tuning.bounty_floor = 0.25;
+    // Pinned rather than inherited: this reads the floor against a decay it can state in closed form, and the
+    // shipped curve is a tuning value that has already moved once.
+    schedule.tuning.bounty_decay_curve = 1.0;
+    EndlessWaveGenerator generator;
+    generator.configure(schedule);
+
+    // The decay lands exactly on the floor at wave 3 and would pass through it at wave 4, so waves 4 and 50 are
+    // reading the floor and not the decay.
+    DEFN_CHECK_CLOSE(generator.bounty_multiplier(2), 0.5, 1e-9);
+    DEFN_CHECK_CLOSE(generator.bounty_multiplier(3), 0.25, 1e-9);
+    DEFN_CHECK_CLOSE(generator.bounty_multiplier(4), 0.25, 1e-9);
+    DEFN_CHECK_CLOSE(generator.bounty_multiplier(50), 0.25, 1e-9);
+
+    // A floor of zero is a schedule that wants the decay to run all the way down, not a broken one, and a negative
+    // floor is a typo that must never pay the player negative income.
+    schedule.tuning.bounty_floor = -1.0;
+    generator.configure(schedule);
+    DEFN_CHECK(generator.bounty_multiplier(200) >= 0.0);
+    DEFN_CHECK(generator.bounty_multiplier(200) < 0.25);
+}
+
+DEFN_TEST(endless_generator_bounty_curve_is_inert_at_one_and_softens_below_it) {
+    EndlessSchedule geometric = make_schedule();
+    geometric.tuning.bounty_decay = 0.88;
+    geometric.tuning.bounty_floor = 0.0;
+    geometric.tuning.bounty_decay_curve = 1.0;
+    EndlessSchedule softened = geometric;
+    softened.tuning.bounty_decay_curve = 0.6;
+
+    EndlessWaveGenerator plain;
+    plain.configure(geometric);
+    EndlessWaveGenerator curved;
+    curved.configure(softened);
+
+    // `k = 1.0` has to reproduce the geometric decay exactly, or every number measured before the knob existed is
+    // invalidated by a knob that was supposed to ship inert.
+    for (int wave = 1; wave < 60; ++wave) {
+        DEFN_CHECK_CLOSE(plain.bounty_multiplier(wave), std::pow(0.88, wave - 1), 1e-9);
+    }
+
+    // Every curve pivots on the same two waves and separates only after them: wave 1 raises the index 0 to a power
+    // and wave 2 raises the index 1, so both are `k`-independent by arithmetic. `k` buys nothing before wave 3.
+    DEFN_CHECK_CLOSE(curved.bounty_multiplier(1), 1.0, 1e-9);
+    DEFN_CHECK_CLOSE(curved.bounty_multiplier(2), plain.bounty_multiplier(2), 1e-9);
+    for (int wave = 3; wave < 60; ++wave) {
+        DEFN_CHECK(curved.bounty_multiplier(wave) > plain.bounty_multiplier(wave));
+        DEFN_CHECK(curved.bounty_multiplier(wave) <= curved.bounty_multiplier(wave - 1));
+    }
+}
+
 DEFN_TEST(endless_generator_yields_an_empty_wave_when_nothing_is_priced) {
     EndlessSchedule schedule = make_schedule();
     schedule.threat_costs.clear();

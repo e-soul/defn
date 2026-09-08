@@ -50,6 +50,11 @@ class MatchDirector {
     MatchUpdate handle_base_durability_changed(int current_hp);
     MatchUpdate handle_base_destroyed();
 
+    // Closes an idle gap in the spawn timeline, bringing the next spawn to `lead` seconds away, and returns how much
+    // time was skipped. Meaningful without endless mode existing: it is the seam a mode that paces itself by what is
+    // standing on the belt reaches for, and the director keeps no opinion about when that is warranted.
+    double pull_next_spawn_forward(double lead) { return spawn_scheduler_.pull_next_spawn_forward(lead); }
+
     // Ends the match as a defeat with the base still standing, for a run that stops for a reason other than being
     // overrun.
     MatchUpdate concede_match();
@@ -58,6 +63,7 @@ class MatchDirector {
     bool is_game_over() const { return match_session_.is_game_over(); }
     int get_core_resource() const { return match_session_.get_core_resource(); }
     int get_living_friendlies() const { return match_session_.get_living_friendlies(); }
+    int get_living_enemies() const { return match_session_.get_living_enemies(); }
     bool has_supply_room() const { return match_session_.has_supply_room(); }
     int get_supply_cap() const { return match_session_.get_supply_cap(); }
     int get_energy_cap() const { return match_session_.get_energy_cap(); }

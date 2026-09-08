@@ -21,6 +21,7 @@ void EndlessDirector::configure(MatchDirector *director, ProgressionService *pro
     current_wave_ = 0;
     appended_through_wave_ = 0;
     elapsed_seconds_ = 0.0;
+    skipped_seconds_ = 0.0;
     stopped_ = false;
     recorded_ = false;
 
@@ -75,7 +76,30 @@ MatchUpdate EndlessDirector::update(double delta) {
         director_->award_survival_bonus(generator_.tuning().survival_bonus_per_wave);
     }
 
+    // After the director has advanced rather than before, so the tick is read whole: anything that spawned on it is
+    // already standing, and the gap is only closed once it genuinely is one.
+    close_cleared_gap();
+
     return result;
+}
+
+void EndlessDirector::close_cleared_gap() {
+    // The opening delay is authored rather than dead air. The field is empty before wave 1 by construction, so
+    // without this guard the very first thing the rule would do is start the run before the player has read the board.
+    if (stopped_ || current_wave_ < 1 || generator_.tuning().cleared_field_grace <= 0.0) {
+        return;
+    }
+
+    // A hostile counts from the tick its spawn intent is issued to the tick its death is reported, so this is the
+    // whole field and not merely what has finished walking on. A body parked on the base is still standing, and a
+    // wave that reached the base has not been cleared.
+    if (director_->get_living_enemies() > 0) {
+        return;
+    }
+
+    // The timeline's clock and this one are the same clock kept in two places: a skip applied to one alone would
+    // either strand `top_up` behind the spawns it is meant to stay ahead of, or drain the timeline into a victory.
+    skipped_seconds_ += director_->pull_next_spawn_forward(generator_.tuning().cleared_field_grace);
 }
 
 void EndlessDirector::finalize_ended_run(MatchUpdate &update) {
@@ -109,7 +133,7 @@ void EndlessDirector::top_up() {
     //
     // That is why the final wave is appended rather than withheld: withholding it drains the timeline, and a drained
     // timeline with a clear field is exactly the victory condition.
-    while (appended_through_wave_ < final_wave_ && (appended_through_wave_ == 0 || generator_.wave_start_time(appended_through_wave_) <= elapsed_seconds_)) {
+    while (appended_through_wave_ < final_wave_ && (appended_through_wave_ == 0 || generator_.wave_start_time(appended_through_wave_) <= schedule_seconds())) {
         const int next_wave = appended_through_wave_ + 1;
         director_->append_wave(generator_.generate(next_wave, *random_));
         appended_through_wave_ = next_wave;
@@ -122,8 +146,9 @@ bool EndlessDirector::should_stop() const {
     }
 
     // The final wave is the first one the budget ceiling declares unwinnable by construction. Reaching its slot is
-    // as far as the schedule goes, so the run ends there rather than on a wave nobody measured.
-    return appended_through_wave_ >= final_wave_ && elapsed_seconds_ >= generator_.wave_start_time(final_wave_);
+    // as far as the schedule goes, so the run ends there rather than on a wave nobody measured. Against the schedule
+    // clock, so a run that cleared its way there ends on the same wave rather than on a later one.
+    return appended_through_wave_ >= final_wave_ && schedule_seconds() >= generator_.wave_start_time(final_wave_);
 }
 
 } // namespace defn

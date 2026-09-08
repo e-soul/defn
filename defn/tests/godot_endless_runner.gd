@@ -10,6 +10,8 @@ func _parse_args() -> Dictionary:
 		"--base-budget": "base_budget",
 		"--escalation": "escalation",
 		"--bounty-decay": "bounty_decay",
+		"--bounty-decay-curve": "bounty_decay_curve",
+		"--bounty-floor": "bounty_floor",
 		"--escalation-curve": "escalation_curve",
 		"--hostile-damage-growth": "hostile_damage_growth",
 		"--hostile-damage-cap": "hostile_damage_cap",
@@ -25,7 +27,7 @@ func _parse_args() -> Dictionary:
 		"--energy-cap": "energy_cap",
 	}
 
-	var parsed := {"seeds": 5, "out": "", "max_seconds": 1800.0, "base_budget": [], "escalation": [], "bounty_decay": [], "escalation_curve": [], "hostile_damage_growth": [], "hostile_damage_cap": [], "elite_fraction_cap": [], "elite_hp_growth": [], "elite_hp": [], "elite_first_wave": [], "wave_interval": [], "interval_growth": [], "supply_start": [], "supply_growth": [], "supply_cap": [], "energy_cap": [], "policy_labels": []}
+	var parsed := {"seeds": 5, "out": "", "max_seconds": 1800.0, "base_budget": [], "escalation": [], "bounty_decay": [], "bounty_decay_curve": [], "bounty_floor": [], "escalation_curve": [], "hostile_damage_growth": [], "hostile_damage_cap": [], "elite_fraction_cap": [], "elite_hp_growth": [], "elite_hp": [], "elite_first_wave": [], "wave_interval": [], "interval_growth": [], "supply_start": [], "supply_growth": [], "supply_cap": [], "energy_cap": [], "policy_labels": []}
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var index := 0
 	while index < args.size():

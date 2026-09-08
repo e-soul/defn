@@ -48,8 +48,13 @@ no new content. Keyframes are authored as bodies and converted to budget share b
 finding below for why that distinction is load-bearing.
 
 **3. Economy counter-pressure.** Bounty income scales with kills and kills scale with `B(n)`, so income compounds
-alongside difficulty. The counter is a per-wave bounty decay `d^(n-1)` applied to what a kill *pays*, never to what
-it *scores*. Base integrity does not regenerate; the run is strict attrition.
+alongside difficulty. The counter is a per-wave bounty decay applied to what a kill *pays*, never to what it
+*scores*: `bounty(n) = max(d^((n-1)^k), bounty_floor)`. Base integrity does not regenerate; the run is strict
+attrition.
+
+The decay has a **rate** `d`, a **shape** `k` and a **floor**. `k = 1.0` is the geometric decay every measurement
+above was taken on; `k = 0.85` ships, for the reasons in the next section. `k < 1` spreads the same reduction over a
+longer run, and the floor is a hard stop the rate cannot fall through.
 
 ## What keeps it from being solved
 
@@ -598,6 +603,112 @@ every seed and `transition` by wave 8.
 
 ---
 
+## Spacing is spent only while there is a fight (2026-09-08)
+
+The interval is a difficulty knob for a player who is still fighting: 19 seconds decides how much of one wave is
+still alive when the next one opens. For a player who has already cleared it, it is dead air -- and dead air is the
+one thing a wave-based mode has no way to make interesting. Both readings are true of the same number, which is why
+tuning could never satisfy them at once: every spacing that makes a contested wave tense makes a cleared one a wait.
+
+`cleared_field_grace` separates them. Once nothing hostile is standing, the gap to the next arrival is closed to
+**1.5 seconds** instead of run out in full. It closes only gaps already longer than itself, so `spawn_stagger` at
+0.8s is untouched and a wave still walks in as a group rather than as a drip feed; and it is gated on the first wave
+having opened, so the authored `first_wave_delay` is not itself read as dead air.
+
+**It moves the schedule clock, not the wall clock.** `EndlessDirector` now keeps the two apart: `elapsed_seconds` is
+what the player has actually played and is what `wall_clock_ceiling` reads, and `schedule_seconds` is that plus every
+gap closed, and is what wave start times, `top_up` and the budget ceiling read. So a run reaches the same wave
+against the same budget, sooner. That is also what makes it a trade rather than a free skip: the skipped seconds are
+energy regeneration the player does not collect, so clearing fast buys tempo at the price of income.
+
+**Measured across the shipped sweep, 70 paired runs, the rule off against on:**
+
+| | rule off | rule on |
+|---|---|---|
+| mean waves reached | 10.6 | 10.1 |
+| deepest wave | 33 | 33 |
+| mean seconds per wave | 16.0 | 15.9 |
+| runs identical to the baseline | -- | 51 of 70 |
+
+**Most of the sweep does not move at all, and that is the finding rather than a null result.** The sim policies are
+not fast players: they leave hostiles standing almost continuously, so there is no dead air to close and the rule
+never fires. It fires in the long `mono:operator` and `mix:breacher+operator` runs, where seconds per wave falls from
+around 13.8 to 12.9 -- and where the wave count moves in both directions, by up to twelve either way, which is the
+income trade landing on top of the ordinary seed variance in exactly the runs that already had the widest spread.
+The not-solved gate is unaffected: nothing reaches wave 40 with the rule on either.
+
+**Manually verified in play, 2026-09-08, and that is the evidence that counts here.** The rule reads as intended at
+the shipped 1.5s: a cleared wave rolls straight into the next one and the dead stretch it was written to remove is
+gone, with no sense that a wave is being rushed onto a field the player has not finished with.
+
+This is deliberately the primary evidence rather than a supplement to the table above, because **the sweep is
+structurally unable to test this rule.** It only fires when the field is clear, and the sim policies leave hostiles
+standing almost continuously -- 51 of 70 runs are byte-identical with it on. The measurement's real job was to show
+that the rule does not distort the runs it does touch, and it does that; whether closing the gap *feels* right is a
+question about a fast player, and no policy in the slate plays like one. A future policy that clears waves quickly
+would let the sweep say more.
+
+The knob is inert at `0.0`, which is what a schedule under measurement wants -- the baseline column above is that
+value.
+
+---
+
+## The income curve, swept (2026-09-08)
+
+`bounty_decay_curve` and `bounty_floor` were pulled out of `endless_wave_generator.cpp`, where the shape was fixed
+at geometric and the floor was a `constexpr` of 0.05. Asked for a slight relief on an economy that felt too harsh.
+**Shipping `bounty_decay_curve` 1.0 -> 0.85 and leaving `bounty_floor` at 0.05.** `transition`, 12 seeds:
+
+| `k` | median wave | deployments | energy spent |
+|---|---|---|---|
+| **1.0** (was) | 24 | 28.7 | 595 |
+| **0.85 (shipped)** | 24 | 30.5 | 633 |
+
++6.4% on both economy readings with run length unchanged. That is the shape of relief that was wanted: the player
+affords more replacements, and the mode does not get easier to *survive*. The full slate at 5 seeds keeps the
+not-solved gate passing, leaves the economy slope negative, and does not move the 6.25x best-mix spread.
+
+**Read `deployments_total` and `energy_spent` here, not `waves_reached`.** Both knobs move what the player can
+afford and neither moves how long they last, and run length at 5 seeds is mostly seed noise -- the first sweep of
+this pair read medians of 26/27/26 across the shape axis and concluded, wrongly, that nothing was happening.
+
+**Bounty is quantized, and it dominates both knobs.** A kill pays `ceil(base_bounty * multiplier)` -- integer
+energy, minimum 1 -- and hostile bounties are 4 to 7. So the curve the player experiences is a staircase with seven
+steps, and below a multiplier of 0.25 every hostile in the game pays exactly 1:
+
+| multiplier | grime (4) | hound (5) | mason/jackal (6) | wrecker (7) |
+|---|---|---|---|---|
+| 0.50 | 2 | 3 | 3 | 4 |
+| 0.30 | 2 | 2 | 2 | 3 |
+| 0.25 | **1** | 2 | 2 | 2 |
+| 0.15 | 1 | 1 | 1 | 2 |
+| 0.10 and below | 1 | 1 | 1 | 1 |
+
+`4 x 0.25 = 1.0` exactly, so a floor of 0.25 does nothing whatever for grime, which is 41% of the drift. **A floor
+below 0.26 cannot change what the commonest body pays.** The first sweep of the floor used 0.05/0.15/0.25 and read
+as flat for precisely this reason; it is an artefact of the instrument, not a finding about the knob.
+
+**Why the floor is not shipped, though it works.** Swept at values that clear the step: 0.30 (binds from wave 11)
+gives +5.7% deployments and 0.40 gives +9.5%, against `k = 0.85`'s +6.4%. They are *substitutes* -- combining
+`k = 0.85` with a floor of 0.30 reads identically to `k = 0.85` alone, because both are lifting the same stretch of
+the run. `k` was preferred because a floor props income at a constant forever: 0.30 is six times the current floor,
+and if run length is ever retuned longer that constant becomes a snowball risk, where a shape keeps decaying at
+every wave. Reach for the floor only if runs lengthen.
+
+**Where the harshness actually is.** The energy trace says it plainly. Mean energy held at each wave open,
+`transition`, shipped tuning: waves 4-10 sit at 95-100 against an `energy_cap` of 100, then wave 11 collapses to 49
+and the run spends waves 14-26 under 20 energy, when a deployable costs 20-27.
+
+**So relief before wave 11 is thrown away** -- it overflows the cap -- and the mid-game is `supply_cap`-bound rather
+than income-bound anyway (`deployments_blocked` counts only supply refusals, and reads ~10,000). Only waves 11+ are
+genuinely income-starved. Any future income lever should be judged on what it does after wave 11 and nowhere else.
+
+**Run length is 6 minutes, against the 15-25 the design asks for.** Every cell in every sweep here reads `SHORT`,
+including the shipped one, so this is not a regression from these knobs -- but the band in this document predates
+both `interval_growth` of 0.975, which shrinks the spacing as the run goes on, and `cleared_field_grace`, which
+closes the gaps a fast player would otherwise wait out. Left alone deliberately: run length is a different decision
+from income relief and wants its own sweep, and the band itself may be what is wrong rather than the tuning.
+
 ## Where the mode lives
 
 Two entry points, both inside the campaign flow, and deliberately none in the main menu: endless is the campaign's
@@ -665,9 +776,10 @@ tables do. When unit stats change:
 3. If the not-solved gate fails, **fix the drift keyframes before touching `r`**. A faster ramp shortens runs; it
    does not make a solved mode unsolved -- and against `breacher+marksman` it does not even do that, so treat `r` as
    a pacing knob only.
-4. `escalation_curve`, `hostile_damage_growth` and `hostile_damage_cap` all default to inert. Do not set any of them
-   in `data/endless.json` without a sweep in the same commit: the first has never been measured at all, and the
-   second is knife-edge between "no effect" and "dead by wave 6".
+4. `escalation_curve`, `bounty_floor`, `hostile_damage_growth` and `hostile_damage_cap` all ship at the values the
+   code used to hard-code, so all four are inert until moved. Do not set any of them in `data/endless.json` without
+   a sweep in the same commit: `escalation_curve` has never been measured at all, and `hostile_damage_growth` is
+   knife-edge between "no effect" and "dead by wave 6". `bounty_decay_curve` is swept and ships at 0.85.
 5. **Every lever acts at the battle line.** No hostile, elite or schedule rule may route around the front, outrun it,
    or target the base as a destination, and none may assume a base exists at all (`GDD.md`, the battle-line
    section). The diver is the one standing exception and is not a template.
@@ -689,10 +801,19 @@ tables do. When unit stats change:
     pays more bounty than it costs. Neither turnaround is visible from a one-sided sweep.
 11. **A reading taken before a structural change is evidence about the old structure.** Bounty decay was measured
     as weak on survival when the army was unbounded; with the line capped it is the strongest lever there is.
+    **`d`, `bounty_decay_curve` and `bounty_floor` are three parameters of one curve and substitute for each
+    other**, so sweep them together and expect a value that read correct against one to be wrong against another.
 12. **"More hostiles" is a drift question before it is a budget question.** Cost per body climbs as the mix drifts
     to heavy units, so a growing budget can buy *fewer* bodies. Read threat-per-body across the keyframes before
     reaching for `base_budget`, which at any useful size ends the run in the opening.
-13. **The line is a difficulty knob, and usually the decisive one.** When the middle of a run goes quiet, suspect
+13. **Bounty is integer and rounds up, so read a multiplier against the staircase before sweeping it.** A kill pays
+    `ceil(base_bounty * multiplier)` on bounties of 4 to 7, so a multiplier below 0.25 pays 1 for every hostile in
+    the game and two "different" income settings can be the same game. Grime is 41% of the drift and `4 x 0.25` is
+    exactly 1.0, so the first useful floor is 0.26. A sweep whose cells straddle none of the steps reads as flat and
+    means nothing.
+14. **Income relief before wave 11 is thrown away.** The trace holds 95-100 energy against a cap of 100 through
+    wave 10, and the mid-game is supply-bound rather than income-bound. Judge any economy lever on waves 11+.
+15. **The line is a difficulty knob, and usually the decisive one.** When the middle of a run goes quiet, suspect
    `supply_start` and `supply_growth` before touching anything on the hostile side: what decides whether a wave is
    a fight is its size against the line's, and the line is the half that moves in steps.
 

@@ -22,9 +22,6 @@ constexpr double SPAWN_WINDOW_FRACTION = 0.9;
 // enough that it never reorders the line past its neighbour by more than one slot.
 constexpr double SPAWN_JITTER_FRACTION = 0.5;
 
-// Income decays but never reaches zero: a long run has to stay a game rather than becoming a countdown.
-constexpr double MINIMUM_BOUNTY_MULTIPLIER = 0.05;
-
 // One body of a wave being built, before its spawn time is known. The promotion travels with the body through the
 // shuffle, which is the whole reason this is a struct rather than two parallel vectors.
 struct PlannedBody {
@@ -240,8 +237,13 @@ double EndlessWaveGenerator::elite_cost_multiplier(int wave_number) const {
 
 double EndlessWaveGenerator::bounty_multiplier(int wave_number) const {
     const int index = std::max(wave_number, 1) - 1;
-    const double decayed = std::pow(schedule_.tuning.bounty_decay, static_cast<double>(index));
-    return std::max(decayed, MINIMUM_BOUNTY_MULTIPLIER);
+    // The curve is applied to the index rather than to the rate, exactly as in `budget`, so `k = 1.0` reproduces the
+    // geometric decay the mode was tuned on and every `k` above zero leaves wave 1 paying full bounty.
+    const double curved = std::pow(static_cast<double>(index), schedule_.tuning.bounty_decay_curve);
+    const double decayed = std::pow(schedule_.tuning.bounty_decay, curved);
+    // A negative floor is a typo rather than an intention, and it would hand the player negative income.
+    const double minimum = std::max(schedule_.tuning.bounty_floor, 0.0);
+    return std::max(decayed, minimum);
 }
 
 } // namespace defn

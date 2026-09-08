@@ -38,6 +38,10 @@ class SpawnScheduler {
     void stop();
     SpawnSchedulerUpdate update(double delta);
 
+    // Closes an idle gap in the timeline, bringing the next spawn to `lead` seconds away. Returns the time skipped.
+    // See `SpawnTimeline::pull_next_spawn_forward`.
+    double pull_next_spawn_forward(double lead) { return timeline_.pull_next_spawn_forward(lead); }
+
     bool is_running() const { return timeline_.is_running(); }
     bool all_waves_spawned() const { return timeline_.all_spawns_spawned(); }
     int get_total_waves() const { return level_definition_ ? static_cast<int>(level_definition_->waves.size()) : 0; }
