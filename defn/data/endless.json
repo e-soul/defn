@@ -23,7 +23,9 @@
     },
 
     "_level_is_synthesised": [
-        "Endless is fought on level_05's ground, so the reuse is a narrative fact rather than a shortcut. It authors",
+        "Endless is fought at the container port, on its own layered background rather than a level's single image.",
+        "`background_layers` replaces `background` outright when present; the Feldkirchen path is kept only as the",
+        "fallback the single-image builder would use, and should go once the port set is settled. It authors",
         "no waves at all: the generator supplies every one of them, and an empty wave list is also what makes the HUD",
         "read the wave count as unbounded rather than as a denominator."
     ],
@@ -43,6 +45,33 @@
     "level": {
         "name": "Standing Engagement",
         "background": "res://assets/backgrounds/background_feldkirchen_tiling.png",
+        "_background_layers_rates": [
+            "The container band is at 1.00, the same rate as the ground, and that is geometry rather than taste.",
+            "It stands on the ground's far edge, so the two share a contact line; the ground is a rigid texture",
+            "scrolling at 1.00, which means the far edge it is planted on also moves at 1.00. Any other value and",
+            "the apron visibly slides underneath it. Parallax has to come from layers that touch nothing: far at",
+            "0.35 across the water, sky at 0.05. Buying real separation at container depth needs an art change,",
+            "not a number -- see MODULAR_BACKGROUNDS.md.",
+            "Order is draw order, back to front, and the ground comes *before* the container band rather than",
+            "after it. The stacks stand on the apron, so the apron is painted first and they are drawn onto it.",
+            "With the ground last it painted over everything below its own far edge at 0.50, clipping the bottom",
+            "third of the stacks and the whole contact shadow, which is what made them look small and far away.",
+            "The band's height_ratio includes that shadow, so its bottom edge sits lower than the stacks' base:",
+            "they stand at about 0.65, right at the top of the belt band, and the shadow fades out by 0.663.",
+            "That shadow is deliberately faint -- 14 screen pixels, peak alpha 0.16, in the apron's own darkest",
+            "tone. A heavier one reads as a dark band ruled across the whole width rather than as contact.",
+            "The cloud layer is the only one with autoscroll: 6 pixels a second of drift that does not depend on",
+            "the camera, so it keeps moving through the long stretches where the front line is not advancing. The",
+            "sky behind it is a plain wash and holds no clouds of its own -- a cloud painted there would sit still",
+            "while these move."
+        ],
+        "background_layers": [
+            {"path": "res://assets/backgrounds/port_terminal/sky.png",    "scroll_scale": 0.05, "height_ratio": 1.000, "bottom_ratio": 1.000},
+            {"path": "res://assets/backgrounds/port_terminal/clouds.png", "scroll_scale": 0.15, "height_ratio": 0.420, "bottom_ratio": 0.420, "autoscroll": 6.0},
+            {"path": "res://assets/backgrounds/port_terminal/far.png",    "scroll_scale": 0.35, "height_ratio": 0.280, "bottom_ratio": 0.460},
+            {"path": "res://assets/backgrounds/port_terminal/ground.png", "scroll_scale": 1.00, "height_ratio": 0.500, "bottom_ratio": 1.000},
+            {"path": "res://assets/backgrounds/port_terminal/mid.png",    "scroll_scale": 1.00, "height_ratio": 0.433, "bottom_ratio": 0.663}
+        ],
         "starting_core_resource": 105,
         "base_integrity": 4,
         "energy_cap": 100,

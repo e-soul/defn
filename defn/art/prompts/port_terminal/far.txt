@@ -1,0 +1,87 @@
+Create the far distance layer of a modular tiling background set for DEFN, a contemporary-to-near-future
+military belt-scroller. This image is not a scene. It is one horizontal band of distant port structures seen
+across the water, drawn against a completely flat, uniform, fully saturated pure magenta field (RGB 255, 0,
+255) which fills every part of the frame the structures do not occupy. The magenta is a cut-out backdrop that
+will be removed automatically and replaced by a separately drawn sky behind it; it is not sky and must never be
+shaded, graded, textured, lightened, darkened, or blended into.
+
+No reference image is attached, deliberately. Every other layer in this set was contaminated when it was shown
+one — a sky drew the apron it was given, an earlier version of this band drew the containers it was given — so
+the description below is the whole brief and must be followed on its own.
+
+Understand where this layer sits, because it changes what matters. A run of stacked shipping containers stands
+in front of it and hides most of it. What the player actually sees is the top edge of this band rising above
+those containers, and narrow vertical slivers of it through the gaps between stacks. So the silhouette along
+the top edge is the most important thing in the image, and the band must stay interesting at a *fine
+horizontal scale*: a viewer reading it through a gap two containers wide should still see something worth
+looking at. Broad slow masses spanning a quarter of the width are wasted here.
+
+Draw it as authored 2D digital cartoon illustration: clean dark hand-inked contours, broad flat local-color
+regions, and restrained two-value cel shading. Use noticeably finer and lighter linework than a near object,
+and much less interior detail. Depth comes from value grouping and desaturation: keep the whole band low in
+contrast, cool, and light, close in value to a pale sky, with forms reading as grouped masses rather than as
+individually described buildings. Every silhouette edge is still a hard cel edge with a crisp contour;
+distance means lower contrast and a lighter, cooler value, and it never means softness, blur, haze, mist, fog,
+fading, or transparency. There is no atmospheric veil in front of the structures, between them, or along the
+roofline, and no part of the band dissolves toward the backdrop.
+
+Compose the band as a low, dense, distant industrial waterfront running the full width, built from a varied
+vocabulary rather than one repeated shape:
+
+  * long warehouse sheds with shallow pitched roofs, and others with sawtooth roofs read as a few simple teeth
+  * flat-topped terminal blocks and low office buildings of differing heights, some stepping up in two stages
+  * one or two moored ship hulls as long low masses with a simple blocky superstructure set off-centre
+  * short, squat storage tanks in groups of three or four, never a single tall one
+  * blocks of distant stacked containers, read as plain horizontal banding with no individual boxes drawn
+  * low conveyor or pipe runs as simple horizontal bars linking two masses
+
+Keep it low and horizontal. The tallest form is no more than about half the height of the frame, and the
+band's overall height varies gently and often across the width so the top edge is a continuously interesting
+line rather than a flat one.
+
+Deliberately place no landmark. There is no tall isolated tower, no gantry crane, no chimney, no mast, no
+antenna, no dominant building, and no single feature the eye can lock onto, because this layer repeats and
+anything distinctive announces itself every time it comes round. Variety here means many small differences
+evenly spread, not one memorable thing.
+
+Every part of the band must be unique. Do not repeat a building arrangement, a roofline shape, or a
+distinctive mass anywhere across the width, and do not build the run out of a repeating pattern of any kind.
+The seamlessness asked for below is a property of the two outer edges continuing into one another, and must
+never be achieved by making the interior periodic: a band whose left half recurs in its right half puts the
+same shape on screen twice at once, which is far more obvious than any edge seam.
+
+The structures stand on the bottom edge of the frame and the bottom edge is fully opaque across its entire
+width. Above the roofline there is nothing but the flat magenta field, and the top edge of the frame is pure
+magenta across its whole width. Leave clear magenta gaps between some of the masses so sky shows through
+between them.
+
+Keep the drawn band shallow within the canvas: it should occupy roughly the lower third of the frame, with the
+whole upper part flat magenta. A band drawn tall in the canvas becomes a narrow tile that visibly repeats.
+
+Light it with flat, even, diffuse light that is identical at the left edge, the centre, and the right edge.
+There is no directional sun, no raking light, no cast shadow, and no lateral brightness gradient whatever.
+
+Use a hazy-distance version of the working-port palette: pale slate blue-grey, muted steel, washed-out
+blue-green, and cool bone, with a little warm pale sand in the lowest, furthest masses so the band is not
+uniformly cold, and soft charcoal-blue contours. Keep every colour clearly distinct from magenta: use no pink,
+violet, purple, fuchsia, or hot red-violet anywhere in the artwork.
+
+Make the band perfectly seamless from left to right for continuous horizontal scrolling. The roofline rhythm,
+band height, mass distribution and every shape crossing one boundary must continue naturally at the opposite
+boundary, and the bottom edge stays at one constant height across both boundaries. Keep roughly the outer 10%
+on both sides compositionally plain. Construct a true continuous wraparound rather than placing matching masses
+at both edges; the result must stay convincing when repeated four times in a row.
+
+Deliver only the distant band and the magenta field: no ground, no apron, no water surface, no sky, no clouds,
+no horizon line, no foreground containers, no vehicles, no people, and no gameplay props.
+
+The structures carry no writing of any kind. Do not draw numerals, digits, letters, words, shipping-line names,
+logos, signage, symbols, or any mark that resembles a written character, in any orientation, anywhere in the
+frame.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic texture, perspective convergence, a
+vanishing point, lens distortion, depth of field, bloom, lens flare, film grain, painterly concept-art
+brushwork, sketchy lines, noisy hatching, dense window or panel detail, tall landmarks, semi-transparent or
+glowing edges, soft airbrushed halos around the structures, magenta tinting or magenta reflections on the
+artwork, a graded or clouded backdrop, artwork filling the upper half of the frame, visible tiling seams, and
+mirrored edge masses.

@@ -1,0 +1,85 @@
+{
+    "name": "port_terminal",
+    "_about": [
+        "Build recipe for the endless mode background. Feed it to scripts/build_layer_set.py, which writes the",
+        "shipped PNGs and prints the background_layers block to paste into data/endless.json.",
+        "",
+        "Layer order is DRAW ORDER, back to front. The ground comes before the container band because the band",
+        "stands on the ground and is drawn onto it, the same way a unit sprite is. Reversing those two clips the",
+        "band at the ground's far edge and reads as the containers being too small and too far away.",
+        "",
+        "Sources live under build/, which is not committed. What records this work is the prompts in",
+        "art/prompts/port_terminal/, the .json sidecars gen_art.py wrote beside each generation, this file, and",
+        "the shipped assets."
+    ],
+    "output": "defn/assets/backgrounds/port_terminal",
+    "viewport_height": 1080,
+    "layers": [
+        {
+            "name": "sky",
+            "source": "build/art/port_terminal/sky_tileable.png",
+            "res_path": "assets/backgrounds/port_terminal/sky.png",
+            "screen_height": 1.0,
+            "base_ratio": 1.0,
+            "scroll_scale": 0.05,
+            "density": 1,
+            "opaque": true,
+            "_density": "A smooth vertical wash with no hard edges anywhere, so it carries no detail worth storing at 2x. It holds no clouds: those are the drifting layer in front, and a cloud painted here would sit still while those move."
+        },
+        {
+            "name": "clouds",
+            "source": "build/art/port_terminal/clouds_tileable.png",
+            "res_path": "assets/backgrounds/port_terminal/clouds.png",
+            "screen_height": 0.42,
+            "base_ratio": 0.42,
+            "scroll_scale": 0.15,
+            "autoscroll": 6.0,
+            "density": 2,
+            "_autoscroll": "Pixels per second, independent of the camera. This is the only thing on screen that keeps moving while the player stands still, which is most of a match. Slow on purpose: at 6 px/s the tile takes about five minutes to come round.",
+            "_scroll": "Touches nothing, so it is free to scroll slower than the ground. Slightly faster than the sky behind it.",
+            "_size": "Bigger clouds make a taller drawn band, which shortens the tile at a given on-screen height -- at 0.30 this layer came out 1410px, under one viewport. Drawing it larger buys the period back and is what was wanted visually anyway."
+        },
+        {
+            "name": "far",
+            "source": "build/art/port_terminal/far_tileable.png",
+            "res_path": "assets/backgrounds/port_terminal/far.png",
+            "screen_height": 0.28,
+            "base_ratio": 0.46,
+            "scroll_scale": 0.35,
+            "density": 2,
+            "_base": "Across the water, so it touches nothing and is free to scroll slower than the ground. Raised until its tallest masses clear the container tops: at 0.24/0.48 the whole band sat behind them and only showed through gaps, which wastes the layer."
+        },
+        {
+            "name": "ground",
+            "source": "build/art/port_terminal/ground_tileable.png",
+            "res_path": "assets/backgrounds/port_terminal/ground.png",
+            "screen_height": 0.5,
+            "base_ratio": 1.0,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "opaque": true,
+            "_scroll": "Units live in this layer's coordinate space. It must stay at 1.0 or the floor slides under them."
+        },
+        {
+            "name": "mid",
+            "source": "build/art/port_terminal/mid_tileable.png",
+            "res_path": "assets/backgrounds/port_terminal/mid.png",
+            "screen_height": 0.42,
+            "base_ratio": 0.65,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "contact_shadow": {
+                "depth": 0.03,
+                "alpha": 0.16,
+                "colour": [
+                    75,
+                    74,
+                    78
+                ]
+            },
+            "_scroll": "Stands on the ground, so it shares the ground's contact line and must scroll at the ground's rate.",
+            "_base": "0.65 puts the stacks at the top of the belt band, which starts at 0.66.",
+            "_shadow": "Colour sampled from the apron's own darkest 8%. Anything heavier reads as a ruled line."
+        }
+    ]
+}

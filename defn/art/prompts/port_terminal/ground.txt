@@ -1,0 +1,81 @@
+Create the ground layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene and contains no sky, no horizon, and no buildings. It is one
+horizontal strip of open ground, drawn edge to edge and top to bottom, which the game composites beneath
+separately drawn distance layers. Depict the worn dirt-and-gravel hardstanding of a working container port
+terminal, seen from a gently elevated angle looking down and across it.
+
+No reference image is attached, deliberately. Earlier layers in this set were contaminated by the references
+they were shown — a sky drew the apron it was given as a palette reference, a distant band drew the containers
+it was given — and an earlier version of this ground, shown a snow-and-meadow background as an example of
+organic ground language, took its cool whites along with the lesson. The drawing style below is the whole
+brief and must be followed from this description alone.
+
+Draw it as authored 2D digital cartoon illustration in the DEFN house style: clean dark hand-inked contours,
+broad flat local-color regions, restrained two- or three-value cel shading, sparse purposeful texture, and
+gently irregular hand-drawn edges. Use finer linework than a character sprite. Communicate material through
+designed shapes rather than photographic surface texture.
+
+Build the surface almost entirely from soft, organic, irregular shapes, and keep straight lines out of it.
+This is the most important instruction in this prompt. The surface is compacted earth and gravel that has been
+driven over for years, not a paved slab floor: broad drifts of pale dust, patches of darker damp ground with
+soft wandering edges, wide beds of loose gravel that thin gradually into the dirt around them, faint oil
+staining, and a few shallow scuffed hollows. Every boundary between these areas is a soft irregular curve.
+There are no expansion joints, no slab edges, no paving grid, no kerbs, no painted lane markings, no straight
+bars, no long straight edges of any kind, and nothing that resolves into a repeating geometric pattern. Tyre
+tracks may appear but only as soft curving arcs, never as straight parallel lines.
+
+Express the elevated viewing angle through vertical foreshortening, never through converging lines, and
+express it through the *size and density of these organic features* rather than through any drawn line. The
+patches, gravel beds and dust drifts are largest and most separated along the bottom edge, and become
+progressively smaller, flatter, and more closely spaced toward the top edge, so the surface reads as a floor
+receding away rather than as a wall standing up. Nothing converges, nothing fans, and there is no vanishing
+point anywhere in the image.
+
+Because the top of the frame is further away, let contour weight, contrast, feature size, and colour
+saturation all fall off toward the top edge, and let the ground lighten a little with distance. This
+top-to-bottom change is wanted. A left-to-right change is not, and is covered below.
+
+The middle third of the image height, from roughly 32% to 65% down the frame, is where units will stand, and
+it must be the flattest, quietest, and most open part of the surface: broad and simple there, with the
+strongest patches kept toward the bottom and top edges.
+
+Light the ground with flat, even, diffuse overhead light that is identical at the left edge, the centre, and
+the right edge. The image must have no lateral brightness gradient, no directional sun, no raking light, no
+large cast shadow, and no bright or dark region occupying one side of the frame. Any shading is local to an
+individual patch. This matters more than atmosphere: a strip lit from one side cannot be made to tile, because
+its two ends can never be reconciled.
+
+This is an arid, hard-used industrial yard, not a meadow, a verge, or a field. Keep the palette dry and warm:
+pale ochre and warm dust-grey compacted earth, cool blue-grey gravel beds, patches of darker damp brown-grey,
+restrained rust-orange staining, and warm charcoal and slate contours. Vegetation is almost absent — at most a
+very few small, dry, bleached straw-and-khaki weed tufts, widely separated, always the same dusty tone as the
+ground they grow from. Nothing on this surface is green, and there is no grass, moss, meadow, foliage, leaf
+litter, snow, frost, ice, or pure white anywhere in the image. Keep the surface value light enough that dark
+unit silhouettes will read clearly standing on it, and keep the whole surface low in contrast so nothing on it
+competes with the units.
+
+Make the image perfectly seamless from left to right for continuous horizontal scrolling. The patch rhythm,
+gravel distribution, lighting, and every shape crossing one boundary must continue naturally at the opposite
+boundary. Vary the size and spacing of the patches so no rhythm is regular, and keep roughly the outer 10% on
+both sides free of any unique or high-contrast feature. Construct a true continuous wraparound rather than
+placing matching marks at both edges; the result must stay convincing when repeated four times in a row.
+
+Every part of the surface must be unique. Do not repeat a patch arrangement, a gravel bed shape, or a
+distinctive mark anywhere across the width, and do not build the surface out of a repeating pattern of any
+kind. The seamlessness asked for above is a property of the two outer edges continuing into one another, and
+must never be achieved by making the interior periodic: a surface whose left half recurs in its right half
+puts the same marks on screen twice at once, which is far more obvious than any edge seam.
+
+Deliver only the full-bleed ground surface: no sky, no horizon line, no buildings, cranes, containers,
+fences, bollards, light masts, vehicles, people, animals, or gameplay props.
+
+The ground carries no writing of any kind. Do not draw numerals, digits, letters, words, painted identifiers,
+signage, arrows, symbols, or any mark that resembles a written character, in any orientation, anywhere in the
+frame.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic dirt or gravel texture, aerial or
+isometric perspective, converging lines, a vanishing point, paving, slabs, concrete panels, expansion joints,
+a tiled or checkerboard floor, painted road markings, straight edges, green vegetation, grass, moss, snow,
+frost, lens distortion, depth of field, bloom, lens flare, film grain, painterly concept-art brushwork,
+sketchy lines, noisy hatching, uniform grunge, dense pebble detail covering the whole surface, deep ruts,
+potholes, puddles with hard edges, rubble, debris, visible tiling seams, and mirrored edge features.

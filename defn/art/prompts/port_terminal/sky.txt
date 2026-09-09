@@ -1,0 +1,38 @@
+Create the sky layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene. It is the backmost layer of a parallax stack: nothing but sky and
+atmosphere, filling the frame edge to edge and top to bottom, with every other element of the port drawn on
+separate layers in front of it. It contains no ground, no horizon line, no structures, and no silhouettes of
+any kind.
+
+No reference image is attached, deliberately. This layer shares no subject matter with any other DEFN asset,
+and an attached background is reproduced rather than merely referenced: a first attempt carrying the port
+apron as a palette reference drew the apron, lane markings and all, across the bottom third of the sky.
+
+Draw it as authored 2D digital cartoon illustration in the DEFN house style. Sky is the one place the style
+permits soft gradients, so use them: this layer is a smooth vertical wash and nothing else. It carries no
+clouds at all -- the clouds are a separate drifting layer in front of it, and a cloud drawn here would sit
+still while those move.
+
+Grade the wash vertically. The top of the frame is a clean, slightly cool pale blue; it warms and lightens
+steadily downward through a pale grey-blue into a soft warm cream haze band across the bottom third, the kind
+of thickened light that sits over a working harbour on a bright overcast afternoon. The lowest fifth of the
+frame is the palest and least saturated part of the image, because distant structures will be drawn against
+it and need to separate from it.
+
+Light the sky evenly across its width. There is no sun disc, no sun position, no bright patch, no glow, no god
+rays, and no lateral brightness gradient of any kind: the left edge, the centre and the right edge are equally
+bright. The only change in value across this image runs from top to bottom.
+
+Make the image perfectly seamless from left to right for continuous horizontal scrolling. The value bands,
+haze height, cloud distribution and every shape crossing one boundary must continue naturally at the opposite
+boundary. With no clouds in it this is nearly automatic, but the wash must still not drift in brightness from
+one side to the other.
+
+Deliver only sky. The image is sky from the very top edge to the very bottom edge, with atmosphere as its only
+subject. There is no ground, no concrete, no apron, no paving, no road, no lane markings, no sea, no water, no
+land, no horizon line, no structures, no cranes, no ships, no masts, no birds, no aircraft, no people, no
+clouds of any kind, and no lettering. The bottom edge of the frame is open haze that other layers will be drawn over.
+
+Avoid photorealism, photographic cloud texture, realistic atmospheric scattering, volumetric light, painterly
+concept-art brushwork, dramatic skies, storm clouds, sunsets, sun discs, lens flare, bloom, film grain, noisy
+gradients, banding, clouds, a visible horizon, and visible tiling seams.

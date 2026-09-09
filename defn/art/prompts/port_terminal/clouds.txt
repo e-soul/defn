@@ -1,0 +1,70 @@
+Create the cloud layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene. It is a band of separated cloud masses drawn against a completely
+flat, uniform, fully saturated pure magenta field (RGB 255, 0, 255) which fills every part of the frame the
+clouds do not occupy. The magenta is a cut-out backdrop that will be removed automatically and replaced by a
+separately drawn sky gradient behind it; it is not sky and must never be shaded, graded, textured, lightened,
+darkened, or blended into.
+
+No reference image is attached, deliberately. Every other layer in this set was contaminated when it was shown
+one, so the description below is the whole brief.
+
+This layer drifts slowly and continuously across the sky on its own, independently of the camera, so it is the
+only thing on screen that keeps moving while the player stands still. That makes two things matter more than
+they otherwise would. First, it repeats often, so nothing in it may be memorable. Second, it is always in
+motion against everything behind and in front of it, so it must be quiet enough never to pull the eye off the
+characters.
+
+Draw the clouds as authored 2D digital cartoon illustration in the DEFN house style, which permits soft
+handling in sky and nowhere else. Each cloud is one broad, generous, flat-bottomed mass with a loose,
+irregular, softly rounded hand-drawn outline. Fill it with a single flat pale tone and no interior shading at
+all, or at most the faintest cooler tint along the very bottom, so weak it is barely separable from the fill.
+Do not outline them with a dark contour, do not give them crisp scalloped bumps around the edge, and do not
+describe individual lobes with internal lines or shadows. Do not render them as photographic vapour, wispy
+streaks, painterly brushwork, or detailed cumulus.
+
+The softness asked for here is a matter of low contrast and loose shape, not of blurred edges: the boundary
+between cloud and backdrop stays a clean edge, because it is cut out automatically and a blurred one keys
+badly. What must be soft is the *reading* -- gentle irregular outlines and almost no internal value change.
+
+Place four to seven cloud masses across the width and make them genuinely different from one another. They
+should be large -- the biggest spanning something like a sixth of the frame's width and most of the band's
+height, and the smallest perhaps a third of that. Vary their heights within the band, their widths, how far
+apart they sit, and how much they overlap: two may drift close enough to touch while another stands well
+clear. Nothing about their arrangement should read as evenly spaced or evenly sized.
+
+The one thing that must *not* vary is value. Every cloud is the same pale tone as every other, and none is
+darker, more saturated, or more contrasty than the rest. That is what stops any of them becoming a landmark
+when the band repeats -- being larger is harmless, being distinctive in colour is not. None may form a
+recognisable silhouette of anything, and none may touch the top or bottom edge of the frame.
+
+Every cloud must be unique. Do not repeat a cloud shape or an arrangement anywhere across the width, and do
+not build the run out of a repeating pattern of any kind. The seamlessness asked for below is a property of
+the two outer edges continuing into one another, and must never be achieved by making the interior periodic.
+
+Keep the whole layer very pale and very low in contrast: a soft near-white, only slightly lighter than the pale
+blue sky it will sit on, with no strong white and no grey dark enough to read as shadow. Err far toward too
+faint. A previous attempt at this layer came back with crisply defined lobes and a distinct blue-grey
+underside, and on screen the clouds competed with the characters instead of sitting behind them.
+
+Every silhouette edge is a clean cel edge meeting the magenta directly. There is no fade, no blur, no
+gradient, no glow, no haze, and no semi-transparency anywhere along that boundary — the clouds are opaque
+shapes with soft *outlines*, not soft *edges*. The magenta field stays perfectly flat and uniform at RGB 255 0
+255 everywhere it appears, including between and around every cloud.
+
+Light the clouds evenly across the width. There is no sun, no bright patch, no glow, no rim lighting, and no
+lateral brightness gradient. Every cloud is lit identically to every other.
+
+Make the image perfectly seamless from left to right for continuous horizontal scrolling. Cloud distribution
+and every shape crossing one boundary must continue naturally at the opposite boundary, and no cloud sits
+within the outer tenth of either side. Construct a true continuous wraparound rather than placing matching
+clouds at both edges; the result must stay convincing when repeated four times in a row.
+
+Deliver only the cloud masses and the magenta field: no sky gradient, no horizon, no ground, no structures, no
+birds, no aircraft, no sun, no moon, no rain, and no lettering.
+
+Avoid photorealism, photographic cloud texture, realistic atmospheric scattering, volumetric light, painterly
+concept-art brushwork, dramatic or storm clouds, sunsets, dark or heavy clouds, thin wispy cirrus, cloud
+outlines in a dark contour, strong contrast, internal lobe shading, crisp scalloped edges, evenly sized or
+evenly spaced clouds, a cloud darker than its neighbours, recognisable shapes, semi-transparent or glowing
+edges, magenta tinting on the artwork, a graded or clouded backdrop, visible tiling seams, and mirrored edge
+clouds.

@@ -39,6 +39,18 @@ std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &dat
     }
     level_definition.background_path = to_std_string(String(data.get("background", "")));
 
+    const Array background_layers = data.get("background_layers", Array());
+    for (const auto &layer_value : background_layers) {
+        Dictionary layer_dict = layer_value;
+        level_definition.background_layers.push_back({
+            .path = to_std_string(String(layer_dict.get("path", ""))),
+            .scroll_scale = VariantTools::as_float(layer_dict.get("scroll_scale", 1.0)),
+            .height_ratio = VariantTools::as_float(layer_dict.get("height_ratio", 1.0)),
+            .bottom_ratio = VariantTools::as_float(layer_dict.get("bottom_ratio", 1.0)),
+            .autoscroll = VariantTools::as_float(layer_dict.get("autoscroll", 0.0)),
+        });
+    }
+
     Array wave_array = data.get("waves", Array());
     for (int wave_idx = 0; wave_idx < wave_array.size(); ++wave_idx) {
         Dictionary wave_dict = wave_array[wave_idx];

@@ -10,6 +10,10 @@ Two rules:
 2. **`templates/` and `style/` are live.** New work should use them, and they can change, but the result must
    land inside the house style below.
 
+New backgrounds are no longer authored as single images. [`MODULAR_BACKGROUNDS.md`](MODULAR_BACKGROUNDS.md)
+describes the layer-set pipeline that replaces them; the style, palette, and reference rules below still
+govern every layer it produces.
+
 ## Running them
 
 ```bash

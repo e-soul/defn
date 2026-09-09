@@ -48,7 +48,7 @@ class GameManager : public Node2D {
     static void _bind_methods();
 
   private:
-    void setup_background(const String &bg_path);
+    void setup_background();
     void setup_camera();
 #ifdef DEFN_DEBUG_RENDERING_ENABLED
     void setup_belt_debug_overlay();

@@ -1,0 +1,98 @@
+Create the midground layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene. It is one horizontal band of stacked shipping containers standing on
+a quay, drawn against a completely flat, uniform, fully saturated pure magenta field (RGB 255, 0, 255) which
+fills every part of the frame the containers do not occupy. The magenta is a cut-out backdrop that will be
+removed automatically and replaced by separately drawn sky and distance layers; it is not sky and must never be
+shaded, graded, textured, lightened, darkened, or blended into.
+
+No reference image is attached, deliberately. Earlier layers in this set were contaminated by their references
+— a sky drew the apron it was shown, a distant band drew the containers it was shown — so this one is
+described in words and must follow the DEFN house style from that description alone.
+
+This band is drawn at roughly half the height of the game screen. It is a near object standing a few metres
+behind the characters, not a distant backdrop, and it is the second most prominent thing in the frame after the
+characters themselves. Draw it with the confidence and weight that deserves.
+
+Draw it as authored 2D digital cartoon illustration: clean dark hand-inked contours, crisp graphic silhouettes,
+broad flat local-color regions, restrained two- or three-value cel shading, sparse purposeful texture, and
+gently irregular hand-drawn edges. Weight the linework as a foreground subject: the outer silhouette of each
+stack and the major overlaps where one container crosses another are the strongest, darkest lines in the image,
+roughly two to three times the weight of interior marks. Interior lines are clean and deliberate, never thin,
+faint, or sketchy. Every line must clarify volume, material, damage, or overlap.
+
+Give each container real, authored detail, kept large and readable rather than dense:
+
+  * Corrugated side walls read as a few grouped vertical ribs with clear shadowed valleys, not as many fine
+    parallel lines. Group them into rhythms and let the grouping vary between containers.
+  * Door ends carry chunky hardware: two tall door panels, heavy vertical lock bars, thick hinge blocks, and a
+    simple handle. These are solid, slightly oversized shapes, never delicate mechanisms.
+  * Every container has bold corner castings at its top and bottom corners, and a visible top rail and bottom
+    rail, so the boxes read as engineered objects that stack.
+  * Distress is authored and sparse: a handful of large readable dents that deform the silhouette, one or two
+    patched repaint rectangles in a slightly different tone, rust running in broad streaks from a few corner
+    castings, and a couple of scraped areas showing bare metal. No procedural grunge, no uniform edge wear, no
+    fine scratches, no speckled noise.
+
+Shade each container with a flat base colour, one clear shadow tone on the recessed door end and under every
+overhang where a stacked container sits on the one below, and one restrained highlight along the top rail. Let
+the shadow tones be strong enough to separate the boxes from one another; adjacent containers must never merge
+into one mass.
+
+Compose the band as a continuous run of stacks seen straight on from the side, with no perspective convergence
+and no vanishing point. Vary it: stacks two to four containers high, some single containers standing alone,
+several containers turned so their door ends face the viewer among the many showing their long sides, narrow
+gaps between some stacks and none between others, and an irregular, interesting top edge. Vary the colours
+across the run. Do not create one dominant landmark, one tallest tower, or one focal feature anywhere; the run
+must be evenly interesting across its whole width so that no part of it announces itself when the band
+repeats.
+
+Every stack group in the image must be unique. Do not repeat an arrangement, a silhouette, a colour sequence,
+or a distinctive container anywhere across the width, and do not build the run out of a repeating pattern of
+any kind. The seamlessness asked for below is a property of the two outer edges continuing into one another,
+and must never be achieved by making the interior periodic: a run whose left half recurs in its right half
+puts the same stack on screen twice at once, which is far more obvious than any edge seam.
+
+The container run occupies only the **lower half** of the frame. The entire upper half of the image is flat
+magenta, empty of artwork, edge to edge, and the tallest stack reaches no higher than the vertical midpoint of
+the frame. This proportion matters as much as the drawing: the band is stretched to its final height in the
+game, and a run drawn tall in the canvas becomes a narrow tile that visibly repeats.
+
+The bottom edge of the band is solid, straight, and fully opaque across the entire width, where the containers
+meet the quay.
+
+Every silhouette edge is a hard cel edge meeting the magenta directly, with the same clean dark contour the
+containers carry elsewhere. There is no fade, no blur, no gradient, no glow, no haze, no atmospheric blending,
+and no semi-transparency anywhere along that boundary. The magenta field stays perfectly flat and uniform at
+RGB 255 0 255 everywhere it appears.
+
+Light the band with flat, even, diffuse light that is identical at the left edge, the centre, and the right
+edge. There is no directional sun, no raking light, no large cast shadow crossing the band, and no lateral
+brightness gradient whatever. Shading is local to an individual container. A strip lit from one side cannot be
+made to tile, because its two ends can never be reconciled.
+
+Use a working-port palette: oxide red, rust orange, weathered olive-drab, dull maritime blue, faded seafoam
+green, bone grey, and gunmetal container bodies, with warm charcoal and deep slate contours and shadows. Keep
+the palette muted enough that the run reads as a mass rather than as a colour chart, and keep every colour
+clearly distinct from magenta: use no pink, violet, purple, fuchsia, or hot red-violet anywhere in the artwork.
+
+Make the band perfectly seamless from left to right for continuous horizontal scrolling. The stack rhythm,
+top-edge silhouette logic, colour distribution, and every shape crossing one boundary must continue naturally
+at the opposite boundary, and the bottom edge stays at one constant height across both boundaries. Keep roughly
+the outer 10% on both sides compositionally plain, with no tall isolated stack and no high-contrast feature.
+Construct a true continuous wraparound rather than placing matching stacks at both edges; the result must stay
+convincing when repeated four times in a row.
+
+Deliver only the container band and the magenta field: no ground, no apron, no quay surface below the
+containers, no sky, no clouds, no horizon, no cranes, no vehicles, no people, and no gameplay props.
+
+The containers carry no writing of any kind. Do not draw numerals, digits, letters, words, shipping-line names,
+container codes, placards, logos, symbols, arrows, or any mark that resembles a written character, in any
+orientation, anywhere in the frame, including worn or partially faded examples. Container ends carry only plain
+panel divisions, ribs, hinges, lock bars, and handles.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic metal texture, aerial or isometric
+perspective, perspective convergence, lens distortion, depth of field, bloom, lens flare, film grain, painterly
+concept-art brushwork, sketchy lines, thin or faint contours, noisy hatching, dense rivet or corrugation
+detail, semi-transparent or glowing edges, soft airbrushed halos around the containers, magenta tinting or
+magenta reflections on the artwork, a graded or clouded backdrop, artwork in the upper half of the frame,
+visible tiling seams, and mirrored edge stacks.

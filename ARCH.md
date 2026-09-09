@@ -162,6 +162,18 @@ Current boundary ownership:
   once `repeat_size` is set. `repeat_times` is sized to cover the viewport --
   it is a drawing window that travels with the camera, not the extent of the
   world.
+- A level's background is either one image or a list of `BackgroundLayer`
+  planes, and the two are exclusive: `background_layers` replaces `background`
+  outright rather than drawing over it. `build_stack` gives each plane its own
+  `Parallax2D` under one node, so depth comes from differing scroll rates
+  rather than from a single sheet that paints depth and then contradicts it by
+  moving rigidly. Each layer is placed by fractions of viewport height, which
+  is what lets planes be stored at different resolutions. Two ordering rules
+  are load-bearing and neither is obvious: the list is drawn back to front, so
+  the ground comes *before* whatever stands on it, and anything sharing the
+  ground's contact line must carry the ground's scroll rate. See
+  `defn/art/MODULAR_BACKGROUNDS.md` for why, and for the authoring pipeline
+  that produces the layers.
 - `GameManager` is the match-level composition and lifecycle entry point. It
   delegates camera movement to `CameraScrollController`, backgrounds to
   `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and

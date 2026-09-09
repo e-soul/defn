@@ -74,6 +74,7 @@ class MatchDirector {
     int get_total_waves() const { return spawn_scheduler_.get_total_waves(); }
     Vector2 get_base_position_ratio() const { return spawn_scheduler_.get_base_position_ratio(); }
     const std::string &get_background_path() const { return spawn_scheduler_.get_background_path(); }
+    const std::vector<BackgroundLayer> &get_background_layers() const { return spawn_scheduler_.get_background_layers(); }
     std::vector<UnitConfig> build_available_friendlies() const;
 
     const MatchEnded *get_pending_match_end() const;

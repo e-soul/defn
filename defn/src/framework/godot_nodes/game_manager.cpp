@@ -154,7 +154,7 @@ void GameManager::_ready() {
     }
 
     // Setup camera and visual layers using background from level data
-    setup_background(to_godot_string(match_director_.get_background_path()));
+    setup_background();
     setup_camera();
 #ifdef DEFN_DEBUG_RENDERING_ENABLED
     setup_belt_debug_overlay();
@@ -290,11 +290,15 @@ void GameManager::_input(const Ref<InputEvent> &event) {
 #endif
 }
 
-void GameManager::setup_background(const String &bg_path) {
+void GameManager::setup_background() {
     auto *grid = GridManager::get_singleton();
     const auto &rules = grid->get_rules();
 
-    Parallax2D *background = GameBackgroundBuilder::build(bg_path, rules);
+    // A layered level replaces the single image outright rather than layering on top of it, so the two paths
+    // are exclusive and the layers win.
+    const auto &layers = match_director_.get_background_layers();
+    Node2D *background = layers.empty() ? static_cast<Node2D *>(GameBackgroundBuilder::build(to_godot_string(match_director_.get_background_path()), rules))
+                                        : GameBackgroundBuilder::build_stack(layers, rules);
     if (background == nullptr) {
         return;
     }

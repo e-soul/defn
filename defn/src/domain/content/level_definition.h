@@ -4,6 +4,7 @@
 #ifndef LEVEL_DEFINITION_H
 #define LEVEL_DEFINITION_H
 
+#include "background_layer.h"
 #include "content_values.h"
 #include "hostile_scaling.h"
 
@@ -43,6 +44,9 @@ struct LevelDefinition {
     Vector2 base_position_ratio{.x = 0.0760416667F, .y = 0.7407407407F};
     Vector2 belt_width_ratio{.x = 0.6944444444F, .y = 0.7870370370F};
     std::string background_path;
+    /// Empty for a level drawn from one image. When present it replaces `background_path` entirely, and the
+    /// layers are drawn back to front in the order given.
+    std::vector<BackgroundLayer> background_layers;
     std::vector<WaveDefinition> waves;
 };
 

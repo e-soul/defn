@@ -55,6 +55,11 @@ class SpawnScheduler {
     int get_energy_cap() const { return level_definition_ ? level_definition_->energy_cap : 0; }
     int get_supply_cap() const { return level_definition_ ? level_definition_->supply_cap : 0; }
     Vector2 get_base_position_ratio() const { return level_definition_ ? level_definition_->base_position_ratio : Vector2{}; }
+    const std::vector<BackgroundLayer> &get_background_layers() const {
+        static const std::vector<BackgroundLayer> empty;
+        return level_definition_ ? level_definition_->background_layers : empty;
+    }
+
     const std::string &get_background_path() const {
         static const std::string empty;
         return level_definition_ ? level_definition_->background_path : empty;
