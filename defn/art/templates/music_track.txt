@@ -1,0 +1,54 @@
+Create an original instrumental background track for DEFN, a compact tactical
+auto-combat defense game. Two opposing forces advance across a wide side-view
+battlefield; the player deploys military units, manages a regenerating resource,
+builds a formation, and reacts to escalating enemy waves. Combat resolves
+automatically, but deployment timing, unit composition, engagement range, and
+battlefield momentum are strategically important. The tone is stylized military
+action rather than realistic warfare: tense and energetic, but never grim,
+tragic, patriotic, or solemnly cinematic.
+
+Scene: [SCENE OR MODE]. The music supports [PLAYER EXPERIENCE].
+
+GENRE AND STYLE: a blend of electronic strategy-game music, restrained modern
+military percussion, subtle industrial texture, melodic retro action-game
+influence, and light cinematic tension that never becomes a film trailer.
+
+MOOD: tactical, focused, energetic, slightly tense, mechanically precise,
+confident but not heroic, playful enough for a compact indie game, and pleasant
+across many repeat listens.
+
+INSTRUMENTATION: [PRIMARY INSTRUMENTS], supported by tight electronic drums,
+controlled snare and tom patterns, low pulsing synthesizer bass, sparse melodic
+synth phrases, restrained distorted electric-guitar texture, short rhythmic
+brass-like or string-like accents kept secondary, and subtle mechanical or
+radio-like ambience used musically.
+
+TEMPO AND RHYTHM: approximately [BPM] BPM, [LOW / MEDIUM / HIGH] intensity, with
+a stable pulse and layered rhythmic patterns that communicate forward movement,
+pressure, and shifting battlefield momentum rather than constant maximal energy.
+
+VOCALS: fully instrumental. No vocals, spoken words, chanting, or lyrics.
+
+DURATION: approximately [DURATION].
+
+STRUCTURE:
+[Intro] [INTRO DESCRIPTION]. Establish the rhythmic identity within the first
+several seconds, with no long buildup.
+[Build] Add percussion layers, bass movement, and counter-rhythms as if enemy
+pressure is increasing.
+[Peak] State a memorable but understated central motif over the fullest
+arrangement.
+[Release] Thin the arrangement to a quieter passage, then rebuild.
+[Outro] Suited to [LOOPING / A CLEAN END / A RESULT SCREEN]. For a loop, avoid a
+strong final cadence and return naturally toward the opening state.
+
+MIX: the track must stay clear and unobtrusive beneath gunfire, impacts, and
+interface sounds, with enough variation to remain pleasant over many matches
+without drawing attention to itself.
+
+AVOID: bombastic Hollywood trailer music, heroic military marches, patriotic or
+nationalistic associations, bleak war-drama emotion, horror, generic orchestral
+battle music, excessively aggressive metal, dominant dubstep drops, undynamic
+wall-to-wall percussion, and busy attention-demanding melodies. The result should
+sound like polished game background music, not a standalone song or a film
+trailer.

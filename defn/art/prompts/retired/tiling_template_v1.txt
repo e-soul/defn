@@ -1,0 +1,17 @@
+A 2D belt scroller video game background depicting a dense tropical jungle with ancient stone ruins, banana trees, thick vines, and lush ferns. 
+
+Presentation Constraints:
+- Layout: Horizontal 16:9 composition, ultra-high resolution, crisp 4K fidelity graphics.
+- Perspective & Playable Area: Designed for a 2D belt scroller game. The bottom half (50%) of the entire screen must be a wide, flat dirt and grass ground plane (playable floor), clear of any obstacles seen from a high-angle, three-quarters top-down perspective. This large ground plane must provide massive vertical space for characters to walk up and down across the depth of the field.
+- Horizon Line: The horizon line and the edge of the jungle treeline must start exactly halfway up the screen (at the 50% vertical mark), keeping the entire bottom half open as a wide walking surface.
+- Tiling: Left-to-right horizontally seamless tiling background. The left edge must perfectly loop and match the right edge for continuous scrolling.
+
+Artistic Style Architecture:
+- Art Style: High-quality, clean 2D vector art, sharp digital illustration, side-scroller cartoon asset style.
+- Outlines: Distinct, smooth, solid dark outlines tracking every leaf, vine, and stone structure, matching the line weight of Reference Images 1 and 2.
+- Shading & Texture: Smooth digital gradients, soft ambient shadows, and clean color blocks. No hand-painted brush textures, no sketchy lines, and no realistic grit. 
+- Color Palette: Saturated jungle greens, deep teal shadows, and warm sunlight highlights filtering through the canopy, maintaining the clean digital tone of the provided references.
+
+Reference Directives:
+- Extract the clean vector linework, object framing, and smooth gradient shading style from Reference Images 1 and 2.
+- Extract the environmental layering and atmospheric depth from Reference Image 3, but expand the road/path format to fill the entire lower 50% of the canvas.

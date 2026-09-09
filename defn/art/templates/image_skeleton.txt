@@ -1,0 +1,20 @@
+[ONE COPY-READY ASSET STYLE STATEMENT FROM SECTION 6]
+
+REFERENCES AND THEIR ROLES:
+[Name each attached image and state exactly what it governs and what it does not.]
+
+SUBJECT AND FUNCTION:
+[What the asset is, what it does, faction/biome, required recognizable components.]
+
+POSE, CAMERA, AND COMPOSITION:
+[Facing direction, action, view, crop, depth planes, focal hierarchy, safe zones.]
+
+PALETTE AND LIGHT:
+[Reference biome/faction palette, time of day, key-light direction, accent color.]
+
+DELIVERY:
+[Transparency, tile boundaries, animation frame count, intended display size.
+Set aspect ratio and resolution in the model interface, not here.]
+
+ASSET-SPECIFIC EXCLUSIONS:
+[Only the likely failure modes for this particular subject. Keep it short.]

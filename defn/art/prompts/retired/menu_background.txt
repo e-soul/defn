@@ -1,0 +1,14 @@
+An abstract 2D video game menu background. The menu background is decorated only with abstract military/tech looking shapes. They could resemble electronic and/or mechanical components but they should not look like actual objects such as rifles, body armor, stars, equipment and so on.
+
+Presentation Constraints:
+- Horizontal 16:9 composition, ultra-high resolution, crisp 4K fidelity graphics.
+- The middle of the image needs to be empty so the menu items can be displayed there.
+
+Artistic Style Architecture:
+- Art Style: High-quality, clean 2D vector art, sharp digital illustration, side-scroller cartoon asset style.
+- Outlines: Distinct, smooth, solid dark outlines tracking every element/structure, matching the line weight of the reference images.
+- Shading & Texture: Smooth digital gradients, soft ambient shadows, and clean color blocks. No hand-painted brush textures, no sketchy lines, and no realistic grit. 
+- Color Palette: Saturated colors, deep shadows, maintaining the clean digital tone of the provided references.
+
+Reference Directives:
+- Extract the clean vector linework, object framing, and smooth gradient shading style from the reference images.

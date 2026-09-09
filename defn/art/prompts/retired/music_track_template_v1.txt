@@ -1,0 +1,95 @@
+Create an original instrumental background track for **Defn**, a compact tactical auto-combat defense game.
+
+## Game context
+
+The game depicts two opposing forces advancing across a wide side-view battlefield. The player deploys military units, manages a regenerating resource, builds a stable formation, and reacts to escalating enemy waves. Combat resolves automatically, but deployment timing, unit composition, engagement range, and battlefield momentum are strategically important.
+
+The game is quick, casual, replayable, and easy to understand, but it should still feel tactically meaningful. The tone is stylized military action rather than realistic warfare: tense and energetic, but not grim, tragic, patriotic, or cinematic in an overly serious way.
+
+## Track purpose
+
+Scene: **[SCENE OR MODE]**
+
+The music should support **[PLAYER EXPERIENCE]**.
+
+Desired intensity: **[LOW / MEDIUM / HIGH]**
+
+Approximate duration: **[DURATION]**
+
+Target tempo: approximately **[BPM] BPM**.
+
+## Musical identity
+
+Create a blend of:
+
+- restrained modern military percussion;
+- electronic strategy-game music;
+- subtle industrial textures;
+- melodic retro action-game influences;
+- light cinematic tension without becoming an epic film trailer.
+
+Use **[PRIMARY INSTRUMENTS]** as the main musical palette.
+
+Optional supporting elements:
+
+- controlled snare and tom patterns;
+- tight electronic drums;
+- low pulsing synthesizers;
+- muted bass;
+- short rhythmic string or brass accents;
+- restrained distorted textures;
+- sparse melodic synthesizer or electric-guitar phrases;
+- subtle radio-like or mechanical ambience used musically.
+
+The rhythm should communicate forward movement, pressure, and shifting battlefield momentum. Use clear motifs and layered rhythmic patterns rather than constant maximal intensity.
+
+## Composition and structure
+
+Begin with **[INTRO DESCRIPTION]**.
+
+Gradually develop the arrangement as if battlefield pressure is increasing. Introduce additional percussion, bass movement, counter-rhythms, or harmonic tension in later sections without abruptly changing genre.
+
+Include:
+
+- a memorable but understated central motif;
+- enough variation to remain pleasant across repeated matches;
+- clear rises and releases in intensity;
+- a stable pulse that does not distract from gameplay;
+- a restrained ending or transition suitable for **[LOOPING / A CLEAN END / A RESULT SCREEN]**.
+
+Avoid a long introductory buildup. The track should establish its identity within the first several seconds.
+
+## Mood
+
+The music should feel:
+
+- tactical;
+- focused;
+- energetic;
+- slightly tense;
+- mechanically precise;
+- confident but not heroic;
+- playful enough for a compact indie game;
+- suitable for repeated listening.
+
+It should suggest a battle that is constantly moving and evolving, where the player is observing, planning, and reacting.
+
+## Avoid
+
+Do not use vocals, spoken words, chanting, or lyrics.
+
+Avoid:
+
+- bombastic Hollywood trailer music;
+- overly heroic military themes;
+- patriotic or nationalistic associations;
+- bleak war-drama emotion;
+- horror;
+- generic orchestral battle music;
+- excessively aggressive metal;
+- dominant dubstep drops;
+- constant percussion with no dynamic variation;
+- melodies that are too busy or attention-demanding;
+- a strong final cadence if the track is intended to loop.
+
+The result should sound like polished game background music, not a standalone pop song, film trailer, or military march.

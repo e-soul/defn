@@ -1,0 +1,59 @@
+Create a polished 2D horizontally tiling gameplay background for DEFN, a
+contemporary-to-near-future military belt-scroller, depicting [BIOME].
+
+Treat the supplied DEFN gameplay background as the authority for image quality,
+playable-area layout, environmental layering, contour density, clean shape
+construction, and cel shading. Treat the supplied character sprites only as
+secondary evidence of the shared DEFN illustration family; the scene itself
+contains no characters.
+
+Draw the scene as authored 2D digital cartoon illustration: clean dark
+hand-inked contours, crisp readable silhouettes, simplified chunky geometry,
+broad flat local-color regions, restrained two- or three-value cel shading,
+sparse purposeful texture, and gently irregular edges. Use finer linework than
+the character sprites. Make foreground and midground contours clearest and
+darkest, then reduce line weight, contrast, saturation, and detail with
+distance. Establish depth through overlap, relative scale, value grouping,
+warm-versus-cool separation, atmospheric desaturation, and simplified distant
+forms, with every plane in sharp focus. Communicate materials through designed
+shapes rather than photographic surface texture.
+
+Use a horizontal side-on composition with a gently elevated three-quarter
+top-down view of the ground, designed for belt-scroller movement. The entire
+lower 50% of the canvas is one wide, continuous, visually open combat floor:
+[GROUND SURFACE], seen from above at a shallow angle, giving generous vertical
+depth for characters to move toward and away from the camera. Its far edge sits
+exactly at the 50% vertical mark. This whole lower half stays open ground: only
+flat, low-contrast, purely cosmetic marks appear on it, such as small cracks,
+faded lane markings, thin drifts, dust patches, and tiny embedded stones. The
+floor reads as a broad lateral fighting lane extending straight across the
+screen at a constant depth, not a road receding toward a vanishing point.
+
+Confine the environmental storytelling to the upper half. Along [FAR EDGE],
+build a layered [MIDGROUND CONTENT] from a restrained number of large, readable
+forms, then a simpler distant band, then sky. Arrange it as several clear
+horizontal depth planes and keep open sky visible between the major masses.
+
+Use the palette [PALETTE], lit by [LIGHT] with hard graphic shadow shapes in
+front and soft atmospheric separation behind. Reserve the strongest contrast and
+saturation for the midground landmarks.
+
+Make the image perfectly seamless from left to right for continuous horizontal
+scrolling. The ground height, far edge, horizon logic, skyline density, sky and
+haze value bands, lighting, and every shape crossing one boundary continue
+naturally at the opposite boundary. Keep roughly the outer 10% on both sides
+compositionally simple and free of unique landmarks, tall isolated forms, strong
+diagonals, and high-contrast focal features. Construct a true continuous
+wraparound rather than placing matching objects at both edges; the result must
+stay convincing when repeated four times in a row.
+
+Deliver only the full-bleed environment artwork: no people, animals, friendly
+base tower, freestanding watchtower, prominent vehicles, weapons, pickups,
+gameplay props, or lettering of any kind.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic terrain
+texture, aerial or isometric perspective, lens distortion, depth of field,
+bloom, lens flare, film grain, painterly concept-art brushwork, sketchy lines,
+noisy hatching, uniform grunge, busy ground texture, foreground occluders or
+corner framing, obstacles on the playable floor, miniature-diorama presentation,
+visible tiling seams, and mirrored edge objects.

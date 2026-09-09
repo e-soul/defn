@@ -1,0 +1,19 @@
+Create an original instrumental background track for **Defn**, a compact tactical auto-combat defense game.
+
+The game depicts two opposing forces advancing across a wide side-view battlefield. The player deploys military units, manages a regenerating resource, builds a stable formation, and reacts to escalating enemy waves. Combat resolves automatically, but deployment timing, unit composition, engagement range, and battlefield momentum are strategically important.
+
+This track is for a standard battlefield mission. It should support concentrated tactical pressure with a growing sense of momentum. Use medium intensity, a duration of approximately two to three minutes, and a tempo around 116 BPM.
+
+Blend restrained modern military percussion, electronic strategy-game music, subtle industrial textures, melodic retro action-game influences, and light cinematic tension. The result should feel tactical and energetic without becoming grim, patriotic, overly heroic, or excessively cinematic.
+
+Use tight electronic drums, low synthesizer bass, controlled snare and tom patterns, sparse melodic synthesizer phrases, and subtle distorted electric-guitar textures. Add occasional short brass-like or string-like rhythmic accents, but keep them secondary. Mechanical or radio-like ambience may appear subtly as part of the musical texture.
+
+Begin immediately with a low pulsing synth and minimal percussion. Establish a clear rhythmic identity within the first several seconds. Gradually add percussion layers, bass movement, counter-rhythms, and harmonic tension as if enemy pressure is increasing. Include a memorable but understated central motif and several rises and releases in intensity.
+
+The rhythm should communicate forward movement, tactical focus, and changing battlefield momentum. The track must remain clear and unobtrusive beneath gunfire, impacts, interface sounds, and repeated gameplay. It should contain enough variation to remain pleasant over many matches without drawing excessive attention to itself.
+
+Make the structure suitable for looping. Avoid a strong final cadence and return naturally toward the opening musical state.
+
+Do not use vocals, spoken words, chanting, or lyrics. Avoid bombastic Hollywood trailer music, heroic military marches, bleak war-drama emotion, generic orchestral battle music, dominant dubstep drops, excessively aggressive metal, and melodies that are too busy.
+
+The final result should sound like polished background music for a small, replayable tactical indie game—not a film trailer or standalone song.

@@ -1,0 +1,1 @@
+Preserve the exact character model across every frame: identical head-to-body ratio, facial construction, palette, outline weight, equipment inventory, handedness, weapon dimensions, attachment placement, pivot, scale, and foot baseline. Change only the pose and necessary overlaps. Use clear key poses, readable arcs, limited perspective change, and no camera movement.
