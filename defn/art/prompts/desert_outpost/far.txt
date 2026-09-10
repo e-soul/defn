@@ -1,0 +1,116 @@
+Create the far distance layer of a modular tiling background set for DEFN, a contemporary-to-near-future
+military belt-scroller. This image is not a scene. It is one shallow horizontal band of distant desert
+landforms seen across an open basin, drawn against a completely flat, uniform, fully saturated pure green
+field (RGB 0, 255, 0) which fills every part of the frame the landforms do not occupy. The green is a cut-out
+backdrop that will be removed automatically and replaced by a separately drawn sky behind it; it is not sky,
+not land, and not vegetation, and it must never be shaded, graded, textured, lightened, darkened, or blended
+into.
+
+Read the layout requirement before anything else, because three earlier attempts failed on it and on nothing
+else. The frame is divided horizontally into three equal parts. **The upper two thirds are pure flat green and
+hold no artwork whatever.** All of the drawing lives in the bottom third, and the tallest landform in the
+image reaches only just into the bottom of the middle third. This is not a composition preference, it is
+arithmetic: the band is stretched to its final height in the game, so a band drawn tall in the canvas becomes
+a narrow tile that visibly repeats on screen, and a band drawn shallow becomes a wide one that does not. Do
+not fill the frame with landscape. Draw a low strip of distant country along the bottom and leave the rest
+empty.
+
+The bottom edge of the frame is fully opaque desert floor across its entire width, with no green reaching it
+anywhere. The landforms sit on that floor and the floor runs unbroken from the left edge to the right edge.
+
+The backdrop is green rather than magenta on purpose. This biome's palette runs through rose-brown and
+mauve-grey sandstone, which sits close to magenta and would key out semi-transparent in the middle of solid
+rock. Nothing in this desert is green, so a green backdrop is the one that cannot be confused with the
+artwork -- which also means no part of the artwork may be green, olive, khaki, sage, lime, teal, or
+yellow-green anywhere.
+
+No reference image is attached, deliberately. Layers in this family are contaminated when they are shown one --
+a sky drew the ground plane it was given, a distant band drew the near band it was given -- so the description
+below is the whole brief and must be followed on its own.
+
+Understand where this layer sits, because it changes what matters. A run of eroded sandstone shelves and
+boulders stands in front of it and hides most of it. What the player actually sees is the top edge of this
+band rising above those rocks, and narrow vertical slivers of it through the gaps between them. So the
+silhouette along the top edge is the most important thing in the image, and the band must stay interesting at
+a *fine horizontal scale*: a viewer reading it through a gap a few metres wide should still see something
+worth looking at. Broad slow masses spanning a quarter of the width are wasted here.
+
+Draw it as authored 2D digital cartoon illustration: clean hand-inked contours, broad flat local-colour
+regions, and restrained two-value cel shading. Use noticeably finer and lighter linework than a near object,
+and very little interior detail -- two or three interior lines to a landform and no more. There are no fine
+gullies, no networks of erosion cracks, no scree striation, no individually drawn rock faces, and nothing
+described at a scale smaller than a whole terrace. Depth comes from value grouping and desaturation: keep the
+whole band low in contrast, cool, and light, close in value to a pale hazy sky, with forms reading as grouped
+masses rather than as individually described rocks. Every silhouette edge is still a hard cel edge with a
+crisp contour; distance means lower contrast and a lighter, cooler value, and it never means softness, blur,
+haze, mist, fog, fading, or transparency. There is no atmospheric veil in front of the landforms, between
+them, or along the skyline, and no part of the band dissolves toward the backdrop.
+
+Compose the band as a long, low, distant desert horizon running the full width, built from a varied vocabulary
+rather than one repeated shape:
+
+  * flat-topped mesas with level crowns, read as two or three stacked horizontal strata bands and nothing finer
+  * eroded escarpment walls that step down in two broad terraces
+  * rounded, weathered hill shoulders with soft irregular crests
+  * shallow wind-shaped dune backs, drawn as long low curves with a single crisp crest line
+  * dry gully mouths cut into the base of a slope as simple dark notches
+  * wide skirts of talus fanning out from the foot of the harder rock, as plain triangular masses
+
+Keep it low and horizontal. The band's height varies gently and often across the width, so the skyline is a
+continuously interesting line rather than a flat one, and it drops low enough between some of the masses that
+wide gaps of clear green open up along it and sky will read through. Vary the *kind* of edge too: a hard level
+mesa crown next to a soft rounded shoulder next to a dune curve reads far better at a distance than a run of
+similar bumps.
+
+Deliberately place no landmark. There is no tall isolated butte, no spire, no pinnacle, no needle, no rock
+chimney however small, no arch, no dominant peak, no lone mast, and no single feature the eye can lock onto,
+because this layer repeats and anything distinctive announces itself every time it comes round. Variety here
+means many small differences evenly spread, not one memorable thing.
+
+Every part of the band must be unique. Do not repeat a landform arrangement, a crest shape, or a distinctive
+mass anywhere across the width, and do not build the run out of a repeating pattern of any kind. The
+seamlessness asked for below is a property of the two outer edges continuing into one another, and must never
+be achieved by making the interior periodic: a band whose left half recurs in its right half puts the same
+shape on screen twice at once, which is far more obvious than any edge seam.
+
+Light it with flat, even, diffuse light that is identical at the left edge, the centre, and the right edge.
+There is no directional sun, no raking light, and no lateral brightness gradient whatever. **No landform casts
+a shadow onto another landform or onto the ground, in any direction.** Shading is limited to a single gentle
+tone change between a form's upper surfaces and its vertical faces, applied identically to every form in the
+image. A strip lit from one side cannot be made to tile, because its two ends can never be reconciled, and a
+run of cast shadows all falling the same way is exactly that.
+
+The same rule governs colour. The left third, the middle third and the right third of the image must have the
+same average hue, temperature and brightness. Every rock colour in the palette appears in all three, in a
+different order. Do not let the band drift from cool at one edge to warm at the other.
+
+Use a hazy-distance version of the desert palette: pale dusty blue-grey, washed sand-lilac, soft warm bone,
+muted clay-tan, and pale ochre, with soft slate-brown contours. Keep it light and desaturated throughout --
+this is the furthest thing in the world. Use no green of any kind, and no pure white.
+
+Build the wrap into the composition rather than hoping for it. The left-most 4% and the right-most 4% of the
+frame are the same quiet, plain, evenly toned stretch of open desert floor with no landform standing on it:
+same value, same colour, same height of ground, nothing crossing either boundary, and the two margins
+interchangeable with one another. Everything worth looking at sits between them. Three earlier attempts drifted
+in tone from one side of the frame to the other, which puts a visible vertical line on screen every time the
+band comes round.
+
+Make the band perfectly seamless from left to right for continuous horizontal scrolling. The skyline rhythm,
+band height, mass distribution and every shape crossing one boundary must continue naturally at the opposite
+boundary, and the bottom edge stays at one constant height across both boundaries. Keep roughly the outer 10%
+on both sides compositionally plain. Construct a true continuous wraparound rather than placing matching masses
+at both edges; the result must stay convincing when repeated four times in a row.
+
+Deliver only the low landform band and the green field: no near rocks, no road, no sky, no clouds, no horizon
+line drawn as a rule, no buildings, no ruins, no vehicles, no people, and no gameplay props.
+
+The band carries no writing of any kind. Do not draw numerals, digits, letters, words, logos, signage,
+symbols, or any mark that resembles a written character, in any orientation, anywhere in the frame.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic rock or sand texture, perspective
+convergence, a vanishing point, lens distortion, depth of field, bloom, lens flare, film grain, painterly
+concept-art brushwork, sketchy lines, noisy hatching, dense erosion or stratum detail, cast shadows, a mountain
+range, tall peaks, landmarks, fantasy canyon spires, natural arches, alien formations, American-Western
+imagery, cacti, palms, green vegetation, semi-transparent or glowing edges, soft airbrushed halos around the
+landforms, green tinting or green reflections on the artwork, a graded or clouded backdrop, artwork above the
+lower third of the frame, green reaching the bottom edge, visible tiling seams, and mirrored edge masses.

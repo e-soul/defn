@@ -1,0 +1,44 @@
+Create the sky layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene. It is the backmost layer of a parallax stack: nothing but sky and
+atmosphere, filling the frame edge to edge and top to bottom, with every other element of the desert drawn on
+separate layers in front of it. It contains no ground, no horizon line, no landforms, and no silhouettes of any
+kind.
+
+No reference image is attached, deliberately. This layer shares no subject matter with any other DEFN asset,
+and an attached background is reproduced rather than merely referenced: on an earlier set, a sky given a
+ground plane as a palette reference drew that ground plane across its own bottom third.
+
+Draw it as authored 2D digital cartoon illustration in the DEFN house style. Sky is the one place the style
+permits soft gradients, so use them: this layer is a smooth vertical wash and nothing else. It carries no
+clouds at all -- the clouds are a separate drifting layer in front of it, and a cloud drawn here would sit
+still while those move.
+
+Grade the wash vertically, and make it unmistakably the sky of a hot, dry, open desert afternoon. The top of
+the frame is a deep, clean, slightly dusty cerulean, saturated enough to feel like high desert air. It
+lightens and warms steadily downward, passing through a pale sun-bleached blue, then a soft dusty rose, and
+settling into a broad warm cream-gold haze band across the bottom third -- the thickened, dust-carrying light
+that sits low over an arid basin. The lowest fifth of the frame is the palest and least saturated part of the
+image, close to a warm bone white, because distant mesas will be drawn against it and need to separate from
+it.
+
+Keep every transition between those bands long, smooth and continuous. There is no band edge, no visible
+boundary, and no step anywhere in the wash; each colour arrives gradually out of the one above it.
+
+Light the sky evenly across its width. There is no sun disc, no sun position, no bright patch, no glow, no god
+rays, no heat shimmer, and no lateral brightness gradient of any kind: the left edge, the centre and the right
+edge are equally bright and equally saturated. The only change in value or hue across this image runs from top
+to bottom.
+
+Make the image perfectly seamless from left to right for continuous horizontal scrolling. The value bands, the
+haze height, and the hue at every height must be identical at the left and right boundaries. With nothing drawn
+in it this is nearly automatic, but the wash must still not drift in brightness or temperature from one side to
+the other.
+
+Deliver only sky. The image is sky from the very top edge to the very bottom edge, with atmosphere as its only
+subject. There is no ground, no sand, no dune, no mesa, no rock, no road, no horizon line, no structures, no
+towers, no masts, no birds, no aircraft, no people, no clouds of any kind, and no lettering. The bottom edge of
+the frame is open haze that other layers will be drawn over.
+
+Avoid photorealism, photographic sky texture, realistic atmospheric scattering, volumetric light, painterly
+concept-art brushwork, dramatic skies, storm clouds, sunsets, sun discs, lens flare, bloom, film grain, noisy
+gradients, colour banding, clouds, a visible horizon, and visible tiling seams.

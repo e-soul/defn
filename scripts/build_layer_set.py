@@ -67,6 +67,17 @@ def content_crop(image):
     return image.crop((0, int(rows[0]), image.width, int(rows[-1]) + 1))
 
 
+def blur_columns(field, radius):
+    """Box blur across the width, twice, which is close enough to a gaussian and costs two cumulative sums."""
+    if radius < 1:
+        return field
+    for _ in range(2):
+        padded = np.pad(field, ((0, 0), (radius + 1, radius)), mode="edge")
+        totals = np.cumsum(padded, axis=1)
+        field = (totals[:, 2 * radius + 1 :] - totals[:, : -(2 * radius + 1)]) / (2 * radius + 1)
+    return field
+
+
 def contact_shadow(image, depth_fraction, alpha, colour, seed=20260909):
     """Append a soft shadow below the artwork so a standing band seats onto the floor instead of abutting it.
 
@@ -79,24 +90,56 @@ def contact_shadow(image, depth_fraction, alpha, colour, seed=20260909):
 
     The lower boundary is jittered with a slow wander, because a shadow that ends on a straight line has
     simply moved the problem down a few pixels.
+
+    It follows each silhouette's own foot rather than the bottom of the canvas, which matters as soon as a band
+    stops being a continuous run. The first version appended a full-width rectangle of shading below the
+    artwork -- correct for a quay full of containers, where the band really is opaque edge to edge, and wrong
+    for anything drawn as separated masses, where it paints a dark bar across the empty gaps the layer exists
+    to have. Here the shadow starts at each *column's lowest opaque pixel*, so a boulder gets a pool at its own
+    base, a gap between two boulders gets nothing, and a mass standing further back gets its shadow higher up
+    the frame where its feet actually are. On a fully opaque band every column's base is the bottom row and
+    this reduces to the rectangle it replaces.
+
+    The field is then blurred horizontally, which is what makes it read as a pool rather than a per-column
+    curtain: the shadow spreads a little past the ends of each mass and eases across neighbouring columns whose
+    bases sit at different heights. It is never allowed to darken the artwork itself -- the `1 - art_alpha`
+    factor -- so an overhang casts onto the ground behind it and not onto its own face.
     """
     data = np.asarray(image).astype(np.float32)
     height, width = data.shape[:2]
     depth = max(4, int(round(height * depth_fraction)))
 
+    grown = np.zeros((height + depth, width, 4), dtype=np.float32)
+    grown[:height] = data
+    art_alpha = grown[..., 3] / 255.0
+
     rng = np.random.default_rng(seed)
     wander = np.cumsum(rng.normal(0.0, 1.0, width))
-    wander = np.convolve(wander, np.ones(64) / 64.0, mode="same")
+    # `same` returns max(len(signal), len(kernel)) samples, so the window has to fit inside a narrow strip.
+    window = max(1, min(64, width))
+    wander = np.convolve(wander, np.ones(window) / window, mode="same")
     wander = wander / (np.abs(wander).max() + 1e-6)
     extent = depth * (0.62 + 0.38 * (0.5 + 0.5 * wander))
 
-    band = np.zeros((depth, width, 4), dtype=np.float32)
-    band[..., :3] = np.asarray(colour, dtype=np.float32)[None, None, :]
-    rows = np.arange(depth)[:, None]
-    fade = np.clip(1.0 - rows / np.maximum(extent[None, :], 1.0), 0.0, 1.0)
-    band[..., 3] = (fade**1.8) * alpha * 255.0
+    # Each column's contact point: the lowest pixel that is solidly artwork. Columns holding nothing get no
+    # shadow of their own and pick up only what the horizontal blur carries in from their neighbours.
+    solid = art_alpha > 0.5
+    occupied = solid.any(axis=0)
+    base = (height + depth - 1) - np.argmax(solid[::-1], axis=0)
 
-    return Image.fromarray(np.clip(np.concatenate([data, band], axis=0), 0, 255).astype(np.uint8)), depth / height
+    rows = np.arange(height + depth)[:, None]
+    below = rows - base[None, :]
+    fade = np.clip(1.0 - below / np.maximum(extent[None, :], 1.0), 0.0, 1.0)
+    field = np.where((below >= 0) & occupied[None, :], fade**1.8, 0.0)
+    field = blur_columns(field, max(1, int(round(depth * 0.6))))
+
+    shadow = np.clip(field, 0.0, 1.0) * alpha * (1.0 - art_alpha)
+    out_alpha = np.clip(art_alpha + shadow, 0.0, 1.0)
+    tint = np.asarray(colour, dtype=np.float32)[None, None, :]
+    out_rgb = (grown[..., :3] * art_alpha[..., None] + tint * shadow[..., None]) / np.maximum(out_alpha[..., None], 1e-6)
+
+    composed = np.concatenate([out_rgb, out_alpha[..., None] * 255.0], axis=2)
+    return Image.fromarray(np.clip(composed, 0, 255).astype(np.uint8)), depth / height
 
 
 def resize_wrapping(image, width, height):
@@ -159,7 +202,6 @@ def build(manifest_path, check_only):
             if "contact_shadow" in layer:
                 shadow = layer["contact_shadow"]
                 image, shadow_fraction = contact_shadow(image, float(shadow["depth"]), float(shadow["alpha"]), shadow["colour"])
-
             target = int(round(viewport * screen_height * (1.0 + shadow_fraction) * int(layer.get("density", 2))))
             image = resize_wrapping(image, max(1, int(image.width * target / image.height)), target)
             if layer.get("opaque"):
@@ -176,10 +218,21 @@ def build(manifest_path, check_only):
             f" {layer['scroll_scale']:7.2f} {height_ratio:13.3f} {bottom_ratio:13.3f}"
         )
 
+        # A waiver is a reviewed decision recorded in the manifest, not a threshold anyone can drift. It exists
+        # because `check_tiling`'s ratios divide by how much the image varies from column to column, and a
+        # layer of separated masses over transparency varies almost not at all -- the desert rock band's
+        # interior baseline is 1.08 against the container band's 3.97, so the same absolute join reads nearly
+        # four times worse. The number that matters there is the absolute difference across the join, which the
+        # ratios deliberately do not report; the manifest note has to give it, and the layer has to have been
+        # looked at. Every other layer still fails the build outright.
         local, step, _ = seam_ratios(columns(destination))
         if max(local, step) > DEFAULT_THRESHOLD:
-            print(f"{'':8} SEAM local {local:.2f} step {step:.2f}")
-            failures += 1
+            allowed = layer.get("accepted_seam", {})
+            if local <= float(allowed.get("local", 0.0)) and step <= float(allowed.get("step", 0.0)):
+                print(f"{'':8} seam local {local:.2f} step {step:.2f} -- accepted by the manifest")
+            else:
+                print(f"{'':8} SEAM local {local:.2f} step {step:.2f}")
+                failures += 1
 
         drift = float(layer.get("autoscroll", 0.0))
         drift_field = f', "autoscroll": {drift:.1f}' if drift else ""

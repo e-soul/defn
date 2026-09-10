@@ -1,0 +1,215 @@
+Create the midground layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene. It is one continuous horizontal **bank of desert terrain** -- rock,
+boulders, dry earth and the remains of an old outpost -- drawn against a completely flat, uniform, fully
+saturated pure green field (RGB 0, 255, 0) which fills every part of the frame the bank does not occupy. The
+green is a cut-out backdrop that will be removed automatically and replaced by separately drawn sky, distance
+and ground layers; it is not sky, not land, and not vegetation, and it must never be shaded, graded, textured,
+lightened, darkened, or blended into.
+
+**Before anything else: all of the drawing lives in the bottom two fifths of the frame.** The upper three
+fifths are pure flat green and hold no artwork whatever. This is not a composition preference, it is
+arithmetic. The drawn band is stretched to its final height in the game, so the *shallower* it is drawn here,
+the wider it is on screen before it repeats; a band drawn tall in this canvas gets squeezed into a narrow tile
+that comes round every screen. Draw the run of rock along the bottom and leave the rest of the frame empty.
+
+The shape of this layer is the whole brief, so read this part twice. Within that bottom third, the band
+divides into three horizontal zones:
+
+**The middle zone is solid.** Across the entire width, a continuous, unbroken, fully opaque body of terrain
+runs from one side of the frame to the other. There are no holes in it, no windows through to the backdrop, no
+gaps between one mass and the next, and nowhere in this middle zone may green show through. It is one
+connected mass seen edge-on: boulders and shelves resting against and in front of each other, with smaller
+rubble and stones packed into every space between them so that the run never breaks. It is made of rock
+throughout -- there is no earth, sand or fill anywhere in it.
+
+**The top edge is jagged.** The upper boundary of that body is a strongly varied silhouette against the green:
+big shelves and boulders standing up high, deep dips falling away between them, an occasional slab tipped up
+above the general line, a brush clump breaking the profile. It rises and falls constantly and by a lot -- the
+high points stand two or three times as far above the low points as the low points stand above the bottom of
+the frame. Distant hills are drawn on another layer behind this one and read through those dips, so the dips
+have to be deep and frequent or that layer is wasted.
+
+**The bottom edge is rock, and this is the part that is usually got wrong.** There is no sand in this image.
+No dust, no apron, no pale strip of floor, no bank of earth, no drift and no fill of any kind along the
+bottom. The lower boundary of the mass is made of **the bottoms of the rocks themselves** -- the rounded
+underside of a boulder, the base of a shelf, the corner of a slab where it rests on the ground -- and below
+each of them the frame is clear green immediately.
+
+Draw it as a scalloped, irregular line of rock feet. Where two boulders sit side by side the green comes up a
+little way between them; where a big shelf rests flat the line runs level for a stretch and then drops away
+again at its end; a small stone tucked in front of a bigger one puts a low bump in it. It rises and falls
+constantly, it is made of curves and corners rather than of one continuous sweep, and there is no straight run
+anywhere in it. An earlier version filled that zone with a pale sand apron; the game draws its own dirt road
+underneath this layer, and the apron simply hid it and read as a shelf.
+
+That is what the whole layer is for: composited over the road, this bottom edge makes the rocks look as though
+they are resting on the dirt.
+
+**Every rock keeps its full dark contour all the way around, including underneath.** The outline closes along
+the bottom of each boulder and each slab at the same weight it carries everywhere else, exactly as a character
+sprite's does, because that is what makes it read as an object standing on the road rather than a hole cut in
+a sheet. Do not thin it, fade it or leave it open where the rock meets the ground.
+
+Small bays of green may open between neighbouring feet, and should. What must not happen is a *wide* empty
+span under any part of the mass: every rock is either standing on the ground itself or resting against and on
+top of rocks that are, so that nothing in the picture could be described as hovering.
+
+Roughly: the rocks fill the drawn band from its jagged top silhouette down to this scalloped bottom edge, and
+below the lowest feet the frame is clear green all the way to the bottom edge of the image. All of it stays
+inside the bottom third of the frame.
+
+The backdrop is green rather than magenta on purpose. This biome's sandstone runs through rose-brown and
+clay-red, which sits close to magenta and would key out semi-transparent in the middle of solid rock. Nothing
+in this desert is green, so a green backdrop is the one that cannot be confused with the artwork -- which also
+means no part of the artwork may be green, olive, khaki, sage, lime, teal, or yellow-green anywhere, including
+the dead brush.
+
+No reference image is attached, deliberately. Layers in this family are contaminated by their references -- a
+sky drew the ground plane it was shown, a distant band drew the near band it was shown -- so this one is
+described in words and must follow the DEFN house style from that description alone.
+
+**Grade the band by depth: small and near along the bottom, large and far along the top.** This is the single
+most important thing about its content. The band is not a flat wall of rock seen side-on -- it is a stretch of
+desert receding away from the viewer, so height in the frame *is* distance, and what you draw has to change
+size with it. Read the band as three depths that blend into one another with no hard boundary between them:
+
+  * **Along the very bottom, nearest the viewer: small loose stones.** Ankle to knee height on a person, in
+    large numbers, with drifts of gravel and chips between them. This is the edge that meets the road the
+    characters walk on, and it is what sets the whole layer's scale -- a soldier standing here would be several
+    times the height of these stones. Nothing large sits on this near edge.
+  * **Through the middle: boulders and slabs.** Knee height to a little above head height, sitting behind and
+    among the small stuff, growing steadily bigger as they sit higher in the frame.
+  * **Along the top, furthest away: the big outcrops and layered shelves.** These are the largest things in the
+    picture -- several times the height of a person -- and they are big *because they are far away and are
+    genuinely large landforms*, not because the near rocks were drawn too big. Two or three of them across the
+    width, standing behind everything else.
+
+Reinforce the recession the way the house style does everywhere else: as the rock sits higher in the frame,
+make the contour lighter and thinner, the interior detail sparser, the contrast lower, and the colour a little
+paler and cooler. The near stones along the bottom carry the strongest, darkest outlines and the most
+saturated warm colour; the far outcrops along the top are the palest, softest-contrast forms in the layer.
+Nothing is blurred and every edge stays a hard cel edge -- distance is a matter of weight and value only.
+
+Get this wrong in the obvious way -- one uniform size everywhere -- and it fails twice over: an earlier version
+drew everything at a single size and that size too large, so its smallest rubble came out chest-high on a
+soldier and the characters looked like miniatures in front of a cliff. **A wide range of sizes, sorted by
+height in the frame, is what this layer needs above all.**
+
+Draw it as authored 2D digital cartoon illustration: clean dark hand-inked contours, crisp graphic
+silhouettes, simplified chunky geometry, broad flat local-colour regions, restrained two- or three-value cel
+shading, sparse purposeful texture, and gently irregular hand-drawn edges. Weight the linework as a foreground
+subject: the outer silhouette of the bank and the major overlaps where one mass crosses another are the
+strongest, darkest lines in the image, roughly two to three times the weight of interior marks. Interior lines
+are clean and deliberate, never thin, faint, or sketchy. Every line must clarify volume, material, breakage,
+or overlap. Those strong contours run around every rock, boulder, slab and remnant, closing each of their
+silhouettes completely, along the bottom exactly as along the top and sides.
+
+Build the bank from a varied vocabulary of large desert forms, packed together so they touch and overlap:
+
+  * **Far, along the top:** a big layered sandstone outcrop, its face reading as three or four broad horizontal
+    strata of slightly different tone, with a deep undercut shadow where the softer band has weathered back
+    beneath a harder cap. Two or three across the width, no more, drawn with the lightest linework in the
+    image.
+  * **Far:** a blocky slab that has broken off such an outcrop and come to rest at an angle against the mass
+    it fell from, with a few large clean fracture faces.
+  * **Middle:** clusters of rounded, wind-smoothed boulders of clearly different sizes, knee to head height,
+    sitting in front of the outcrops and partly overlapping them.
+  * **Near, along the bottom:** loose stones by the dozen, ankle to knee, banked at the foot of everything
+    else and spilling forward onto the road. They are the most numerous thing in the image and they carry the
+    darkest, heaviest outlines.
+  * **Nearest:** drifts of gravel and small chips gathered in the hollows between those stones.
+  * A dead desert brush clump -- a bare, brittle, splayed twig mass drawn as a small number of chunky strokes,
+    never fine or feathery -- in bleached straw-tan, breaking the top profile here and there.
+  * A stub of half-buried concrete wall with a broken top and two or three chunky exposed rebar hooks.
+  * A collapsed footing slab tipped out of the ground and lying at an angle.
+  * A short slumped line of sagging sandbags gone to rot.
+
+Use each kind more than once across the width but never draw the same one twice: change its size, its
+proportions, which way it faces, and what it sits against. Use the concrete remnants sparingly -- two or three
+across the whole width, widely separated, each smaller and lower than the rock around it. They must read as
+traces left behind, not as a settlement: no intact building, no continuous wall, no compound, no skyline of
+structures, no tower, no fence line, no vehicle, and nothing that could be occupied.
+
+Take the variety requirement seriously, because an earlier attempt failed it in a specific and very visible
+way. It drew two near-identical undercut shelves, one directly above the other, and immediately to their right
+two near-identical boulders, again one directly above the other -- so the run read as a pattern stamped twice
+rather than as a place. Three rules follow. **Never place a mass directly above, below or behind another one
+that resembles it**; neighbours must be plainly different kinds of thing. **Do not organise the bank into
+rows, tiers or a grid** -- no back row and front row, no repeating step. And **the deep undercut or cave-mouth
+motif appears at most once in the whole image**; elsewhere the shelves are solid.
+
+Vary the rhythm as much as the shapes. Somewhere the bank is low and quiet for a long stretch; somewhere else
+three big masses pile up together; the intervals between the tall points are of obviously different widths,
+never an even beat.
+
+Give the bank no pale footing, pad, apron or skirt of sand along its base, and do not lighten the ground colour
+underneath it. An earlier version drew one and it read badly: the pale sand carried the dark contour along its
+top edge and nothing along its bottom, so the rock appeared to be standing on a flat cut-out disc. The bank
+simply meets the floor, the way a character sprite does, and the game draws a soft contact shadow along that
+boundary when it composites the layer.
+
+Shade each form with a flat base colour, one clear shadow tone under every overhang, undercut and overlap, and
+one restrained lighter tone on its upward-facing surfaces. Apply that convention identically to every form in
+the image, as a drawing rule rather than as a light direction: the upper surfaces of a rock at the left edge
+are lightened exactly as much as those of a rock at the right edge. Draw no cast shadow on the ground -- the
+game adds the contact shadow, and a drawn one would double it.
+
+To repeat the layout requirement, because it is the one most often missed: the rocks occupy only the **bottom
+two fifths** of the frame. The upper three fifths are flat green, empty of artwork, edge to edge.
+
+Do not create one dominant landmark, one tallest formation, one arch, one spire, or one focal feature
+anywhere; the bank must be evenly interesting across its whole width so that no part of it announces itself
+when the layer repeats. Do not repeat an arrangement, a silhouette, a strata pattern, or a distinctive rock
+anywhere across the width, and do not build the run out of a repeating pattern of any kind. The seamlessness
+asked for below must never be achieved by making the interior periodic: a run whose left half recurs in its
+right half puts the same formation on screen twice at once, which is far more obvious than any edge seam.
+
+Make the image perfectly seamless from left to right for continuous horizontal scrolling. The bank runs off
+the left edge and continues at the right edge: the height of its top boundary, the height of its bottom
+boundary, the colours and the strata all match exactly where the two edges meet, so that the two halves join
+into one continuous piece of terrain when the image repeats. Keep roughly the outer tenth on each side low,
+quiet and plain -- no tall mass, no distinctive silhouette and no high-contrast feature near either boundary --
+so that the join falls through unremarkable ground. The result must stay convincing when repeated four times
+in a row.
+
+The backdrop is flat everywhere, and that includes the large empty areas. Do not fill them: no faint clouds,
+no dust, no mist, no haze, no glow, no vignette, no darker patches, no lighter patches, and no soft shapes of
+any kind floating in the green. Every pixel that is not part of the bank is exactly the same green as every
+other.
+
+Every silhouette edge is a hard cel edge meeting the green directly, with the same clean dark contour the rock
+carries elsewhere. There is no fade, no blur, no gradient, no glow, no haze, no atmospheric blending, and no
+semi-transparency anywhere along that boundary. The green field stays perfectly flat and uniform at RGB 0 255
+0 everywhere it appears, above the bank and below it alike.
+
+Light the bank with flat, even, diffuse light that is identical at the left edge, the centre, and the right
+edge. There is no directional sun, no raking light, no cast shadow, and no lateral brightness gradient
+whatever. Shading is local to an individual form.
+
+Use the desert palette: warm amber and ochre sandstone, sunlit pale gold on the upper faces, coral-orange and
+clay-red in the softer strata, muted rose-brown in the weathered rock, and dull grey-tan on the concrete
+remnants, with dark plum, brown-black and smoky maroon contours and shadows. Keep the palette warm and
+coherent so the run reads as one place rather than as a colour chart, and keep every colour clearly distinct
+from green.
+Keep the palette warm and coherent so the bank reads as one place rather than as a colour chart, and keep
+every colour clearly distinct from green.
+
+Deliver only the rocks and the green field: no ground plane below them, no floor, no basin surface, no sand,
+no dust, no apron, no horizon, no sky, no clouds, no distant mesas, no road, no vehicles, no people, no
+animals, and no gameplay props.
+
+The bank carries no writing of any kind. Do not draw numerals, digits, letters, words, painted identifiers,
+signage, arrows, logos, symbols, or any mark that resembles a written character, in any orientation, anywhere
+in the frame, including worn or partially faded examples.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic rock or sand texture, aerial or
+isometric perspective, perspective convergence, lens distortion, depth of field, bloom, lens flare, film
+grain, painterly concept-art brushwork, sketchy lines, thin or faint contours, noisy hatching, dense erosion
+or crack detail, fine speckled stones, fantasy canyon spires, natural arches, alien formations,
+American-Western imagery, cacti, palms, green vegetation, intact buildings, ruins forming a skyline,
+watchtowers, fences, a flat horizontal base line, a straight bottom edge, a sand apron, a pale strip of ground
+along the bottom, a bank of earth beneath the rocks, a wall-like or fortified profile,
+holes or windows through the middle of the bank, semi-transparent or glowing edges, soft airbrushed halos
+around the artwork, green tinting or green reflections on the artwork, a graded or clouded backdrop, artwork
+above the bottom two fifths of the frame, uniformly sized rock, big masses sitting on the near edge, an
+absence of small stones, a flat wall of rock seen side-on, visible tiling seams, and mirrored edge features.

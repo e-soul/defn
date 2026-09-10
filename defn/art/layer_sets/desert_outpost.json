@@ -1,0 +1,101 @@
+{
+    "name": "desert_outpost",
+    "_about": [
+        "Build recipe for the Level 1 background. Feed it to scripts/build_layer_set.py, which writes the",
+        "shipped PNGs and prints the background_layers block to paste into data/levels/level_01.json.",
+        "",
+        "Layer order is DRAW ORDER, back to front. The ground comes before the rock band because the band",
+        "stands on the ground and is drawn onto it, the same way a unit sprite is. Reversing those two clips",
+        "the band at the ground's far edge and reads as the rock being too small and too far away.",
+        "",
+        "The two keyed layers were generated over pure green rather than the usual magenta. This biome's",
+        "sandstone runs through rose-brown and clay-red, which sit close to magenta in the chroma plane and",
+        "would key out semi-transparent in the middle of solid rock; nothing in the desert is green.",
+        "",
+        "Sources live under build/, which is not committed. What records this work is the prompts in",
+        "art/prompts/desert_outpost/, the .json sidecars gen_art.py wrote beside each generation, this file,",
+        "and the shipped assets.",
+        "",
+        "Keepers, all at 4:1 and 4K: sky, clouds and mid from the first sweep of three; far and ground from a",
+        "second sweep after their prompts gained the plain-margin wrap rule. The first far rolls filled the",
+        "canvas instead of drawing a shallow band, and none of the first ground rolls wrapped at any width."
+    ],
+    "output": "defn/assets/backgrounds/desert_outpost",
+    "viewport_height": 1080,
+    "layers": [
+        {
+            "name": "sky",
+            "source": "build/art/desert_outpost/sky_tileable.png",
+            "res_path": "assets/backgrounds/desert_outpost/sky.png",
+            "screen_height": 1.0,
+            "base_ratio": 1.0,
+            "scroll_scale": 0.05,
+            "density": 1,
+            "opaque": true,
+            "_density": "A smooth vertical wash with no hard edges anywhere, so it carries no detail worth storing at 2x. It holds no clouds: those are the drifting layer in front, and a cloud painted here would sit still while those move."
+        },
+        {
+            "name": "clouds",
+            "source": "build/art/desert_outpost/clouds_tileable.png",
+            "res_path": "assets/backgrounds/desert_outpost/clouds.png",
+            "screen_height": 0.42,
+            "base_ratio": 0.42,
+            "scroll_scale": 0.15,
+            "autoscroll": 5.0,
+            "density": 2,
+            "_autoscroll": "Pixels per second, independent of the camera. This is the only thing on screen that keeps moving while the player stands still, which is most of a match. Slow on purpose.",
+            "_scroll": "Touches nothing, so it is free to scroll slower than the ground. Slightly faster than the sky behind it."
+        },
+        {
+            "name": "far",
+            "source": "build/art/desert_outpost/far_tileable.png",
+            "res_path": "assets/backgrounds/desert_outpost/far.png",
+            "screen_height": 0.34,
+            "base_ratio": 0.54,
+            "scroll_scale": 0.3,
+            "density": 2,
+            "_base": "Across the basin, so it touches nothing and is free to scroll slower than the ground. Its top sits at 0.18 against the rock band's 0.16, so the mesa crowns clear the rock rather than hiding entirely behind it.",
+            "_overlap": "The bottom edge must sit BELOW the ground layer's far edge at 0.50, or the strip between them shows bare sky as a pale horizontal line across the whole width. It was 0.48 while the rock band was a continuous opaque run that happened to cover the gap; the moment that band became separated masses with the floor showing between them, the gap became visible. The ground is drawn after this layer, so 0.52 simply tucks this edge underneath it."
+        },
+        {
+            "name": "ground",
+            "source": "build/art/desert_outpost/ground_tileable.png",
+            "res_path": "assets/backgrounds/desert_outpost/ground.png",
+            "screen_height": 0.51,
+            "base_ratio": 1.0,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "opaque": true,
+            "_scroll": "Units live in this layer's coordinate space. It must stay at 1.0 or the floor slides under them.",
+            "_screen_height": "0.54, so the floor's far edge is at 0.46. It only has to reach the highest bay in the rock bank's lower edge -- measured at 0.524 -- because the bank is opaque from edge to edge above that, and hides this layer's own far edge on every column. That edge is a dead straight horizontal line and reads as a ledge the moment anything exposes it, which is what happened when the bank was a run of separated masses and this layer had to be stretched to 0.62 to get under their feet. Re-measure the bay depth if the bank is regenerated."
+        },
+        {
+            "name": "mid",
+            "source": "build/art/desert_outpost/mid_islands.png",
+            "res_path": "assets/backgrounds/desert_outpost/mid.png",
+            "screen_height": 0.50,
+            "base_ratio": 0.68,
+            "_screen_height": "0.50, which is what makes the formations read as near objects a couple of metres behind the characters rather than scenery. It also keeps this tile (2336px) clear of the ground's (2176px): both layers scroll at 1.00, and two same-rate layers with near-equal periods stay in step for screens at a time.",
+            "scroll_scale": 1.0,
+            "density": 2,
+                        "contact_shadow": {
+                "depth": 0.055,
+                "alpha": 0.3,
+                "colour": [
+                    104,
+                    84,
+                    72
+                ]
+            },
+            "_source": "The keyed generation cropped by one column at each side, and nothing else -- no make_tileable cut. This layer is separated masses over transparency, so a narrower window cannot help: every interior column carries a sand skirt or a piece of scatter, and the best window make_tileable finds scores 26/255 against 2.4 for the frame's own edges. The one column comes off because the model drew a formation straddling the two edges, leaving a transparent sliver between its halves; the crop makes them abut. They meet at 2.4/255, which is a faint step in that rock's strata at the join and the one visible imperfection in the set. Clearing the straddling formation with a --continue turn is the real fix and was tried: seven refinements either damaged a boulder cluster, washed the artwork with green, or cleared only one of the two edges.",
+            "accepted_seam": {
+                "local": 5.0,
+                "step": 5.5,
+                "_why": "The join is 2.4 out of 255 in absolute terms -- a faint step in one formation's strata where the two halves of the straddling rock meet, looked at at 1:1 and judged acceptable. It reads as a ratio of 2.65/4.22 only because this layer is separated masses over transparency and so has an interior baseline of 1.08 against the container band's 3.97. Raise nothing here: if the layer is regenerated, the right outcome is a roll with a wide empty band at each edge, which wraps at 0.00 and needs no waiver."
+            },
+            "_scroll": "Stands on the ground, so it shares the ground's contact line and must scroll at the ground's rate.",
+            "_base": "0.66 puts the rock feet on the top line of the belt band itself, so the nearest formations read as standing right behind the fighting line rather than a few metres back.",
+            "_shadow": "A darkened version of the road's own median tone rather than a grey, so the shading stays inside the palette. It is much heavier than the port set's 0.16 because it is doing a different job: with no sand skirt under a formation, this shadow is the only thing seating it on the floor. The ruled-line risk that forced the port band down to 0.16 does not apply, because this layer is separated masses and the shadow is per-mass -- there is no long horizontal run for it to draw a line along."
+        }
+    ]
+}

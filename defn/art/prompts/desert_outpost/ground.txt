@@ -1,0 +1,90 @@
+Create the ground layer of a modular tiling background set for DEFN, a contemporary-to-near-future military
+belt-scroller. This image is not a scene and contains no sky, no horizon, and no structures. It is one
+horizontal strip of open ground, drawn edge to edge and top to bottom, which the game composites beneath
+separately drawn distance layers. Depict a wide, worn **dirt road** crossing an arid desert basin -- the
+packed, dusty track that leads out to a long-abandoned outpost, seen from a gently elevated angle looking down
+and across it.
+
+The most important quality of this image is that it is **quiet**. Characters fight on this surface, and rocks
+and ruins are drawn standing on it by another layer, so it is a backdrop for them and never competes. It is a
+smooth, soft, low-contrast, softly graded surface with very little on it. An earlier version was built from
+cracked clay plates, gravel beds and scattered stones, each with its own contour; it was handsome on its own
+and quite wrong here -- busy, restless, and embossed, so the whole floor read as a relief carving rather than
+as ground that has been driven over for years.
+
+So: **draw almost nothing on it.** The surface is packed dust and fine dirt. Its variation is a matter of
+gentle changes of tone across broad, soft, ill-defined areas -- a slightly paler band where the dust has been
+blown smooth, a faintly warmer area where the earth is redder, a barely darker stretch where the ground is
+firmer underfoot. These areas have no edges: each one fades into its neighbour over a long, soft transition.
+Two long, very shallow wheel-worn depressions may wander across the width as slightly darker, entirely
+soft-edged bands, so the road reads as a road -- but they are suggestions, not ruts, and they never become
+parallel lines.
+
+There are no contour lines anywhere on this surface. Nothing is outlined. This is the one layer of the set
+that is drawn without the house style's dark hand-inked contours, because every outline on a floor becomes a
+raised edge and the floor starts to look embossed. There are no cracked plates, no crazing, no polygon
+patterning, no gravel beds, no drifts with drawn crests, no pebbles, no clumps, no debris, no tyre tread
+marks, no footprints, no potholes, no ruts with defined edges, and no hard-edged shapes of any kind. If a mark
+would need a line around it, it does not belong here.
+
+Keep the contrast very low across the whole image. The difference between the lightest and darkest part of the
+surface is small -- this is a bright, dusty, evenly lit road, not a dramatic one. Nothing on it is dark enough
+to read as an object, a hole or a shadow. A dark unit silhouette standing anywhere on this surface must read
+instantly and cleanly against it.
+
+Express the elevated viewing angle through vertical foreshortening, never through converging lines, and
+express it only through the *scale of these soft tonal areas*: they are largest and loosest along the bottom
+edge and become gradually smaller, flatter and more compressed toward the top edge, so the surface reads as a
+floor receding away rather than as a wall standing up. Nothing converges, nothing fans, and there is no
+vanishing point anywhere in the image. Let the ground also lighten very slightly and lose a little saturation
+toward the top edge, since that part is further away.
+
+The middle third of the image height, from roughly 32% to 65% down the frame, is where units will stand, and
+it is the quietest, smoothest and most open part of an already quiet surface. The upper part of the frame,
+which is where rocks and ruins will be drawn standing on this ground, must be smooth and even too, so that
+those objects sit cleanly on it -- keep whatever little variation there is toward the bottom of the frame.
+
+Light the ground with flat, even, diffuse overhead light that is identical at the left edge, the centre, and
+the right edge. The image must have no lateral brightness gradient, no directional sun, no raking light, no
+cast shadow, and no bright or dark region occupying one side of the frame. This matters more than atmosphere:
+a strip lit from one side cannot be made to tile, because its two ends can never be reconciled.
+
+This is a hot, arid desert basin, not a meadow, a verge, a field, or a beach. Keep the palette dry, warm and
+narrow: pale amber and ochre dust, warm sand-tan, a soft coral-tinted warm grey where the earth is redder, and
+a gentle dust-grey where it is more compacted. Nothing on this surface is green, and there is no grass, moss,
+meadow, foliage, snow, frost, ice, standing water, or pure white anywhere in the image. No vegetation at all.
+
+Build the wrap into the composition rather than hoping for it. The left-most 4% and the right-most 4% of the
+frame are the same quiet, plain, evenly toned open dust: same value, same colour, with nothing at all crossing
+either boundary, and the two margins interchangeable with one another.
+
+Hold the overall brightness constant across the width as well. Any tall narrow vertical slice of this image,
+taken anywhere across it, must average to the same value and the same colour as any other. There is no
+vignette, no corner darkening, no brighter middle, and no drift from one side to the other, however gradual. A
+gradual drift across the width becomes a hard vertical step where the two ends meet.
+
+Make the image perfectly seamless from left to right for continuous horizontal scrolling. The tonal rhythm,
+the lighting, and every soft area crossing one boundary must continue naturally at the opposite boundary.
+Construct a true continuous wraparound rather than placing matching marks at both edges; the result must stay
+convincing when repeated four times in a row.
+
+Every part of the surface must be unique. Do not repeat a tonal arrangement anywhere across the width, and do
+not build the surface out of a repeating pattern of any kind. The seamlessness asked for above is a property of
+the two outer edges continuing into one another, and must never be achieved by making the interior periodic.
+
+Deliver only the full-bleed road surface: no sky, no horizon line, no verges, no roadside, no kerbs, no
+mesas, no boulders, no rocks, no ruins, no walls, no fences, no posts, no vehicles, no people, no animals, and
+no gameplay props.
+
+The ground carries no writing of any kind. Do not draw numerals, digits, letters, words, painted identifiers,
+lane markings, signage, arrows, symbols, or any mark that resembles a written character, in any orientation,
+anywhere in the frame.
+
+Avoid photorealism, realistic 3D rendering, PBR materials, photographic sand or gravel texture, aerial or
+isometric perspective, converging lines, a vanishing point, asphalt, paving, slabs, concrete, expansion
+joints, a tiled floor, painted road markings, straight edges, contour lines, outlined shapes, embossing, a
+relief or carved appearance, cracked or crazed earth, dried mud plates, gravel, pebbles, stones, debris,
+rubble, craters, potholes, deep ruts, tyre tread patterns, footprints, green vegetation, grass, cacti, snow,
+lens distortion, depth of field, bloom, lens flare, film grain, painterly concept-art brushwork, sketchy
+lines, noisy hatching, uniform grunge, busy surface detail, high contrast, visible tiling seams, and mirrored
+edge features.
