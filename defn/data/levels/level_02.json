@@ -1,7 +1,13 @@
 ﻿{
   "level_id": 2,
   "name": "Jungle Ruins",
-  "background": "res://assets/backgrounds/background_jungle_ruin_tiling.png",
+  "background_layers": [
+    {"path": "res://assets/backgrounds/jungle_ruin/sky.png", "scroll_scale": 0.05, "height_ratio": 1.000, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/jungle_ruin/clouds.png", "scroll_scale": 0.15, "height_ratio": 0.240, "bottom_ratio": 0.320, "autoscroll": 5.0},
+    {"path": "res://assets/backgrounds/jungle_ruin/far.png", "scroll_scale": 0.30, "height_ratio": 0.400, "bottom_ratio": 0.570},
+    {"path": "res://assets/backgrounds/jungle_ruin/ground.png", "scroll_scale": 1.00, "height_ratio": 0.460, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/jungle_ruin/mid.png", "scroll_scale": 1.00, "height_ratio": 0.512, "bottom_ratio": 0.662}
+  ],
   "starting_core_resource": 56,
   "base_integrity": 3,
   "base_position": [0.06, 0.65],

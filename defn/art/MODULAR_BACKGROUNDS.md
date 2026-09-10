@@ -3,9 +3,9 @@
 Gameplay backgrounds built as per-biome **layer sets**: a few seamless horizontal strata composed at load time
 into a parallax stack, instead of one monolithic image.
 
-**Status.** Working end to end and shipping for two biomes: the port-terminal set in endless mode, and the
-desert-outpost set on campaign Level 1, which replaced `background_desert_outpost_tiling.png` outright. Levels
-2–5 still use their single images and are unchanged. Stamps — scattered props on top of the strata — are
+**Status.** Working end to end for three biomes: port-terminal in endless mode, desert-outpost on campaign
+Level 1, and jungle-ruin on Level 2. Both campaign sets replace their single backgrounds outright. Levels
+3–5 still use their single images and are unchanged. Stamps — scattered props on top of the strata — are
 designed but not built.
 
 The desert set was the first one built by following this document rather than writing it, which is the only
@@ -167,6 +167,43 @@ stands on it, not by the ground layer's own far edge. The ground can keep its fu
 scale, because the standing band covers the far part of it. What matters is where that band's base sits, and
 the answer is at or just above the top of the belt band — 0.65 against a belt starting at 0.66 here, which
 matches `background_jungle_ruin_tiling.png`, where the structures are based at 0.62–0.66.
+
+### Jungle Ruins: Level 2
+
+The third set uses the same five planes, with peach dusk behind cool sage forest, warm ochre limestone ruins,
+and a quiet ochre-grey earth road. Its recipe is [`layer_sets/jungle_ruin.json`](layer_sets/jungle_ruin.json).
+Tile widths below use the rounded geometry stored in the level JSON, measured in Godot at 1080p.
+
+| Layer | `scroll_scale` | `height_ratio` | `bottom_ratio` | Tile |
+|---|---|---|---|---|
+| `sky` | 0.05 | 1.000 | 1.000 | 4086 |
+| `clouds` | 0.15 | 0.240 | 0.320 | 2911 |
+| `far` | 0.30 | 0.400 | 0.570 | 2082 |
+| `ground` | **1.00** | 0.460 | 1.000 | 1999 |
+| `mid` | **1.00** | 0.512 | 0.662 | 2498 |
+
+Clouds drift at 5 pixels per second. The ruin artwork itself is 0.50 high and based at 0.65; its shallow
+contact shadow uses depth 0.025, alpha 0.18 and a floor-derived tint. The bank's common opaque span measures
+0.504–0.586, so the floor edge at 0.540 is hidden on 100% of columns. The far layer extends to 0.570,
+underlapping the floor. A 122px soldier composite checked scale at the top, middle and bottom of the unchanged
+0.66–0.79 belt. Godot review checked the start and a seam-crossing camera position, all five texture loads,
+and cloud motion while stationary.
+
+Every shipped layer passes the normal seam threshold. No waiver, flattening or feathering was used. The
+manifest records exact source filenames and processing steps; prompts include rejected versions rather than
+overwriting the generation history. The old single jungle image remains in the assets repository, but is no
+longer selected by Level 2 or either export preset.
+
+Two additions to the prompt lessons came from this set:
+
+* **Sparse clouds need explicit separation.** Both initial cloud rolls repeated a shorter bank internally.
+  Six individually described silhouettes, one loose band, empty space between every cloud and empty outer
+  margins produced a useful drifting layer. Keep those intentional margins when keying; cropping them away
+  would cut into complete clouds rather than remove a stray backdrop border.
+* **Plain margins can become painted panels.** Numeric margin requirements produced vertical side panels in
+  the sky and floor. The sky's first crop passed the seam metric while retaining a visible interior panel;
+  a tighter crop removed it and still wrapped. The floor needed a shorter prompt describing one continuous
+  evenly lit surface, without dividing the canvas into percentages. Check the whole strip, not only its join.
 
 ### Stamps
 
@@ -667,9 +704,12 @@ The desert set costs **78.4 MiB of VRAM** and 19.5 MiB on disk, against 23.7 and
 for the single image it replaced. Textures import lossless and uncompressed (`compress/mode=0`,
 `vram_texture` false), so the stored pixel count is the VRAM cost directly.
 
-**Known wart.** The layer list lives inline in the level file — `data/endless.json` and
-`data/levels/level_01.json` — duplicating geometry that `art/layer_sets/<biome>.json` also holds. That is now
-two copies of the same mistake rather than one. A shared `data/backgrounds/<biome>.json` that both the loader
+The jungle set stores five textures totaling **16.1 MiB on disk**, with **78.3 MiB** of RGBA pixel storage.
+It uses the same lossless, non-VRAM-compressed import settings and no mipmaps.
+
+**Known wart.** The layer list lives inline in the level file — `data/endless.json`,
+`data/levels/level_01.json` and `data/levels/level_02.json` — duplicating geometry that
+`art/layer_sets/<biome>.json` also holds. A shared `data/backgrounds/<biome>.json` that both the loader
 and the build script read is the right home as soon as a second level wants the *same* set. Until then,
 changing geometry means editing the manifest, re-running the build, and pasting the printed block.
 
@@ -693,10 +733,11 @@ scrolling — the shortest period the tiling can have.
 Neither is fixable by regenerating a better 3840 x 2160 image, and both dissolve the moment the background
 stops being one texture.
 
-The `background_*_tiling.png` files are to be replaced eventually, and one of them now has been:
-`background_desert_outpost_tiling.png` no longer ships, since Level 1 carries a layer set instead. The file
-stays in the assets repository because `data/lab/tempo_*.json` still names it, and those fixtures are never
-packaged. Four remain. They are not inputs to this pipeline and not style references for it; new sets are drawn
+The `background_*_tiling.png` files are to be replaced eventually, and two of them now have been:
+`background_desert_outpost_tiling.png` and `background_jungle_ruin_tiling.png` no longer ship, since Levels 1
+and 2 carry layer sets instead. The desert file stays in the assets repository because `data/lab/tempo_*.json`
+still names it, and those fixtures are never packaged; the old jungle image stays as an archive. Three remain.
+They are not inputs to this pipeline and not style references for it; new sets are drawn
 from scratch against the house style, as those were.
 
 ---
@@ -733,4 +774,4 @@ Everything in `ASSET_PROMPTS.md` still applies. A layer set adds:
   carried by a handful of distinctive formations rather than by texture. That makes it the layer stamps would
   help most: the scatter planner would let the same rock vocabulary be placed at free x positions instead of
   being baked into a strip that has to wrap.
-- **The other four biomes**, and retiring the remaining monolithic backgrounds.
+- **The other three campaign biomes**, and retiring the remaining monolithic backgrounds.

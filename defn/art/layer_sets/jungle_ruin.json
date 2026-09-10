@@ -1,0 +1,78 @@
+{
+    "name": "jungle_ruin",
+    "_about": [
+        "Level 2 Jungle Ruins: peach dusk, cool sage jungle, warm ochre limestone and a quiet earth road.",
+        "Build with scripts/build_layer_set.py. Layer order is draw order; ground precedes the ruins.",
+        "Sources and generation sidecars live in build/art/jungle_ruin/. Prompt history is archived in art/prompts/jungle_ruin/.",
+        "All generations used gemini-3.1-flash-image at 4:1, 4K, without references. No seam waivers or feathering.",
+        "The first clouds repeated internally; clouds_v2 uses six distinct silhouettes. Preserve its intentional empty x margins.",
+        "The first far band repeated or painted a sky. far_v2 variant 2 keys cleanly and wraps without cutting artwork.",
+        "Ground revisions removed outlined patches and literal margin panels. ground_v3 variant 2 is the keeper.",
+        "mid variant 2 received one mid_refine turn to remove an interior magenta stain. Remeasure geometry after regeneration."
+    ],
+    "output": "defn/assets/backgrounds/jungle_ruin",
+    "viewport_height": 1080,
+    "layers": [
+        {
+            "name": "sky",
+            "source": "build/art/jungle_ruin/sky_clean.png",
+            "res_path": "assets/backgrounds/jungle_ruin/sky.png",
+            "screen_height": 1.0,
+            "base_ratio": 1.0,
+            "scroll_scale": 0.05,
+            "density": 1,
+            "opaque": true,
+            "_source": "sky.txt variant 2, cropped to [250, 0, 8000, 2048]. The first passing cut retained a visible interior margin panel; this tighter crop removes both panels and still wraps at 0.00/0.00 with no flattening or feathering."
+        },
+        {
+            "name": "clouds",
+            "source": "build/art/jungle_ruin/clouds_v2_20260910-203326_01_trim.png",
+            "res_path": "assets/backgrounds/jungle_ruin/clouds.png",
+            "screen_height": 0.24,
+            "base_ratio": 0.32,
+            "scroll_scale": 0.15,
+            "autoscroll": 5.0,
+            "density": 2,
+            "_source": "clouds_v2.txt variant 1; cut_layer auto key --low 0.20 --no-crop, then trim rows to alpha > 2. Keep empty side margins; 8256x735, ambiguous 0.34%."
+        },
+        {
+            "name": "far",
+            "source": "build/art/jungle_ruin/far_v2_20260910-203521_02_trim.png",
+            "res_path": "assets/backgrounds/jungle_ruin/far.png",
+            "screen_height": 0.40,
+            "base_ratio": 0.57,
+            "scroll_scale": 0.30,
+            "density": 2,
+            "_source": "far_v2.txt variant 2; cut_layer auto key --low 0.20 --no-crop, trim rows to alpha > 2 and one empty column from either edge; 8254x1713, ambiguous 0.94%.",
+            "_overlap": "Bottom at 0.57 overlaps the floor's top at 0.54. Tops remain visible between near ruins as their scroll phases separate."
+        },
+        {
+            "name": "ground",
+            "source": "build/art/jungle_ruin/ground_v3_20260910-212454_02_tileable.png",
+            "res_path": "assets/backgrounds/jungle_ruin/ground.png",
+            "screen_height": 0.46,
+            "base_ratio": 1.0,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "opaque": true,
+            "_source": "ground_v3.txt variant 2; make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=2, width=8240.",
+            "_geometry": "The top edge at 0.54 is inside the refined ruin bank's measured opaque span, 0.504-0.586; 100% of columns cover the edge. Units and ruins share this floor's scroll rate."
+        },
+        {
+            "name": "mid",
+            "source": "build/art/jungle_ruin/mid_tileable.png",
+            "res_path": "assets/backgrounds/jungle_ruin/mid.png",
+            "screen_height": 0.50,
+            "base_ratio": 0.65,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "contact_shadow": {
+                "depth": 0.025,
+                "alpha": 0.18,
+                "colour": [106, 99, 79]
+            },
+            "_source": "mid.txt variant 2, followed by mid_refine.txt; cut_layer auto key --low 0.20 with default crop and erosion. Ambiguous 0.80%. Then make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=13, width=8236, raw edge cost 0.60/255.",
+            "_geometry": "Near stone feet at 0.65, just above the 0.66-0.79 combat band. A shallow floor-coloured contact shadow seats the bank without a dark rule."
+        }
+    ]
+}

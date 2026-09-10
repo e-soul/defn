@@ -12,8 +12,10 @@ Two rules:
 
 New backgrounds are no longer authored as single images. [`MODULAR_BACKGROUNDS.md`](MODULAR_BACKGROUNDS.md)
 describes the layer-set pipeline that replaces them; the style, palette, and reference rules below still
-govern every layer it produces. Two biomes are authored that way — `prompts/port_terminal/` for endless and
-`prompts/desert_outpost/` for Level 1 — with one prompt per layer rather than one per background.
+govern every layer it produces. Three biomes are authored that way: `prompts/port_terminal/` for endless,
+`prompts/desert_outpost/` for Level 1, and `prompts/jungle_ruin/` for Level 2, with one prompt per layer rather
+than one per background. The jungle keepers use `sky.txt`, `clouds_v2.txt`, `far_v2.txt`, `ground_v3.txt`, and
+`mid.txt` followed by `mid_refine.txt`; the layer-set manifest records the selected variants and crops.
 
 ## Running them
 
@@ -37,7 +39,7 @@ has no negative-prompt field, so what was sent alongside was only ever more prom
 | File | Produced | References to attach |
 |---|---|---|
 | `prompts/background_desert_outpost.txt` | `background_desert_outpost_tiling.png`, Level 1 until the layer set replaced it | `campaign/map_background_v2.jpg` (desert region only), one strong shipped background, one Spec Ops and one Guerrilla sprite |
-| `prompts/background_jungle_ruins.txt` | `background_jungle_ruin_tiling.png`, Level 2 | 1 background, 2 characters |
+| `prompts/background_jungle_ruins.txt` | `background_jungle_ruin_tiling.png`, Level 2 until the layer set replaced it | 1 background, 2 characters |
 | `prompts/background_summar_beach.txt` | `background_beach_tiling.png`, Level 3 | 2 backgrounds, 2 characters |
 | `prompts/background_winter_forest.txt` | `background_winter_forest_tiling.png`, Level 4 | 2 backgrounds, 2 characters |
 | `prompts/background_feldkirchen.txt` | `background_feldkirchen_tiling.png`, Level 5 and Endless | 3 backgrounds, 2 characters; one reference was a photograph of the real town, for architecture only |
