@@ -1,0 +1,47 @@
+{
+  "name": "level_03_opening",
+  "level": "level_03",
+  "seed": 20260911,
+  "fps": 60,
+  "duration_seconds": 38,
+
+  "_notes": [
+    "Timings come from `--recon` on this level: wave 1 spawns between 4.0s and 8.4s, the hostile line",
+    "meets the friendly line around 17-22s at world x 650-700, and the camera never scrolls, so the",
+    "whole engagement stays in frame.",
+    "",
+    "`ahead` is negative for the move order on purpose. A reposition is only accepted towards the base --",
+    "the unit turns around, walks back and suspends combat -- so an order to the right is refused and",
+    "would film as a click that did nothing. Pulling the front unit out as the wave closes is the real",
+    "tactic and the one worth showing.",
+    "",
+    "Deploys after the first two are gated by energy. The runner holds the cursor where it is until the",
+    "card lights and only then sets off, so the approach lands as the card becomes affordable and a",
+    "balance change slides the timing rather than breaking the shot. Deploys are scheduled after the",
+    "tactical beat so that a long wait cannot delay it."
+  ],
+
+  "cursor": {
+    "input_chip": true,
+    "start": [1620, 900]
+  },
+
+  "timeline": [
+    {"at": 2.0, "action": "deploy", "unit": "breacher", "travel": 0.42},
+    {"at": 2.1, "action": "still", "label": "click"},
+    {"at": 4.3, "action": "deploy", "unit": "marksman"},
+    {"at": 6.6, "action": "park", "canvas": [1180, 640], "travel": 0.5},
+    {"at": 8.0, "action": "still", "label": "advance"},
+    {"at": 13.5, "action": "select", "target": "rightmost", "travel": 0.42},
+    {"at": 15.0, "action": "move", "ahead": -300, "travel": 0.4},
+    {"at": 15.6, "action": "still", "label": "order"},
+    {"at": 17.0, "action": "deselect", "ahead": 420, "travel": 0.36},
+    {"at": 18.5, "action": "deploy", "unit": "impact"},
+    {"at": 22.0, "action": "still", "label": "contact"},
+    {"at": 24.0, "action": "deploy", "unit": "breacher"},
+    {"at": 29.0, "action": "park", "canvas": [1420, 760], "travel": 0.5},
+    {"at": 31.0, "action": "deploy", "unit": "operator"},
+    {"at": 33.5, "action": "still", "label": "melee"},
+    {"at": 34.5, "action": "park", "canvas": [1620, 900], "travel": 0.6}
+  ]
+}

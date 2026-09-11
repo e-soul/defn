@@ -1,0 +1,90 @@
+{
+    "name": "summar_beach",
+    "_about": [
+        "Level 3 Summar Beach: cyan midday sky, turquoise water and small islands seen over a line of low dunes and coconut palms, warm golden sand, and a scatter of shells, starfish, rocks and beach foliage.",
+        "Build with scripts/build_layer_set.py. Layer order is draw order; ground precedes the dune band and the shore scatter that stand on it.",
+        "Sources and generation sidecars live in build/art/summar_beach/. Prompt history is archived in art/prompts/summar_beach/.",
+        "All generations used gemini-3.1-flash-image at 4:1, 4K, without references. No seam waivers, flattening or feathering.",
+        "Six planes. The layer above the floor does the job a rock or masonry bank does in the other sets -- opaque across the width at the floor's far edge, varied along the top so the plane behind shows through -- and here that is dunes with palms, which is why the sea is on screen between the trunks.",
+        "The first sky drew literal vertical slices from the phrase 'every tall narrow vertical slice'; sky_v2 asks for no horizontal variation at all and measures 0.5/255 of lateral ripple against 10.",
+        "That slot was a shoreline first. surf.txt through surf_v3 shipped and read as a breaking wave frozen mid-curl; surf_v4 and v5 fixed the wave but left a wide white band across the middle of the screen, and the subject was changed rather than the prompt. dunes.txt drew a separate apron of flat sand with an inked boundary across the full width; dunes_v2 runs the dune sand to the bottom edge instead, so the only thing there is a crop.",
+        "The near band took eight versions. mid.txt through mid_v6 were a wrack line of driftwood, timber and concrete, which read as an industrial debris berm rather than a beach; mid_v7 replaced it with natural shore objects and mid_v8 hardened the empty side margins and banned pink, which keys badly against magenta. Four v8 rolls are abutted into one strip.",
+        "Each layer's exact colour where it meets the next is written into its prompt: the dune band's bottom row and the floor's top row are the same sand, so the two planes join with nothing drawn to hide it."
+    ],
+    "output": "defn/assets/backgrounds/summar_beach",
+    "viewport_height": 1080,
+    "layers": [
+        {
+            "name": "sky",
+            "source": "build/art/summar_beach/sky_v2_20260910-222205_01.jpg",
+            "res_path": "assets/backgrounds/summar_beach/sky.png",
+            "screen_height": 1.0,
+            "base_ratio": 1.0,
+            "scroll_scale": 0.05,
+            "density": 1,
+            "opaque": true,
+            "_source": "sky_v2.txt variant 1, whole frame. Wraps natively at 0.00/0.00 with no cut, flattening or feathering; lateral ripple 0.53/255."
+        },
+        {
+            "name": "clouds",
+            "source": "build/art/summar_beach/clouds_trim.png",
+            "res_path": "assets/backgrounds/summar_beach/clouds.png",
+            "screen_height": 0.21,
+            "base_ratio": 0.21,
+            "scroll_scale": 0.15,
+            "autoscroll": 6.0,
+            "density": 2,
+            "_source": "clouds.txt variant 2; cut_layer auto key --low 0.20 --no-crop, then rows trimmed to alpha > 2. 8256x704, ambiguous 0.32%. The 287px empty margins at each side are the wrap and must be kept."
+        },
+        {
+            "name": "far",
+            "source": "build/art/summar_beach/far_tileable.png",
+            "res_path": "assets/backgrounds/summar_beach/far.png",
+            "screen_height": 0.347,
+            "base_ratio": 0.480,
+            "scroll_scale": 0.30,
+            "density": 2,
+            "_source": "far.txt variant 1; cut_layer --key magenta --low 0.20 --no-crop -- border detection reads the water along the bottom edge rather than the backdrop and keys 0.3% of the frame instead of 47%, so the key has to be named. Rows and columns trimmed, then make_tileable --width 7800 --tolerance 0.02 --no-flatten --feather 0: x=151, width=7956, raw edge cost 1.36/255. Ambiguous 0.27%. The whole drawn band is kept: the dune line sits low enough that the sea is on screen from the horizon down to about 0.45, so none of the water is spare any more.",
+            "_geometry": "Horizon at 0.190, islands 0.133-0.190, open water from 0.190 down to the dune crests. The bottom at 0.48 underlaps the dune band, which is opaque across the width from about 0.45 downward."
+        },
+        {
+            "name": "ground",
+            "source": "build/art/summar_beach/ground_tileable.png",
+            "res_path": "assets/backgrounds/summar_beach/ground.png",
+            "screen_height": 0.46,
+            "base_ratio": 1.0,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "opaque": true,
+            "_source": "ground_v4.txt variant 2 of the second sweep; make_tileable --width 7950 --tolerance 0.02 --no-flatten --feather 0: x=106, width=8109, raw edge cost 1.84/255. Lateral ripple 1.82/255. Nine rolls across three sweeps were needed: a floor with a strong vertical ramp wraps much less readily than ground_v2's gentle one.",
+            "_geometry": "Top edge at 0.54, inside the surf's opaque span, so the straight far edge of the floor is never on screen. The floor owns the whole drying gradient, from damp sand where the shoreline strip ends down to dry sand at the bottom of the screen. Its top third is held near RGB 184,148,112 so the join can land anywhere in it; measured, the two meet at 188,148,112 against 187,151,114."
+        },
+        {
+            "name": "dunes",
+            "source": "build/art/summar_beach/dunes_tileable.png",
+            "res_path": "assets/backgrounds/summar_beach/dunes.png",
+            "screen_height": 0.50,
+            "base_ratio": 0.58,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "_source": "dunes_v2.txt variant 1; cut_layer --key magenta --low 0.20 --no-crop (ambiguous 1.50%), rows and columns trimmed. No make_tileable cut: it wraps as generated at 0.00/0.00 with an absolute join of 1.33/255, which the quiet-margin rule bought on the first sweep. dunes.txt drew a separate apron of flat sand under the dunes with an inked boundary across the full width; v2 has the dune sand run to the bottom edge instead, so the only thing at the bottom of the layer is a crop.",
+            "_geometry": "Spans 0.08-0.58. The dune body is opaque across the full width from about 0.45 downward, which is what lets the floor's edge sit at 0.54, and the palms rise out of it to 0.08. Scroll rate 1.00 because the dunes stand on the same sand the units do. Its bottom edge is a crop rather than a drawn shape, so the model never outlined it; the dune sand and the floor are both drawn without contours and the colour match is the only thing hiding the join: 185,141,108 against the floor's 188,148,112."
+        },
+        {
+            "name": "mid",
+            "source": "build/art/summar_beach/mid_tileable.png",
+            "res_path": "assets/backgrounds/summar_beach/mid.png",
+            "screen_height": 0.15,
+            "base_ratio": 0.65,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "contact_shadow": {
+                "depth": 0.02,
+                "alpha": 0.18,
+                "colour": [118, 95, 72]
+            },
+            "_source": "Four rolls of mid_v8.txt abutted into one 33024px strip by scripts/concat_layer.py, in order variant 5, variant 1 of the second sweep, variant 1, variant 2 of the second sweep. Each was keyed with cut_layer --low 0.20 --no-crop at --low 0.40 (ambiguous 0.97-1.91%, the residue being the warm terracotta starfish, checked over sand and clean) and left with its own empty side margins, so every join is transparent-to-transparent and the strip wraps by construction.",
+            "_geometry": "Objects lie between 0.48 and 0.65, so the scatter crosses from the wet sand onto the dry, and its lowest row sits just above the 0.66-0.825 combat band. Nothing floats because nothing stands: the backdrop is a flat floor seen from above, so an object drawn higher in the band is further up the beach, not in the air. The contact shadow follows each column's own lowest opaque pixel. Four segments is what makes the scale work: the model draws this band about two thirds of the canvas deep whatever the prompt says, and a single roll at a period long enough for the viewport would put a scallop shell at knee height."
+        }
+    ]
+}

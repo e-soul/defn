@@ -30,6 +30,13 @@ cd defn
 git ls-files '**.h' '**.cpp' | ForEach-Object { clang-format -i $_ }
 ```
 
+## Screenshots and Video
+
+Gameplay video and screenshots come from the scripted capture rig described in
+[defn/CAPTURE_TOOLING.md](defn/CAPTURE_TOOLING.md) — `python scripts/capture.py --shot <name> --video --stills`.
+Use it rather than a throwaway `--script` scene dump when you need to see a level in the real engine; it plays the
+game through synthesized mouse events, so what it films is the real UI reacting.
+
 ## Misc
 
 README.md should not be updated unless specifically requested.

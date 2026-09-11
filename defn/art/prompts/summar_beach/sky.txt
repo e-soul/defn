@@ -1,0 +1,7 @@
+Create one sky-only background layer for DEFN, a contemporary military belt-scroller drawn as authored 2D cartoon illustration. Broad flat local-colour regions, restrained values, gently irregular hand-drawn character; no photographic lens behaviour. This layer is the exception with no contours: only a smooth vertical sky wash.
+
+A bright tropical coast at midday. Clear saturated cyan-blue at the top flows vertically through lighter sky blue into a pale warm aqua-cream at the bottom. Keep the blue clean and slightly cool, never violet, teal-green or grey. The bottom fifth is a uniform pale warm value that will sit behind turquoise sea and golden sand. Soft vertical colour transitions only. Fill the whole canvas opaquely.
+
+Horizontal tiling is a strict technical requirement. Every tall narrow vertical slice must have exactly the same colour and value distribution as every other. The left-most 4% and right-most 4% are identical and interchangeable. No lateral gradient, brighter middle, corner darkening, vignette, directional light, sun glow or cast shadow. No internal periodic pattern. Light is flat across the width, not flat from top to bottom.
+
+Only sky colour. No clouds, sun, moon, stars, birds, horizon, sea, silhouettes, palms, foliage, islands, mountains, buildings, ground, objects, text, numerals, logos, borders, UI, film grain, bloom, brushwork, texture or photographic rendering.

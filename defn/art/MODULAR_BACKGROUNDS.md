@@ -3,10 +3,11 @@
 Gameplay backgrounds built as per-biome **layer sets**: a few seamless horizontal strata composed at load time
 into a parallax stack, instead of one monolithic image.
 
-**Status.** Working end to end for three biomes: port-terminal in endless mode, desert-outpost on campaign
-Level 1, and jungle-ruin on Level 2. Both campaign sets replace their single backgrounds outright. Levels
-3–5 still use their single images and are unchanged. Stamps — scattered props on top of the strata — are
-designed but not built.
+**Status.** Working end to end for four biomes: port-terminal in endless mode, desert-outpost on campaign
+Level 1, jungle-ruin on Level 2, and summar-beach on Level 3. All three campaign sets replace their single
+backgrounds outright. Levels 4–5 still use their single images and are unchanged. Stamps — scattered props on
+top of the strata — are designed but not built, though the beach's near band is four separate rolls abutted
+into one strip, which is the same idea done by hand for one layer.
 
 The desert set was the first one built by following this document rather than writing it, which is the only
 useful test of it. Sky, clouds and the standing band came out usable on the first roll; the far band and the
@@ -76,7 +77,7 @@ Data and asset changes need no rebuild. Only C++ changes do.
 
 | | |
 |---|---|
-| Prompts, one per layer | `art/prompts/<biome>/{sky,far,ground,mid}.txt` |
+| Prompts, one per layer | `art/prompts/<biome>/{sky,clouds,far,ground,mid}.txt`, plus whatever else the biome needs |
 | Build recipe and geometry | `art/layer_sets/<biome>.json` |
 | Generations and intermediates | `build/art/<biome>/` — not committed |
 | Shipped assets | `assets/backgrounds/<biome>/*.png` |
@@ -99,8 +100,9 @@ line weight scaling with depth. That contract *is* a layer stack; it had simply 
 
 ### Strata
 
-Continuous horizontal bands. Each tiles, each scrolls at its own rate. Listed in draw order, back to front,
-with the port-terminal values as a worked example:
+Continuous horizontal bands. Each tiles, each scrolls at its own rate. Five planes is the usual shape, not a
+fixed one — the beach adds a sixth for the shoreline. Listed in draw order, back to front, with the
+port-terminal values as a worked example:
 
 | Layer | Alpha | `scroll_scale` | `height_ratio` | `bottom_ratio` | Content |
 |---|---|---|---|---|---|
@@ -204,6 +206,67 @@ Two additions to the prompt lessons came from this set:
   the sky and floor. The sky's first crop passed the seam metric while retaining a visible interior panel;
   a tighter crop removed it and still wrapped. The floor needed a shorter prompt describing one continuous
   evenly lit surface, without dividing the canvas into percentages. Check the whole strip, not only its join.
+
+### Summar Beach: Level 3
+
+The fourth set is the first with **six planes**, and the reason is that a beach has nothing to stand on it. In
+the desert and the jungle, `mid` is a tall bank of rock or masonry that covers the floor's straight far edge
+and gives the fighting line something behind it. On a shoreline seen from this camera, the only things between
+the belt and the water are ankle-to-knee-high beach debris, and drawing them as a half-screen-tall band would
+put driftwood at twice a soldier's height.
+
+So the shore itself becomes a stratum. `dunes` is a run of low sand dunes with coconut palms standing out of
+them, opaque across the full width below its crest line, drawn at `scroll_scale` 1.00 because the dunes stand
+on the same sand the units do. It does the covering job a rock or masonry bank does elsewhere, the sea is seen
+over the dune crests and between the palms, and `mid` shrinks to what it should be: a loose scatter of shells,
+starfish, sand dollars, rocks, kelp and low beach foliage lying on the sand above the belt band. The recipe is
+[`layer_sets/summar_beach.json`](layer_sets/summar_beach.json). Tile widths are the rounded geometry the build
+prints, measured in Godot at 1080p.
+
+| Layer | `scroll_scale` | `height_ratio` | `bottom_ratio` | Tile |
+|---|---|---|---|---|
+| `sky` | 0.05 | 1.000 | 1.000 | 4353 |
+| `clouds` | 0.15 | 0.210 | 0.210 | 2660 |
+| `far` | 0.30 | 0.347 | 0.480 | 2428 |
+| `ground` | **1.00** | 0.460 | 1.000 | 1967 |
+| `dunes` | **1.00** | 0.500 | 0.580 | 2267 |
+| `mid` | **1.00** | 0.153 | 0.653 | 3657 |
+
+Clouds drift at 6 pixels per second. Reading down the screen: sky and clouds to 0.13, distant islands
+0.133-0.190, open sea 0.190 down to the dune crests at about 0.45, dunes to 0.58, then dry sand through the
+unchanged 0.66-0.825 belt, with the shore scatter lying across 0.50-0.65 and the palm crowns rising back up
+through everything to 0.08. The floor's straight top edge sits at 0.54, inside the dune band's opaque body, so
+it is never on screen. The sea reaches 0.48, below the lowest dune crest, so no sky shows between them. The
+scatter's contact shadow uses depth 0.02, alpha 0.18 and a darkened floor tint.
+
+**Three layers share `scroll_scale` 1.00**, which makes the "give the strata unequal widths" rule harder rather
+than optional: `ground`, `dunes` and `mid` have to be spread apart, and their tiles are pinned from different
+directions - the ground's by needing at least 7920 of its 8256 columns to clear the viewport, the dune band's
+by how deep in the canvas the palms are drawn, the mid's by how many rolls are in its strip. The three land at
+1967, 2267 and 3657.
+
+Every shipped layer passes the seam threshold with no waiver, flattening or feathering. Review is by the
+capture rig - `python scripts/capture.py --shot level_03_opening --stills` - which plays the real game and
+saves marked frames, so the background is judged with units, tower and UI on top of it rather than in a
+composite of its own layers.
+
+The old `background_beach_tiling.png` stays in the assets repository as an archive; Level 3 and both export
+presets now name the six layers instead.
+
+**Two of the six were re-made after the first pass looked wrong in the game, and a third was thrown out and
+replaced by a different subject entirely. None of those failures is of a kind a metric can see.** The first
+`mid` was a wrack line of driftwood, weathered timber and half-buried concrete, drawn well and entirely wrong
+for the level: a continuous berm of industrial debris reads as a demolition site with a sea behind it, and it
+became the shore scatter. The layer that covers the floor's edge went through two subjects before this one. It
+began as `surf`, foam and wet sand; the first attempt drew a breaking wave with a rolled crest and a shaded
+underside, which is what "foam" gets you when the prompt says what the foam is made of but not what it is
+*doing*, and the rewrite that fixed that - spent swash lying flat on the sand - still read as a wide white band
+across the middle of the screen and was dropped. The dune-and-palm band that replaced it is a better answer to
+the same structural problem: it covers the floor's edge, it stands at 1.00 like everything else on the ground
+plane, and unlike a shoreline it *wants* a tall varied silhouette, which is exactly what puts the sea back on
+screen between the trunks. The prompt rules below carry what each attempt taught. What they share is the
+oldest lesson in this file - nothing in `check_tiling.py` or the build has an opinion about whether a layer is
+the right thing to have drawn, and the only test that catches it is looking at the level.
 
 ### Stamps
 
@@ -529,11 +592,120 @@ works says the seam is a property of the two outer edges continuing into one ano
 achieved by making the interior repeat, and that no arrangement, silhouette or colour sequence may occur
 twice.
 
+**Never describe the wrap requirement in terms of a shape.** The beach sky asked that *"every tall narrow
+vertical slice must have exactly the same colour and value distribution as every other"* — the same wording the
+jungle sky used — and both rolls came back with literal vertical slices painted into the wash, a periodic
+ripple of 10/255 peak to peak across the full width. It is the same failure as naming a thing you do not want
+drawn, one level up: the constraint was expressed as an object, so the model drew the object. The rewrite says
+what is true of the result instead — *every horizontal row is one single flat unvarying colour running the full
+width, and there is no horizontal variation of any kind anywhere in this image* — followed by a list of the
+forms that variation could take, as exclusions. Three rolls of that measured 0.52 to 0.60/255 of ripple, and
+one of them wrapped natively at 0.00/0.00. Reserve the vertical-slice phrasing for measuring, not for asking.
+
+**The model normalises a cut-out band to about half the canvas whatever you ask.** The layout-first rule above
+gets a band out of the top of the frame, and there it stops. Eleven rolls of the beach wrack line across four
+prompt versions, asking in turn for the lower half, the bottom tenth, the bottom twentieth, and the bottom 550
+of 2048 pixels with the number written out, came back at 45%, 53%, 55%, 60%, 61%, 62%, 63%, 68%, 70%, 77% and
+90% of the canvas. The two most explicit asks were the worst: "the bottom twentieth" produced *two* stacked
+wrack lines to fill the space, and the pixel-explicit version filled the side margins instead. This matters
+because period is `source_width x (on-screen height / content height)`, so a band the model insists on drawing
+half a canvas deep can only be given a viewport-length tile by being drawn half a screen tall — which for
+beach debris means driftwood at twice a soldier's height.
+
+**Buy the period from width instead: abut several rolls into one strip.** A roll that tapers to nothing before
+each side margin can be laid end to end with another, because every join is transparent-to-transparent and
+wraps by construction. Four beach rolls at 8256px each make a 33024px strip, so the same band that needed to be
+0.30 of screen height to reach a 2000px tile reaches 3733px at 0.173, and the biggest log comes back down to
+knee height on a soldier. It also fixes the other half of the problem for free: four different arrangements in
+a row is four times as much to get through before anything recurs. `scripts/concat_layer.py` does it, aligning
+the segments on their lowest drawn row because that is the ground they all stand on. This is the scatter
+planner's job done by hand for one layer, and it is the strongest argument yet for building the real thing.
+
+**Two layers meeting on the same plane need the exact RGB of the meeting row in both prompts.** The beach's
+wet sand ends where the dry sand begins, both at `scroll_scale` 1.00, both drawn under the floor's no-contour
+exception, so there is nothing to hide the join but the colour itself. Cutting the shoreline strip at the
+canvas edge means the model never draws a contour there — that boundary is a crop, not a shape, which is the
+one place the "the model outlines every boundary it draws" problem simply does not arise. What remains is the
+value step, and naming the number fixes it: the shoreline prompt was told to reach *exactly RGB 200,175,135
+along the very bottom row*, and the floor prompt, written afterwards against the strip that came back, was told
+its top row is *RGB 205,172,132*. The keeper pair measure 197,163,124 against 202,167,129 where they meet,
+about 5/255, and the join is invisible in game. Sample the strip you actually kept before writing the second
+prompt; do not write both from the same guess.
+
+**Name what a thing is doing, not only what it is made of.** A shoreline prompt that described foam, wet sand
+and their exact colours, and said nothing about the water's *state*, produced a breaking wave: a rolled crest
+with a lit top and a shaded underside, frozen mid-curl. The model drew the most photographed version of the
+noun. What fixed it was one sentence of physics and one of geometry - this is spent swash that has already
+broken somewhere off the top of the frame, lying flat on the sand with no thickness, the way spilled milk lies
+on a table - followed by a paragraph naming the wrong answer outright: no crest, curl, barrel, lip, whitecap,
+spray or plume, nothing with volume, nothing frozen in motion. A static background shows one instant forever,
+so any subject that could be read as mid-movement has to be pinned to the part of the cycle that holds still.
+That layer was eventually dropped anyway, for the reason in the next rule, but the lesson is the general one
+and it applies to anything that moves: water, smoke, flame, cloth, a flag.
+
+**Prefer a subject that wants the silhouette the geometry needs.** The layer above the floor has a fixed
+structural job - be opaque across the full width at the floor's far edge, and be interesting along a top
+boundary the layer behind it is seen through. A shoreline is a bad fit for the second half: foam is a
+horizontal band by nature, so its top edge is level by nature, and the sea behind it ends up squeezed into
+whatever is left above. Two versions of it were drawn well and neither solved that. Dunes with palms fit the
+same slot without a fight: the dune bodies close the width and hide the floor's edge, the crest line stays low
+across most of the picture, and the palms give a tall, deeply varied silhouette with wide gaps - so the sea is
+on screen from the horizon down to the dune line, seen over the crests and between the trunks. When a layer
+keeps needing the prompt to fight its subject, change the subject.
+
+**A layer can tile perfectly, key cleanly, wrap at 0.00 and still be the wrong thing to have drawn.** The
+beach's first near band was a wrack line of driftwood, weathered timber and concrete blocks. Every number was
+good. In the level it read as a demolition site with a sea behind it, because a continuous berm of heavy
+industrial debris is what the eye files it as, whatever the shells tucked into it. The replacement is the same
+layer role - low objects resting on the sand at the top of the belt - drawn from the biome's own vocabulary:
+scallop and conch shells, starfish, sand dollars, urchin tests, smooth pebbles, kelp ribbons, dune grass and
+creeping beach foliage. Nothing in the pipeline can flag this. Budget a review pass in the real game for every
+standing band, and expect to re-roll one.
+
+**On a floor seen from above, height in the band is distance, so a scatter cannot float.** The desert rock
+band's floating-mass problem came from objects that *stand*: draw one high in the frame with nothing beneath
+it and it hangs in mid-air. Objects that *lie* have no such failure mode, because the backdrop they sit on is
+the ground plane itself. Saying so in the prompt is what unlocks the layer - an object drawn higher in the
+band is simply further up the beach, not in the air - and it removes the need for the continuous opaque body
+that every previous near band was built around. It also removes the reason to grade by depth: a scatter of
+small things at one scale reads correctly at any height in the band, and asking for depth grading instead
+produced boulders and groyne posts hanging over the sand.
+
+**Forbid the hue family of the key in the artwork, by name, in the palette sentence.** The shore scatter's
+first rolls drew pink urchin tests and mauve shell interiors, which are true to life and sit close to magenta
+in chroma: 1.4% to 4.1% ambiguous, against 0.9% once the palette sentence ended with *nothing is pink, rose,
+mauve, lilac, violet or purple, not even faintly, and no shell has a pink interior or a pink rim*. The general
+rule from the desert set was to pick the key furthest from the biome's hues; this is its other half, for when
+the biome has one natural accent that lands on the key.
+
+**A filled zone inside a cut-out layer will be outlined, so end it at the canvas edge instead.** The dune
+band's lower part is plain sand: the same material as the floor it is composited onto, there only to carry the
+colour down to the join. Asked for as *"along the bottom eighth of the canvas, plain open sand"*, it came back
+as a separate region with an inked boundary wandering across the full width - a drawn rule on screen, and the
+same shelf the desert set fought. The fix is to stop describing it as a zone at all: *the dunes run right down
+to the bottom edge of the canvas and are simply cut off by it; there is no separate strip, band, apron, shelf
+or platform of flat sand, and no horizontal line anywhere across the picture,* with the exact bottom-row colour
+stated as before. A boundary the model draws gets a contour; a boundary that is a crop cannot.
+
+**Where a cut-out layer's own material meets the floor, ask for the contour to be omitted there and nowhere
+else.** The dune sand is the floor's material and must read as one surface with it, while the palms and grass
+in the same image want full house-style linework. Saying only "no contours" would flatten the trees; saying
+nothing gives the dune crest the same heavy outline as a trunk, and that crest runs the width of the screen.
+What works is to split the instruction by element: no contour anywhere inside the dune sand, a fine light
+warm-brown line only where a crest meets the backdrop, and the strong linework reserved for the vegetation.
+
+**A tall band is the easy case for period, not the hard one.** Every low band in this set fought for a tile
+wider than the viewport, because period is `source_width x (screen height / content height)` and a band drawn
+two thirds of the canvas deep but only 0.17 of screen tall lands around 1500px. The dune band is drawn 96% of
+the canvas deep - the palms reach the top - and still tiles at 2267px, because it is half the screen tall. The
+same arithmetic that punishes a shallow-on-screen band rewards a tall one, which is why the desert and jungle
+sets never had this problem and why the beach's two low layers had to buy their period from abutted rolls.
+
 ---
 
 ## Tooling
 
-Four scripts, all offline apart from `gen_art.py`. Each carries its full reasoning in its own docstring.
+Five scripts, all offline apart from `gen_art.py`. Each carries its full reasoning in its own docstring.
 
 **`scripts/check_tiling.py`** — measures how well a layer wraps. Two absolute floors sit under the ratios,
 below which no ratio is computed, because a ratio is meaningless when both terms are near zero: a smooth image
@@ -632,6 +804,26 @@ they are both empty — so the search reports a raw edge cost of 0.00, takes the
 strip whose real join is wherever the artwork actually ends. Crop to the alpha bounding box in x, and to the
 last non-empty row in y, before `make_tileable.py` sees it.
 
+**That trim is per-layer, not automatic, and on a sparse layer it is the wrong move.** The rule above assumes
+the artwork reaches the frame edges and the empty columns are a border. When the prompt asked for wide empty
+margins and got them, those columns *are* the wrap: trimming them to the alpha bounding box abuts the two ends
+of the run and the join is then only as good as the model's registration — 13.65/255 on the beach wrack line,
+with no better window anywhere in the frame. Left alone, the same layer wraps at 0.00/0.00 and the two margins
+meet as one more stretch of open beach. Decide which case a layer is in before cropping, and check the number
+either way: a `0.00/0.00` on a layer whose edge columns are fully transparent is telling you nothing.
+
+**Detect-from-border keying needs a border that is backdrop.** Omitting `--key` samples the frame edge, which
+is right for a band floating in the middle of a chroma field and wrong for one that reaches the bottom of the
+canvas. The beach's sea layer is opaque water along its entire lower edge, so detection returned
+`(191, 148, 230)` — a blend of backdrop and artwork — and keyed 0.3% of the frame transparent instead of 47%.
+Nothing errored; the layer simply came through with its backdrop intact. Name the key when any edge of the
+frame is artwork, and read the transparent percentage against what the layout asked for.
+
+**`scripts/concat_layer.py`** — abuts several keyed rolls of the same layer into one long strip, aligned on
+their lowest drawn row. See the prompt rule above for why: it is the only lever left on period once the model
+has decided how deep to draw a band, and it doubles as variety. Only for layers whose rolls end in empty
+margins; anything else joins with a visible seam.
+
 **`scripts/build_layer_set.py`** — the per-biome build. Sizes each layer, appends contact shadows, verifies
 wraps, and prints the level's `background_layers` block. It exists because that sizing is arithmetic nobody
 should do twice by hand: a contact shadow hangs below the artwork, so both `height_ratio` and `bottom_ratio`
@@ -707,8 +899,12 @@ for the single image it replaced. Textures import lossless and uncompressed (`co
 The jungle set stores five textures totaling **16.1 MiB on disk**, with **78.3 MiB** of RGBA pixel storage.
 It uses the same lossless, non-VRAM-compressed import settings and no mipmaps.
 
+The beach set is six textures at **15.1 MiB on disk** and **83.9 MiB** of RGBA pixel storage, against 5.5 and
+31.6 for the single image it replaced. The dune band is the expensive one at half the screen and full density,
+which is the usual shape: in every set so far the near standing band is the layer that costs.
+
 **Known wart.** The layer list lives inline in the level file — `data/endless.json`,
-`data/levels/level_01.json` and `data/levels/level_02.json` — duplicating geometry that
+`data/levels/level_01.json`, `data/levels/level_02.json` and `data/levels/level_03.json` — duplicating geometry that
 `art/layer_sets/<biome>.json` also holds. A shared `data/backgrounds/<biome>.json` that both the loader
 and the build script read is the right home as soon as a second level wants the *same* set. Until then,
 changing geometry means editing the manifest, re-running the build, and pasting the printed block.
@@ -733,12 +929,13 @@ scrolling — the shortest period the tiling can have.
 Neither is fixable by regenerating a better 3840 x 2160 image, and both dissolve the moment the background
 stops being one texture.
 
-The `background_*_tiling.png` files are to be replaced eventually, and two of them now have been:
-`background_desert_outpost_tiling.png` and `background_jungle_ruin_tiling.png` no longer ship, since Levels 1
-and 2 carry layer sets instead. The desert file stays in the assets repository because `data/lab/tempo_*.json`
-still names it, and those fixtures are never packaged; the old jungle image stays as an archive. Three remain.
-They are not inputs to this pipeline and not style references for it; new sets are drawn
-from scratch against the house style, as those were.
+The `background_*_tiling.png` files are to be replaced eventually, and three of them now have been:
+`background_desert_outpost_tiling.png`, `background_jungle_ruin_tiling.png` and `background_beach_tiling.png`
+no longer ship, since Levels 1, 2 and 3 carry layer sets instead. The desert file stays in the assets
+repository because `data/lab/tempo_*.json` still names it, and those fixtures are never packaged; the old
+jungle and beach images stay as archives. Two remain, on Levels 4 and 5, and `background_feldkirchen_tiling.png`
+is also endless mode's fallback. They are not inputs to this pipeline and not style references for it; new sets
+are drawn from scratch against the house style, as those were.
 
 ---
 
@@ -762,10 +959,16 @@ Everything in `ASSET_PROMPTS.md` still applies. A layer set adds:
 ## Still open
 
 - **Stamps and the scatter planner.** The largest remaining piece, and where the promised variability lives.
-- **Ground period.** The ground tile is 2122px in the port set and 2157px in the desert one, against a 1920
-  viewport, so close to the same frame arrives each screen. The 4:1 generation ceiling caps how much better a
-  single strip can get; the real answer is stamps. The container band is the better-off one at 2451px, and that
-  came from a shallower drawn band, not a wider canvas.
+  The beach's hand-abutted four-roll shore scatter is the argument for building it, and by now most of the way
+  to a demonstration: the layer is already a field of discrete shells, starfish and rocks over transparency,
+  assembled by a script, and the only reason it is baked into a strip that has to wrap is that nothing places
+  them at free x positions yet.
+- **Ground period.** The ground tile is 2122px in the port set, 2157px in the desert one and 1967px on the
+  beach, against a 1920 viewport, so close to the same frame arrives each screen. The 4:1 generation ceiling
+  caps how much better a single strip can get; the real answer is stamps. The container band is the better-off
+  one at 2451px, and that came from a shallower drawn band, not a wider canvas. The beach floor is the worst of
+  them and it is pinned there: its top row has to match the dune band's bottom row, which fixes where the two
+  meet and so fixes the floor's height, and the width it can be cut to is already nearly the whole canvas.
 - **Residual key tint.** A few small magenta patches survive inside container faces where the model painted
   magenta-tinted metal — interior artwork, not an edge, so the matte cannot find it. A `--continue` pass on the
   keeper would clear it. The desert set has one such pixel across three keyed layers, which is the difference a
@@ -774,4 +977,8 @@ Everything in `ASSET_PROMPTS.md` still applies. A layer set adds:
   carried by a handful of distinctive formations rather than by texture. That makes it the layer stamps would
   help most: the scatter planner would let the same rock vocabulary be placed at free x positions instead of
   being baked into a strip that has to wrap.
-- **The other three campaign biomes**, and retiring the remaining monolithic backgrounds.
+- **The last two campaign biomes**, Winter Forest and Feldkirchen, and retiring the remaining monolithic
+  backgrounds — including the Feldkirchen image endless mode still keeps as a fallback.
+- **The beach's three same-rate planes.** `ground`, `dunes` and `mid` all scroll at 1.00, and spreading their
+  tiles apart took most of the geometry work in that set. A fourth plane on that rate would be hard to place;
+  if a biome ever needs one, the answer is probably stamps rather than another stratum.

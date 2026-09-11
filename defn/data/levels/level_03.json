@@ -1,7 +1,14 @@
 ﻿{
   "level_id": 3,
   "name": "Summar Beach",
-  "background": "res://assets/backgrounds/background_beach_tiling.png",
+  "background_layers": [
+    {"path": "res://assets/backgrounds/summar_beach/sky.png", "scroll_scale": 0.05, "height_ratio": 1.000, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/summar_beach/clouds.png", "scroll_scale": 0.15, "height_ratio": 0.210, "bottom_ratio": 0.210, "autoscroll": 6.0},
+    {"path": "res://assets/backgrounds/summar_beach/far.png", "scroll_scale": 0.30, "height_ratio": 0.347, "bottom_ratio": 0.480},
+    {"path": "res://assets/backgrounds/summar_beach/ground.png", "scroll_scale": 1.00, "height_ratio": 0.460, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/summar_beach/dunes.png", "scroll_scale": 1.00, "height_ratio": 0.500, "bottom_ratio": 0.580},
+    {"path": "res://assets/backgrounds/summar_beach/mid.png", "scroll_scale": 1.00, "height_ratio": 0.153, "bottom_ratio": 0.653}
+  ],
   "starting_core_resource": 68,
   "base_integrity": 3,
   "base_position": [0.06, 0.65],

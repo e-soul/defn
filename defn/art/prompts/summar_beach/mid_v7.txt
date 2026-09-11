@@ -1,0 +1,32 @@
+Create one scatter of natural beach objects lying on open sand, for DEFN, a contemporary military belt-scroller drawn as authored 2D cartoon illustration: clean dark hand-inked contours, crisp graphic silhouettes, simplified chunky geometry, broad flat local-colour regions, restrained two- or three-value cel shading, sparse purposeful texture and gently irregular hand-drawn edges. This is a cut-out layer over a chroma backdrop, not a complete landscape.
+
+THE TWO SIDE MARGINS ARE THE MOST IMPORTANT TECHNICAL INSTRUCTION. The left-most 5% and the right-most 5% of the width are COMPLETELY EMPTY: pure flat chroma magenta RGB 255,0,255 from the top of the canvas all the way down to the bottom edge, with not one shell, pebble or leaf in them. The scatter begins after the left margin and ends before the right margin; nothing touches, crosses or is cut by either side edge. Those two bare margins are the entire wrapping mechanism, and when the strip repeats they meet as one wide stretch of clean empty beach, which is exactly what is wanted.
+
+LAYOUT: the upper HALF of the canvas is pure flat magenta and holds no artwork. Everything is drawn in the LOWER HALF, and shallower is better: the game squeezes this layer into a thin ribbon of screen, so a deep drawing repeats too often.
+
+WHAT TO DRAW. Small natural things the sea leaves on a tropical beach, scattered loosely over bare sand:
+
+* Seashells, the most common thing here and drawn in several kinds — fan-shaped scallop shells, small spiral conch and whelk shells, flat open clam halves, little cone shells, a few tiny shells in drifts.
+* Starfish lying flat, arms splayed, in warm ochre and muted terracotta. Draw only a few, well apart.
+* Smooth rounded pebbles and low dark grey-brown rocks in loose clusters of different sizes, some barely bigger than the shells, a few the size of a helmet.
+* Low tufts of olive-green dune grass, and small creeping beach plants with thick rounded leaves in muted sage.
+* Short curled ribbons of dried olive-brown seaweed and a few bleached coral fragments.
+* Occasional sand dollars and a small sea-urchin shell.
+
+NOTHING ELSE. No driftwood logs, no planks, no branches, no timber posts or stumps, no concrete blocks, no crates, no rope, no bottles, no netting, no man-made or industrial object of any kind. This is a clean natural shore, not a debris field or a wrack line, and there is no long brown ridge of litter running across the picture.
+
+HOW IT SITS. The magenta is standing in for flat sand seen from high above at a shallow angle. Every object LIES ON that sand, flat and settled, seen from above and slightly in front. An object drawn higher in the band is simply further away up the beach; it is not in the air, not standing on edge, not tipped up and not floating. Shells lie open side up or curved side up; starfish lie flat; rocks sit half-settled into the sand; only the grass tufts and leaves rise, and they rise from a base that sits on the sand.
+
+HOW IT IS ARRANGED. This is a sparse scatter across a wide open beach, not a line and not a heap. Most of the picture is empty magenta. Objects gather into loose uneven clusters — a drift of shells here, three rocks and a grass tuft there, a lone starfish with nothing near it — separated by wide stretches of nothing at all, of obviously different widths. Spread the clusters over the full height of the drawn band and over the whole width, so no part of the width is busier or emptier than another, and never line them up: no row, tier, grid, arc or even rhythm anywhere.
+
+SCALE: these are small things. The largest rock is about the height of a soldier's boot; a big scallop shell is a hand's width; nothing in the picture would reach a standing man's knee except the grass tufts, which reach mid-shin. Draw them small and let the empty sand do the work.
+
+Colours: cream, ivory and pale warm tan shells with soft ochre banding, muted terracotta and warm amber starfish, cool grey-brown rocks with a faint teal shadow, olive and sage foliage, dried khaki-brown seaweed, warm charcoal contours tinted to the scene rather than pure black. Outer silhouettes carry two to three times the weight of interior marks; a shell gets a few bold ribs, not fine engraving.
+
+Every object is a closed, fully opaque silhouette with its own clean ink contour all the way round, and flat magenta immediately around and beneath it. NO shared sand apron, patch, pad, mound, ridge, shadow pool or coloured fill under or between the objects, and no cast shadows: those are added later by the build.
+
+Light is flat across the width, not lit from one side: no lateral gradient, sunbeams, side shadow, bright centre or vignette. Every artwork boundary is a HARD CEL EDGE against the perfectly flat magenta field, positively crisp and fully opaque, with no feathering, glow, blur, haze, transparency or magenta mixed into the artwork. No pink, mauve, purple or magenta anywhere in the artwork.
+
+Never repeat the interior: no arrangement or silhouette occurs twice, never place an object directly above, below or beside another that resembles it, and vary the kind, size and orientation of everything.
+
+No sea, water, foam, horizon, sky, islands, sand surface, dunes, palm trees, boats, characters, animals, crabs, birds, weapons, modern equipment, footprints, text, letters, numerals, symbols, logos, watermark, frame or UI. No photographic texture, 3D rendering, fine procedural detail, grain or painterly brushwork.

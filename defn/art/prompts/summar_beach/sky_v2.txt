@@ -1,0 +1,7 @@
+One smooth sky gradient for DEFN, a hand-authored 2D cartoon military belt-scroller. This is only the sky and nothing else: no contours, no shapes, no objects, just colour.
+
+A bright tropical coast at midday. The colour changes ONLY from top to bottom, and is absolutely constant from left to right. Clear saturated cyan-blue along the top edge, easing down through lighter sky blue into a pale warm aqua-cream along the bottom edge. Keep the blue clean and slightly cool, never violet, teal-green or grey. The lowest fifth is one even pale warm value that will sit behind turquoise sea and golden sand. Fill the canvas opaquely with one continuous soft transition.
+
+Every horizontal row is one single flat unvarying colour running the full width of the canvas, exactly the same at the left edge, in the middle and at the right edge. There is no horizontal variation of any kind anywhere in this image: no bands, stripes, columns, panels, slices, blocks, steps, ripples, dappling, mottling, vignette, corner darkening, brighter centre, side glow, directional light, sun, cast shadow or drift from one side to the other, however faint. Do not divide the canvas. Do not draw a demonstration of anything.
+
+No clouds, sun, moon, stars, birds, horizon, sea, islands, palms, foliage, mountains, buildings, ground, silhouettes, objects, text, numerals, logos, borders, frame, UI, film grain, bloom, brushwork, canvas texture, noise or photographic rendering.
