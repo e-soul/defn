@@ -1,0 +1,73 @@
+{
+    "name": "feldkirchen",
+    "_about": [
+        "Level 5 Feldkirchen: pale-blue daylight, soft green hills, cream and terracotta town frontage, and an open dust-grey square.",
+        "Build with scripts/build_layer_set.py. Draw order puts the square before the buildings standing on it.",
+        "All generations used gemini-3.1-flash-image, 4:1, 4K, without references. Sources and sidecars are in build/art/feldkirchen/.",
+        "No seam waivers, flattening or feathering. Earlier prompt versions and rejected generations are retained.",
+        "Cloud variant 1 duplicated the row. The first hill and floor prompts produced rectangular side regions; v2 removes those.",
+        "Town variants 1 and 3 had clipped buildings or unsupported feet. Variant 2 supplies a continuous garden wall beneath the skyline dips.",
+        "Far v2 variant 1 had a ghost ridge in the key; variant 3 failed the unfeathered seam test. Variant 2 is the keeper."
+    ],
+    "output": "defn/assets/backgrounds/feldkirchen",
+    "viewport_height": 1080,
+    "layers": [
+        {
+            "name": "sky",
+            "source": "build/art/feldkirchen/sky_tileable.png",
+            "res_path": "assets/backgrounds/feldkirchen/sky.png",
+            "screen_height": 1.0,
+            "base_ratio": 1.0,
+            "scroll_scale": 0.05,
+            "density": 1,
+            "opaque": true,
+            "_source": "sky.txt, sky_20260912-084123_01.jpg. make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=9, width=8240."
+        },
+        {
+            "name": "clouds",
+            "source": "build/art/feldkirchen/clouds_tileable.png",
+            "res_path": "assets/backgrounds/feldkirchen/clouds.png",
+            "screen_height": 0.18,
+            "base_ratio": 0.27,
+            "scroll_scale": 0.15,
+            "autoscroll": 4.0,
+            "density": 2,
+            "_source": "clouds.txt, clouds_20260912-084123_02.jpg. cut_layer auto key (236,50,199), --low 0.20 --no-crop: ambiguous 0.31%. Trim to rows [686,1369), preserving all 8256 columns and the transparent side margins."
+        },
+        {
+            "name": "far",
+            "source": "build/art/feldkirchen/far_v2_02_tileable.png",
+            "res_path": "assets/backgrounds/feldkirchen/far.png",
+            "screen_height": 0.32,
+            "base_ratio": 0.57,
+            "scroll_scale": 0.30,
+            "density": 2,
+            "_source": "far_v2.txt, far_v2_20260912-084315_02.jpg. cut_layer --key magenta --low 0.20: crop [1,1155,8255,1930], ambiguous 0.36%. make_tileable --width 7600 --tolerance 0.08 --no-flatten --feather 0: x=478, width=7350.",
+            "_geometry": "The opaque bottom reaches below the floor top at 0.55, so independently scrolling hills never expose a sky gap."
+        },
+        {
+            "name": "ground",
+            "source": "build/art/feldkirchen/ground_tileable.png",
+            "res_path": "assets/backgrounds/feldkirchen/ground.png",
+            "screen_height": 0.45,
+            "base_ratio": 1.0,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "opaque": true,
+            "_source": "ground_v2.txt, ground_v2_20260912-084315_02.jpg. make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=10, width=8240.",
+            "_geometry": "Top at 0.55 sits inside the town's common opaque interval [0.536,0.645], hiding the floor edge across every column."
+        },
+        {
+            "name": "mid",
+            "source": "build/art/feldkirchen/mid_tileable.png",
+            "res_path": "assets/backgrounds/feldkirchen/mid.png",
+            "screen_height": 0.53,
+            "base_ratio": 0.65,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "contact_shadow": {"depth": 0.02, "alpha": 0.12, "colour": [130, 124, 112]},
+            "_source": "mid.txt, mid_20260912-084123_02.jpg. cut_layer --key magenta --low 0.20: crop [1,94,8255,2026], ambiguous 0.47%. make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=0, width=8212.",
+            "_geometry": "8212x1932 source; latest opaque crest row 1515, highest foot row 1915. Architecture spans 0.12-0.65; the faint contact shadow extends just to the unchanged 0.66-0.825 belt."
+        }
+    ]
+}

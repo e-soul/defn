@@ -1,0 +1,7 @@
+Draw a single continuous empty warm dust-grey town-square surface, filling the entire canvas. This is only the walkable floor for a 2D cartoon belt-scrolling game, viewed from a high three-quarter angle. No horizon and no objects.
+
+Mostly smooth warm-grey stone softened by pale beige dust. Very restrained broad flat shading, sparse short low-contrast suggestions of worn slab joints, no outlines around stones, no grid. The middle and lower parts are almost plain colour. Clean simplified cartoon illustration, not photographic texture. Top colour near RGB 189,184,172, bottom near RGB 177,172,161, a very gentle vertical transition.
+
+Perfectly even illumination left to right and a natural seamless horizontal wrap. The left and right ends continue the same surface and colour. No interior periodicity. No panels, strips, border, differently coloured side regions, vertical boundaries, vignette, diagonal light, cast shadows, horizontal bands or bright centre. One uninterrupted surface, not a framed swatch.
+
+No cobblestones, dark cracks, raised edges, grass, debris, pebbles, paving grid, curb, sidewalk, road lines, buildings, sky, scenery, objects, text, noise, grunge, photographic grain, 3D rendering or painterly brushwork.

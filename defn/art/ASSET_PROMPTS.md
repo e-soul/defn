@@ -12,9 +12,12 @@ Two rules:
 
 New backgrounds are no longer authored as single images. [`MODULAR_BACKGROUNDS.md`](MODULAR_BACKGROUNDS.md)
 describes the layer-set pipeline that replaces them; the style, palette, and reference rules below still
-govern every layer it produces. Five biomes are authored that way: `prompts/port_terminal/` for endless,
-`prompts/desert_outpost/` for Level 1, `prompts/jungle_ruin/` for Level 2, and `prompts/summar_beach/` for
-Level 3, and `prompts/winter_forest/` for Level 4, with one prompt per layer rather than one per background.
+govern every layer it produces. Six biomes are authored that way: `prompts/port_terminal/` for endless,
+`prompts/desert_outpost/` for Level 1, `prompts/jungle_ruin/` for Level 2, `prompts/summar_beach/` for
+Level 3, `prompts/winter_forest/` for Level 4, and `prompts/feldkirchen/` for Level 5, with one prompt per
+layer rather than one per background.
+The Feldkirchen keepers use `sky.txt` variant 1 and `clouds.txt`, `far_v2.txt`, `ground_v2.txt`, and `mid.txt`
+variant 2. The manifest records keying, cuts and the town frontage's measured floor-coverage window.
 The winter keepers use `sky.txt`, `clouds_v2.txt`, `far.txt`, `ground_v2.txt`, and the third roll of the second
 `mid_v4.txt` sweep. The manifest records the floor's small constant RGB correction to match the forest snow.
 The jungle keepers use `sky.txt`,
@@ -50,7 +53,7 @@ has no negative-prompt field, so what was sent alongside was only ever more prom
 | `prompts/background_jungle_ruins.txt` | `background_jungle_ruin_tiling.png`, Level 2 until the layer set replaced it | 1 background, 2 characters |
 | `prompts/background_summar_beach.txt` | `background_beach_tiling.png`, Level 3 until the layer set replaced it | 2 backgrounds, 2 characters |
 | `prompts/background_winter_forest.txt` | `background_winter_forest_tiling.png`, Level 4 until the layer set replaced it | 2 backgrounds, 2 characters |
-| `prompts/background_feldkirchen.txt` | `background_feldkirchen_tiling.png`, Level 5 and Endless | 3 backgrounds, 2 characters; one reference was a photograph of the real town, for architecture only |
+| `prompts/background_feldkirchen.txt` | `background_feldkirchen_tiling.png`, Level 5 until the layer set replaced it; retained as Endless's fallback | 3 backgrounds, 2 characters; one reference was a photograph of the real town, for architecture only |
 | `prompts/campaign_map.txt` | `campaign/map_background_v2.jpg` | all five shipped gameplay backgrounds, as style and biome references only |
 | `prompts/music_battle_theme.txt` | `music/theme01..04.mp3` | none; the four themes are re-rolls of this one brief |
 

@@ -1,0 +1,27 @@
+{
+  "name": "level_05_opening",
+  "level": "level_05",
+  "seed": 20260912,
+  "fps": 60,
+  "duration_seconds": 36,
+  "_notes": [
+    "Feldkirchen background review: clear square, advancing units and the opening fight at real gameplay scale.",
+    "The first wave arrives from 3 to 9 seconds; the second starts at 23 seconds."
+  ],
+  "cursor": {
+    "input_chip": false,
+    "start": [1620, 900]
+  },
+  "timeline": [
+    {"at": 1.0, "action": "still", "label": "town"},
+    {"at": 2.0, "action": "deploy", "unit": "breacher"},
+    {"at": 4.0, "action": "deploy", "unit": "marksman"},
+    {"at": 7.0, "action": "park", "canvas": [1620, 900]},
+    {"at": 8.0, "action": "still", "label": "advance"},
+    {"at": 12.0, "action": "deploy", "unit": "impact"},
+    {"at": 17.0, "action": "still", "label": "contact"},
+    {"at": 18.0, "action": "deploy", "unit": "breacher"},
+    {"at": 20.0, "action": "park", "canvas": [1620, 900]},
+    {"at": 34.0, "action": "still", "label": "second_wave"}
+  ]
+}

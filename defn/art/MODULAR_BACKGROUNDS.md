@@ -3,9 +3,9 @@
 Gameplay backgrounds built as per-biome **layer sets**: a few seamless horizontal strata composed at load time
 into a parallax stack, instead of one monolithic image.
 
-**Status.** Working end to end for five biomes: port-terminal in endless mode, desert-outpost on campaign
-Level 1, jungle-ruin on Level 2, summar-beach on Level 3, and winter-forest on Level 4. All four campaign sets
-replace their single backgrounds outright. Level 5 still uses its single image and is unchanged. Stamps — scattered props on
+**Status.** Working end to end for six biomes: port-terminal in endless mode, desert-outpost on campaign
+Level 1, jungle-ruin on Level 2, summar-beach on Level 3, winter-forest on Level 4, and Feldkirchen on Level 5.
+All five campaign sets replace their single backgrounds outright. Stamps — scattered props on
 top of the strata — are designed but not built, though the beach's near band is four separate rolls abutted
 into one strip, which is the same idea done by hand for one layer.
 
@@ -308,6 +308,40 @@ All five shipped layers pass without flattening, feathering or seam waivers. Rev
 joins and the real game's clear opening, advance and first contact through
 `python scripts/capture.py --shot level_04_opening --stills`. The old winter image remains an asset archive;
 Level 4 and both export presets name the five layers instead.
+
+### Feldkirchen: Level 5
+
+Pale-blue daylight, soft green hills, cream and pastel facades, terracotta roofs, a yellow onion-domed church
+and a stepped-gable Rathaus, all behind an open dust-grey square. The recipe is
+[`layer_sets/feldkirchen.json`](layer_sets/feldkirchen.json), with archived prompts in
+[`prompts/feldkirchen/`](prompts/feldkirchen/).
+
+| Layer | `scroll_scale` | `height_ratio` | `bottom_ratio` | Tile | Content |
+|---|---|---|---|---|---|
+| `sky` | 0.05 | 1.000 | 1.000 | 4345 | pale blue to warm ivory-blue wash |
+| `clouds` | 0.15 | 0.180 | 0.270 | 2350 | six separate ivory clouds, `autoscroll` 4.0 |
+| `far` | 0.30 | 0.320 | 0.570 | 3277 | low-contrast sage and blue-green hills |
+| `ground` | **1.00** | 0.450 | 1.000 | 1955 | quiet worn stone square |
+| `mid` | **1.00** | 0.541 | 0.661 | 2433 | town frontage and its faint contact shadow |
+
+The town's garden walls are structural: they fill the skyline dips without closing the view of the hills,
+and give the floor an opaque band to hide its top edge behind. At artwork height 0.53 and base 0.65, every
+column is opaque between 0.536 and 0.645; the floor therefore starts at 0.55. The hills reach down to 0.57,
+below that edge, so independent parallax phases cannot expose a sky gap. Doors were reviewed against the
+real units, and the original 0.66-0.825 belt, base position and gameplay data are unchanged.
+
+The cloud keeper is variant 2; variant 1 doubled the row. Border-detected keying reads its actual backdrop as
+RGB 236,50,199, with 0.31% ambiguous pixels. The town is also variant 2, at 0.47% ambiguous; the other two
+rolls clipped buildings or left unsupported feet. Both the first hill and floor prompts made the requested
+plain side margins into rectangular panels. Their shorter `v2` prompts removed that defect. Hill v2 variant
+1 had a ghost ridge in the key and variant 3 failed the raw seam test; variant 2 passes, at 0.36% ambiguous.
+Floor v2 variant 2 is the quietest keeper.
+
+All five shipped layers pass with zero flattening, feathering or seam waivers. Half-width-rolled joins were
+reviewed visually, followed by clear-square, advance, first-contact and second-wave captures through
+`python scripts/capture.py --shot level_05_opening --stills`. Both export presets include the layers.
+The old single image remains available only as endless mode's existing fallback; neither that mode's port
+stack nor the campaign-map preview changes.
 
 ### Stamps
 
@@ -947,8 +981,11 @@ which is the usual shape: in every set so far the near standing band is the laye
 The winter set is five textures at approximately **15.5 MiB on disk** and **83.3 MiB** of RGBA pixel storage,
 with lossless imports and no mipmaps.
 
+The Feldkirchen set is five textures at **14.5 MiB on disk** and **78.3 MiB** of RGBA pixel storage, also
+lossless and without mipmaps.
+
 **Known wart.** The layer list lives inline in the level file — `data/endless.json`,
-`data/levels/level_01.json` through `data/levels/level_04.json` — duplicating geometry that
+`data/levels/level_01.json` through `data/levels/level_05.json` — duplicating geometry that
 `art/layer_sets/<biome>.json` also holds. A shared `data/backgrounds/<biome>.json` that both the loader
 and the build script read is the right home as soon as a second level wants the *same* set. Until then,
 changing geometry means editing the manifest, re-running the build, and pasting the printed block.
@@ -973,12 +1010,12 @@ scrolling — the shortest period the tiling can have.
 Neither is fixable by regenerating a better 3840 x 2160 image, and both dissolve the moment the background
 stops being one texture.
 
-The `background_*_tiling.png` files are to be replaced eventually, and four of them now have been:
+All five campaign `background_*_tiling.png` references have now been replaced by layer sets:
 `background_desert_outpost_tiling.png`, `background_jungle_ruin_tiling.png`, `background_beach_tiling.png` and
 `background_winter_forest_tiling.png` no longer ship, since Levels 1-4 carry layer sets instead. The desert file stays in the assets
 repository because `data/lab/tempo_*.json` still names it, and those fixtures are never packaged; the old
-jungle, beach and winter images stay as archives. Only `background_feldkirchen_tiling.png` remains, on Level 5
-and as endless mode's fallback. These images are not inputs to this pipeline and not style references for it; new sets
+jungle, beach and winter images stay as archives. Only `background_feldkirchen_tiling.png` remains packaged,
+as endless mode's fallback, not as Level 5's background. These images are not inputs to this pipeline and not style references for it; new sets
 are drawn from scratch against the house style, as those were.
 
 ---
@@ -1021,8 +1058,8 @@ Everything in `ASSET_PROMPTS.md` still applies. A layer set adds:
   carried by a handful of distinctive formations rather than by texture. That makes it the layer stamps would
   help most: the scatter planner would let the same rock vocabulary be placed at free x positions instead of
   being baked into a strip that has to wrap.
-- **The last campaign biome**, Feldkirchen, and retiring its monolithic background, which endless mode still
-  keeps as a fallback.
+- **Retiring the last monolithic fallback.** All campaign biomes are layered, but endless mode still names
+  the old Feldkirchen image as its fallback.
 - **The beach's three same-rate planes.** `ground`, `dunes` and `mid` all scroll at 1.00, and spreading their
   tiles apart took most of the geometry work in that set. A fourth plane on that rate would be hard to place;
   if a biome ever needs one, the answer is probably stamps rather than another stratum.

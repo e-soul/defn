@@ -1,0 +1,5 @@
+Draw a SINGLE horizontal row of six separate pale ivory fair-weather clouds on a perfectly flat solid magenta RGB 255,0,255 background. Clean 2D cartoon cut-outs with broad flat fills and gently irregular hard-edged silhouettes.
+
+One row only, floating through the middle of the picture, with huge empty space above and below. Six different cloud shapes of different widths, some small and long, some rounded and tall. Clear empty gaps and irregular spacing. First and last clouds completely inside the picture with generous empty side margins. The clouds are one flat pale ivory colour, no outline, no interior shading, no shadow, no transparency. No pink, mauve, purple or magenta in the clouds. They will drift over a pale blue summer sky; do not draw that sky.
+
+The background is exactly one unchanging flat chroma colour everywhere, without panels, gradients, reflections or lighting. Crisp opaque cloud edges, not blur, feathering, haze or fog. No second row, stacked or nested clouds, scenery, text, frame, objects, photographic texture or painterly rendering.

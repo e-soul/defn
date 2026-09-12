@@ -1,0 +1,9 @@
+Create a distant hill layer for a modular 2D cartoon belt-scrolling background. The upper two thirds of the frame are completely flat pure magenta RGB 255,0,255, without any artwork. Only the lower third holds a long low band of gently rolling southern German countryside. This shallow composition gives the layer a long horizontal repeat period in the game.
+
+Draw authored 2D cartoon illustration: broad flat local-colour regions, simplified gently irregular silhouettes, restrained two-value cel shading. Atmospheric distance is expressed through desaturated colour and very weak thin cool contours, never blurry edges. Several overlapping soft green hills, subdued sage meadows and dusty blue-green wooded ridges. A few tiny grouped treetops clarify distance, not individual detailed trees. No near objects. Low contrast, quieter and cooler than a cream-and-terracotta town which will be drawn separately in front.
+
+The hill mass is solid opaque across the full bottom edge. Its upper boundary rises and dips with varied broad slopes. Left-most and right-most 5% are identical plain low sage slopes at the same height and colour, interchangeable with nothing distinctive crossing either boundary. Horizontal wrapping must come from these quiet matching margins, never from repeating the interior. Each hill profile is unique; no mirrored or duplicated groups, no internal periodicity.
+
+Flat even daylight, no lateral brightness drift. Outside the solid hills is ONLY perfectly flat magenta. All silhouette edges are hard cel edges directly against magenta, no alpha, haze, glow, fade or key reflections. No pink, purple or violet in the artwork.
+
+No sky, clouds, sun, buildings, roads, paths, church, ground below the band, mountains, alpine peaks, people, vehicles, props, text, frame, photographic texture, realistic 3D, painterly strokes or fine noisy detail.

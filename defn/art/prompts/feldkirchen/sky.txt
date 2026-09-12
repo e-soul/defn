@@ -1,0 +1,7 @@
+Create one sky-only layer for a clean hand-drawn 2D cartoon belt-scrolling game. Broad restrained colour fields, no photographic lens behaviour. This sky is the no-contour exception to a clean hand-inked, cel-shaded illustration style: a smooth vertical wash only.
+
+A clear mild summer morning over a small southern German town. Pale cornflower blue at the top flows through soft sky blue into a very light warm ivory-blue haze at the bottom. Calm daylight, not sunset. Fill the entire canvas opaquely. The lower third stays quiet and pale.
+
+Every horizontal row is one single flat unvarying colour running the full width. No horizontal variation of any kind: no panels, vertical bands, ripples, vignette, brighter centre, dark corners, directional illumination or lateral colour drift. Both edges are identical and interchangeable for horizontal wrapping.
+
+Only sky colour. No clouds, sun, horizon, hills, architecture, trees, scenery, text, logos, border, UI, grain, texture, brush marks, glow or photorealism.

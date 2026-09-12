@@ -1,7 +1,13 @@
 {
   "level_id": 5,
   "name": "Feldkirchen",
-  "background": "res://assets/backgrounds/background_feldkirchen_tiling.png",
+  "background_layers": [
+    {"path": "res://assets/backgrounds/feldkirchen/sky.png", "scroll_scale": 0.05, "height_ratio": 1.000, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/feldkirchen/clouds.png", "scroll_scale": 0.15, "height_ratio": 0.180, "bottom_ratio": 0.270, "autoscroll": 4.0},
+    {"path": "res://assets/backgrounds/feldkirchen/far.png", "scroll_scale": 0.30, "height_ratio": 0.320, "bottom_ratio": 0.570},
+    {"path": "res://assets/backgrounds/feldkirchen/ground.png", "scroll_scale": 1.00, "height_ratio": 0.450, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/feldkirchen/mid.png", "scroll_scale": 1.00, "height_ratio": 0.541, "bottom_ratio": 0.661}
+  ],
   "starting_core_resource": 105,
   "base_integrity": 4,
   "base_position": [0.06, 0.65],
