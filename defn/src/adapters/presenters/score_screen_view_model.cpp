@@ -59,7 +59,7 @@ ScoreScreenViewModel build_score_screen_view_model(const ScoreScreenPresentation
     }
     view_model.stat_rows.emplace_back("Enemies Killed:", std::to_string(input.enemies_killed));
     view_model.stat_rows.emplace_back("Kill Score:", std::to_string(input.kill_score));
-    view_model.stat_rows.emplace_back("Hearts Remaining:", format_ratio(input.hearts_remaining, input.hearts_total));
+    view_model.stat_rows.emplace_back("Integrity Remaining:", format_ratio(input.hearts_remaining, input.hearts_total));
     view_model.stat_rows.emplace_back("Integrity Bonus:", std::to_string(input.integrity_bonus));
     if (input.survival_bonus > 0) {
         view_model.stat_rows.emplace_back("Survival Bonus:", std::to_string(input.survival_bonus));
