@@ -73,6 +73,11 @@ it. Then re-import so Godot picks up the changed textures, and relaunch:
 
 Data and asset changes need no rebuild. Only C++ changes do.
 
+After changing a campaign background, refresh its map preview from the real background-only capture rather than
+the archived single-image art. The `background_preview` shot hides the tower, units and UI; downscale its screenshot
+to the existing 960 x 540 preview size. See [Campaign background previews](../CAPTURE_TOOLING.md#campaign-background-previews)
+for the command and output paths.
+
 ### Where things live
 
 | | |

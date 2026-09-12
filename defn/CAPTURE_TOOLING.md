@@ -82,6 +82,7 @@ for the render again.
 | `cursor.input_chip` | `true` | The LMB/RMB pill in the corner |
 | `cursor.start` | — | Where the pointer begins, in canvas coordinates |
 | `timeline` | `[]` | The actions |
+| `background_only` | `false` | Freeze the loaded match and hide everything except its background and camera, including the cursor |
 
 Every timeline entry takes `at` (seconds from the start of the shot) and an optional `travel` (seconds of cursor
 approach before the click, default 0.34).
@@ -98,6 +99,20 @@ approach before the click, default 0.34).
 
 Targets are re-resolved **every frame of the travel**, so the pointer tracks a walking unit the way a hand would.
 Coordinates are canvas-space (1920×1080), which is also what the HUD's rects are in.
+
+### Campaign background previews
+
+The `background_preview` shot captures the real opening parallax composition without the tower, units, HUD or
+pointer. For each campaign level, run:
+
+```
+python scripts/capture.py --shot background_preview --level level_01 --stills --still-width 960 --out-dir build/capture/previews/level_01
+```
+
+Repeat for `level_02` through `level_05`. Convert each `background_preview_background_960.png` to a high-quality
+RGB JPEG at **960 x 540**, replacing that level's existing `assets/campaign/*_preview.jpg` as named by
+`data/campaign_map.json`. Keep the full-resolution captures under `build/capture/`, not in the shipped assets.
+Re-import the project after replacing the previews.
 
 ---
 

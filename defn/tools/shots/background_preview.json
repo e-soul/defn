@@ -1,0 +1,15 @@
+{
+  "name": "background_preview",
+  "level": "level_01",
+  "seed": 20260912,
+  "fps": 60,
+  "duration_seconds": 2,
+  "background_only": true,
+  "_notes": [
+    "Capture the real level's opening background with gameplay frozen and all other visuals hidden.",
+    "Override --level and use a separate --out-dir for each campaign level."
+  ],
+  "timeline": [
+    {"at": 1.0, "action": "still", "label": "background"}
+  ]
+}

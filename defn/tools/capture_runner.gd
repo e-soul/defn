@@ -144,6 +144,21 @@ func _boot() -> bool:
 		printerr("[capture] game scene did not build")
 		return false
 
+	if bool(_shot.get("background_only", false)):
+		var background := current_scene.get_node_or_null("Background")
+		if background == null or _camera == null:
+			printerr("[capture] background-only shot needs the game's Background and Camera")
+			return false
+		# Keep the real composition and camera, but freeze gameplay and hide every other visual.
+		current_scene.process_mode = Node.PROCESS_MODE_DISABLED
+		for child in current_scene.get_children():
+			if child != background and child != _camera:
+				if child is CanvasItem:
+					(child as CanvasItem).hide()
+				elif child is CanvasLayer:
+					(child as CanvasLayer).hide()
+		_cursor_enabled = false
+
 	_index_cards()
 	if _cursor_enabled:
 		_build_cursor()
