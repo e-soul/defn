@@ -1,5 +1,5 @@
 {
-    "title": "CAMPAIGN / THE EASTERN EXPEDITION",
+    "title": "CAMPAIGN",
     "background": {
         "path": "res://assets/campaign/map_background_v2.jpg"
     },
@@ -7,7 +7,7 @@
         {
             "level_id": "level_01",
             "position": [0.165, 0.25],
-            "tagline": "Reclaim a shattered relay before the first swarm gathers.",
+            "tagline": "Resist fast hunters.",
             "threat": "low",
             "ambience": "dust",
             "preview": {
@@ -46,7 +46,7 @@
         {
             "level_id": "level_04",
             "position": [0.63, 0.30],
-            "tagline": "Survive a frozen approach as fast hunters join the assault.",
+            "tagline": "Survive a frozen approach as more hostiles join the assault.",
             "threat": "severe",
             "ambience": "snow",
             "preview": {
@@ -73,7 +73,7 @@
     "endless": {
         "position": [0.685, 0.50],
         "title": "Standing Engagement",
-        "tagline": "Hold the line at Feldkirchen for as long as it holds.",
+        "tagline": "Hold the line for as long as possible.",
         "requires_completed": "level_05",
         "preview": {
             "path": "res://assets/campaign/feldkirchen_preview.jpg",

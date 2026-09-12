@@ -9,9 +9,9 @@
             ]
         },
         "game_menu": {
-            "title": "CAMPAIGN",
+            "title": "DEFN",
             "entries": [
-                { "id": "new_continue", "label": "New/Continue Game", "action": "level_select" },
+                { "id": "new_continue", "label": "Campaign", "action": "level_select" },
                 { "id": "progression", "label": "Progress", "action": "progression" },
                 { "id": "main_menu", "label": "Main Menu", "action": "goto_menu", "target": "main_menu" }
             ]
