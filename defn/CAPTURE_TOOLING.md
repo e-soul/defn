@@ -83,6 +83,7 @@ for the render again.
 | `cursor.start` | — | Where the pointer begins, in canvas coordinates |
 | `timeline` | `[]` | The actions |
 | `background_only` | `false` | Freeze the loaded match and hide everything except its background and camera, including the cursor |
+| `mute_music` | `false` | Silence the background music player for an effects-only recording; leave gameplay and UI sounds intact |
 
 Every timeline entry takes `at` (seconds from the start of the shot) and an optional `travel` (seconds of cursor
 approach before the click, default 0.34).
@@ -161,6 +162,100 @@ or the display's DPI**, so a recording is identical on any machine. **Stills com
 which on a HiDPI display is 4K; downsampling those to 1080p is visibly sharper than grabbing 1080p directly.
 
 Audio is captured and stays in sync because it is rendered offline alongside the video, not sampled live.
+
+## "Give ground. Hold the line." showcase
+
+[`hold_the_line.json`](tools/shots/hold_the_line.json) records a 60-second source take on Summar Beach.
+[`edit_hold_the_line.py`](../scripts/edit_hold_the_line.py) cuts it to **53 seconds at 1080p60**:
+
+| Final time | Beat |
+|---|---|
+| 0-7 s | Combat-first hook, taken from later in the same engagement |
+| 7-14 s | Fade back to three opening deployments; "BUILD YOUR LINE." |
+| 14-49 s | Uninterrupted approach, retreat order, resumed fighting and reinforcements |
+| 49-53 s | DEFN end card; continuous soundtrack finishes with a two-second fade |
+
+The edit skips the quiet march between deployment and contact, but never speeds up combat or cuts inside the
+retreat. Its payoff is holding through the opening rush, not a claimed mission victory. Three short captions sit
+above the battlefield as bright, square-edged editorial cards with numbered action labels, rather than dark
+HUD-like panels. Their colors and the end card use the UI palette. Each scene fades out and the next fades in
+over 0.45 seconds per side, with matching sound-effect fades; the opening and ending also fade.
+Music runs on a separate, uninterrupted timeline across every scene transition, including the end card.
+The edit uses the game's `theme01.mp3` at a linear gain of 0.36, with fades only at the beginning and end.
+No external music or art is added.
+
+From the repository root:
+
+```
+python scripts/capture.py --shot hold_the_line --stills
+python scripts/capture.py --shot hold_the_line --video --out-dir build/capture/sfx
+python scripts/edit_hold_the_line.py --boot-frames 39
+```
+
+Use the actual `shot starts at recorded frame` value from the recording log if it differs from 39.
+The edit needs ffmpeg, ffprobe and Pillow; it uses installed Arial Bold on Windows, or an explicit
+`--font <font-file>` elsewhere. Its output is `build/capture/give_ground_hold_the_line.mp4`.
+Re-running just the edit does not launch Godot. Effects-only source files live in `build/capture/sfx/`.
+The shot sets `mute_music: true`; do not feed the older mixed recording to the editor, or music will double.
+`--music` selects a different local track and `--music-volume` adjusts its linear gain. The music must cover
+the whole edit; short tracks are rejected rather than silently looped. The final mix uses a non-boosting peak
+limiter, and only music continues under the end card.
+The editor checks the source format and verifies 3,180 output frames and 53 seconds of audio.
+
+### Additional showcase variations
+
+The same editor supports three more effects-only shots. Each preset uses
+`build\capture\sfx\<variation>.avi` and writes `build\capture\<variation>.mp4`;
+record each shot with `mute_music: true` before editing.
+
+| `--variation` | Level | Continuous music (gain 0.24) | End-card title |
+| --- | --- | --- | --- |
+| `jungle_line` | `level_02` (Jungle Ruins) | `theme02.mp3` | HOLD THE JUNGLE LINE. |
+| `winter_fireline` | `level_04` (The Winter Forest) | `theme03.mp3` | DEFN |
+| `town_crossfire` | `level_05` (Feldkirchen) | `theme04.mp3` | DEFN |
+
+Winter and town use `logo_only=True`: their end cards show only centered DEFN text,
+without a divider, tagline or subtitle. Other presets retain their existing end cards.
+
+These three tracks are roughly 4–5 dB louder than the beach track over the opening
+53 seconds, so their preset gain is intentionally reduced to 0.24 to balance music
+against gameplay effects. The original beach preset retains 0.36; `--music-volume`
+still takes precedence over either default.
+
+From the repository root, using each recording's actual boot-frame value:
+
+```powershell
+python scripts\capture.py --shot jungle_line --video --out-dir build\capture\sfx
+python scripts\capture.py --shot winter_fireline --video --out-dir build\capture\sfx
+python scripts\capture.py --shot town_crossfire --video --out-dir build\capture\sfx
+python scripts\edit_hold_the_line.py --variation jungle_line --boot-frames 39
+python scripts\edit_hold_the_line.py --variation winter_fireline --boot-frames 39
+python scripts\edit_hold_the_line.py --variation town_crossfire --boot-frames 39
+```
+
+Omitting `--variation` (or choosing `hold_the_line`) retains the original beach edit.
+Explicit `--source`, `--output`, `--music` and `--music-volume` always override preset defaults.
+All variations keep the 53-second structure: 7-second hook, 7-second deployment,
+35-second continuous battle and 4-second title. Initial shot-relative clips are
+`(26, 33)`, `(1.2, 8.2)` and `(12.5, 47.5)`, with captions on the finished edit's
+clock at `7.6–13.2`, `15.8–21` and `24.8–29` seconds. Scene fades, caption styling
+and uninterrupted music are shared with the beach edit.
+The jungle variation includes a reposition order; its final caption runs at `29.8–34` seconds
+to match the recorded reinforcement click after the energy wait. It shows a pressured defence,
+not a claimed victory. Inspect the actual movie as well as the dry-run stills: combat outcomes
+and affordability timings can differ between takes.
+
+`VARIATIONS` in the editor holds typed `Variation` and `Caption` values: add a preset's
+`clips=` to adjust its source windows, or change its caption times independently.
+Validation preserves the three clip lengths, frame-aligned boundaries and caption
+fade room, and requires source duration through the latest clip endpoint plus boot frames
+(not merely the final clip in edit order). Generated caption/end-card PNGs are retained
+beside the output in `<output-stem>_titles` for inspection and regenerated on subsequent edits.
+
+Check the marked stills again after balance or progression changes: an unaffordable deployment delays all later
+events. Captures use the current local campaign save, including unlocks and upgrades, and a run that finishes a
+match can update that save. The shots aim to end before mission completion, but an early defeat
+can still update the save.
 
 ## Extending it
 

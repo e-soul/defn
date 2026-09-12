@@ -1,0 +1,35 @@
+{
+  "name": "jungle_line",
+  "level": "level_02",
+  "seed": 20260913,
+  "fps": 60,
+  "duration_seconds": 54,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "Impact covers the jungle approach while Marksman answers the armoured units.",
+    "Pull the advanced Marksman back before the hound reaches it, then reinforce the mixed line."
+  ],
+  "cursor": {"input_chip": true, "start": [1620, 900]},
+  "timeline": [
+    {"at": 2.0, "action": "deploy", "unit": "impact", "travel": 0.42},
+    {"at": 4.3, "action": "deploy", "unit": "marksman", "travel": 0.42},
+    {"at": 7.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 14.0, "action": "still", "label": "contact"},
+    {"at": 15.0, "action": "select", "target": "rightmost", "travel": 0.55},
+    {"at": 16.0, "action": "move", "ahead": -200, "travel": 0.5},
+    {"at": 18.0, "action": "deselect", "ahead": 550, "travel": 0.4},
+    {"at": 18.5, "action": "deploy", "unit": "breacher", "travel": 0.45},
+    {"at": 20.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 25.0, "action": "deploy", "unit": "operator", "travel": 0.45},
+    {"at": 26.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 28.0, "action": "still", "label": "hook"},
+    {"at": 33.0, "action": "deploy", "unit": "breacher", "travel": 0.45},
+    {"at": 34.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 38.0, "action": "still", "label": "reinforcements"},
+    {"at": 41.0, "action": "deploy", "unit": "impact", "travel": 0.45},
+    {"at": 42.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 47.0, "action": "still", "label": "payoff"}
+  ]
+}

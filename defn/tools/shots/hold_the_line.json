@@ -1,0 +1,45 @@
+{
+  "name": "hold_the_line",
+  "level": "level_03",
+  "seed": 20260911,
+  "fps": 60,
+  "duration_seconds": 60,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "Source take for Give ground. Hold the line. The final edit starts in combat, then cuts back to deployment.",
+    "Keep the retreat ahead of energy-gated reinforcement events so a waiting card cannot delay the order.",
+    "Stills bracket selection, retreat, renewed contact and the local payoff; check them before recording."
+  ],
+  "cursor": {
+    "input_chip": true,
+    "start": [1620, 900]
+  },
+  "timeline": [
+    {"at": 2.0, "action": "deploy", "unit": "breacher", "travel": 0.42},
+    {"at": 4.3, "action": "deploy", "unit": "marksman", "travel": 0.42},
+    {"at": 8.0, "action": "deploy", "unit": "impact", "travel": 0.42},
+    {"at": 9.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 14.5, "action": "still", "label": "contact"},
+    {"at": 15.0, "action": "select", "target": "rightmost", "travel": 0.55},
+    {"at": 15.5, "action": "still", "label": "selected"},
+    {"at": 16.0, "action": "move", "ahead": -200, "travel": 0.5},
+    {"at": 16.3, "action": "still", "label": "order"},
+    {"at": 18.0, "action": "still", "label": "retreat"},
+    {"at": 20.0, "action": "deselect", "ahead": 550, "travel": 0.4},
+    {"at": 23.5, "action": "deploy", "unit": "operator", "travel": 0.45},
+    {"at": 24.5, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 28.0, "action": "still", "label": "regroup"},
+    {"at": 30.0, "action": "deploy", "unit": "breacher", "travel": 0.45},
+    {"at": 31.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 34.0, "action": "still", "label": "reinforcements"},
+    {"at": 38.0, "action": "deploy", "unit": "marksman", "travel": 0.45},
+    {"at": 39.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 42.0, "action": "still", "label": "hold"},
+    {"at": 45.0, "action": "deploy", "unit": "operator", "travel": 0.45},
+    {"at": 46.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 50.0, "action": "still", "label": "payoff"},
+    {"at": 57.0, "action": "still", "label": "end"}
+  ]
+}

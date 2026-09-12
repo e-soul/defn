@@ -144,6 +144,15 @@ func _boot() -> bool:
 		printerr("[capture] game scene did not build")
 		return false
 
+	if bool(_shot.get("mute_music", false)):
+		var music := current_scene.get_node_or_null("BackgroundMusicPlayer/MusicStreamPlayer") as AudioStreamPlayer
+		if music == null:
+			printerr("[capture] mute_music requested but the music player is missing")
+			return false
+		# Silence only this player; keep its timing and the game's effects untouched.
+		music.volume_db = -80.0
+		print("[capture] music muted; recording gameplay effects only")
+
 	if bool(_shot.get("background_only", false)):
 		var background := current_scene.get_node_or_null("Background")
 		if background == null or _camera == null:
@@ -407,6 +416,8 @@ func _play() -> void:
 
 	var fade_in := int(round(float(_shot.get("fade_in", 0.5)) * _fps))
 	var fade_out := int(round(float(_shot.get("fade_out", 0.6)) * _fps))
+	if fade_in == 0:
+		_set_cover_alpha(0.0)
 
 	print("[capture] playing %s: %d event(s) over %d frames @ %d fps" % [str(_shot.get("name", "shot")), events.size(), total, _fps])
 	# Recording time is shot time plus the boot the cover is hiding; a trim or a --gif span is measured

@@ -1,0 +1,33 @@
+{
+  "name": "winter_fireline",
+  "level": "level_04",
+  "seed": 20260914,
+  "fps": 60,
+  "duration_seconds": 54,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "A mixed opening against the winter wave: Breacher, Marksman and Operator.",
+    "Impact joins behind the first contact; later reinforcements sustain the line."
+  ],
+  "cursor": {"input_chip": true, "start": [1620, 900]},
+  "timeline": [
+    {"at": 2.0, "action": "deploy", "unit": "breacher", "travel": 0.42},
+    {"at": 4.3, "action": "deploy", "unit": "marksman", "travel": 0.42},
+    {"at": 7.0, "action": "deploy", "unit": "operator", "travel": 0.42},
+    {"at": 8.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 14.0, "action": "still", "label": "contact"},
+    {"at": 18.5, "action": "deploy", "unit": "impact", "travel": 0.45},
+    {"at": 20.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 25.0, "action": "deploy", "unit": "breacher", "travel": 0.45},
+    {"at": 26.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 28.0, "action": "still", "label": "hook"},
+    {"at": 33.0, "action": "deploy", "unit": "marksman", "travel": 0.45},
+    {"at": 34.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 38.0, "action": "still", "label": "reinforcements"},
+    {"at": 41.0, "action": "deploy", "unit": "operator", "travel": 0.45},
+    {"at": 42.0, "action": "park", "canvas": [1520, 560], "travel": 0.6},
+    {"at": 47.0, "action": "still", "label": "payoff"}
+  ]
+}
