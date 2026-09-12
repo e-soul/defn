@@ -402,7 +402,7 @@ bool menu_manager_shows_main_menu(MenuManager *menu_manager) {
 }
 
 bool menu_manager_shows_game_menu(MenuManager *menu_manager) {
-    return menu_manager_screen_has_chrome(menu_manager, "CAMPAIGN") && has_all_buttons(menu_manager, {"New/Continue Game", "Progress", "Main Menu"});
+    return menu_manager_screen_has_chrome(menu_manager, "DEFN") && has_all_buttons(menu_manager, {"Campaign", "Progress", "Main Menu"});
 }
 
 bool menu_manager_shows_options_menu(MenuManager *menu_manager) {
@@ -411,7 +411,7 @@ bool menu_manager_shows_options_menu(MenuManager *menu_manager) {
 }
 
 bool menu_manager_shows_level_select(MenuManager *menu_manager) {
-    return has_all_labels(menu_manager, {"CAMPAIGN / THE EASTERN EXPEDITION", "ENEMY PRESENCE"}) && has_all_buttons(menu_manager, {"BACK"}) &&
+    return has_all_labels(menu_manager, {"CAMPAIGN", "ENEMY PRESENCE"}) && has_all_buttons(menu_manager, {"BACK"}) &&
            (find_button_by_text(menu_manager, "DEPLOY") != nullptr || find_button_by_text(menu_manager, "REPLAY") != nullptr);
 }
 
