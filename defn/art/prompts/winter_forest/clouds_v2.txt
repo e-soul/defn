@@ -1,0 +1,5 @@
+Draw a SINGLE horizontal row of six separate pale warm-grey clouds on a perfectly flat solid magenta RGB 255,0,255 background. This is a clean 2D cartoon cut-out, broad flat fills and gently irregular hard-edged silhouettes.
+
+One row only, floating through the middle of the picture, with huge empty space above and below. Six different cloud shapes of different widths, with clear empty gaps and irregular spacing. The first and last clouds are completely inside the picture with generous empty side margins. The clouds are one flat pale cream-grey colour, no outline, no interior shading, no shadow, no transparency. No pink, mauve, purple or magenta in the clouds. They will drift over a winter dusk sky; do not draw that sky.
+
+The background is exactly one unchanging flat chroma colour everywhere, without patches, panels, gradients, reflections or lighting. Crisp opaque cloud edges, not blur, feathering, haze or fog. No second row, stacked clouds, nested silhouettes, scenery, text, frame, objects, snow, photographic texture or painterly rendering.

@@ -1,0 +1,27 @@
+{
+  "name": "level_04_opening",
+  "level": "level_04",
+  "seed": 20260911,
+  "fps": 60,
+  "duration_seconds": 36,
+  "_notes": [
+    "Winter background review. Recon places first contact at 15-18 seconds with the camera at x=960.",
+    "Capture the clear forest, advancing units and both opening engagements at real gameplay scale."
+  ],
+  "cursor": {
+    "input_chip": false,
+    "start": [1620, 900]
+  },
+  "timeline": [
+    {"at": 1.0, "action": "still", "label": "forest"},
+    {"at": 2.0, "action": "deploy", "unit": "breacher"},
+    {"at": 4.0, "action": "deploy", "unit": "marksman"},
+    {"at": 7.0, "action": "park", "canvas": [1620, 900]},
+    {"at": 8.0, "action": "still", "label": "advance"},
+    {"at": 12.0, "action": "deploy", "unit": "impact"},
+    {"at": 17.0, "action": "still", "label": "contact"},
+    {"at": 18.0, "action": "deploy", "unit": "breacher"},
+    {"at": 20.0, "action": "park", "canvas": [1620, 900]},
+    {"at": 34.0, "action": "still", "label": "second_wave"}
+  ]
+}

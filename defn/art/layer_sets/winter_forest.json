@@ -1,0 +1,73 @@
+{
+    "name": "winter_forest",
+    "_about": [
+        "Level 4 Winter Forest: pink-amber dusk, ice-blue mountains, snow-laden dark pines and a clear snow floor.",
+        "Build with scripts/build_layer_set.py. Layer order is draw order; the ground precedes the forest.",
+        "Generations and sidecars are in build/art/winter_forest/. All used gemini-3.1-flash-image, 4:1, 4K, without references.",
+        "No seam waivers, flattening or feathering. Prompt revisions are archived rather than overwritten.",
+        "Clouds v1 and v2 variant 1 had duplicate rows or graded keys; v2 variant 2 has six complete clouds and intentional empty margins.",
+        "Forest v1-v3 failed on clipped tips, repeated groups or mismatched rock feet. v4 replaces rock feet with continuous snow hummocks.",
+        "The first v4 sweep had clipped trees or purple stains; the refinement damaged another tree. The second sweep's third roll is the keeper.",
+        "The forest snow continues into the floor, so it has no contact shadow: a shadow along that material join would draw an artificial stripe."
+    ],
+    "output": "defn/assets/backgrounds/winter_forest",
+    "viewport_height": 1080,
+    "layers": [
+        {
+            "name": "sky",
+            "source": "build/art/winter_forest/sky_tileable.png",
+            "res_path": "assets/backgrounds/winter_forest/sky.png",
+            "screen_height": 1.0,
+            "base_ratio": 1.0,
+            "scroll_scale": 0.05,
+            "density": 1,
+            "opaque": true,
+            "_source": "sky.txt, sky_20260911-211339_01.jpg. make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=2, width=8240."
+        },
+        {
+            "name": "clouds",
+            "source": "build/art/winter_forest/clouds_tileable.png",
+            "res_path": "assets/backgrounds/winter_forest/clouds.png",
+            "screen_height": 0.21,
+            "base_ratio": 0.28,
+            "scroll_scale": 0.15,
+            "autoscroll": 4.0,
+            "density": 2,
+            "_source": "clouds_v2.txt, clouds_v2_20260911-211513_02.jpg. cut_layer auto key (197,57,148), --low 0.20 --no-crop: ambiguous 0.39%. Trim only rows to alpha > 2; preserve empty side margins."
+        },
+        {
+            "name": "far",
+            "source": "build/art/winter_forest/far_tileable.png",
+            "res_path": "assets/backgrounds/winter_forest/far.png",
+            "screen_height": 0.40,
+            "base_ratio": 0.57,
+            "scroll_scale": 0.30,
+            "density": 2,
+            "_source": "far.txt, far_20260911-211339_01.jpg. cut_layer --key magenta --low 0.20: crop [1,753,8255,1936], ambiguous 0.45%. make_tileable --width 7800 --tolerance 0.05 --no-flatten --feather 0: x=209, width=7774.",
+            "_geometry": "Reaches below the floor top at 0.55, so the two independent scrolling phases cannot expose sky below the mountains."
+        },
+        {
+            "name": "ground",
+            "source": "build/art/winter_forest/ground_final_tileable.png",
+            "res_path": "assets/backgrounds/winter_forest/ground.png",
+            "screen_height": 0.45,
+            "base_ratio": 1.0,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "opaque": true,
+            "_source": "ground_v2.txt, ground_v2_20260911-212340_02.jpg. Apply constant RGB offset [-4,-2,0] in signed arithmetic, clamp to [0,255], save ground_matched.png. This matches the floor's row at screen y=0.65 to the forest's RGB 224,236,247 without a spatial blend. make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=2, width=8240. Variant 1 was rejected in-game for horizontal bands.",
+            "_geometry": "The top at 0.55 is below the forest's lowest opaque crest at 0.543, hiding the straight edge across the whole wrap."
+        },
+        {
+            "name": "mid",
+            "source": "build/art/winter_forest/mid_final_tileable.png",
+            "res_path": "assets/backgrounds/winter_forest/mid.png",
+            "screen_height": 0.54,
+            "base_ratio": 0.65,
+            "scroll_scale": 1.0,
+            "density": 2,
+            "_source": "mid_v4.txt, mid_v4_reroll_20260911-212202_03.jpg. cut_layer --key magenta --low 0.20: crop [1,105,8255,2047], ambiguous 1.35%, reviewed for interior stains. make_tileable --width 8000 --tolerance 0.03 --no-flatten --feather 0: x=42, width=8169.",
+            "_geometry": "8169x1942 source; latest opaque crest row 1555. Forest spans 0.11-0.65, above the unchanged 0.66-0.825 belt. The bottom snow is RGB 224,236,247."
+        }
+    ]
+}

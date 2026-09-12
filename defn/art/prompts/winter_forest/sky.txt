@@ -1,0 +1,7 @@
+Create one sky-only layer for a hand-drawn 2D cartoon belt-scrolling game. Broad restrained colour fields, no photographic lens behaviour. This sky is the no-contour exception to a clean hand-inked, cel-shaded illustration style: a smooth vertical wash only.
+
+Winter dusk above a snowy conifer forest. Muted dusty pink at the top flows through pale peach into a very light amber-cream at the bottom. Cool restrained pink, never saturated magenta; gentle warm light near the horizon. Fill the entire canvas opaquely. The lower third stays a quiet pale cream.
+
+Horizontal tiling is a strict requirement. Every narrow vertical slice has exactly the same colour and value distribution as every other. Both edges are identical and interchangeable. Light is completely even left to right: no vignette, brighter centre, dark corners, directional illumination or lateral colour drift. Vertical transitions are welcome. One continuous wash, not panels, strips or a diagram.
+
+Only sky colour. No clouds, sun, moon, stars, horizon, mountain, trees, snow, scenery, objects, text, logos, border, UI, grain, texture, brush marks, glow or photorealism.

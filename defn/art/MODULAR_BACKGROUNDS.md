@@ -3,9 +3,9 @@
 Gameplay backgrounds built as per-biome **layer sets**: a few seamless horizontal strata composed at load time
 into a parallax stack, instead of one monolithic image.
 
-**Status.** Working end to end for four biomes: port-terminal in endless mode, desert-outpost on campaign
-Level 1, jungle-ruin on Level 2, and summar-beach on Level 3. All three campaign sets replace their single
-backgrounds outright. Levels 4–5 still use their single images and are unchanged. Stamps — scattered props on
+**Status.** Working end to end for five biomes: port-terminal in endless mode, desert-outpost on campaign
+Level 1, jungle-ruin on Level 2, summar-beach on Level 3, and winter-forest on Level 4. All four campaign sets
+replace their single backgrounds outright. Level 5 still uses its single image and is unchanged. Stamps — scattered props on
 top of the strata — are designed but not built, though the beach's near band is four separate rolls abutted
 into one strip, which is the same idea done by hand for one layer.
 
@@ -267,6 +267,47 @@ plane, and unlike a shoreline it *wants* a tall varied silhouette, which is exac
 screen between the trunks. The prompt rules below carry what each attempt taught. What they share is the
 oldest lesson in this file - nothing in `check_tiling.py` or the build has an opinion about whether a layer is
 the right thing to have drawn, and the only test that catches it is looking at the level.
+
+### Winter Forest: Level 4
+
+The fifth set returns to five planes: a pink-amber dusk wash, slowly drifting cream-grey clouds, ice-blue
+mountains, a smooth snow floor and a snow-laden pine forest. The recipe is
+[`layer_sets/winter_forest.json`](layer_sets/winter_forest.json); the capture shot is
+[`../tools/shots/level_04_opening.json`](../tools/shots/level_04_opening.json).
+
+| Layer | `scroll_scale` | `height_ratio` | `bottom_ratio` | Tile |
+|---|---|---|---|---|
+| `sky` | 0.05 | 1.000 | 1.000 | 4345 |
+| `clouds` | 0.15 | 0.210 | 0.280 | 3005 |
+| `far` | 0.30 | 0.400 | 0.570 | 2838 |
+| `ground` | **1.00** | 0.450 | 1.000 | 1955 |
+| `mid` | **1.00** | 0.540 | 0.650 | 2453 |
+
+Clouds drift at 4 pixels per second. Trees reach 0.11 at their tallest tips; their snow hummocks end at 0.65,
+just above the unchanged 0.66-0.825 combat belt. The floor begins at 0.55, below the forest's lowest opaque
+crest at 0.543: the shipped alpha covers that straight edge in 100% of columns. Mountains reach 0.57, below
+the floor's top, so independent scroll phases cannot uncover sky beneath them. Every tile is wider than the
+1920 viewport, and the two ground-speed layers have different periods.
+
+The forest takes the beach dune solution rather than the desert rock-foot solution. Its snow hummocks carry
+an opaque base to the bottom of the canvas; trees and roots retain strong contours, while the snow does not.
+There is **no contact shadow** along this boundary because snow is meeting snow, not an object meeting its
+floor. A shadow there would manufacture a stripe. The first floor passed the wrapping metric but had visible
+horizontal bands in the game. Its smoother sibling needed a constant RGB correction of `[-4,-2,0]` to match
+the forest's bottom snow at the actual meeting row, RGB 224,236,247. That small correction is recorded in the
+manifest, is independent of x, and does not conceal a wrapping defect.
+
+The prompt history records the rejected attempts: clouds with duplicate rows and uneven chroma fields,
+forests with clipped tips or repeated halves, and rock-foot bands whose edges would not meet. The first
+snow-hummock keeper carried purple stains inside its snow; a refinement cleared one and damaged another tree,
+so the shipped forest is a fresh roll, not that edit. Its 1.35% ambiguous matte was inspected for interior
+damage; the clouds and mountains measure 0.39% and 0.45%. The clouds' actual backdrop is muted magenta, not
+the literal RGB requested, so they use border-detected keying and retain their intentional empty side margins.
+
+All five shipped layers pass without flattening, feathering or seam waivers. Review includes half-width-rolled
+joins and the real game's clear opening, advance and first contact through
+`python scripts/capture.py --shot level_04_opening --stills`. The old winter image remains an asset archive;
+Level 4 and both export presets name the five layers instead.
 
 ### Stamps
 
@@ -903,8 +944,11 @@ The beach set is six textures at **15.1 MiB on disk** and **83.9 MiB** of RGBA p
 31.6 for the single image it replaced. The dune band is the expensive one at half the screen and full density,
 which is the usual shape: in every set so far the near standing band is the layer that costs.
 
+The winter set is five textures at approximately **15.5 MiB on disk** and **83.3 MiB** of RGBA pixel storage,
+with lossless imports and no mipmaps.
+
 **Known wart.** The layer list lives inline in the level file — `data/endless.json`,
-`data/levels/level_01.json`, `data/levels/level_02.json` and `data/levels/level_03.json` — duplicating geometry that
+`data/levels/level_01.json` through `data/levels/level_04.json` — duplicating geometry that
 `art/layer_sets/<biome>.json` also holds. A shared `data/backgrounds/<biome>.json` that both the loader
 and the build script read is the right home as soon as a second level wants the *same* set. Until then,
 changing geometry means editing the manifest, re-running the build, and pasting the printed block.
@@ -929,12 +973,12 @@ scrolling — the shortest period the tiling can have.
 Neither is fixable by regenerating a better 3840 x 2160 image, and both dissolve the moment the background
 stops being one texture.
 
-The `background_*_tiling.png` files are to be replaced eventually, and three of them now have been:
-`background_desert_outpost_tiling.png`, `background_jungle_ruin_tiling.png` and `background_beach_tiling.png`
-no longer ship, since Levels 1, 2 and 3 carry layer sets instead. The desert file stays in the assets
+The `background_*_tiling.png` files are to be replaced eventually, and four of them now have been:
+`background_desert_outpost_tiling.png`, `background_jungle_ruin_tiling.png`, `background_beach_tiling.png` and
+`background_winter_forest_tiling.png` no longer ship, since Levels 1-4 carry layer sets instead. The desert file stays in the assets
 repository because `data/lab/tempo_*.json` still names it, and those fixtures are never packaged; the old
-jungle and beach images stay as archives. Two remain, on Levels 4 and 5, and `background_feldkirchen_tiling.png`
-is also endless mode's fallback. They are not inputs to this pipeline and not style references for it; new sets
+jungle, beach and winter images stay as archives. Only `background_feldkirchen_tiling.png` remains, on Level 5
+and as endless mode's fallback. These images are not inputs to this pipeline and not style references for it; new sets
 are drawn from scratch against the house style, as those were.
 
 ---
@@ -977,8 +1021,8 @@ Everything in `ASSET_PROMPTS.md` still applies. A layer set adds:
   carried by a handful of distinctive formations rather than by texture. That makes it the layer stamps would
   help most: the scatter planner would let the same rock vocabulary be placed at free x positions instead of
   being baked into a strip that has to wrap.
-- **The last two campaign biomes**, Winter Forest and Feldkirchen, and retiring the remaining monolithic
-  backgrounds — including the Feldkirchen image endless mode still keeps as a fallback.
+- **The last campaign biome**, Feldkirchen, and retiring its monolithic background, which endless mode still
+  keeps as a fallback.
 - **The beach's three same-rate planes.** `ground`, `dunes` and `mid` all scroll at 1.00, and spreading their
   tiles apart took most of the geometry work in that set. A fourth plane on that rate would be hard to place;
   if a biome ever needs one, the answer is probably stamps rather than another stratum.

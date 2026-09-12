@@ -1,0 +1,7 @@
+Create one cut-out cloud layer for a hand-drawn 2D cartoon belt-scroller. Broad flat fills, gently irregular authored silhouettes, restrained values, clean hard cel edges. This is not a complete landscape.
+
+Six separate winter dusk cloud masses in one shallow horizontal band through the middle third of the canvas. Pure perfectly flat chroma green RGB 0,255,0 fills every other part of the picture, including generous clear margins on both sides. Each cloud is a different outline: a low stretched wisp, a compact lopsided billow, a broad flat-bottomed mass, two overlapping lobes, a small broken tuft, and a longer gently stepped mass. Irregular spacing, large open gaps, no evenly spaced rhythm, no interior repetition. No cloud touches either side edge. Their combined drawn height is at most one third of the canvas, because a shallow content band gives this layer a long horizontal tile.
+
+Single flat muted pale rose-grey fill, close in value to a pink-peach winter sky. No internal shading, dark outlines or nested little cloudlets. Loose silhouettes but perfectly crisp edges against the green field, entirely opaque, never blurred or feathered. The artwork contains no green, olive, sage, lime, cyan or teal, no reflected green light. Distance and softness come only from low contrast, not transparency.
+
+Light is flat across the full width. No sun, glow, rays, haze, fog, sky wash, snowflakes, mountains, trees, ground, characters, symbols, text, logo, border, frame, UI, photographic rendering, grain or brushwork.

@@ -1,7 +1,13 @@
 ﻿{
   "level_id": 4,
   "name": "The Winter Forest",
-  "background": "res://assets/backgrounds/background_winter_forest_tiling.png",
+  "background_layers": [
+    {"path": "res://assets/backgrounds/winter_forest/sky.png", "scroll_scale": 0.05, "height_ratio": 1.000, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/winter_forest/clouds.png", "scroll_scale": 0.15, "height_ratio": 0.210, "bottom_ratio": 0.280, "autoscroll": 4.0},
+    {"path": "res://assets/backgrounds/winter_forest/far.png", "scroll_scale": 0.30, "height_ratio": 0.400, "bottom_ratio": 0.570},
+    {"path": "res://assets/backgrounds/winter_forest/ground.png", "scroll_scale": 1.00, "height_ratio": 0.450, "bottom_ratio": 1.000},
+    {"path": "res://assets/backgrounds/winter_forest/mid.png", "scroll_scale": 1.00, "height_ratio": 0.540, "bottom_ratio": 0.650}
+  ],
   "starting_core_resource": 84,
   "base_integrity": 3,
   "base_position": [0.06, 0.65],
