@@ -9,7 +9,9 @@ const vm = require("node:vm");
 
 const html = fs.readFileSync(path.join(__dirname, "../export_templates/web_shell.html"), "utf8");
 const config = { executable: "renamed-game", gdextensionLibs: ["extension.wasm"] };
-const source = html.match(/<script>([\s\S]*?)<\/script>/)[1]
+const source = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
+	.map(match => match[1])
+	.find(script => script.includes("$GODOT_CONFIG"))
 	.replace("$GODOT_CONFIG", JSON.stringify(config))
 	.replace("$GODOT_THREADS_ENABLED", "false")
 	.replace("$GODOT_URL", "renamed-game.js");
@@ -79,11 +81,13 @@ function harness({ missing = [], startGame = async () => {}, fullscreenEnabled =
 	return { calls, document, window, element: id => document.getElementById(id) };
 }
 
-test("export placeholders are wired and the shell has no external dependencies", () => {
+test("export placeholders and the Google tag are wired", () => {
 	for (const placeholder of ["$GODOT_CONFIG", "$GODOT_THREADS_ENABLED", "$GODOT_URL", "$GODOT_HEAD_INCLUDE"]) {
 		assert.ok(html.includes(placeholder), placeholder);
 	}
-	assert.doesNotMatch(html, /(?:src|href)=["']https?:/);
+	const externalUrls = [...html.matchAll(/(?:src|href)=["'](https?:[^"']+)/g)].map(match => match[1]);
+	assert.deepEqual(externalUrls, ["https://www.googletagmanager.com/gtag/js?id=G-TJ1Q6YT9EG"]);
+	assert.match(html, /gtag\('config', 'G-TJ1Q6YT9EG'\)/);
 	const presets = fs.readFileSync(path.join(__dirname, "../export_presets.cfg"), "utf8");
 	assert.match(presets, /html\/custom_html_shell="res:\/\/export_templates\/web_shell.html"/);
 });

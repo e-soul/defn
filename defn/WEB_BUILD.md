@@ -104,8 +104,8 @@ placeholders during export, so the shell also works with renamed export targets.
 
 The shell provides a responsive game viewport, branded download progress,
 startup errors with a retry action, and an optional fullscreen control. It uses
-system fonts and inline styles/scripts, with no CDN or external dependencies.
-Its CSS tokens mirror the dark neutrals and accent in
+system fonts and inline styles/scripts. The Google tag is the shell's only
+external dependency and records web deployment analytics. Its CSS tokens mirror the dark neutrals and accent in
 [data/ui_theme.json](data/ui_theme.json); keep them aligned when changing the
 game palette. Only the browser shell uses JavaScript; gameplay stays in C++.
 
