@@ -136,8 +136,38 @@ rejects browser/network errors, and checks responsive viewport sizing.
 [Web CI](../.github/workflows/web-ci.yml) runs on pushes to `master` and manual
 dispatch, matching the existing native workflows. It uses the same private
 asset checkout, setup and build wrapper; tests both debug and release exports;
-and uploads playable exports as an artifact. It does not publish a release or
+and uploads playable exports as an artifact. Standalone Web CI runs do not
 deploy a website. SDK and compiler caches are keyed by the toolchain pin.
+Browser checks serve exports below a URL prefix, matching a Pages project site.
+
+## GitHub Pages
+
+[Release](../.github/workflows/release.yml) calls the same Web CI workflow and
+uploads the tested `build/web/release` directory with
+`actions/upload-pages-artifact`. Once the native and Web builds succeed, a
+separate job deploys that artifact with `actions/deploy-pages`. No generated
+files are committed and no `gh-pages` branch is needed.
+
+Both `v*` tag pushes and manual **Release** runs deploy the selected ref's Web
+build to **https://e-soul.github.io/defn/**. Ordinary `master` pushes and manual
+**Web CI** runs only build and test. Native release ZIP publishing remains
+tag-only. Pages deployments are serialized without cancelling an active deploy;
+the `github-pages` environment records the deployed URL.
+
+One-time repository setup (requires administrator access):
+
+1. In **Settings > Pages > Build and deployment**, set **Source** to
+   **GitHub Actions**, not a branch.
+2. If the `github-pages` environment restricts deployment refs, allow release
+   tags matching `v*` and any branches used for manual Release runs.
+3. Push a release tag or run **Release** after these workflow changes are on
+   the selected ref. The site becomes available after its first deployment.
+
+The Pages artifact contains the complete release export at its root, including
+`index.html`, the PCK, engine WASM and extension WASM. Relative asset URLs work
+under `/defn/`; the single-threaded export needs no custom HTTP headers.
+
+## Toolchain upgrades
 
 When upgrading, change the Emscripten/Godot pairing and emsdk revision in the pin
 together, use a separate SDK directory if the manager revision changes, and run

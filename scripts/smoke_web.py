@@ -8,6 +8,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+from urllib.parse import quote
 
 from playwright.sync_api import sync_playwright
 
@@ -17,7 +18,8 @@ from web_toolchain import load_toolchain
 def smoke_export(browser, directory: Path) -> None:
     if not (directory / "index.html").is_file():
         raise FileNotFoundError(f"No Web export at {directory / 'index.html'}")
-    handler = partial(SimpleHTTPRequestHandler, directory=str(directory))
+    # Project sites such as GitHub Pages serve the export below a URL prefix.
+    handler = partial(SimpleHTTPRequestHandler, directory=str(directory.parent))
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -35,7 +37,10 @@ def smoke_export(browser, directory: Path) -> None:
         failures.append(f"HTTP {response.status}: {response.url}") if response.status >= 400 else None
     ))
     try:
-        page.goto(f"http://127.0.0.1:{server.server_port}/index.html", wait_until="domcontentloaded")
+        page.goto(
+            f"http://127.0.0.1:{server.server_port}/{quote(directory.name)}/",
+            wait_until="domcontentloaded",
+        )
         page.wait_for_function(
             "() => document.getElementById('overlay').hidden"
             " || document.getElementById('overlay').dataset.state === 'error'",
