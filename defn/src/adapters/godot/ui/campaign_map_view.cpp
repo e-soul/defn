@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <unordered_set>
 
 namespace defn {
@@ -486,7 +487,7 @@ void CampaignMapView::build_map_content() {
 
     build_endless_button(header_row);
 
-    auto *secured = make_label(vformat("%d / %d SECURED", view_model_.completed_count, view_model_.missions.size()), "screen_heading");
+    auto *secured = make_label(vformat("%d / %d SECURED", view_model_.completed_count, static_cast<uint64_t>(view_model_.missions.size())), "screen_heading");
     secured->set_name("SecuredCount");
     set_state_tint(secured, "state_success");
     secured->set_h_size_flags(SIZE_EXPAND_FILL);
@@ -512,7 +513,7 @@ void CampaignMapView::build_routes(Control *route_layer) {
         const PackedVector2Array points =
             route_points(mission_center(view_model_.missions[route.from_index]), mission_center(view_model_.missions[route.to_index]));
         auto *shadow = memnew(Line2D);
-        shadow->set_name(vformat("RouteShadow%d", route.from_index));
+        shadow->set_name(vformat("RouteShadow%d", static_cast<uint64_t>(route.from_index)));
         shadow->set_points(points);
         shadow->set_width(UiThemeProvider::metric("map_route_shadow_width", 8));
         shadow->set_default_color(UiThemeProvider::color("route_shadow"));
@@ -520,7 +521,7 @@ void CampaignMapView::build_routes(Control *route_layer) {
         route_layer->add_child(shadow);
 
         auto *line = memnew(Line2D);
-        line->set_name(vformat("RouteSegment%d", route.from_index));
+        line->set_name(vformat("RouteSegment%d", static_cast<uint64_t>(route.from_index)));
         line->set_points(points);
         line->set_width(UiThemeProvider::metric(route.state == CampaignRouteState::LOCKED ? "map_route_width_locked" : "map_route_width", 4));
         line->set_default_color(route_color(route.state));

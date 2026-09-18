@@ -1,0 +1,102 @@
+name: Web CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      SCONS_VERSION: "4.10.1"
+      SCONS_CACHE: ${{ github.workspace }}/build/.scons-cache-web
+
+    steps:
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.DEFN_ASSETS_APP_CLIENT_ID }}
+          private-key: ${{ secrets.DEFN_ASSETS_APP_PRIVATE_KEY }}
+          owner: e-soul
+          repositories: |
+            defn
+            defn-assets
+          permission-contents: read
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          lfs: true
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node for shell tests
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install build and browser test dependencies
+        run: |
+          python -m pip install scons==${{ env.SCONS_VERSION }} -r scripts/requirements-web-test.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Test toolchain wrapper and HTML shell
+        run: |
+          python -m unittest discover -s scripts/tests -p "test_web*.py"
+          node --test defn/tests/web_shell.test.cjs
+          python scripts/check_export_presets.py
+
+      - name: Resolve godot-cpp revision
+        id: godot-cpp
+        run: echo "revision=$(git -C godot-cpp rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pinned SDK
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/emsdk
+            !build/emsdk/downloads
+          key: web-sdk-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/web-toolchain.json') }}
+
+      - name: Cache Godot downloads
+        uses: actions/cache@v4
+        with:
+          path: build/.cache/godot
+          key: web-godot-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/web-toolchain.json') }}
+
+      - name: Cache compiler outputs
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.SCONS_CACHE }}
+          key: web-scons-v1-${{ runner.os }}-${{ env.SCONS_VERSION }}-${{ hashFiles('scripts/web-toolchain.json') }}-${{ steps.godot-cpp.outputs.revision }}-${{ github.sha }}
+          restore-keys: |
+            web-scons-v1-${{ runner.os }}-${{ env.SCONS_VERSION }}-${{ hashFiles('scripts/web-toolchain.json') }}-${{ steps.godot-cpp.outputs.revision }}-
+
+      - name: Set up pinned local toolchain
+        run: python scripts/build_web.py --setup
+
+      - name: Build and export both Web variants
+        run: python scripts/build_web.py --target both
+
+      - name: Launch real exports in Chromium
+        run: python scripts/smoke_web.py build/web/debug build/web/release
+
+      - name: Upload playable Web exports
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-exports
+          path: build/web/
+          if-no-files-found: error

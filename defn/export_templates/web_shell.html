@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#0b0d16">
+	<meta name="description" content="Play Defn.">
+	<title>DEFN | Hold the line</title>
+	<style>
+		:root {
+			color-scheme: dark;
+			/* Palette roles from data/ui_theme.json, available before the game pack loads. */
+			--ink: #05070c;
+			--sunken: #0b0d16;
+			--surface: #131623;
+			--raised: #1d2132;
+			--border: #292e45;
+			--accent: #facf4c;
+			--focus: #fade89;
+			--text: #f2f3f8;
+			--muted: #969cb0;
+			--danger: #e25054;
+			--space: clamp(12px, 2vw, 24px);
+			font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+			background: var(--ink);
+			color: var(--text);
+		}
+		* { box-sizing: border-box; }
+		[hidden] { display: none !important; }
+		body {
+			margin: 0;
+			height: 100vh;
+			height: 100dvh;
+			display: flex;
+			flex-direction: column;
+			padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		}
+		header, footer {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: var(--space);
+			padding: 12px var(--space);
+			background: var(--sunken);
+			flex: none;
+		}
+		header { border-bottom: 1px solid var(--border); }
+		.brand { display: flex; align-items: baseline; gap: 16px; }
+		.wordmark { color: var(--accent); font-size: 24px; font-weight: 900; letter-spacing: 0.18em; }
+		.tagline, footer { color: var(--muted); font-size: 12px; }
+		.tagline { letter-spacing: 0.12em; text-transform: uppercase; }
+		button {
+			font: inherit;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text);
+			background: var(--raised);
+			border: 1px solid var(--border);
+			border-radius: 4px;
+			padding: 10px 16px;
+			min-height: 44px;
+			cursor: pointer;
+		}
+		button:hover { border-color: var(--accent); }
+		button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+		#stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+		#canvas { display: block; width: 100%; height: 100%; outline: none; }
+		#canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+		#overlay {
+			position: absolute;
+			inset: 0;
+			display: grid;
+			place-items: center;
+			padding: var(--space);
+			overflow: auto;
+			background: radial-gradient(ellipse at 50% 35%, var(--raised), var(--ink) 75%);
+		}
+		.panel { width: min(100%, 440px); padding: clamp(20px, 4vw, 40px); border: 1px solid var(--border); border-top: 3px solid var(--accent); background: var(--surface); }
+		.eyebrow { margin: 0 0 16px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+		h1 { margin: 0 0 12px; font-size: clamp(24px, 4vw, 36px); letter-spacing: -0.03em; }
+		#message { color: var(--muted); font-size: 14px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+		.download { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; font-size: 12px; }
+		#progress { display: block; width: 100%; height: 6px; margin: 12px 0 20px; border: 0; border-radius: 0; background: var(--raised); accent-color: var(--accent); }
+		#progress::-webkit-progress-bar { background: var(--raised); }
+		#progress::-webkit-progress-value { background: var(--accent); }
+		#progress::-moz-progress-bar { background: var(--accent); }
+		#overlay[data-state="error"] .panel { border-top-color: var(--danger); }
+		#retry { margin-top: 12px; color: var(--ink); background: var(--accent); }
+		footer { border-top: 1px solid var(--border); line-height: 1.4; flex-wrap: wrap; }
+		#browser-notice { color: var(--danger); font-size: 12px; margin: 0; }
+		noscript { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; background: var(--surface); }
+		@media (max-width: 600px) {
+			.tagline, .controls-hint { display: none; }
+			header, footer { padding: 8px 12px; }
+			.wordmark { font-size: 20px; }
+		}
+		@media (max-height: 450px) {
+			.tagline, footer { display: none; }
+			header { padding: 4px 12px; }
+			.panel { padding: 16px; }
+			.eyebrow { margin-bottom: 8px; }
+			.download { margin-top: 12px; }
+		}
+	</style>
+	$GODOT_HEAD_INCLUDE
+</head>
+<body>
+	<header>
+		<div class="brand"><span class="wordmark">Defn</span></div>
+		<p id="browser-notice" role="status" hidden></p>
+		<button id="fullscreen" type="button" aria-pressed="false" hidden>Fullscreen</button>
+	</header>
+	<main id="stage" aria-label="Defn game">
+		<canvas id="canvas" tabindex="-1" aria-label="Defn game viewport" aria-hidden="true">Your browser does not support canvas. Try a current browser with WebGL 2 support.</canvas>
+		<section id="overlay" data-state="loading" aria-label="Game status">
+			<div class="panel">
+				<div id="status-message" role="status" aria-live="polite" aria-atomic="true" hidden>
+					<h1 id="heading"></h1>
+					<p id="message"></p>
+				</div>
+				<div id="download">
+					<div class="download"><label for="progress">Loading game</label><span id="progress-text" aria-hidden="true">Connecting...</span></div>
+					<progress id="progress" max="100"></progress>
+				</div>
+				<button id="retry" type="button" hidden>Try again</button>
+			</div>
+		</section>
+		<noscript>Enable JavaScript to play Defn, then reload this page.</noscript>
+	</main>
+	<script>
+	(() => {
+		"use strict";
+		const config = $GODOT_CONFIG;
+		const threads = $GODOT_THREADS_ENABLED;
+		const canvas = document.getElementById("canvas");
+		const stage = document.getElementById("stage");
+		const overlay = document.getElementById("overlay");
+		const statusMessage = document.getElementById("status-message");
+		const heading = document.getElementById("heading");
+		const message = document.getElementById("message");
+		const download = document.getElementById("download");
+		const progress = document.getElementById("progress");
+		const progressText = document.getElementById("progress-text");
+		const retry = document.getElementById("retry");
+		const fullscreen = document.getElementById("fullscreen");
+		const notice = document.getElementById("browser-notice");
+		let state = "loading";
+
+		function showStopped(title, detail, failed) {
+			state = failed ? "error" : "stopped";
+			overlay.dataset.state = state;
+			overlay.hidden = false;
+			heading.textContent = title;
+			message.textContent = detail;
+			statusMessage.hidden = false;
+			download.hidden = true;
+			retry.textContent = failed ? "Try again" : "Play again";
+			retry.hidden = false;
+			canvas.tabIndex = -1;
+			canvas.setAttribute("aria-hidden", "true");
+			retry.focus();
+		}
+
+		function fail(error) {
+			console.error("Defn Web:", error);
+			const detail = error instanceof Error ? error.message : String(error);
+			showStopped("Deployment interrupted.", detail + "\nCheck your connection, then try again. If this persists, check the browser console.", true);
+		}
+
+		retry.addEventListener("click", () => window.location.reload());
+		window.addEventListener("error", event => fail(event.error || event.message));
+		window.addEventListener("unhandledrejection", event => fail(event.reason));
+
+		function resizeCanvas() {
+			const ratio = window.devicePixelRatio || 1;
+			canvas.width = Math.max(1, Math.round(stage.clientWidth * ratio));
+			canvas.height = Math.max(1, Math.round(stage.clientHeight * ratio));
+		}
+
+		new ResizeObserver(resizeCanvas).observe(stage);
+		window.addEventListener("resize", resizeCanvas);
+		resizeCanvas();
+
+		fullscreen.hidden = !document.fullscreenEnabled;
+		fullscreen.addEventListener("click", async () => {
+			notice.hidden = true;
+			try {
+				if (document.fullscreenElement) {
+					await document.exitFullscreen();
+				} else {
+					await document.documentElement.requestFullscreen();
+				}
+			} catch (error) {
+				console.error("Defn fullscreen:", error);
+				notice.textContent = "Fullscreen is unavailable. You can keep playing in this window.";
+				notice.hidden = false;
+			}
+		});
+		document.addEventListener("fullscreenchange", () => {
+			const active = !!document.fullscreenElement;
+			fullscreen.textContent = active ? "Exit fullscreen" : "Fullscreen";
+			fullscreen.setAttribute("aria-pressed", String(active));
+			if (state === "running") canvas.focus();
+		});
+
+		const script = document.createElement("script");
+		script.src = "$GODOT_URL";
+		script.onerror = () => fail(new Error("The game engine could not be downloaded. Serve all exported files together over HTTP or HTTPS."));
+		script.onload = async () => {
+			try {
+				const missing = Engine.getMissingFeatures({ threads });
+				if (missing.length) throw new Error("Your browser is missing required features:\n" + missing.join("\n"));
+				const engine = new Engine(config);
+				await engine.startGame({
+					canvas,
+					// The engine's full-window resize policy would cover the page header and footer.
+					canvasResizePolicy: 0,
+					focusCanvas: false,
+					onProgress(current, total) {
+						if (state !== "loading") return;
+						if (total > 0) {
+							const percent = Math.min(100, Math.max(0, Math.floor(current / total * 100)));
+							progress.value = percent;
+							progressText.textContent = percent === 100 ? "Starting engine..." : percent + "%";
+						} else {
+							progress.removeAttribute("value");
+							progressText.textContent = "Downloading...";
+						}
+					},
+					onExit(code) {
+						if (code !== 0) {
+							fail(new Error("The game exited with code " + code + "."));
+						} else if (state !== "error") {
+							showStopped("Until next deployment.", "Your session has ended. Ready for another run?", false);
+						}
+					},
+				});
+				if (state !== "loading") return;
+				state = "running";
+				document.title = "Defn";
+				resizeCanvas();
+				overlay.hidden = true;
+				canvas.tabIndex = 0;
+				canvas.setAttribute("aria-hidden", "false");
+				canvas.focus();
+			} catch (error) {
+				fail(error);
+			}
+		};
+		document.body.appendChild(script);
+	})();
+	</script>
+</body>
+</html>

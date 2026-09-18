@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -365,7 +366,7 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
     const bool loaded = load_from_data(*unit_data, *global_data);
     if (loaded) {
-        UtilityFunctions::print("UnitDataLoader: Loaded ", units_.size(), " unit types");
+        UtilityFunctions::print("UnitDataLoader: Loaded ", static_cast<uint64_t>(units_.size()), " unit types");
     }
     return loaded;
 }

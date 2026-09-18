@@ -96,7 +96,11 @@ BudgetAllocation allocate_budget(std::span<const UnitCost> costs, const MixShape
     // the budgets where the shape matters most; leaving under one unit's worth of budget unspent instead means B* is
     // the true smallest budget that buys the winning line.
     std::vector<std::size_t> order(slots.size());
+#if defined(__cpp_lib_ranges_iota) && __cpp_lib_ranges_iota >= 202202L
     std::ranges::iota(order, std::size_t{0});
+#else
+    std::iota(order.begin(), order.end(), std::size_t{0});
+#endif
     std::ranges::stable_sort(order, [&slots](std::size_t left, std::size_t right) { return slots[left].remainder > slots[right].remainder; });
     for (const std::size_t index : order) {
         if (spent + slots[index].cost > budget) {

@@ -7,6 +7,7 @@
 #include "json_file_loader.h"
 #include "variant_tools.h"
 #include <algorithm>
+#include <cstdint>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -21,7 +22,7 @@ bool ProgressionCatalog::load(const String &path) {
 
     const bool loaded = load_from_data(*data);
     if (loaded) {
-        UtilityFunctions::print("ProgressionCatalog: Loaded ", level_unlocks_.size(), " level unlocks");
+        UtilityFunctions::print("ProgressionCatalog: Loaded ", static_cast<uint64_t>(level_unlocks_.size()), " level unlocks");
     }
     return loaded;
 }

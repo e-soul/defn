@@ -8,6 +8,7 @@
 #include "variant_tools.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -100,7 +101,7 @@ bool UpgradeCatalog::load(const String &path) {
 
     const bool loaded = load_from_data(*data);
     if (loaded) {
-        UtilityFunctions::print("UpgradeCatalog: Loaded ", cards_.size(), " upgrade cards");
+        UtilityFunctions::print("UpgradeCatalog: Loaded ", static_cast<uint64_t>(cards_.size()), " upgrade cards");
     }
     return loaded;
 }

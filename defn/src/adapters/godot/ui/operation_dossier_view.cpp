@@ -14,6 +14,7 @@
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <algorithm>
+#include <cstdint>
 
 namespace defn {
 
@@ -229,7 +230,7 @@ void OperationDossierView::set_enemy_chips(const std::vector<std::string> &label
         enemy_chips_->add_child(make_chip(to_godot_string(labels[index]), "text_primary"));
     }
     if (labels.size() > visible_count) {
-        enemy_chips_->add_child(make_chip(vformat("+%d", labels.size() - visible_count), "text_muted"));
+        enemy_chips_->add_child(make_chip(vformat("+%d", static_cast<uint64_t>(labels.size() - visible_count)), "text_muted"));
     }
 }
 

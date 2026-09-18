@@ -4,6 +4,7 @@
 import json
 import os
 import pathlib
+import shlex
 import shutil
 import subprocess
 import sys
@@ -89,15 +90,44 @@ endless_energy_cap_arg = ["--energy-cap", energy_cap_arg] if energy_cap_arg else
 # 1. Setup the basic SCons environment
 opts = Variables()
 default_platform = "windows" if os.name == "nt" else "linux"
-opts.Add(EnumVariable("platform", "The platform to build for", default_platform, ["windows", "linux", "macos", "android", "ios"]))
+opts.Add(EnumVariable("platform", "The platform to build for", default_platform, ["windows", "linux", "macos", "android", "ios", "web"]))
 opts.Add(EnumVariable("target", "The target to build for", "template_debug", ["template_debug", "template_release", "editor"]))
 opts.Add(EnumVariable("precision", "Floating-point precision", "single", ["single", "double"]))
 opts.Add(BoolVariable("with_tidy", "Run clang-tidy alongside compilation", False))
+opts.Add(BoolVariable("threads", "Enable threading support", ARGUMENTS.get("platform") != "web"))
 
-env = Environment(variables=opts)
+if ARGUMENTS.get("platform") == "web":
+    sys.path.insert(0, str(pathlib.Path("../scripts").resolve()))
+    from web_toolchain import PIN_FILE, load_toolchain, verify_emscripten
+
+    try:
+        verify_emscripten(load_toolchain())
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        print(f"Web toolchain check failed: {error}")
+        Exit(1)
+    # Match godot-cpp's GNU command templates rather than inheriting MSVC's /Fo and /OUT.
+    env = Environment(variables=opts, tools=["default"], PLATFORM="")
+    env["ENV"] = os.environ.copy()
+    if env["threads"]:
+        print("The Web export preset requires threads=no.")
+        Exit(1)
+else:
+    env = Environment(variables=opts)
 
 # Add compilation database tool
 env.Tool('compilation_db')
+
+if env["platform"] == "web":
+    from SCons.Builder import ListEmitter
+
+    def depend_on_web_toolchain(target, source, env):
+        env.Depends(target, str(PIN_FILE))
+        return target, source
+
+    # This covers godot-cpp too: changing the pin must invalidate existing WASM objects.
+    for builder_name in ("StaticObject", "SharedObject"):
+        builder = env["BUILDERS"][builder_name]
+        builder.add_emitter(".cpp", ListEmitter([builder.emitter[".cpp"], depend_on_web_toolchain]))
 
 # 2. Import the godot-cpp configuration and preserve its C++17 environment.
 godot_env = SConscript("../godot-cpp/SConstruct", exports="env")
@@ -143,6 +173,14 @@ env["CPPDEFINES"] = remove_cppdefine(env.get("CPPDEFINES", []), "_HAS_EXCEPTIONS
 # Enable C++23
 if env["platform"] == "windows":
     env.Append(CXXFLAGS=["/std:c++latest", "/EHsc"])
+elif env["platform"] == "web":
+    # Stock Godot Web templates do not export the C++ exception tag.
+    env.Append(CXXFLAGS=["-std=c++23", "-fno-exceptions"])
+    env["SHLIBPREFIX"] = "lib"
+    # Emscripten parses response files with shell quoting, including library paths.
+    env["TEMPFILEARGESCFUNC"] = lambda arg: shlex.quote(str(arg))
+    env["SHLINKCOM_POSIX"] = env["SHLINKCOM"].replace("$TARGET", "$TARGET.posix").replace("$SOURCES", "$SOURCES.posix")
+    env["SHLINKCOM"] = "${TEMPFILE(SHLINKCOM_POSIX)}"
 else:
     env.Append(CXXFLAGS=["-std=c++23", "-fexceptions"])
 
@@ -665,6 +703,8 @@ if coverage_extension_requested:
 
 # 5. Compile into a dedicated object directory
 obj_dir = os.path.join("build", "obj")
+if env["platform"] == "web":
+    obj_dir = os.path.join(obj_dir, env["suffix"].lstrip("."))
 objects = []
 for src in extension_sources:
     obj_prefix = "hosted_" if hosted_tests_enabled else ""

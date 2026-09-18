@@ -10,6 +10,7 @@
 #include "unit_definition.h"
 #include "unit_progression_mapper.h"
 
+#include <cstdint>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -105,8 +106,9 @@ void CampaignService::load_save() {
     }
 
     save_data_ = *loaded_save;
-    UtilityFunctions::print("CampaignService: Loaded save - total_score=", save_data_.total_score, ", completed_levels=", save_data_.completed_levels.size(),
-                            ", owned_upgrades=", save_data_.owned_upgrade_counts.size());
+    UtilityFunctions::print("CampaignService: Loaded save - total_score=", save_data_.total_score,
+                            ", completed_levels=", static_cast<uint64_t>(save_data_.completed_levels.size()),
+                            ", owned_upgrades=", static_cast<uint64_t>(save_data_.owned_upgrade_counts.size()));
 }
 
 void CampaignService::create_default_save() { save_data_ = use_cases_.load_campaign(); }
