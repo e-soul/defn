@@ -25,6 +25,11 @@ def smoke_export(browser, directory: Path) -> None:
     thread.start()
     context = browser.new_context(viewport={"width": 1280, "height": 800})
     page = context.new_page()
+    # Web startup must not depend on third-party telemetry availability.
+    page.route(
+        "https://www.googletagmanager.com/**",
+        lambda route: route.fulfill(status=200, content_type="application/javascript", body=""),
+    )
     messages = []
     failures = []
     page.on("console", lambda message: (
