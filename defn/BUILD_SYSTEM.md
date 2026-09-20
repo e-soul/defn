@@ -41,7 +41,8 @@ build/<platform>-<arch>/<target>/<compiler>-<configuration hash>/<kind>/
 The selected binaries are staged in `bin` for Godot and export tooling.
 Coverage writes `summary.txt` and `html/index.html` under
 `build/coverage/<suite>`, where `<suite>` is `native`, `hosted` or `merged`.
-CI caches compiler outputs across compatible builds.
+CI caches compiler outputs across compatible builds; cache locations are
+initialized automatically on fresh checkouts.
 
 Parallel jobs within one SCons invocation are supported; avoid separate builds
 that simultaneously stage different configurations into the same `bin` directory.

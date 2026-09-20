@@ -8,7 +8,7 @@ This is a **Godot** game built as a **Belt Scroller** (2.5D side-scroller). It u
 
 - **Code-first**: Everything is implemented in C++ code. The Godot editor should only be used when something cannot be done in code.
 - **Modern C++23**: Use modern language features where they improve clarity.
-- **When Making Changes**: Follow the target architecture described in @ARCH.md. If structural changes are really needed, reflect them in @ARCH.md. Keep the @README.md short and up-to-date.
+- **When Making Changes**: Follow the target architecture described in @ARCH.md. If structural changes are really needed, reflect them in @ARCH.md.
 
 ## Build Instructions
 

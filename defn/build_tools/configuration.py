@@ -52,6 +52,14 @@ def remove_flags(flags, excluded):
     return [flag for flag in flags if str(flag) not in excluded]
 
 
+def prepare_cache_parent():
+    cache = os.environ.get("SCONS_CACHE")
+    if cache:
+        # SCons initializes the cache atomically, but requires its parent to exist.
+        Path(cache).parent.mkdir(parents=True, exist_ok=True)
+    return cache
+
+
 def configure_project(env):
     env.AppendUnique(CPPPATH=include_paths())
     env["CXXFLAGS"] = remove_flags(env.get("CXXFLAGS", []), {"/std:c++17", "-std=c++17", "-fno-exceptions"})
@@ -190,7 +198,7 @@ def native_environment(arguments):
         env.Append(CPPDEFINES=["NDEBUG"])
     if not boolean(arguments.get("verbose", "no")):
         env.Replace(CXXCOMSTR="Compiling native $SOURCE", LINKCOMSTR="Linking $TARGET")
-    cache = os.environ.get("SCONS_CACHE")
+    cache = prepare_cache_parent()
     if cache:
         env.CacheDir(cache)
         env.Decider("MD5")
@@ -221,6 +229,7 @@ def extension_environment(arguments, compilation_database=False):
     from SCons.Builder import ListEmitter
     from SCons.Script import Environment, SConscript
     validate_extension_options(arguments)
+    prepare_cache_parent()
     web = arguments.get("platform") == "web"
     env = Environment(tools=["default"], PLATFORM="") if web else Environment()
     env["ENV"] = os.environ.copy()

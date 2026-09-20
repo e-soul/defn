@@ -193,6 +193,19 @@ class WorkspaceTest(unittest.TestCase):
         return launcher
 
 
+class CacheEnvironmentTests(WorkspaceTest):
+    def test_native_cache_initializes_missing_parents_and_preserves_existing_data(self):
+        cache = self.root / "fresh-checkout" / "build" / ".scons-cache"
+        self.assertFalse(cache.parent.exists())
+        with patch.dict(os.environ, {"SCONS_CACHE": str(cache)}):
+            native_environment({})
+            self.assertTrue((cache / "config").is_file())
+            marker = cache / "existing-object"
+            marker.write_text("cached object")
+            native_environment({})
+            self.assertEqual(marker.read_text(), "cached object")
+
+
 class StagingTests(WorkspaceTest):
     def test_windows_symbols_match_binary_and_are_removed_when_disabled(self):
         binary = self.write("variant/library.dll", "binary")
