@@ -65,10 +65,6 @@ jobs:
           node --test defn/tests/web_shell.test.cjs
           python scripts/check_export_presets.py
 
-      - name: Resolve godot-cpp revision
-        id: godot-cpp
-        run: echo "revision=$(git -C godot-cpp rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Cache pinned SDK
         uses: actions/cache@v4
         with:
@@ -84,12 +80,13 @@ jobs:
           key: web-godot-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/web-toolchain.json') }}
 
       - name: Cache compiler outputs
-        uses: actions/cache@v4
+        uses: ./.github/actions/cache-scons
         with:
-          path: ${{ env.SCONS_CACHE }}
-          key: web-scons-v1-${{ runner.os }}-${{ env.SCONS_VERSION }}-${{ hashFiles('scripts/web-toolchain.json') }}-${{ steps.godot-cpp.outputs.revision }}-${{ github.sha }}
-          restore-keys: |
-            web-scons-v1-${{ runner.os }}-${{ env.SCONS_VERSION }}-${{ hashFiles('scripts/web-toolchain.json') }}-${{ steps.godot-cpp.outputs.revision }}-
+          platform: web
+          architecture: wasm32
+          configuration: debug-release
+          scons-cache: ${{ env.SCONS_CACHE }}
+          scons-version: ${{ env.SCONS_VERSION }}
 
       - name: Set up pinned local toolchain
         run: python scripts/build_web.py --setup

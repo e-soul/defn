@@ -378,6 +378,10 @@ inherit the correction; `muzzle_anchor` folds the shoot clip's offset in, and bo
 read that one function so the game and the kernel cannot disagree about where a shot starts. The offsets are measured
 by `scripts/gen_anim_offsets.py`, not authored by hand.
 
+After adding a unit or replacing its sprites, re-measure the offsets from the repository root:
+`python scripts/gen_anim_offsets.py --report` prints the measurements, `--write` updates
+`defn/data/unit_data.json`, and `--contact-sheet out.png` produces a visual check.
+
 Projectile flight is `ProjectileFlight`, an engine-free straight line at a fixed speed toward a position captured when
 the shot left the muzzle. There is no homing, so a target that keeps walking is missed by the blast -- though the direct
 target still takes impact damage, which `resolve_projectile_impact` applies by identity rather than by proximity.
@@ -908,6 +912,9 @@ Hosted tests should cover:
 
 The native suite should be the default place for behavior. Hosted tests should prove that the humble objects are wired correctly.
 
+The hosted suite starts through [godot_hosted_runner.gd](defn/tests/godot_hosted_runner.gd),
+which calls the Godot-exposed C++ runner in
+[defn_hosted_test_runner.cpp](defn/src/framework/testing/defn_hosted_test_runner.cpp).
 
 ## Practical Rules for Future Features
 

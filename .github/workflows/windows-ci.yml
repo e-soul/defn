@@ -41,18 +41,13 @@ jobs:
       - name: Set up Windows build
         uses: ./.github/actions/setup-windows-build
         with:
+          configuration: coverage
           scons-cache: ${{ env.SCONS_CACHE }}
           scons-version: ${{ env.SCONS_VERSION }}
 
       - name: Verify LLVM tools
         shell: pwsh
         run: |
-          $llvmBin = Join-Path $env:ProgramFiles "LLVM\bin"
-          if (Test-Path $llvmBin) {
-            $llvmBin >> $env:GITHUB_PATH
-            $env:PATH = "$llvmBin;$env:PATH"
-          }
-
           clang-cl --version
           clang-tidy --version
           llvm-profdata --version

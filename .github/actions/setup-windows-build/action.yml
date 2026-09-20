@@ -7,9 +7,12 @@ inputs:
     required: false
     default: "3.12"
   architecture:
-    description: CPU architecture used to build godot-cpp.
+    description: CPU architecture used to build the project and godot-cpp.
     required: false
     default: "x86_64"
+  configuration:
+    description: Build profile used by the caller (coverage or release).
+    required: true
   cache-export-templates:
     description: Cache the Godot export-template archive for release jobs.
     required: false
@@ -33,37 +36,22 @@ runs:
       shell: pwsh
       run: python -m pip install --upgrade pip scons==${{ inputs.scons-version }}
 
-    - name: Resolve godot-cpp revision
-      id: godot-cpp-revision
+    - name: Select LLVM tools
       shell: pwsh
       run: |
-        $revision = git -C godot-cpp rev-parse HEAD
-        "sha=$revision" >> $env:GITHUB_OUTPUT
+        $llvmBin = Join-Path $env:ProgramFiles "LLVM\bin"
+        if (Test-Path $llvmBin) {
+          $llvmBin >> $env:GITHUB_PATH
+        }
 
-    - name: Restore godot-cpp SCons outputs
-      id: godot-cpp-cache
-      uses: actions/cache/restore@v4
+    - name: Cache project and godot-cpp compiler outputs
+      uses: ./.github/actions/cache-scons
       with:
-        path: ${{ inputs.scons-cache }}
-        key: godot-cpp-v1-windows-${{ inputs.architecture }}-scons-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
-
-    - name: Build godot-cpp cache
-      if: steps.godot-cpp-cache.outputs.cache-hit != 'true'
-      working-directory: godot-cpp
-      shell: pwsh
-      env:
-        SCONS_CACHE: ${{ inputs.scons-cache }}
-      run: |
-        New-Item -ItemType Directory -Force -Path $env:SCONS_CACHE | Out-Null
-        python -m SCons -Q platform=windows arch=${{ inputs.architecture }} target=template_debug
-        python -m SCons -Q platform=windows arch=${{ inputs.architecture }} target=template_release
-
-    - name: Save godot-cpp SCons outputs
-      if: steps.godot-cpp-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
-      with:
-        path: ${{ inputs.scons-cache }}
-        key: godot-cpp-v1-windows-${{ inputs.architecture }}-scons-${{ inputs.scons-version }}-${{ steps.godot-cpp-revision.outputs.sha }}
+        platform: windows
+        architecture: ${{ inputs.architecture }}
+        configuration: ${{ inputs.configuration }}
+        scons-cache: ${{ inputs.scons-cache }}
+        scons-version: ${{ inputs.scons-version }}
 
     - name: Resolve Godot version
       id: godot-version

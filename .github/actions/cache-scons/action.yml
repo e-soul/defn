@@ -1,0 +1,55 @@
+name: Cache compatible SCons outputs
+description: Restore project and godot-cpp outputs now; save both after a successful job.
+
+inputs:
+  platform:
+    description: SCons target platform.
+    required: true
+  architecture:
+    description: SCons target architecture.
+    required: true
+  configuration:
+    description: Build profile (coverage, release, or Web debug-release).
+    required: true
+  scons-cache:
+    description: The SCONS_CACHE directory used by all compilation steps.
+    required: true
+  scons-version:
+    description: Installed SCons version.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Test cache and build configuration
+      shell: bash
+      run: |
+        python -m unittest discover -s scripts/tests -p "test_ci_cache.py"
+        python -m unittest discover -s defn/build_tools/tests
+
+    - name: Resolve cache compatibility
+      id: compatibility
+      shell: bash
+      env:
+        CACHE_PLATFORM: ${{ inputs.platform }}
+        CACHE_ARCH: ${{ inputs.architecture }}
+        CACHE_CONFIGURATION: ${{ inputs.configuration }}
+        CACHE_SCONS_VERSION: ${{ inputs.scons-version }}
+        CACHE_HOST_OS: ${{ runner.os }}
+        CACHE_HOST_ARCH: ${{ runner.arch }}
+        CACHE_REVISION: ${{ github.sha }}
+      run: |
+        python scripts/ci_cache.py \
+          --platform "$CACHE_PLATFORM" --architecture "$CACHE_ARCH" \
+          --configuration "$CACHE_CONFIGURATION" --scons-version "$CACHE_SCONS_VERSION" \
+          --host-os "$CACHE_HOST_OS" --host-arch "$CACHE_HOST_ARCH" \
+          --revision "$CACHE_REVISION"
+
+    # The combined action registers a post-job save. Do not replace it with an
+    # early cache/save: project outputs do not exist until the caller compiles.
+    - name: Restore and persist compiler outputs
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: ${{ steps.compatibility.outputs.key }}
+        restore-keys: ${{ steps.compatibility.outputs.restore-prefix }}

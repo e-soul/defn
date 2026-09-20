@@ -54,6 +54,7 @@ jobs:
         if: matrix.platform == 'windows'
         uses: ./.github/actions/setup-windows-build
         with:
+          configuration: release
           cache-export-templates: "true"
           scons-cache: ${{ env.SCONS_CACHE }}
           scons-version: ${{ env.SCONS_VERSION }}
@@ -62,6 +63,7 @@ jobs:
         if: matrix.platform == 'linux'
         uses: ./.github/actions/setup-linux-build
         with:
+          configuration: release
           cache-export-templates: "true"
           scons-cache: ${{ env.SCONS_CACHE }}
           scons-version: ${{ env.SCONS_VERSION }}
