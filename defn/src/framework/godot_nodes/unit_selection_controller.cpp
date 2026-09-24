@@ -128,6 +128,10 @@ void UnitSelectionController::_unhandled_input(const Ref<InputEvent> &event) {
     }
 
     if (auto *mouse_motion = Object::cast_to<InputEventMouseMotion>(event.ptr()); mouse_motion != nullptr) {
+        if (!get_viewport()->get_visible_rect().has_point(mouse_motion->get_position())) {
+            clear_hover();
+            return;
+        }
         const godot::Vector2 world_position = make_canvas_position_local(mouse_motion->get_position());
         update_hover(pick_friendly(world_position));
         return;
@@ -135,6 +139,9 @@ void UnitSelectionController::_unhandled_input(const Ref<InputEvent> &event) {
 
     auto *mouse_button = Object::cast_to<InputEventMouseButton>(event.ptr());
     if (mouse_button == nullptr || !mouse_button->is_pressed()) {
+        return;
+    }
+    if (!get_viewport()->get_visible_rect().has_point(mouse_button->get_position())) {
         return;
     }
 

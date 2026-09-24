@@ -36,6 +36,7 @@ class MenuManager : public Node2D {
 
   public:
     void _ready() override;
+    void _process(double delta) override;
     void on_button_pressed(int intent_type, const String &target);
     void on_level_selected(const String &level_id);
     void on_endless_selected();
@@ -68,6 +69,8 @@ class MenuManager : public Node2D {
     SettingsState settings_state_;
 
     CanvasLayer *ui_layer_ = nullptr;
+    Control *ui_root_ = nullptr;
+    bool compact_ = false;
     MenuBackdrop *backdrop_ = nullptr;
     PanelContainer *career_score_plate_ = nullptr;
     Label *total_score_label_ = nullptr;

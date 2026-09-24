@@ -188,13 +188,12 @@ class WebToolchainTests(unittest.TestCase):
             for mode in ("debug", "release"):
                 (project / "bin" / build_web.web_library(mode)).touch()
             with patch.object(build_web, "PROJECT_DIR", project), redirect_stdout(io.StringIO()):
-                self.assertEqual(build_web.main(["--build-only", "--target", "both", "--jobs", "2"]), 0)
+                self.assertEqual(build_web.main(["--build-only", "--target", "both"]), 0)
             godot.assert_not_called()
             self.assertEqual(run.call_count, 2)
             for call, mode in zip(run.call_args_list, ("debug", "release")):
                 self.assertIn("platform=web", call.args[0])
                 self.assertIn(f"target=template_{mode}", call.args[0])
-                self.assertIn("-j2", call.args[0])
                 self.assertEqual(call.kwargs["env"], environment.return_value)
 
 

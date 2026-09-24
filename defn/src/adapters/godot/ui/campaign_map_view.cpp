@@ -12,6 +12,7 @@
 #include "level_loader.h"
 #include "operation_dossier_view.h"
 #include "progression_service.h"
+#include "ui_layout.h"
 #include "ui_screen_scaffold.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
@@ -22,6 +23,7 @@
 #include <godot_cpp/classes/canvas_item.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
+#include <godot_cpp/classes/h_flow_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/line2d.hpp>
 #include <godot_cpp/classes/property_tweener.hpp>
@@ -503,6 +505,22 @@ void CampaignMapView::build_map_content() {
     dossier_->connect("endless_requested", callable_mp(this, &CampaignMapView::deploy_endless));
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
     reference_surface_->add_child(dossier_);
+
+    const UiScreenScaffold compact = build_screen(this, {.title = to_godot_string(view_model_.title), .scrollable_body = false});
+    compact_screen_ = compact.root;
+    compact_screen_->set_name("CompactCampaign");
+    compact_body_ = compact.body;
+    auto *missions = memnew(HFlowContainer);
+    missions->set_name("CompactMissions");
+    compact.body->add_child(missions);
+    for (const auto &mission : view_model_.missions) {
+        auto *button =
+            make_button(to_godot_string(mission.name), "secondary", callable_mp(this, &CampaignMapView::select_level).bind(to_godot_string(mission.level_id)));
+        missions->add_child(button);
+    }
+    build_endless_button(compact.footer);
+    compact.footer->add_child(make_button("Back", "secondary", callable_mp(this, &CampaignMapView::request_back)));
+    layout_reference_surface();
 }
 
 void CampaignMapView::build_routes(Control *route_layer) {
@@ -617,6 +635,19 @@ void CampaignMapView::layout_reference_surface() {
         return;
     }
     const GVector2 reference = reference_size();
+    const bool compact = get_size().x < UI_COMPACT_WIDTH;
+    if (compact_screen_ != nullptr) {
+        compact_screen_->set_visible(compact);
+        reference_surface_->set_visible(!compact);
+        Control *host = compact ? compact_body_ : reference_surface_;
+        if (dossier_ != nullptr && dossier_->get_parent() != host) {
+            dossier_->reparent(host, false);
+            if (!compact) {
+                dossier_->set_position({UiThemeProvider::metric("map_dossier_x", 1408), UiThemeProvider::metric("map_dossier_y", 124)});
+                dossier_->set_size({UiThemeProvider::metric("operation_dossier_width", 464), UiThemeProvider::metric("operation_dossier_height", 866)});
+            }
+        }
+    }
     const float scale = std::min(get_size().x / reference.x, get_size().y / reference.y);
     reference_surface_->set_scale({scale, scale});
     reference_surface_->set_position((get_size() - (reference * scale)) * 0.5F);

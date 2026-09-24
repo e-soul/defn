@@ -8,6 +8,7 @@
 #include "menu_data_loader.h"
 #include "progression_manager.h"
 #include "progression_stats_screen_view.h"
+#include "responsive_ui_root.h"
 #include "scene_navigator.h"
 #include "settings_runtime.h"
 #include "settings_use_case.h"
@@ -32,9 +33,6 @@
 namespace defn {
 
 namespace {
-
-constexpr real_t PROGRESSION_SCREEN_WIDTH_RATIO = 0.58;
-constexpr real_t PROGRESSION_SCREEN_HEIGHT_RATIO = 0.6;
 
 MenuSettingViewKind to_setting_view_kind(MenuSettingKind kind) {
     switch (kind) {
@@ -135,20 +133,6 @@ MenuIntent to_menu_intent(int intent_type, const String &target) {
     };
 }
 
-godot::Vector2 get_progression_screen_size(Node *parent) {
-    const godot::Vector2 fallback(800.0F, 360.0F);
-    if (parent == nullptr || parent->get_viewport() == nullptr) {
-        return fallback;
-    }
-
-    const godot::Vector2 viewport_size = parent->get_viewport()->get_visible_rect().size;
-    if (viewport_size.x <= 0.0 || viewport_size.y <= 0.0) {
-        return fallback;
-    }
-
-    return {viewport_size.x * PROGRESSION_SCREEN_WIDTH_RATIO, viewport_size.y * PROGRESSION_SCREEN_HEIGHT_RATIO};
-}
-
 void add_section_label(VBoxContainer *button_container, const MenuSettingViewModel &setting) {
     auto *section_label = make_label(to_godot_string(setting.label), "option_section");
     section_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
@@ -161,7 +145,7 @@ HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
     row->add_theme_constant_override("separation", UiThemeProvider::spacing("section_gap"));
 
     auto *name_label = make_label(setting.label.empty() ? String("???") : to_godot_string(setting.label), "option_label");
-    name_label->set_custom_minimum_size({UiThemeProvider::metric("option_label_width"), 0.0F});
+    name_label->set_custom_minimum_size({UiThemeProvider::metric(UiThemeProvider::compact() ? "compact_option_label_width" : "option_label_width"), 0.0F});
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(name_label);
 
@@ -169,6 +153,9 @@ HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
 }
 
 godot::Vector2 option_control_size() {
+    if (UiThemeProvider::compact()) {
+        return {UiThemeProvider::metric("compact_option_control_width", 220), UiThemeProvider::metric("compact_touch_height", 48)};
+    }
     const UiButtonVariant *variant = UiThemeProvider::data().find_button("option_control");
     if (variant == nullptr) {
         return {300.0F, 40.0F};
@@ -280,7 +267,7 @@ bool try_add_volume_control(MenuManager *manager, HBoxContainer *row, const Menu
     slider->set_max(max_value);
     slider->set_step(step_value);
     slider->set_value(current_percent);
-    slider->set_focus_mode(Control::FOCUS_NONE);
+    slider->set_focus_mode(Control::FOCUS_ALL);
     slider->connect("value_changed", callable_mp(manager, &MenuManager::on_volume_changed).bind(bus_name));
     row->add_child(slider);
 
@@ -317,6 +304,20 @@ void add_back_button(MenuManager *manager, HBoxContainer *footer, const std::opt
 
 void MenuManager::_bind_methods() {}
 
+void MenuManager::_process(double /*delta*/) {
+    const bool compact = UiThemeProvider::compact();
+    if (career_score_plate_ != nullptr) {
+        career_score_plate_->set_visible(!compact && current_menu_ != "level_select");
+    }
+    if (compact != compact_) {
+        compact_ = compact;
+        if (menu_data_.find_menu(to_std_string(current_menu_)) != nullptr) {
+            const String menu = current_menu_;
+            show_menu(menu);
+        }
+    }
+}
+
 void MenuManager::_ready() {
     if (!load_menu_data()) {
         UtilityFunctions::printerr("MenuManager: Failed to load menu data");
@@ -334,6 +335,8 @@ void MenuManager::_ready() {
     add_child(ui_layer_);
 
     setup_backdrop();
+    ui_root_ = memnew(ResponsiveUiRoot);
+    ui_layer_->add_child(ui_root_);
     build_career_score();
 
     if (SceneNavigator::consume_campaign_map_request()) {
@@ -376,7 +379,7 @@ void MenuManager::build_career_score() {
     readout.row->add_child(total_score_label_);
 
     plate->add_child(readout.row);
-    ui_layer_->add_child(plate);
+    ui_root_->add_child(plate);
     career_score_plate_ = plate;
 }
 
@@ -392,6 +395,7 @@ void MenuManager::clear_active_screen() {
     }
     Control *screen = active_screen_;
     active_screen_ = nullptr;
+    screen->get_parent()->remove_child(screen);
     screen->queue_free();
 }
 
@@ -399,8 +403,8 @@ void MenuManager::mount_screen(Control *screen) {
     active_screen_ = screen;
     if (career_score_plate_ != nullptr) {
         // The campaign map carries its own header and fills the viewport, so the plate would collide with it.
-        career_score_plate_->set_visible(screen == nullptr || Object::cast_to<CampaignMapView>(screen) == nullptr);
-        ui_layer_->move_child(career_score_plate_, ui_layer_->get_child_count() - 1);
+        career_score_plate_->set_visible(!UiThemeProvider::compact() && (screen == nullptr || Object::cast_to<CampaignMapView>(screen) == nullptr));
+        ui_root_->move_child(career_score_plate_, ui_root_->get_child_count() - 1);
     }
 }
 
@@ -415,13 +419,13 @@ void MenuManager::show_menu(const String &menu_name) {
     }
 
     const MenuScreenViewModel view_model = build_menu_screen_view_model(to_screen_input(*menu));
-    const UiScreenScaffold scaffold = build_screen(ui_layer_, {
-                                                                  .title = to_godot_string(view_model.title),
-                                                                  // The menu background art is the backdrop; a scrim on top of it would only mute it.
-                                                                  .show_backdrop = false,
-                                                                  .scrollable_body = false,
-                                                                  .fit_content = true,
-                                                              });
+    const UiScreenScaffold scaffold = build_screen(ui_root_, {
+                                                                 .title = to_godot_string(view_model.title),
+                                                                 // The menu background art is the backdrop; a scrim on top of it would only mute it.
+                                                                 .show_backdrop = false,
+                                                                 .scrollable_body = false,
+                                                                 .fit_content = true,
+                                                             });
     if (scaffold.root == nullptr) {
         return;
     }
@@ -477,7 +481,7 @@ void MenuManager::show_level_select() {
     const Callable deploy_action = callable_mp(this, &MenuManager::on_level_selected);
     const Callable endless_action = callable_mp(this, &MenuManager::on_endless_selected);
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed).bind(static_cast<int>(MenuIntentType::GotoMenu), String("game_menu"));
-    ui_layer_->add_child(map_view);
+    ui_root_->add_child(map_view);
     mount_screen(map_view);
     map_view->set_endless_action(endless_action);
     map_view->configure(progression, deploy_action, back_action);
@@ -497,10 +501,9 @@ void MenuManager::show_progression() {
     auto *progression = CampaignService::get_singleton();
     auto *screen = memnew(ProgressionStatsScreenView);
     screen->set_anchors_preset(Control::PRESET_FULL_RECT);
-    screen->set_custom_minimum_size(get_progression_screen_size(this));
     const Callable back_action = callable_mp(this, &MenuManager::on_button_pressed)
                                      .bind(static_cast<int>(view_model.back_button.intent.type), to_godot_string(view_model.back_button.intent.target));
-    ui_layer_->add_child(screen);
+    ui_root_->add_child(screen);
     mount_screen(screen);
     screen->configure(progression->build_progression_overview(), progression->build_owned_upgrade_cards_godot(), back_action);
 }

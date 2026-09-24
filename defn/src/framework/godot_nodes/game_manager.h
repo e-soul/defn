@@ -27,6 +27,7 @@ namespace defn {
 using namespace godot;
 
 class HUD;
+class PauseMenu;
 class BaseObjective;
 class Unit;
 class UnitSelectionController;
@@ -93,6 +94,7 @@ class GameManager : public Node2D {
 
     // Child nodes
     HUD *hud = nullptr;
+    PauseMenu *pause_menu_ = nullptr;
     Node2D *entity_container = nullptr;
     Timer *core_resource_timer = nullptr;
     Timer *match_result_cutscene_timer_ = nullptr;

@@ -27,6 +27,8 @@ class UiThemeProvider {
     static void install(godot::SceneTree *tree);
     static void apply_to(godot::Control *control);
     static void reload();
+    static void set_compact(bool compact);
+    static bool compact();
 
     static godot::Color color(std::string_view role);
     /// A named layout figure as the `real_t` Godot sizing calls want. `UiThemeData::metric` still serves the few

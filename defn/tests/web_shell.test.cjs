@@ -16,7 +16,7 @@ const source = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
 	.replace("$GODOT_THREADS_ENABLED", "false")
 	.replace("$GODOT_URL", "renamed-game.js");
 
-function harness({ missing = [], startGame = async () => {}, fullscreenEnabled = true } = {}) {
+function harness({ missing = [], startGame = async () => {}, fullscreenEnabled = true, orientationLock } = {}) {
 	const elements = new Map();
 	const calls = { errors: [], reloads: 0, fullscreenRequests: 0, fullscreenExits: 0 };
 	const makeElement = () => ({
@@ -40,7 +40,7 @@ function harness({ missing = [], startGame = async () => {}, fullscreenEnabled =
 			return elements.get(id) || null;
 		},
 		createElement: makeElement,
-		body: { appendChild(script) { calls.script = script; } },
+		body: { dataset: {}, appendChild(script) { calls.script = script; } },
 		documentElement: {
 			async requestFullscreen() {
 				calls.fullscreenRequests++;
@@ -57,6 +57,7 @@ function harness({ missing = [], startGame = async () => {}, fullscreenEnabled =
 	const window = {
 		...makeElement(),
 		devicePixelRatio: 2,
+		screen: { orientation: { lock: orientationLock } },
 		location: { reload() { calls.reloads++; } },
 	};
 	class Engine {
@@ -239,4 +240,19 @@ test("unsupported fullscreen is hidden; rejected requests do not interrupt play"
 	assert.equal(h.element("browser-notice").hidden, false);
 	assert.equal(h.element("overlay").hidden, true);
 	assert.equal(h.calls.errors.length, 1);
+});
+
+test("orientation denial is harmless during startup and fullscreen", async () => {
+    const requested = [];
+    const h = harness({ orientationLock: async mode => {
+        requested.push(mode);
+        throw new Error("Unsupported orientation lock");
+    }});
+    await h.calls.script.onload();
+    await h.element("fullscreen").listeners.click();
+    assert.deepEqual(requested, ["landscape", "landscape"]);
+    assert.equal(h.element("overlay").hidden, true);
+    assert.equal(h.element("browser-notice").hidden, true);
+    assert.equal(h.document.body.dataset.gameState, "running");
+    assert.equal(h.calls.errors.length, 0);
 });

@@ -106,6 +106,9 @@
 		@media (max-height: 450px) {
 			.tagline, footer { display: none; }
 			header { padding: 4px 12px; }
+			body[data-game-state="running"] header { padding: 0 8px; }
+			body[data-game-state="running"] .brand { display: none; }
+			body[data-game-state="running"] #fullscreen { margin-left: auto; }
 			.panel { padding: 16px; }
 			.eyebrow { margin-bottom: 8px; }
 			.download { margin-top: 12px; }
@@ -157,6 +160,7 @@
 
 		function showStopped(title, detail, failed) {
 			state = failed ? "error" : "stopped";
+			document.body.dataset.gameState = state;
 			overlay.dataset.state = state;
 			overlay.hidden = false;
 			heading.textContent = title;
@@ -191,6 +195,13 @@
 		resizeCanvas();
 
 		fullscreen.hidden = !document.fullscreenEnabled;
+		async function requestLandscape() {
+			try {
+				await window.screen?.orientation?.lock?.("landscape");
+			} catch (_) {
+				// Orientation locking is optional, including outside fullscreen.
+			}
+		}
 		fullscreen.addEventListener("click", async () => {
 			notice.hidden = true;
 			try {
@@ -198,6 +209,7 @@
 					await document.exitFullscreen();
 				} else {
 					await document.documentElement.requestFullscreen();
+					await requestLandscape();
 				}
 			} catch (error) {
 				console.error("Defn fullscreen:", error);
@@ -246,6 +258,8 @@
 				});
 				if (state !== "loading") return;
 				state = "running";
+				document.body.dataset.gameState = state;
+				void requestLandscape();
 				document.title = "Defn";
 				resizeCanvas();
 				overlay.hidden = true;

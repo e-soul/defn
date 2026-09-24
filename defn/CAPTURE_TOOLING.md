@@ -259,6 +259,41 @@ can still update the save.
 
 ## Extending it
 
+### Responsive layout checks
+
+Shots may specify `window_size: [667, 375]` to capture a landscape window, or
+`screen: "menu"` to begin at the real main menu. A shot outside `tools/shots` can
+be passed by absolute path. The rig indexes deploy buttons through the scrolling
+strip and uses their transformed rectangles for pointer targeting.
+
+Additional timeline actions:
+
+| Action | Fields | Purpose |
+| --- | --- | --- |
+| `click_control` | `control` | Click a visible button by exact label or node name. |
+| `resize` | `width`, `height` | Resize the live native window without replacing the match. |
+| `fullscreen` | none | Enter native fullscreen without replacing the match. |
+| `scroll` | `control` (default `ScreenOverflow`), `vertical`, `horizontal` | Position a named scroller for a capture. |
+| `touch_drag` / `touch_tap` | — | Send screen-touch events to the first deploy card; log deployment count and scroll movement. |
+
+Each still has an adjacent JSON file containing rendered control rectangles and
+font pixel sizes. Framing diagnostics report the actual camera screen center and
+inverse canvas transform. Native viewport screenshots exclude Godot's external
+letterbox bars; browser screenshots include the stage and bars.
+
+For an isolated save fixture, set `APPDATA` and `LOCALAPPDATA` to directories under
+`build/capture` before launching the wrapper, as the hosted test runner does.
+This lets maximum-roster checks use their own upgrade unlocks. Never replace the
+player's normal save to prepare a capture.
+
+`python scripts/smoke_web.py build/web/release --screenshots build/capture/web`
+saves the four representative landscape browser sizes and reports stage size,
+fitted content size and device density. Physical Android/iOS testing is separate
+from desktop Chromium emulation.
+
+`python scripts/capture.py --shot responsive_layout --stills` checks the compact
+HUD, pause/resume, fullscreen and return to a compact window.
+
 - **A new action**: add a case to `_target_spec()` for what it aims at and to the `match action` block in
   `_play()` for what it does. Anything reachable by mouse is already reachable; nothing needs binding on the C++
   side.
@@ -277,5 +312,4 @@ can still update the save.
 - The camera is wherever the game puts it. On levels whose scroll triggers do fire, a shot cannot currently frame
   a specific spot on the belt.
 - One pointer, one action at a time. Events are strictly sequential.
-- Shots start from the level, not from the menu. Menu navigation is clickable the same way, but no shot does it
-  yet.
+- Shots start from a level by default; set `screen: "menu"` for menu navigation.

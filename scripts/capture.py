@@ -71,7 +71,11 @@ def resolve_shot(shot: str) -> tuple[str, str]:
         path = (REPO_ROOT / path).resolve() if path.exists() else (SHOTS_DIR / path.name)
     if not path.is_file():
         sys.exit(f"No such shot: {path}")
-    return f"res://tools/shots/{path.name}", path.stem
+    try:
+        resource_path = "res://" + path.relative_to(PROJECT_DIR).as_posix()
+    except ValueError:
+        resource_path = path.as_posix()
+    return resource_path, path.stem
 
 
 def run_godot(godot: str, args: list[str], verbose: bool) -> None:

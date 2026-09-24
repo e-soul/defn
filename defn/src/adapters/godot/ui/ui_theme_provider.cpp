@@ -16,6 +16,7 @@
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <optional>
@@ -29,6 +30,7 @@ namespace {
 
 std::optional<UiThemeData> g_data;
 Ref<Theme> g_theme;
+bool compact_layout = false;
 
 std::string to_pascal_case(std::string_view snake_case) {
     std::string pascal;
@@ -319,6 +321,26 @@ void UiThemeProvider::apply_to(Control *control) {
 void UiThemeProvider::reload() {
     g_data.reset();
     g_theme.unref();
+    compact_layout = false;
+}
+
+bool UiThemeProvider::compact() { return compact_layout; }
+
+void UiThemeProvider::set_compact(bool compact) {
+    if (compact == compact_layout) {
+        return;
+    }
+    compact_layout = compact;
+    const auto sized = [compact](int size) {
+        return compact ? std::clamp(size, data().metric("compact_font_min", 15), data().metric("compact_font_max", 28)) : size;
+    };
+    const Ref<Theme> shared = theme();
+    for (const auto &[name, style] : data().text_styles) {
+        shared->set_font_size("font_size", label_variation(name), sized(font_size(style.font_size_role)));
+    }
+    for (const auto &[name, style] : data().buttons) {
+        shared->set_font_size("font_size", button_variation(name), sized(font_size(style.font_size_role)));
+    }
 }
 
 godot::Color UiThemeProvider::color(std::string_view role) { return role_color(data(), role); }

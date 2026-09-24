@@ -49,6 +49,8 @@
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/input_event_screen_drag.hpp>
+#include <godot_cpp/classes/input_event_screen_touch.hpp>
 #include <godot_cpp/classes/json.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node.hpp>
@@ -58,6 +60,7 @@
 #include <godot_cpp/classes/parallax2d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/style_box.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
@@ -479,7 +482,7 @@ bool pause_menu_has_expected_buttons(PauseMenu *pause_menu) { return has_all_but
 bool pause_menu_overlay_visible(PauseMenu *pause_menu, bool expected_visible) {
     std::vector<ColorRect *> overlays;
     collect_nodes(pause_menu, overlays);
-    return !overlays.empty() && overlays.front()->is_visible() == expected_visible;
+    return !overlays.empty() && overlays.front()->is_visible_in_tree() == expected_visible;
 }
 
 GameplayRules make_camera_test_rules() {
@@ -846,6 +849,63 @@ DEFN_TEST(hud_builds_deploy_cards_and_score_screen) {
     summary.hearts_total = 3;
     hud->show_score_screen(summary);
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
+}
+
+DEFN_TEST(hud_touch_drag_suppresses_emulated_button_release_but_next_tap_deploys) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+    hud->set_friendly_units({make_presenter_unit_config("operator", 0)});
+    hud->_process(0.0);
+    auto *scroll = Object::cast_to<ScrollContainer>(hud->find_child("DeployScroll", true, false));
+    auto *cards = hud->find_child("DeployCards", true, false);
+    DEFN_REQUIRE(scroll != nullptr);
+    DEFN_REQUIRE(cards != nullptr);
+    auto *button = Object::cast_to<Button>(cards->get_child(0));
+    DEFN_REQUIRE(button != nullptr);
+    GodotObjectOwner<Button> received(memnew(Button));
+    hud->connect("deploy_requested", Callable(received.get(), "set_text"));
+
+    Ref<InputEventScreenTouch> touch;
+    touch.instantiate();
+    touch->set_index(0);
+    touch->set_position(scroll->get_global_rect().get_center());
+    touch->set_pressed(true);
+    hud->_input(touch);
+    Ref<InputEventScreenDrag> drag;
+    drag.instantiate();
+    drag->set_index(0);
+    const auto *ui_root = Object::cast_to<Control>(hud->find_child("ResponsiveUiRoot", true, false));
+    DEFN_REQUIRE(ui_root != nullptr);
+    drag->set_position(touch->get_position() - godot::Vector2(100.0F * ui_root->get_scale().x, 0.0F));
+    hud->_input(drag);
+    touch->set_pressed(false);
+    hud->_input(touch);
+    button->emit_signal("pressed");
+    DEFN_CHECK(received->get_text().is_empty());
+
+    touch->set_pressed(true);
+    hud->_input(touch);
+    touch->set_pressed(false);
+    hud->_input(touch);
+    button->emit_signal("pressed");
+    DEFN_CHECK_EQ(received->get_text(), String("operator"));
+}
+
+DEFN_TEST(compact_hud_keeps_endless_readouts_inside_phone_stage) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+    auto *root = Object::cast_to<Control>(hud->find_child("ResponsiveUiRoot", true, false));
+    DEFN_REQUIRE(root != nullptr);
+    root->set_size({587.0F, 330.0F});
+    UiThemeProvider::set_compact(true);
+    hud->update_wave(100, 0);
+    hud->update_score(999999);
+    hud->update_supply(24, 24, true);
+    hud->_process(0.0);
+    auto *info = Object::cast_to<Control>(hud->find_child("InfoPlate", true, false));
+    const float required_width = info == nullptr ? 10000.0F : info->get_combined_minimum_size().x;
+    UiThemeProvider::set_compact(false);
+    DEFN_CHECK(required_width <= 571.0F);
 }
 
 DEFN_TEST(hud_shows_and_hides_match_result_banner) {
@@ -1292,8 +1352,7 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     DEFN_CHECK(menu_manager_shows_progression(menu_manager));
     std::vector<CampaignMapView *> campaign_maps;
     collect_nodes(menu_manager, campaign_maps);
-    DEFN_REQUIRE(campaign_maps.size() == 1);
-    DEFN_CHECK(campaign_maps.front()->is_queued_for_deletion());
+    DEFN_CHECK(campaign_maps.empty());
 }
 
 DEFN_TEST(campaign_map_mounts_loading_overlay_before_composing_content) {
@@ -1424,7 +1483,7 @@ DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
     CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
 
     DEFN_REQUIRE(campaign_map != nullptr);
-    DEFN_CHECK(Object::cast_to<CanvasLayer>(campaign_map->get_parent()) != nullptr);
+    DEFN_CHECK_EQ(campaign_map->get_parent()->get_name(), StringName("ResponsiveUiRoot"));
     auto *reference_surface = Object::cast_to<Control>(campaign_map->get_node_or_null("ReferenceSurface"));
     DEFN_REQUIRE(reference_surface != nullptr);
     DEFN_CHECK(reference_surface->is_clipping_contents());

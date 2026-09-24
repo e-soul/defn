@@ -5,11 +5,14 @@
 
 #include "data_paths.h"
 #include "godot_string.h"
+#include "ui_layout.h"
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_loader.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
+#include "unit_data.h"
+#include <godot_cpp/classes/project_settings.hpp>
 
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/global_constants.hpp>
@@ -26,6 +29,31 @@
 namespace defn {
 
 using namespace godot;
+
+DEFN_TEST(project_framing_matches_gameplay_configuration) {
+    UnitDataLoader units;
+    DEFN_REQUIRE(units.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
+    const auto &rules = units.get_globals().gameplay_rules;
+    auto *settings = ProjectSettings::get_singleton();
+    DEFN_CHECK_CLOSE(static_cast<float>(settings->get_setting("display/window/size/viewport_width")), rules.viewport_width, 0.01F);
+    DEFN_CHECK_CLOSE(static_cast<float>(settings->get_setting("display/window/size/viewport_height")), rules.viewport_height, 0.01F);
+    DEFN_CHECK_EQ(String(settings->get_setting("display/window/stretch/aspect")), String("keep"));
+}
+
+DEFN_TEST(ui_layout_fits_landscape_display_without_changing_world_reference) {
+    const auto desktop = fit_ui(1920, 1080);
+    DEFN_CHECK(!desktop.compact);
+    DEFN_CHECK_CLOSE(desktop.scale, 1.0F, 0.001F);
+    const auto wide = fit_ui(2560, 1080);
+    DEFN_CHECK_CLOSE(wide.width, 1920.0F, 0.001F);
+    const auto phone = fit_ui(667, 375);
+    DEFN_CHECK(phone.compact);
+    DEFN_CHECK_CLOSE(phone.width * phone.scale, 1920.0F, 0.001F);
+    DEFN_CHECK_CLOSE(phone.height * phone.scale, 1080.0F, 0.001F);
+    DEFN_CHECK_CLOSE(phone.height, 375.0F, 0.001F);
+    DEFN_CHECK(fit_ui(1399, 900).compact);
+    DEFN_CHECK(!fit_ui(1400, 900).compact);
+}
 
 namespace {
 
@@ -587,7 +615,7 @@ namespace {
 
 bool scaffold_has_expected_chrome(Control *host, const UiScreenScaffold &scaffold) {
     return scaffold.root != nullptr && scaffold.header != nullptr && scaffold.body != nullptr && scaffold.footer != nullptr &&
-           Object::cast_to<ColorRect>(scaffold.root) != nullptr && scaffold.root->get_parent() == host &&
+           host->find_child("ScreenBackdrop", true, false) != nullptr && scaffold.root->get_parent() == host &&
            host->find_child("ScreenPanel", true, false) != nullptr && host->find_child("ScreenScroll", true, false) != nullptr &&
            scaffold.footer->get_alignment() == BoxContainer::ALIGNMENT_END;
 }
@@ -618,7 +646,7 @@ DEFN_TEST(ui_screen_scaffold_honours_plain_root_and_supplied_content_size) {
 
     DEFN_REQUIRE(scaffold.root != nullptr);
     DEFN_CHECK(Object::cast_to<ColorRect>(scaffold.root) == nullptr);
-    DEFN_CHECK_EQ(scaffold.root->get_custom_minimum_size(), godot::Vector2(640.0F, 480.0F));
+    DEFN_CHECK_EQ(scaffold.root->get_custom_minimum_size(), godot::Vector2());
     DEFN_CHECK(host->find_child("ScreenPanel", true, false) == nullptr);
     DEFN_CHECK(host->find_child("ScreenScroll", true, false) == nullptr);
     DEFN_CHECK_EQ(scaffold.header->get_child_count(), 0);

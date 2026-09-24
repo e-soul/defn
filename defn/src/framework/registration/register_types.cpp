@@ -38,9 +38,11 @@
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "reposition_destination_marker.h"
+#include "responsive_ui_root.h"
 #include "selection_indicator.h"
 #include "settings_runtime.h"
 #include "sound_controller.h"
+#include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "unit.h"
@@ -64,6 +66,9 @@ void initialize_module(ModuleInitializationLevel p_level) {
     }
 
     ClassDB::register_class<defn::GridManager>();
+    ClassDB::register_internal_class<defn::ResponsiveUiRoot>();
+    ClassDB::register_internal_class<defn::UiScreenFrame>();
+    ClassDB::register_internal_class<defn::UiReflowBox>();
     defn::GridManager::register_singleton();
     ClassDB::register_class<defn::CampaignService>();
     defn::CampaignService::register_singleton();

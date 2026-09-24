@@ -21,6 +21,7 @@ class PauseMenu : public CanvasLayer {
 
   public:
     void _ready() override;
+    void _process(double delta) override;
     void _input(const Ref<InputEvent> &event) override;
 
     void toggle_pause();
@@ -39,6 +40,7 @@ class PauseMenu : public CanvasLayer {
     bool paused_ = false;
 
     Control *screen_ = nullptr;
+    Control *pause_button_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
 };
 

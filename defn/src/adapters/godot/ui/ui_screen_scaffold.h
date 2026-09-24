@@ -8,6 +8,7 @@
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
+#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/variant/string.hpp>
 #include <godot_cpp/variant/vector2.hpp>
@@ -15,6 +16,34 @@
 #include <string>
 
 namespace defn {
+
+class UiReflowBox : public godot::BoxContainer {
+    GDCLASS(UiReflowBox, godot::BoxContainer)
+  public:
+    void _process(double delta) override;
+
+  protected:
+    static void _bind_methods() {}
+};
+
+class UiScreenFrame : public godot::Control {
+    GDCLASS(UiScreenFrame, godot::Control)
+  public:
+    godot::ScrollContainer *scroll = nullptr;
+    godot::Control *center = nullptr;
+    godot::PanelContainer *panel = nullptr;
+    godot::ScrollContainer *body_scroll = nullptr;
+    void _process(double delta) override;
+
+  protected:
+    static void _bind_methods() {}
+
+  private:
+    bool initialized_ = false;
+    godot::Vector2 desktop_minimum_;
+    godot::Vector2 last_size_;
+    bool last_compact_ = false;
+};
 
 struct ScreenSpec {
     godot::String title;

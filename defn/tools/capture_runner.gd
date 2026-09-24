@@ -35,6 +35,8 @@ var _hud: Node = null
 var _entities: Node = null
 var _camera: Camera2D = null
 var _cards: Dictionary = {}
+var _deploy_count := 0
+var _capture_failed := false
 
 var _travel_from := Vector2.ZERO
 var _travel_start := 0
@@ -118,6 +120,14 @@ func _boot() -> bool:
 	# level selection with nowhere to land.
 	change_scene_to_file("res://scenes/menu.tscn")
 	await _frames(BOOT_FRAMES)
+	if _shot.has("window_size"):
+		root.mode = Window.MODE_WINDOWED
+		root.size = Vector2i(_shot.window_size[0], _shot.window_size[1])
+		await _frames(5)
+	if _shot.get("screen", "game") == "menu":
+		if _cursor_enabled:
+			_build_cursor()
+		return true
 	if not Engine.has_singleton("CampaignService"):
 		printerr("[capture] CampaignService missing after the menu scene loaded")
 		return false
@@ -143,6 +153,17 @@ func _boot() -> bool:
 	if _hud == null or _entities == null:
 		printerr("[capture] game scene did not build")
 		return false
+	if _shot.has("window_size"):
+		root.mode = Window.MODE_WINDOWED
+		root.size = Vector2i(_shot.window_size[0], _shot.window_size[1])
+		await _frames(5)
+	if _camera != null:
+		var inverse := root.canvas_transform.affine_inverse()
+		var visible := root.get_visible_rect()
+		print("[framing] window=", root.size, " visible=", visible,
+			" world_left=", inverse * visible.position,
+			" world_right=", inverse * visible.end,
+			" camera_center=", _camera.get_screen_center_position())
 
 	if bool(_shot.get("mute_music", false)):
 		var music := current_scene.get_node_or_null("BackgroundMusicPlayer/MusicStreamPlayer") as AudioStreamPlayer
@@ -169,6 +190,7 @@ func _boot() -> bool:
 		_cursor_enabled = false
 
 	_index_cards()
+	_hud.connect("deploy_requested", func(_unit): _deploy_count += 1)
 	if _cursor_enabled:
 		_build_cursor()
 	return true
@@ -176,14 +198,9 @@ func _boot() -> bool:
 
 func _index_cards() -> void:
 	_cards.clear()
-	for child in _hud.get_children():
-		if not (child is HBoxContainer):
-			continue
-		for card in child.get_children():
-			if card is Button:
-				_cards[_card_unit_id(card)] = card
-		if not _cards.is_empty():
-			return
+	for card in _hud.find_children("*", "Button", true, false):
+		if card.get_parent().name == "DeployCards" or card.get_parent() is HBoxContainer:
+			_cards[_card_unit_id(card)] = card
 
 
 ## The HUD keeps unit ids on the C++ side only, so the card is matched by its title -- "Breacher" is
@@ -262,6 +279,45 @@ func _send_click(canvas_point: Vector2, button: int) -> void:
 		_cursor.click(button)
 
 
+func _touch_gesture(drag: bool) -> void:
+	if _cards.is_empty():
+		return
+	var card: Button = _cards.values()[0]
+	var start := _to_window(card.get_global_rect().get_center())
+	var before := _deploy_count
+	var scroller := _hud.find_child("DeployScroll", true, false) as ScrollContainer
+	var scroll_before := scroller.scroll_horizontal if scroller != null else 0
+	var down := InputEventScreenTouch.new()
+	down.index = 0
+	down.position = start
+	down.pressed = true
+	Input.parse_input_event(down)
+	await process_frame
+	var end := start
+	if drag:
+		for index in range(1, 13):
+			end = start - Vector2(index * 5.0, 0.0)
+			var motion := InputEventScreenDrag.new()
+			motion.index = 0
+			motion.position = end
+			motion.relative = Vector2(-5.0, 0.0)
+			Input.parse_input_event(motion)
+			await process_frame
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.position = end
+	up.pressed = false
+	Input.parse_input_event(up)
+	await process_frame
+	var expected := 0 if drag else 1
+	print("[touch] drag=", drag, " deployments=", _deploy_count - before, " expected=", expected)
+	if scroller != null:
+		print("[touch] scroll_before=", scroll_before, " scroll_after=", scroller.scroll_horizontal)
+	if _deploy_count - before != expected:
+		printerr("[touch] unexpected deployment count")
+		_capture_failed = true
+
+
 # ---------------------------------------------------------------- target resolution
 
 
@@ -283,6 +339,11 @@ func _resolve(spec: Dictionary) -> Vector2:
 	if spec.has("canvas"):
 		var raw: Array = spec["canvas"]
 		return Vector2(float(raw[0]), float(raw[1]))
+	if spec.has("control"):
+		for node in root.find_children("*", "Button", true, false):
+			if node.is_visible_in_tree() and (node.text == str(spec.control) or node.name == str(spec.control)):
+				return node.get_global_rect().get_center()
+		return _point
 
 	if spec.has("card"):
 		var unit_id: String = str(spec["card"])
@@ -358,6 +419,8 @@ func _compile_events() -> Array[Dictionary]:
 
 func _target_spec(entry: Dictionary) -> Dictionary:
 	match str(entry.get("action", "")):
+		"click_control":
+			return {"control": str(entry.get("control", ""))}
 		"deploy":
 			return {"card": str(entry.get("unit", ""))}
 		"select":
@@ -406,6 +469,26 @@ func _save_still(label: String) -> void:
 		printerr("[capture] could not write still ", path, " (", error, ")")
 	else:
 		print("[capture] still %s (%dx%d)" % [path, image.get_width(), image.get_height()])
+	var controls: Array = []
+	for node in root.find_children("*", "Control", true, false):
+		if not node.is_visible_in_tree() or not (node is Label or node is BaseButton):
+			continue
+		var transform: Transform2D = root.get_screen_transform() * node.get_global_transform_with_canvas()
+		controls.append({"name": str(node.name), "text": str(node.get("text")),
+			"position": [transform.origin.x, transform.origin.y],
+			"size": [node.size.x * transform.x.length(), node.size.y * transform.y.length()],
+			"font_pixels": node.get_theme_font_size("font_size") * transform.x.length()})
+	var report := FileAccess.open(path.replace(".png", ".json"), FileAccess.WRITE)
+	if report != null:
+		report.store_string(JSON.stringify(controls, "  "))
+	if _camera != null:
+		var inverse := root.canvas_transform.affine_inverse()
+		var visible := root.get_visible_rect()
+		var grid := Engine.get_singleton("GridManager")
+		print("[framing] still=", label, " span=", visible.size,
+			" world_left=", inverse * visible.position, " world_right=", inverse * visible.end,
+			" camera_center=", _camera.get_screen_center_position(),
+			" friendly_spawn=", grid.call("deploy_x"), " hostile_spawn=", grid.call("spawn_x"))
 
 
 func _play() -> void:
@@ -456,7 +539,7 @@ func _play() -> void:
 				break
 
 			match action:
-				"deploy", "select", "move":
+				"deploy", "select", "move", "click_control":
 					_send_click(_point, MOUSE_BUTTON_LEFT)
 					print("[capture] %6.2fs %s %s" % [_frame / float(_fps), action, str(entry.get("unit", entry.get("target", entry.get("ahead", ""))))])
 				"deselect":
@@ -464,6 +547,18 @@ func _play() -> void:
 					print("[capture] %6.2fs deselect" % (_frame / float(_fps)))
 				"still":
 					await _save_still(str(entry.get("label", "frame%d" % _frame)))
+				"resize":
+					root.mode = Window.MODE_WINDOWED
+					root.size = Vector2i(entry.width, entry.height)
+				"fullscreen":
+					root.mode = Window.MODE_FULLSCREEN
+				"touch_drag", "touch_tap":
+					await _touch_gesture(action == "touch_drag")
+				"scroll":
+					for node in root.find_children(str(entry.get("control", "ScreenOverflow")), "ScrollContainer", true, false):
+						if node.is_visible_in_tree():
+							node.scroll_vertical = int(entry.get("vertical", 0))
+							node.scroll_horizontal = int(entry.get("horizontal", 0))
 				"park", "hold":
 					pass
 				_:
@@ -549,4 +644,4 @@ func _run() -> void:
 		await _recon_pass()
 	else:
 		await _play()
-	quit(0)
+	quit(1 if _capture_failed else 0)

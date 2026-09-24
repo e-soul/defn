@@ -16,6 +16,7 @@
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
+#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <optional>
 #include <string_view>
@@ -49,6 +50,8 @@ class HUD : public CanvasLayer {
     HUD();
 
     void _ready() override;
+    void _process(double delta) override;
+    void _input(const Ref<InputEvent> &event) override;
 
     void set_friendly_units(const std::vector<UnitConfig> &units);
     void set_level(const String &level_name);
@@ -73,6 +76,7 @@ class HUD : public CanvasLayer {
 
   private:
     void build_ui();
+    void layout_deploy_cards(bool compact);
     PanelContainer *build_plate(const char *name, std::string_view surface, Control::LayoutPreset preset);
     void build_energy_plate();
     void build_info_plate();
@@ -96,6 +100,8 @@ class HUD : public CanvasLayer {
 
     // Info plate
     HBoxContainer *level_group = nullptr;
+    HBoxContainer *info_row_ = nullptr;
+    Label *score_caption_ = nullptr;
     Label *level_label = nullptr;
     HudValueLabel wave_current_label;
     Label *wave_total_label = nullptr;
@@ -112,6 +118,17 @@ class HUD : public CanvasLayer {
     std::optional<IntegrityTier> integrity_tier;
 
     HBoxContainer *card_container = nullptr;
+    Control *ui_root_ = nullptr;
+    ScrollContainer *card_scroll_ = nullptr;
+    PanelContainer *energy_plate_ = nullptr;
+    PanelContainer *info_plate_ = nullptr;
+    PanelContainer *integrity_plate_ = nullptr;
+    bool compact_ = false;
+    bool card_touch_active_ = false;
+    bool card_touch_dragged_ = false;
+    int card_touch_index_ = -1;
+    godot::Vector2 card_touch_start_;
+    int card_scroll_start_ = 0;
     std::vector<DeployCardUI> deploy_cards;
     HudPresentationInput hud_input_{.energy = 100, .current_wave = 1, .total_waves = 3, .base_health = 300, .base_max_health = 300, .score = 0};
 

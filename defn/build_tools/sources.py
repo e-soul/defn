@@ -47,6 +47,7 @@ src/adapters/presenters/score_screen_view_model.cpp
 """.split()
 
 ENGINE = """
+src/adapters/godot/ui/responsive_ui_root.cpp
 src/framework/registration/register_types.cpp
 src/adapters/json/json_file_loader.cpp
 src/adapters/json/campaign_map_data_loader.cpp
