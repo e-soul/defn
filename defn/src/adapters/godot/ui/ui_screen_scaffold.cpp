@@ -14,7 +14,6 @@
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/core/memory.hpp>
 
-#include <algorithm>
 #include <string_view>
 
 namespace defn {
@@ -43,33 +42,6 @@ godot::Vector2 content_size(Node *parent, const ScreenSpec &spec) {
 
 } // namespace
 
-void UiReflowBox::_process(double /*delta*/) { set_vertical(UiThemeProvider::compact()); }
-
-void UiScreenFrame::_process(double /*delta*/) {
-    if (scroll == nullptr || center == nullptr) {
-        return;
-    }
-    const bool compact = UiThemeProvider::compact();
-    if (!initialized_) {
-        desktop_minimum_ = panel == nullptr ? godot::Vector2() : panel->get_custom_minimum_size();
-    }
-    if (initialized_ && last_size_ == get_size() && last_compact_ == compact) {
-        return;
-    }
-    initialized_ = true;
-    last_size_ = get_size();
-    last_compact_ = compact;
-    scroll->set_horizontal_scroll_mode(compact ? ScrollContainer::SCROLL_MODE_AUTO : ScrollContainer::SCROLL_MODE_DISABLED);
-    scroll->set_vertical_scroll_mode(compact ? ScrollContainer::SCROLL_MODE_AUTO : ScrollContainer::SCROLL_MODE_DISABLED);
-    center->set_custom_minimum_size(compact ? godot::Vector2(std::max(0.0F, get_size().x - 16.0F), get_size().y) : godot::Vector2());
-    if (panel != nullptr) {
-        panel->set_custom_minimum_size(compact ? godot::Vector2(std::min(desktop_minimum_.x, std::max(0.0F, get_size().x - 32.0F)), 0.0F) : desktop_minimum_);
-    }
-    if (body_scroll != nullptr) {
-        body_scroll->set_vertical_scroll_mode(compact ? ScrollContainer::SCROLL_MODE_DISABLED : ScrollContainer::SCROLL_MODE_AUTO);
-    }
-}
-
 UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
     UiScreenScaffold scaffold;
     if (parent == nullptr) {
@@ -79,20 +51,24 @@ UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
     const UiScreenStyle &screen = UiThemeProvider::data().screen;
     const godot::Vector2 max_content_size = content_size(parent, spec);
 
-    auto *frame = memnew(UiScreenFrame);
-    scaffold.root = frame;
-    frame->set_name("ScreenRoot");
-    frame->set_mouse_filter(Control::MOUSE_FILTER_PASS);
     if (spec.show_backdrop) {
         auto *backdrop = memnew(ColorRect);
         backdrop->set_name("ScreenBackdrop");
         backdrop->set_color(UiThemeProvider::color(screen.backdrop_role));
         backdrop->set_mouse_filter(Control::MOUSE_FILTER_STOP);
-        backdrop->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-        frame->add_child(backdrop);
+        scaffold.root = backdrop;
+    } else {
+        auto *root = memnew(Control);
+        root->set_name("ScreenRoot");
+        root->set_mouse_filter(Control::MOUSE_FILTER_PASS);
+        scaffold.root = root;
     }
     scaffold.root->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-    // Containers allocate the available area; content minima belong inside the scroll host.
+    // Keeps the chrome from collapsing when the root is laid out by a container parent instead of anchors.
+    // A content-fitted screen has no such floor to impose: its size is whatever its controls need.
+    if (!spec.fit_content) {
+        scaffold.root->set_custom_minimum_size(max_content_size);
+    }
     scaffold.root->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     scaffold.root->set_v_size_flags(Control::SIZE_EXPAND_FILL);
     parent->add_child(scaffold.root);
@@ -104,18 +80,7 @@ UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
     center->set_name("ScreenCenter");
     center->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
     center->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    auto *outer_scroll = memnew(ScrollContainer);
-    outer_scroll->set_name("ScreenOverflow");
-    outer_scroll->set_follow_focus(true);
-    outer_scroll->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
-    outer_scroll->set_horizontal_scroll_mode(UiThemeProvider::compact() ? ScrollContainer::SCROLL_MODE_AUTO : ScrollContainer::SCROLL_MODE_DISABLED);
-    outer_scroll->set_vertical_scroll_mode(UiThemeProvider::compact() ? ScrollContainer::SCROLL_MODE_AUTO : ScrollContainer::SCROLL_MODE_DISABLED);
-    frame->add_child(outer_scroll);
-    center->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    center->set_v_size_flags(Control::SIZE_EXPAND_FILL);
-    outer_scroll->add_child(center);
-    frame->scroll = outer_scroll;
-    frame->center = center;
+    scaffold.root->add_child(center);
 
     Control *content_host = center;
     if (spec.panelled_body) {
@@ -126,7 +91,6 @@ UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
         }
         center->add_child(panel);
         scaffold.panel = panel;
-        frame->panel = panel;
         content_host = panel;
     }
 
@@ -167,14 +131,12 @@ UiScreenScaffold build_screen(Node *parent, const ScreenSpec &spec) {
     if (spec.scrollable_body) {
         auto *scroll = memnew(ScrollContainer);
         scroll->set_name("ScreenScroll");
-        scroll->set_follow_focus(true);
         scroll->set_h_size_flags(Control::SIZE_EXPAND_FILL);
         scroll->set_v_size_flags(Control::SIZE_EXPAND_FILL);
         scroll->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
         scroll->set_vertical_scroll_mode(ScrollContainer::SCROLL_MODE_AUTO);
         scroll->add_child(scaffold.body);
         column->add_child(scroll);
-        frame->body_scroll = scroll;
     } else {
         column->add_child(scaffold.body);
     }

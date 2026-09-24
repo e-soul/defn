@@ -27,7 +27,6 @@ class ProgressionStatsScreenView : public godot::VBoxContainer {
     void show_owned_upgrades();
     void show_dossier();
     void go_back();
-    void _notification(int what);
 
   protected:
     static void _bind_methods();

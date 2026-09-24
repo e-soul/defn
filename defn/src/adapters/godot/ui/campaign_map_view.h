@@ -88,8 +88,6 @@ class CampaignMapView : public godot::Control {
     std::vector<std::string> requested_texture_paths_;
     std::unordered_map<std::string, godot::Ref<godot::Texture2D>> loaded_textures_;
     godot::Control *reference_surface_ = nullptr;
-    godot::Control *compact_screen_ = nullptr;
-    godot::Control *compact_body_ = nullptr;
     OperationDossierView *dossier_ = nullptr;
     godot::Callable endless_action_;
     godot::CPUParticles2D *ambience_ = nullptr;

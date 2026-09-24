@@ -7,7 +7,6 @@
 #include "owned_upgrades_panel.h"
 #include "progression_stat_meter.h"
 #include "progression_stats_presenter.h"
-#include "ui_layout.h"
 #include "ui_screen_scaffold.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
@@ -43,21 +42,6 @@ godot::Ref<godot::Texture2D> load_portrait(const std::string &path_template) {
 }
 
 } // namespace
-
-void ProgressionStatsScreenView::_notification(int what) {
-    if (what != NOTIFICATION_RESIZED) {
-        return;
-    }
-    auto *columns = godot::Object::cast_to<godot::BoxContainer>(find_child("DossierColumns", true, false));
-    auto *dossier = godot::Object::cast_to<godot::Control>(find_child("EntityDossier", true, false));
-    if (columns != nullptr && dossier != nullptr) {
-        const bool compact = get_size().x < UI_COMPACT_WIDTH;
-        columns->set_vertical(compact);
-        dossier->set_custom_minimum_size(
-            compact ? godot::Vector2(0, 0)
-                    : godot::Vector2(UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("progression_dossier_height", 330)));
-    }
-}
 
 void ProgressionStatsScreenView::_bind_methods() {
     godot::ClassDB::bind_method(godot::D_METHOD("select_entity", "entity_id"), &ProgressionStatsScreenView::select_entity);
@@ -134,7 +118,7 @@ void ProgressionStatsScreenView::rebuild() {
 
     if (showing_all_upgrades_) {
         OwnedUpgradesPanel::Options options;
-        options.min_size = {0, UiThemeProvider::metric("owned_upgrades_grid_height", 430)};
+        options.min_size = {UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("owned_upgrades_grid_height", 430)};
         options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
         options.grid_columns = 4;
         scaffold.body->add_child(OwnedUpgradesPanel::build(owned_upgrades_, options));
@@ -188,8 +172,7 @@ void ProgressionStatsScreenView::rebuild() {
     auto *dossier = make_surface("dossier");
     dossier->set_name("EntityDossier");
     dossier->set_custom_minimum_size({UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("progression_dossier_height", 330)});
-    auto *columns = memnew(godot::BoxContainer);
-    columns->set_name("DossierColumns");
+    auto *columns = memnew(godot::HBoxContainer);
     columns->add_theme_constant_override("separation", UiThemeProvider::spacing("xl"));
     dossier->add_child(columns);
 
@@ -264,7 +247,6 @@ void ProgressionStatsScreenView::rebuild() {
     auto *back = make_button(to_godot_string(model.back_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::go_back));
     back->set_name("ProgressionBackButton");
     scaffold.footer->add_child(back);
-    _notification(NOTIFICATION_RESIZED);
 }
 
 void ProgressionStatsScreenView::on_stat_detail_changed(const godot::String &stat_id, const godot::String &detail, bool active) {

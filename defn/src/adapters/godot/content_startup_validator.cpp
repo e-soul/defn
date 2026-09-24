@@ -7,7 +7,6 @@
 #include "content_validator.h"
 #include "godot_string.h"
 
-#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <optional>
@@ -24,12 +23,6 @@ bool ContentStartupValidator::report_startup_validation() {
     const JsonLoadedContent loaded_content = repository.load_for_validation();
 
     std::vector<String> issues = loaded_content.load_issues;
-    const auto &rules = loaded_content.unit_data.get_globals().gameplay_rules;
-    auto *settings = godot::ProjectSettings::get_singleton();
-    if (static_cast<float>(settings->get_setting("display/window/size/viewport_width")) != rules.viewport_width ||
-        static_cast<float>(settings->get_setting("display/window/size/viewport_height")) != rules.viewport_height) {
-        issues.emplace_back("Project reference viewport must match unit_globals gameplay viewport dimensions");
-    }
     const ContentValidationReport report = ContentValidator::validate_loaded_content(make_content_validation_input(loaded_content));
     for (const std::string &issue : report.issues) {
         issues.push_back(to_godot_string(issue));

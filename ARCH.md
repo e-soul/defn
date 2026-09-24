@@ -192,35 +192,12 @@ Current boundary ownership:
 - `MenuManager` is a framework UI adapter. It delegates menu decisions and
   screen models to `MenuFlowUseCase` and presenter builders, renders a settings
   snapshot, and forwards settings intents to `SettingsRuntime`. The
-  level-selection composition mounts one full-screen `CampaignMapView` under
-  its UI sizing root and supplies progression access plus navigation callbacks.
+  level-selection composition mounts one full-screen `CampaignMapView` directly
+  under its UI layer and supplies progression access plus navigation callbacks.
   `CampaignMapView` first presents its loading overlay, then owns synchronous
   campaign/level definition composition and threaded texture requests before it
   passes plain campaign state to `CampaignMapPresenter` and builds the map UI.
   Preview framing and Godot controls remain adapter concerns.
-
-### Display and UI sizing
-
-The root viewport uses `canvas_items` with `keep`: the battlefield remains 1920 ×
-1080, including at camera limits. Startup validation checks those dimensions
-against the gameplay configuration. Camera, belt, spawning and simulation rules
-do not depend on the window. Selection ignores pointer positions outside the
-logical viewport (the fitted view's bars).
-
-Menu, HUD and pause controls mount under `ResponsiveUiRoot` inside their existing
-CanvasLayers. This adapter reads native window size or web canvas CSS dimensions;
-`fit_ui` in the presenter layer calculates its independent size and scale. The
-UI stays clipped to the fitted battlefield. Font oversampling follows the final
-rendering density, independently of the CSS sizing decision. There is no separate
-world SubViewport or display lifecycle service.
-
-Below 1400 fitted display pixels, the shared theme uses compact typography and
-the existing screen scaffold supplies focus-following overflow scrolling.
-Campaign selection reuses its dossier in a compact mission list; roster and
-reward content reflow. Resizing keeps HUD cards and the selected campaign mission
-alive. Only ordinary menu screens rebuild when crossing the compact breakpoint.
-The deploy strip owns touch dragging and suppresses the emulated mouse release
-after a drag; taps still use the existing Button deployment signal.
 
 Keep these translations at the edge. A new engine-facing value in domain or
 application code is an architectural regression, not a convenience shortcut.

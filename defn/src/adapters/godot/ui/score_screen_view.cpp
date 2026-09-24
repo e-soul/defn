@@ -15,7 +15,6 @@
 #include <godot_cpp/classes/center_container.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
-#include <godot_cpp/classes/h_flow_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/classes/text_server.hpp>
@@ -67,7 +66,7 @@ void add_selection_label(VBoxContainer *label_column, const String &text, std::s
     label_column->add_child(label);
 }
 
-VBoxContainer *add_label_column(BoxContainer *row) {
+VBoxContainer *add_label_column(HBoxContainer *row) {
     auto *label_column = memnew(VBoxContainer);
     label_column->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     label_column->set_custom_minimum_size(godot::Vector2(selection_label_width(), 0));
@@ -86,7 +85,7 @@ void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel 
 
     add_spacer(content, "md");
 
-    auto *selection_row = memnew(UiReflowBox);
+    auto *selection_row = memnew(HBoxContainer);
     selection_row->set_alignment(BoxContainer::ALIGNMENT_BEGIN);
     selection_row->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     selection_row->add_theme_constant_override("separation", UiThemeProvider::spacing("lg"));
@@ -110,8 +109,8 @@ void add_upgrade_selection(VBoxContainer *content, const ScoreScreenRewardModel 
         return;
     }
 
-    auto *card_row = memnew(HFlowContainer);
-    card_row->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+    auto *card_row = memnew(HBoxContainer);
+    card_row->set_alignment(BoxContainer::ALIGNMENT_BEGIN);
     card_row->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
     selection_row->add_child(card_row);
 
@@ -136,7 +135,7 @@ void add_owned_upgrades_section(VBoxContainer *content, const std::vector<Upgrad
 
     add_spacer(content, "md");
 
-    auto *owned_row = memnew(UiReflowBox);
+    auto *owned_row = memnew(HBoxContainer);
     owned_row->set_alignment(BoxContainer::ALIGNMENT_BEGIN);
     owned_row->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     owned_row->add_theme_constant_override("separation", UiThemeProvider::spacing("lg"));

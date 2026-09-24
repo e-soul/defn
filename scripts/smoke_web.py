@@ -15,7 +15,7 @@ from playwright.sync_api import sync_playwright
 from web_toolchain import load_toolchain
 
 
-def smoke_export(browser, directory: Path, screenshots: Path | None = None) -> None:
+def smoke_export(browser, directory: Path) -> None:
     if not (directory / "index.html").is_file():
         raise FileNotFoundError(f"No Web export at {directory / 'index.html'}")
     # Project sites such as GitHub Pages serve the export below a URL prefix.
@@ -61,7 +61,7 @@ def smoke_export(browser, directory: Path, screenshots: Path | None = None) -> N
         ):
             if not any(expected in message for message in messages):
                 raise RuntimeError(f"Missing runtime diagnostic: {expected}")
-        for width, height in ((1920, 1080), (2560, 1080), (1024, 768), (667, 375), (1920, 1080)):
+        for width, height in ((390, 844), (844, 390), (1280, 800)):
             page.set_viewport_size({"width": width, "height": height})
             page.wait_for_function("""() => {
                 const canvas = document.getElementById('canvas');
@@ -70,15 +70,6 @@ def smoke_export(browser, directory: Path, screenshots: Path | None = None) -> N
                     && canvas.height === Math.round(stage.clientHeight * devicePixelRatio)
                     && document.documentElement.scrollWidth === innerWidth;
             }""")
-            if screenshots is not None:
-                screenshots.mkdir(parents=True, exist_ok=True)
-                page.wait_for_timeout(250)
-                page.screenshot(path=str(screenshots / f"{directory.name}-{width}x{height}.png"))
-                print("Display:", page.locator("#stage").evaluate("""stage => ({
-                    width: stage.clientWidth, height: stage.clientHeight, density: devicePixelRatio,
-                    fittedWidth: Math.min(stage.clientWidth, stage.clientHeight * 16 / 9),
-                    fittedHeight: Math.min(stage.clientHeight, stage.clientWidth * 9 / 16)
-                })"""))
         page.wait_for_timeout(1000)
         if failures:
             raise RuntimeError("\n".join(failures))
@@ -97,14 +88,13 @@ def smoke_export(browser, directory: Path, screenshots: Path | None = None) -> N
 def main() -> None:
     parser = argparse.ArgumentParser(description="Smoke-test exported Web builds in Chromium.")
     parser.add_argument("directories", type=Path, nargs="+")
-    parser.add_argument("--screenshots", type=Path, help="Save the representative landscape menu captures.")
     args = parser.parse_args()
     with sync_playwright() as playwright:
         with playwright.chromium.launch(args=[
             "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
         ]) as browser:
             for directory in args.directories:
-                smoke_export(browser, directory.resolve(), args.screenshots)
+                smoke_export(browser, directory.resolve())
 
 
 if __name__ == "__main__":

@@ -5,7 +5,6 @@
 #include "deploy_card_presenter.h"
 #include "godot_color.h"
 #include "godot_string.h"
-#include "responsive_ui_root.h"
 #include "score_screen_view.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
@@ -13,12 +12,6 @@
 #include <algorithm>
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/font.hpp>
-#include <godot_cpp/classes/input_event_joypad_button.hpp>
-#include <godot_cpp/classes/input_event_key.hpp>
-#include <godot_cpp/classes/input_event_mouse_button.hpp>
-#include <godot_cpp/classes/input_event_screen_drag.hpp>
-#include <godot_cpp/classes/input_event_screen_touch.hpp>
-#include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 
 namespace defn {
@@ -68,85 +61,6 @@ void HudValueLabel::set_value(const String &text) {
 
 HUD::HUD() = default;
 
-void HUD::_input(const Ref<InputEvent> &event) {
-    if (card_scroll_ == nullptr) {
-        return;
-    }
-    if (auto *touch = Object::cast_to<InputEventScreenTouch>(event.ptr()); touch != nullptr) {
-        if (touch->is_pressed() && !card_touch_active_) {
-            card_touch_dragged_ = false;
-            card_touch_active_ = card_scroll_->get_global_rect().has_point(touch->get_position());
-            card_touch_index_ = touch->get_index();
-            card_touch_start_ = touch->get_position();
-            card_scroll_start_ = card_scroll_->get_h_scroll();
-        } else if (!touch->is_pressed() && touch->get_index() == card_touch_index_) {
-            card_touch_active_ = false;
-        }
-        return;
-    }
-    if (auto *drag = Object::cast_to<InputEventScreenDrag>(event.ptr()); drag != nullptr && card_touch_active_ && drag->get_index() == card_touch_index_) {
-        const godot::Vector2 distance = (drag->get_position() - card_touch_start_) / ui_root_->get_scale().x;
-        card_touch_dragged_ = card_touch_dragged_ || distance.length() >= UiThemeProvider::metric("compact_drag_threshold", 8);
-        if (card_touch_dragged_) {
-            card_scroll_->set_h_scroll(card_scroll_start_ - static_cast<int>(distance.x));
-            get_viewport()->set_input_as_handled();
-        }
-        return;
-    }
-    // Mouse-from-touch releases use the same Button signal. Keep the guard through that release,
-    // and reset only on a fresh physical mouse press or keyboard action.
-    if (!card_touch_active_ && event->is_pressed() &&
-        (Object::cast_to<InputEventMouseButton>(event.ptr()) != nullptr || Object::cast_to<InputEventKey>(event.ptr()) != nullptr ||
-         Object::cast_to<InputEventJoypadButton>(event.ptr()) != nullptr)) {
-        card_touch_dragged_ = false;
-    }
-}
-
-void HUD::_process(double /*delta*/) {
-    if (ui_root_ == nullptr) {
-        return;
-    }
-    const bool compact = UiThemeProvider::compact();
-    const godot::Vector2 area = ui_root_->get_size();
-    const float margin = UiThemeProvider::metric(compact ? "compact_hud_margin" : "hud_margin", 24);
-    const auto *deploy_style = UiThemeProvider::data().find_button("deploy_card");
-    const auto desktop_height = static_cast<float>(deploy_style == nullptr ? 110 : deploy_style->min_height);
-    const float card_height = compact ? UiThemeProvider::metric("compact_deploy_height", 80) : desktop_height;
-    card_scroll_->set_position({margin, area.y - card_height - margin});
-    card_scroll_->set_size({std::max(0.0F, area.x - (2.0F * margin)), card_height});
-    if (compact != compact_ || compact) {
-        compact_ = compact;
-        anchor_hud_pod(energy_plate_, Control::PRESET_TOP_LEFT);
-        anchor_hud_pod(integrity_plate_, Control::PRESET_TOP_RIGHT);
-        anchor_hud_pod(info_plate_, Control::PRESET_CENTER_TOP);
-        if (compact) {
-            energy_plate_->set_position({margin, margin});
-            integrity_plate_->set_position({area.x - integrity_plate_->get_size().x - margin, margin});
-            info_plate_->set_offset(SIDE_TOP, 78.0F);
-            info_plate_->set_offset(SIDE_BOTTOM, 78.0F);
-        }
-        level_group->set_visible(!compact && !hud_input_.level_name.empty());
-        score_caption_->set_visible(!compact);
-        info_row_->add_theme_constant_override("separation", UiThemeProvider::spacing(compact ? "md" : "xl"));
-    }
-    layout_deploy_cards(compact);
-}
-
-void HUD::layout_deploy_cards(bool compact) {
-    const auto *style = UiThemeProvider::data().find_button("deploy_card");
-    const godot::Vector2 desktop_size =
-        style == nullptr ? godot::Vector2(190.0F, 110.0F) : godot::Vector2(static_cast<float>(style->min_width), static_cast<float>(style->min_height));
-    const godot::Vector2 size = compact ? godot::Vector2(UiThemeProvider::metric("compact_deploy_width", 180), 64.0F) : desktop_size;
-    for (const auto &card : deploy_cards) {
-        card.button->set_custom_minimum_size(size);
-        auto *portrait = Object::cast_to<Control>(card.button->find_child("CardPortrait", true, false));
-        if (portrait != nullptr) {
-            const float extent = UiThemeProvider::metric(compact ? "compact_deploy_portrait" : "deploy_card_portrait_size", 80);
-            portrait->set_custom_minimum_size({extent, extent});
-        }
-    }
-}
-
 void HUD::_bind_methods() {
     ADD_SIGNAL(MethodInfo("deploy_requested", PropertyInfo(Variant::STRING, "unit_type")));
     ADD_SIGNAL(MethodInfo("score_screen_next_level", PropertyInfo(Variant::STRING, "level_id")));
@@ -163,8 +77,6 @@ void HUD::_ready() {
 }
 
 void HUD::build_ui() {
-    ui_root_ = memnew(ResponsiveUiRoot);
-    add_child(ui_root_);
     build_energy_plate();
     build_info_plate();
     build_integrity_plate();
@@ -173,17 +85,15 @@ void HUD::build_ui() {
     // Deploy card container (bottom center)
     // ==========================================================
     card_container = memnew(HBoxContainer);
-    card_container->set_name("DeployCards");
-    card_container->set_h_size_flags(Control::SIZE_EXPAND_FILL);
-    card_container->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    card_container->set_anchor(SIDE_LEFT, 0.5);
+    card_container->set_anchor(SIDE_RIGHT, 0.5);
+    card_container->set_anchor(SIDE_TOP, 1.0);
+    card_container->set_anchor(SIDE_BOTTOM, 1.0);
+    card_container->set_h_grow_direction(Control::GROW_DIRECTION_BOTH);
+    card_container->set_v_grow_direction(Control::GROW_DIRECTION_BEGIN);
+    card_container->set_offset(Side::SIDE_BOTTOM, -UiThemeProvider::metric("hud_margin", 24));
     card_container->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
-    card_scroll_ = memnew(ScrollContainer);
-    card_scroll_->set_name("DeployScroll");
-    card_scroll_->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_AUTO);
-    card_scroll_->set_vertical_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
-    card_scroll_->set_follow_focus(true);
-    ui_root_->add_child(card_scroll_);
-    card_scroll_->add_child(card_container);
+    add_child(card_container);
 
     refresh();
 }
@@ -192,13 +102,12 @@ PanelContainer *HUD::build_plate(const char *name, std::string_view surface, Con
     auto *plate = make_surface(surface);
     plate->set_name(name);
     anchor_hud_pod(plate, preset);
-    ui_root_->add_child(plate);
+    add_child(plate);
     return plate;
 }
 
 void HUD::build_energy_plate() {
     PanelContainer *plate = build_plate("EnergyPlate", "hud_pod", Control::PRESET_TOP_LEFT);
-    energy_plate_ = plate;
 
     const ReadoutRow group = make_readout("energy");
     group.row->add_child(make_readout_label("ENERGY", "hud_label"));
@@ -215,12 +124,10 @@ void HUD::build_energy_plate() {
 
 void HUD::build_info_plate() {
     PanelContainer *plate = build_plate("InfoPlate", "hud_tag", Control::PRESET_CENTER_TOP);
-    info_plate_ = plate;
 
     // Level, wave and score sit on one line; the wide gap between groups is what keeps them legible as
     // three separate readings rather than one run-on string.
     auto *row = memnew(HBoxContainer);
-    info_row_ = row;
     row->set_alignment(BoxContainer::ALIGNMENT_CENTER);
     row->add_theme_constant_override("separation", UiThemeProvider::spacing("xl"));
     plate->add_child(row);
@@ -260,8 +167,7 @@ void HUD::build_info_plate() {
     row->add_child(supply_group);
 
     const ReadoutRow score_group = make_readout("score");
-    score_caption_ = make_readout_label("SCORE", "hud_label");
-    score_group.row->add_child(score_caption_);
+    score_group.row->add_child(make_readout_label("SCORE", "hud_label"));
     score_label = {.label = make_readout_label("0", "hud_score"), .floor_digits = value_digit_floor()};
     score_group.row->add_child(score_label.label);
     row->add_child(score_group.row);
@@ -269,7 +175,6 @@ void HUD::build_info_plate() {
 
 void HUD::build_integrity_plate() {
     PanelContainer *plate = build_plate("IntegrityPlate", "hud_pod", Control::PRESET_TOP_RIGHT);
-    integrity_plate_ = plate;
 
     const ReadoutRow group = make_readout("integrity");
     integrity_medallion = group.medallion;
@@ -321,7 +226,7 @@ void HUD::render(const HudModel &model) {
     wave_total_label->set_visible(model.wave.total_visible);
 
     level_label->set_text(to_godot_string(model.level_text));
-    level_group->set_visible(model.level_visible && !UiThemeProvider::compact());
+    level_group->set_visible(model.level_visible);
 
     render_integrity(model.integrity);
     render_deploy_cards(model.deploy_cards);
@@ -397,11 +302,7 @@ void HUD::clear_deploy_cards() {
     deploy_cards.clear();
 }
 
-void HUD::on_card_pressed(const String &unit_type) {
-    if (!card_touch_dragged_) {
-        emit_signal("deploy_requested", unit_type);
-    }
-}
+void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_requested", unit_type); }
 
 void HUD::update_core_resource(int value) {
     hud_input_.energy = value;
@@ -449,7 +350,7 @@ void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {
     match_result_overlay->set_offset(SIDE_BOTTOM, 0.0);
     match_result_overlay->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
     match_result_overlay->set_color(UiThemeProvider::color(model.victory ? "overlay_victory" : "overlay_defeat"));
-    ui_root_->add_child(match_result_overlay);
+    add_child(match_result_overlay);
 
     match_result_label = make_label(to_godot_string(model.label), "banner");
     match_result_label->set_name("MatchResultBannerLabel");
@@ -467,8 +368,8 @@ void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {
 
 void HUD::hide_match_result_banner() {
     if (match_result_overlay != nullptr && !match_result_overlay->is_queued_for_deletion()) {
-        if (match_result_overlay->get_parent() == ui_root_) {
-            ui_root_->remove_child(match_result_overlay);
+        if (match_result_overlay->get_parent() == this) {
+            remove_child(match_result_overlay);
         }
         match_result_overlay->queue_free();
     }
@@ -484,7 +385,7 @@ void HUD::show_score_screen(const ScoreScreenModel &summary) {
     }
 
     const ScoreScreenViewNodes view =
-        ScoreScreenView::show(ui_root_, summary,
+        ScoreScreenView::show(this, summary,
                               {
                                   .on_next_level = callable_mp(this, &HUD::on_next_level_pressed).bind(to_godot_string(summary.next_level_id)),
                                   .on_endless = callable_mp(this, &HUD::on_endless_pressed),

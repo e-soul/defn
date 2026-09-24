@@ -5,7 +5,6 @@
 #include "data_paths.h"
 #include "godot_string.h"
 #include "menu_data_loader.h"
-#include "responsive_ui_root.h"
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
@@ -46,14 +45,6 @@ void PauseMenu::_input(const Ref<InputEvent> &event) {
     }
 }
 
-void PauseMenu::_process(double /*delta*/) {
-    if (pause_button_ != nullptr) {
-        const float top = UiThemeProvider::compact() ? 8.0F : 104.0F;
-        pause_button_->set_offset(SIDE_TOP, top);
-        pause_button_->set_offset(SIDE_BOTTOM, top + 44.0F);
-    }
-}
-
 bool PauseMenu::load_config() {
     const auto loaded_menu_data = MenuDataLoader::load(DataPaths::MENU_DATA);
     if (!loaded_menu_data) {
@@ -72,28 +63,15 @@ void PauseMenu::build_ui() {
     }
 
     UiSfxPlayer::install(this);
-    auto *ui_root = memnew(ResponsiveUiRoot);
-    add_child(ui_root);
-    auto *pause_button = make_button("II", "secondary", callable_mp(this, &PauseMenu::toggle_pause));
-    pause_button_ = pause_button;
-    pause_button->set_name("PauseButton");
-    pause_button->set_tooltip_text("Pause / Resume (Escape)");
-    pause_button->set_custom_minimum_size({48.0F, 44.0F});
-    ui_root->add_child(pause_button);
-    pause_button->set_anchors_preset(Control::PRESET_CENTER_TOP);
-    pause_button->set_offset(SIDE_LEFT, -24.0F);
-    pause_button->set_offset(SIDE_RIGHT, 24.0F);
-    pause_button->set_offset(SIDE_TOP, 8.0F);
-    pause_button->set_offset(SIDE_BOTTOM, 52.0F);
 
     // The scrim, the panel and the heading all come from the shared chrome, so pausing looks like every other
     // screen the game puts in front of the player rather than a bare stack of buttons.
-    const UiScreenScaffold scaffold = build_screen(ui_root, {
-                                                                .title = to_godot_string(pause_menu->title),
-                                                                .show_backdrop = true,
-                                                                .scrollable_body = false,
-                                                                .fit_content = true,
-                                                            });
+    const UiScreenScaffold scaffold = build_screen(this, {
+                                                             .title = to_godot_string(pause_menu->title),
+                                                             .show_backdrop = true,
+                                                             .scrollable_body = false,
+                                                             .fit_content = true,
+                                                         });
     if (scaffold.root == nullptr) {
         return;
     }

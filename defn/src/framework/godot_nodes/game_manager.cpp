@@ -216,10 +216,10 @@ void GameManager::_ready() {
     }
 
     // Pause menu (ESC to toggle)
-    pause_menu_ = memnew(PauseMenu);
-    pause_menu_->set_name("PauseMenu");
-    add_child(pause_menu_);
-    pause_menu_->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
+    auto *pause_menu = memnew(PauseMenu);
+    pause_menu->set_name("PauseMenu");
+    add_child(pause_menu);
+    pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
 }
 
 // The one place the mode is read. A campaign match is composed exactly as it always was; an endless run swaps the
@@ -564,10 +564,6 @@ void GameManager::start_match_result_cutscene(const MatchEnded &match_end) {
     const MatchResultCutsceneModel cutscene_model = MatchResultCutscenePresenter::build(match_end.victory);
     pending_match_result_cutscene_model_ = cutscene_model;
     match_result_cutscene_active_ = true;
-    if (pause_menu_ != nullptr) {
-        pause_menu_->hide();
-        pause_menu_->set_process_input(false);
-    }
     if (unit_selection_controller_ != nullptr) {
         unit_selection_controller_->set_gameplay_available(false);
     }

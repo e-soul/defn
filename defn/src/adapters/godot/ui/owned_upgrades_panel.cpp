@@ -8,7 +8,6 @@
 
 #include <godot_cpp/classes/grid_container.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
-#include <godot_cpp/classes/h_flow_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -27,7 +26,6 @@ Control *OwnedUpgradesPanel::build(const std::vector<UpgradeCardViewModel> &owne
     }
 
     auto *scroll = memnew(ScrollContainer);
-    scroll->set_follow_focus(true);
     scroll->set_custom_minimum_size(options.min_size);
     scroll->set_h_size_flags(Control::SIZE_EXPAND_FILL);
     scroll->set_v_size_flags(Control::SIZE_EXPAND_FILL);
@@ -36,7 +34,8 @@ Control *OwnedUpgradesPanel::build(const std::vector<UpgradeCardViewModel> &owne
         scroll->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
         scroll->set_vertical_scroll_mode(ScrollContainer::SCROLL_MODE_AUTO);
 
-        auto *card_grid = memnew(HFlowContainer);
+        auto *card_grid = memnew(GridContainer);
+        card_grid->set_columns(std::max(1, options.grid_columns));
         card_grid->set_h_size_flags(Control::SIZE_EXPAND_FILL);
         card_grid->add_theme_constant_override("h_separation", options.card_separation);
         card_grid->add_theme_constant_override("v_separation", options.card_separation);

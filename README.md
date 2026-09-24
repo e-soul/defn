@@ -14,10 +14,10 @@ Powered by ![The Godot Engine](https://img.shields.io/badge/Godot-white?logo=god
 
 ## Build and test
 
-The build should be invoked from within the `defn` directory, where `SConstruct` is, not the repo root.
+The build should be invoked from within the `defn` directory, where `SConstruct` is. SCons defaults to the native Windows or Linux target for the host operating system.
 
 Build the extension only: `scons`
 
 Build with clang-tidy and run all tests: `scons with_tidy=True test_all`
 
-See the [build system overview](defn/BUILD_SYSTEM.md) for details.
+See the [build-system overview](defn/BUILD_SYSTEM.md) for other workflows.
