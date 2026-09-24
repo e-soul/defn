@@ -398,27 +398,29 @@ a swing in contact meets armour alone. That clause is what lets one stat give th
 deleting the counter-puncher's swing, which is the heaviest single hit in the roster and the diver's answer. The
 roster built on that axis, and what it measures as, is in [`defn/DIVERSITY_AND_BALANCE.md`](defn/DIVERSITY_AND_BALANCE.md).
 
-The belt has a depth axis as well as a forward one, and the two move independently. A unit slides along Y toward the
-lane of whatever it is walking at, so a rusher curves onto its victim's line across the whole approach and arrives
-beside it rather than a hundred pixels above it. The split follows the forward axis exactly: the domain decides *which*
-lane (`BeltSlideIntent` on `CombatLogicIntent`, carried out as a `SLIDE_BELT` command), and whatever is doing the moving
-owns *how fast* (`belt_slide_speed_pixels_per_second`, held by `MovementComponent` in the game and by `SimEntity` in the
-kernel, both stepping the same `advance_belt_slide`). The rate defaults to zero, which is "does not slide" and is every
-unit that has not opted in.
+The belt has a depth axis as well as a forward one. `CombatTargetSelection` carries a retained approach identity and
+position separately from attack eligibility. The match-level `BeltPositioning` domain coordinator assigns persistent
+target-relative offsets and computes same-side elliptical separation from one foot-position snapshot. Its bounded,
+accelerated Y results are applied before the per-unit animation and combat callbacks. `GameManager` and the conformance
+runner use `BeltPositioningRuntime` to collect Godot facts; `SimWorld` supplies the same facts directly. Both paths
+retain the previous combat selection for this phase, so each unit observes the same neighbor snapshot and the sensor's
+existing delayed overlap semantics remain intact. Stable order is assigned at spawn rather than derived from Godot
+ObjectIDs. Dead units release slots, and a manual reposition suspends its autonomous Y motion. The old `SLIDE_BELT`
+combat command remains a compatibility output but is not applied; the coordinator is the sole owner of Y correction.
 
 What it steers by is the *approach lane*, not the selected target, and the difference between those two is the
-difference between a curve and a sidestep. `CombatTargetSelection` therefore reports `approach_position` alongside
+difference between a curve and a sidestep. `CombatTargetSelection` therefore reports `approach_id` and `approach_position` alongside
 whatever it selected: the target being fought, the candidate being pursued, or -- having neither -- the nearest enemy
 ahead inside the sensor. A unit only selects a target once it can attack it, so a melee rusher has nothing selected for
 almost its entire run; steering by selection would send it straight down its spawn lane and step it sideways on
 arrival. Steering by what it is walking at bends the run from the moment the line comes into sensor range.
 
-`SLIDE_BELT` rides alongside `STOP` and `MOVE` rather than replacing either, because an engaged unit has stopped
-walking and is still expected to finish closing the lane. It is not blocked by the attack windup: that rule exists so a
-committed swing cannot be walked out of, which is a statement about the forward axis, and range classification never
-reads Y. The step is clamped to the remaining gap, so convergence is monotone and cannot oscillate. Y is invisible to
-range classification but not to sensing, which is a circle on both sides; that is why the kernel slides too, and why
-`scons conformance` now traces Y alongside X.
+The position solver does not gate attacks or change X-based range classification. An action animation takes precedence
+over shuffle locomotion, while a configurable speed scale permits restrained Y correction during repeated attacks.
+Optional logical action-frame planting windows can reduce it further. `AnimConfig` can reference another clip and list
+explicit source frames; the default shuffle references walk frames 004/005, inheriting its path and offset. The domain
+animation clock counts logical frames, and the Godot loader maps each logical frame to its configured source index.
+Y remains visible to circular sensing, projectile travel and splash resolution, so conformance traces both axes.
 
 Pursuit is what lets a unit end up *behind* the line it was walking into, so pursuit is also what owes it a way back.
 Everything else stops at the first thing it can attack and is therefore always in front of the fight; a unit that
@@ -485,14 +487,14 @@ facts those rules would otherwise read off nodes:
   crosses both units' sensor edges off-lane and pins the acquisition frame on each.
 - `SimWorld::apply_commands` mirrors `CombatRuntime::apply_command` case for case; the presentation-only commands are
   the only ones it drops.
-- Movement and damage are the ten-line equivalents of `MovementComponent::move`,
-  `MovementComponent::slide_toward_belt_y`, `HealthComponent::take_damage` and `DamageDispatcher::apply`.
+- X movement and damage mirror `MovementComponent::move`, `HealthComponent::take_damage` and
+  `DamageDispatcher::apply`. The shared positioning solver handles Y before entity combat steps.
 - `SimProjectile` carries what `ProjectileAttack` carries, and `SimWorld::build_impact_snapshots` gathers blast
   candidates in the order the shipped game walks the entity container, direct target first. That order is
   load-bearing: `resolve_projectile_impact` trims its candidate list from the back, so splash victims are chosen by
   spawn order rather than by proximity.
 
-Entities step in ascending id, which is the order Godot walks the process group, and each entity advances its animation
+Positioning reads a full snapshot and applies Y before entities step in ascending id. Each entity advances its animation
 before its combat step, matching `AnimationController::_process` running ahead of `CombatComponent::_process` on the
 same unit. Projectiles step after every entity, matching `ProjectileAttack` nodes being appended to the entity
 container. A shot is committed by combat but released only when the shoot animation reaches its spawn frame, and its

@@ -34,6 +34,9 @@ class CombatRuntime {
     AttackMode get_attack_mode() const { return state_.attack_mode; }
     void apply_field_promotion(const FieldPromotionRules &rules);
     [[nodiscard]] const CombatConfig &get_config() const { return config_; }
+    [[nodiscard]] const CombatTargetSelection &get_selection() const { return selection_; }
+    [[nodiscard]] bool is_manual_repositioning() const { return manual_repositioning_; }
+    [[nodiscard]] bool is_falling_back() const { return state_.falling_back; }
 
   private:
     void update_target();
@@ -52,6 +55,7 @@ class CombatRuntime {
     CombatLogicState state_{};
     // Survives disengagement so a target that fled during the committed windup can still be recognised as a chase.
     EntityId last_target_id_{};
+    EntityId approach_id_{};
     PendingProjectileSpawn pending_projectile_{};
     bool manual_repositioning_ = false;
     // Which way the sprite is turned, as far as automatic combat is concerned. Kept here rather than asked of the

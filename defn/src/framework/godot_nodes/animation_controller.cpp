@@ -70,7 +70,8 @@ void AnimationController::setup_sprite_frames(const UnitConfig &cfg) {
         frames->set_animation_speed(animation_name, anim_cfg.speed);
         frames->set_animation_loop(animation_name, anim_cfg.loop);
         for (int i = 0; i < anim_cfg.frame_count; ++i) {
-            String path = vformat(to_godot_string(anim_cfg.path_template), i);
+            const int source_index = anim_cfg.source_frame_indices.empty() ? i : anim_cfg.source_frame_indices[static_cast<std::size_t>(i)];
+            String path = vformat(to_godot_string(anim_cfg.path_template), source_index);
             Ref<Texture2D> tex = loader->load(path);
             if (tex.is_valid()) {
                 frames->add_frame(animation_name, tex);
@@ -181,6 +182,11 @@ void AnimationController::apply_sprite_offset() {
 
 void AnimationController::set_anim_state(UnitPose pose) {
     state_.set_pose(pose);
+    sync_presentation();
+}
+
+void AnimationController::update_locomotion(float displacement_x, float displacement_y, double delta, const BeltPositioningConfig &config) {
+    state_.update_locomotion(displacement_x, displacement_y, delta, config);
     sync_presentation();
 }
 

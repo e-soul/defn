@@ -4,6 +4,7 @@
 #ifndef SIM_WORLD_H
 #define SIM_WORLD_H
 
+#include "belt_positioning.h"
 #include "combat_use_cases.h"
 #include "hostile_scaling.h"
 #include "projectile_rules.h"
@@ -23,6 +24,8 @@ namespace defn {
 
 struct SimWorldConfig {
     double fixed_delta_seconds = 1.0 / 60.0;
+    std::optional<float> belt_top_y;
+    std::optional<float> belt_bottom_y;
 };
 
 enum class SimSpawnRejection { NONE, UNKNOWN_UNIT };
@@ -80,7 +83,7 @@ struct SimEngagementReport {
 // only supplies the scene facts those rules would otherwise read off nodes.
 class SimWorld {
   public:
-    SimWorld(const UnitCatalog &catalog, const GlobalUnitConfig &globals, RandomSource &random, const SimWorldConfig &config = {});
+    SimWorld(const UnitCatalog &catalog, GlobalUnitConfig globals, RandomSource &random, const SimWorldConfig &config = {});
 
     SimSpawnResult spawn(const std::string &unit_id, UnitSide side, Vector2 position, const SimSpawnOverrides &overrides = {});
 
@@ -112,7 +115,7 @@ class SimWorld {
     void apply_commands(SimEntity &entity, const std::vector<CombatCommand> &commands);
     static void apply_pose(SimEntity &entity, CombatPoseIntent pose);
     void move(SimEntity &entity, float direction) const;
-    void slide_belt(SimEntity &entity, float target_y) const;
+    void position_belt();
     void apply_damage(SimEntity &source, EntityId target_id, int base_damage, DamageDelivery delivery);
     static void record_effective_damage_dealt(SimEntity &source, int effective_damage);
     [[nodiscard]] bool is_target_out_of_range(const SimEntity &viewer) const;
@@ -128,6 +131,7 @@ class SimWorld {
     std::vector<CombatTargetSnapshot> snapshots_;
     std::vector<SimDamageEvent> damage_events_;
     std::vector<ProjectileTargetSnapshot> impact_snapshots_;
+    BeltPositioning belt_positioning_;
     uint64_t next_entity_id_ = 1;
     uint64_t next_projectile_id_ = 1;
     std::uint64_t tick_index_ = 0;

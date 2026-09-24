@@ -1,0 +1,24 @@
+{
+  "name": "combat_depth",
+  "level": "level_01",
+  "seed": 20260924,
+  "fps": 60,
+  "duration_seconds": 25,
+  "_notes": [
+    "Level 01 sends four hounds from 3.0 to 6.0 seconds, followed by a crowded second wave.",
+    "Two early breachers leave room to inspect approach alignment and contact spacing."
+  ],
+  "cursor": {
+    "input_chip": false,
+    "start": [1620, 900]
+  },
+  "timeline": [
+    {"at": 1.5, "action": "deploy", "unit": "breacher"},
+    {"at": 4.5, "action": "deploy", "unit": "breacher"},
+    {"at": 7.0, "action": "park", "canvas": [1620, 900]},
+    {"at": 9.0, "action": "still", "label": "approach"},
+    {"at": 13.0, "action": "still", "label": "first_contact"},
+    {"at": 17.0, "action": "still", "label": "hound_crowd"},
+    {"at": 22.0, "action": "still", "label": "second_wave"}
+  ]
+}

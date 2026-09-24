@@ -26,6 +26,7 @@ void CombatRuntime::configure(BattleEntity *unit, HealthComponent *health, Anima
     state_ = {};
     pending_projectile_ = {};
     last_target_id_ = {};
+    approach_id_ = {};
     manual_repositioning_ = false;
     facing_backward_ = false;
 }
@@ -60,6 +61,7 @@ void CombatRuntime::begin_manual_reposition() {
     selection_ = {};
     pending_projectile_ = {};
     last_target_id_ = {};
+    approach_id_ = {};
     if (animation_ != nullptr) {
         animation_->cancel_pending_attack_presentation();
     }
@@ -69,6 +71,7 @@ void CombatRuntime::end_manual_reposition() {
     manual_repositioning_ = false;
     selection_ = {};
     last_target_id_ = {};
+    approach_id_ = {};
     // `UnitControlComponent` turns the unit forward again as it hands control back, so the cache is re-synced rather
     // than left believing whatever it last applied itself.
     facing_backward_ = false;
@@ -92,7 +95,8 @@ void CombatRuntime::face_backward(bool backward) {
 }
 
 void CombatRuntime::update_target() {
-    selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id);
+    selection_ = CombatTargetSelector::select(unit_, detection_area_, config_, state_.target_id, approach_id_);
+    approach_id_ = selection_.approach_id;
     if (selection_.target_id.is_valid()) {
         last_target_id_ = selection_.target_id;
     }
@@ -139,9 +143,7 @@ void CombatRuntime::apply_command(const CombatCommand &command, double delta) {
         }
         break;
     case CombatCommandType::SLIDE_BELT:
-        if (auto *movement = unit_->get_movement_component(); movement != nullptr) {
-            movement->slide_toward_belt_y(static_cast<real_t>(command.target_position.y), delta);
-        }
+        // MatchBeltPositioning applies the shared snapshot before combat callbacks.
         break;
     case CombatCommandType::PLAY_POSE:
         if (animation_ == nullptr) {

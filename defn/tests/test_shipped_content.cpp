@@ -373,13 +373,8 @@ DEFN_TEST(shipped_breacher_clears_three_grime_and_three_masons_at_a_similar_pric
     DEFN_CHECK(versus_mason.seconds < versus_grime.seconds);
 }
 
-// The depth axis is opt-in, and the hound is the only unit that has opted in. Pinned as a pair, because either half
-// alone is a weaker claim: a hound that lost its rate would run at a sniper and bite the air a lane above it, and a
-// catalog that quietly handed the rate to everything would make every line converge into a single file.
-//
-// The rate itself is read against the hound's 120 px/s advance and the belt's ~178 px depth: gentle enough to read as
-// a drift rather than a strafe, and quick enough to finish inside the run-in its 600 px aggro range buys it.
-DEFN_TEST(shipped_hound_is_the_only_unit_that_slides_along_the_belt) {
+// Every mobile unit has a restrained depth rate; the hound keeps its faster authored override.
+DEFN_TEST(shipped_mobile_units_have_depth_movement_and_hound_retains_its_override) {
     UnitDataLoader catalog;
     DEFN_REQUIRE(catalog.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS));
 
@@ -388,10 +383,14 @@ DEFN_TEST(shipped_hound_is_the_only_unit_that_slides_along_the_belt) {
     DEFN_CHECK_EQ(hound->belt_slide_speed_pixels_per_second, 40.0F);
     DEFN_CHECK(hound->belt_slide_speed_pixels_per_second < hound->move_speed_pixels_per_second);
 
-    for (const char *unit_id : {"base", "breacher", "marksman", "impact", "operator", "grime", "mason", "wrecker", "jackal"}) {
+    const auto base = catalog.get_unit("base");
+    DEFN_REQUIRE(base.has_value());
+    DEFN_CHECK_EQ(base->belt_slide_speed_pixels_per_second, 0.0F);
+
+    for (const char *unit_id : {"breacher", "marksman", "impact", "operator", "grime", "mason", "wrecker", "jackal"}) {
         const auto other = catalog.get_unit(unit_id);
         DEFN_REQUIRE(other.has_value());
-        DEFN_CHECK_EQ(other->belt_slide_speed_pixels_per_second, 0.0F);
+        DEFN_CHECK_EQ(other->belt_slide_speed_pixels_per_second, 28.0F);
     }
 }
 

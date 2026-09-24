@@ -57,6 +57,9 @@ struct SimEntity {
     float move_speed_pixels_per_second = 0.0F;
     // The depth axis. Zero for every unit that has not opted in, which leaves its y at whatever it spawned on.
     float belt_slide_speed_pixels_per_second = 0.0F;
+    BeltPositioningConfig belt_positioning;
+    CombatTargetSelection previous_selection;
+    float previous_positioning_x = 0.0F;
     int bounty = 0;
     bool combat_enabled = true;
     bool movement_enabled = true;
@@ -67,6 +70,7 @@ struct SimEntity {
     CombatLogicState combat_state;
     // Survives disengagement so a target that fled during the committed windup is still recognised as a chase.
     EntityId last_target_id;
+    EntityId approach_id;
     UnitAnimationState animation;
     FieldPromotionRuntime field_promotion;
     SimPendingProjectile pending_projectile;

@@ -225,6 +225,7 @@ void GameManager::_ready() {
 // The one place the mode is read. A campaign match is composed exactly as it always was; an endless run swaps the
 // level definition for a synthesised one and puts a coordinator in front of the director, which learns nothing.
 bool GameManager::compose_match(const String &level_id) {
+    belt_positioning_.clear();
     auto *progression = CampaignService::get_singleton();
     const bool endless = progression->get_match_mode() == MatchMode::ENDLESS;
 
@@ -274,8 +275,24 @@ void GameManager::_process(double delta) {
         return;
     }
 
+    update_belt_positioning(delta);
     update_camera_scroll(delta);
     apply_match_update(endless_director_.has_value() ? endless_director_->update(delta) : match_director_.update(delta));
+}
+
+void GameManager::update_belt_positioning(double delta) {
+    auto *grid = GridManager::get_singleton();
+    if (entity_container == nullptr || grid == nullptr) {
+        return;
+    }
+    std::vector<Unit *> units;
+    for (int index = 0; index < entity_container->get_child_count(); ++index) {
+        if (auto *unit = Object::cast_to<Unit>(entity_container->get_child(index)); unit != nullptr) {
+            units.push_back(unit);
+        }
+    }
+    const GameplayRules &rules = grid->get_rules();
+    belt_positioning_.step(units, rules.belt_top_y, rules.belt_bottom_y, delta);
 }
 
 void GameManager::_input(const Ref<InputEvent> &event) {

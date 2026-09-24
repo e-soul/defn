@@ -23,6 +23,7 @@ src/domain/content/hostile_scaling.cpp
 src/domain/match/endless_wave_generator.cpp
 src/application/match/spawn_scheduler.cpp
 src/domain/combat/combat_logic.cpp
+src/domain/combat/belt_positioning.cpp
 src/domain/combat/projectile_rules.cpp
 src/domain/combat/field_promotion.cpp
 src/domain/unit_control/reposition_logic.cpp
@@ -106,6 +107,7 @@ src/framework/godot_nodes/projectile_attack.cpp
 src/framework/godot_nodes/projectile_factory.cpp
 src/adapters/godot/ui/score_screen_view.cpp
 src/adapters/godot/combat/combat_runtime.cpp
+src/adapters/godot/combat/belt_positioning_runtime.cpp
 src/adapters/godot/combat/combat_target_selector.cpp
 src/adapters/godot/combat/combat_attack_executor.cpp
 src/adapters/godot/combat/damage_dispatcher.cpp
@@ -162,6 +164,7 @@ tests/test_unit_profiles.cpp
 NATIVE_TESTS = """
 tests/test_main.cpp
 tests/test_animation_clock.cpp
+tests/test_belt_positioning.cpp
 tests/test_projectile_flight.cpp
 tests/test_unit_animation_state.cpp
 tests/test_sim_world.cpp

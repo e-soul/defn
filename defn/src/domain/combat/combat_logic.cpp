@@ -112,6 +112,7 @@ struct BestTargets {
     // walking, and -- for a melee-only pursuer, whose whole approach happens on this path -- the only lane there is
     // to slide toward.
     bool preferred_ahead = false;
+    EntityId preferred_ahead_id;
     Vector2 preferred_ahead_position;
     // Whether the best thing that *can* be attacked is itself preferred, which is when there is nothing to wait for.
     bool best_is_preferred = false;
@@ -162,6 +163,7 @@ BestTargets scan_targets(const Vector2 &origin, const CombatConfig &config, std:
         } else if (distance <= resolve_aggro_range(config) && distance < closest_preferred_ahead_distance) {
             closest_preferred_ahead_distance = distance;
             best.preferred_ahead = true;
+            best.preferred_ahead_id = snapshot.id;
             best.preferred_ahead_position = snapshot.position;
         }
     }
@@ -212,6 +214,7 @@ bool clears_retarget_margin(float candidate_score, float retained_score) {
 // picked anything yet because there is nothing it can reach.
 struct NearestAhead {
     bool found = false;
+    EntityId id;
     Vector2 position;
 };
 
@@ -231,6 +234,7 @@ NearestAhead find_nearest_ahead(const Vector2 &origin, const CombatConfig &confi
 
         closest_distance = distance;
         nearest.found = true;
+        nearest.id = snapshot.id;
         nearest.position = snapshot.position;
     }
 
@@ -244,6 +248,7 @@ struct ArmyLine {
     bool ahead = false;
     bool beyond_standoff = false;
     bool unpassed = false;
+    EntityId unpassed_id;
     Vector2 unpassed_position;
 };
 
@@ -273,6 +278,7 @@ ArmyLine scan_army_line(const Vector2 &origin, const CombatConfig &config, std::
         if (distance < standoff && distance > nearest_unpassed_distance) {
             nearest_unpassed_distance = distance;
             line.unpassed = true;
+            line.unpassed_id = snapshot.id;
             line.unpassed_position = snapshot.position;
         }
     }
@@ -286,7 +292,7 @@ namespace {
 
 // Who this unit attacks, if anything. The approach lane is decided separately, below.
 CombatTargetSelection choose_target(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
-                                    std::span<const CombatTargetSnapshot> targets) {
+                                    std::span<const CombatTargetSnapshot> targets, EntityId previous_approach_id) {
     const RetainedTarget retained = find_retained_target(origin, config, current_target_id, targets);
 
     // Contact is sticky. Who you are standing next to is not a choice a preference gets to revisit, and letting one
@@ -309,7 +315,14 @@ CombatTargetSelection choose_target(const Vector2 &origin, const CombatConfig &c
     // it out of a fight it is in the middle of is a movement change rather than a targeting one. Nothing declares a
     // preferred role in the shipped catalog yet, so `preferred_ahead` is false everywhere and this never fires.
     if (best.preferred_ahead && !best.best_is_preferred) {
-        return {.target_position = best.preferred_ahead_position, .pursuing = true};
+        for (const CombatTargetSnapshot &snapshot : targets) {
+            const float distance = get_forward_distance(config.side, origin, snapshot.position);
+            if (snapshot.id == previous_approach_id && !snapshot.dead && snapshot.side != config.side && config.prefers_role(snapshot.role) &&
+                distance >= 0.0F && distance <= resolve_aggro_range(config) && classify_target_by_distance(config, distance) == AttackMode::NONE) {
+                return {.target_position = snapshot.position, .pursuing = true, .approach_id = snapshot.id};
+            }
+        }
+        return {.target_position = best.preferred_ahead_position, .pursuing = true, .approach_id = best.preferred_ahead_id};
     }
 
     // Ranged fire re-asks the question, but only answers differently when the answer is clearly better. Below the
@@ -347,8 +360,8 @@ CombatTargetSelection choose_target(const Vector2 &origin, const CombatConfig &c
 } // namespace
 
 CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
-                                                   std::span<const CombatTargetSnapshot> targets) {
-    CombatTargetSelection selection = choose_target(origin, config, current_target_id, targets);
+                                                   std::span<const CombatTargetSnapshot> targets, EntityId previous_approach_id) {
+    CombatTargetSelection selection = choose_target(origin, config, current_target_id, targets, previous_approach_id);
 
     // Only a unit that can decline an enemy it could already attack is able to end up behind one, so only such a unit
     // is asked where the line it walked through has got to.
@@ -357,14 +370,30 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
         selection.army_ahead = line.ahead;
         selection.army_beyond_standoff = line.beyond_standoff;
         selection.has_unpassed_army = line.unpassed;
+        selection.unpassed_army_id = line.unpassed_id;
         selection.unpassed_army_position = line.unpassed_position;
     }
 
     // Whatever it settled on is also what it is walking at.
     if (selection.target_id.is_valid() || selection.pursuing) {
         selection.has_approach_target = true;
+        if (selection.target_id.is_valid()) {
+            selection.approach_id = selection.target_id;
+        }
         selection.approach_position = selection.target_position;
         return selection;
+    }
+
+    // Keep the same sensed approach candidate through small changes in forward distance.
+    for (const CombatTargetSnapshot &snapshot : targets) {
+        const float distance = get_forward_distance(config.side, origin, snapshot.position);
+        if (snapshot.id == previous_approach_id && !snapshot.dead && snapshot.side != config.side && distance >= 0.0F &&
+            distance <= resolve_aggro_range(config)) {
+            selection.has_approach_target = true;
+            selection.approach_id = snapshot.id;
+            selection.approach_position = snapshot.position;
+            return selection;
+        }
     }
 
     // Nothing in reach and nothing worth declining: the unit walks forward regardless, so the lane it steers for is
@@ -372,6 +401,7 @@ CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const 
     // see the line from hundreds of pixels out and cannot select any of it until it is in contact.
     const NearestAhead nearest = find_nearest_ahead(origin, config, targets);
     selection.has_approach_target = nearest.found;
+    selection.approach_id = nearest.id;
     selection.approach_position = nearest.position;
     return selection;
 }

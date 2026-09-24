@@ -20,12 +20,15 @@ namespace defn {
 
 // The clip names `unit_data.json` is written in, and the contract between that file and the code that poses a unit.
 inline constexpr std::string_view WALK_ANIMATION = "walk";
+inline constexpr std::string_view SHUFFLE_ANIMATION = "shuffle";
 inline constexpr std::string_view ATTACK_ANIMATION = "attack";
 inline constexpr std::string_view SHOOT_ANIMATION = "shoot";
 inline constexpr std::string_view DEATH_ANIMATION = "death";
 
 struct AnimConfig {
     std::string path_template;
+    std::string source_animation;
+    std::vector<int> source_frame_indices;
     int frame_count = 10;
     double speed = 10.0;
     bool loop = false;
@@ -34,9 +37,13 @@ struct AnimConfig {
     // the *character*, and switching clips would jump the body by the difference in padding. One offset per clip pins
     // the body instead. Measured against the unit's `idle` clip, which is therefore always zero.
     Vector2 offset;
+    bool has_offset_override = false;
     // Attack and shoot animations commit to their first frames: the unit may not be re-posed or moved until they play
     // out. The remaining frames are the cancelable backswing. Meaningless for animations combat never triggers.
     int windup_frames = 3;
+    std::optional<int> plant_start_frame;
+    std::optional<int> plant_end_frame;
+    float plant_y_speed_scale = 0.0F;
 };
 
 struct MuzzleConfig {
@@ -59,6 +66,29 @@ struct GlobalShootSfxConfig {
 struct RangeVariationConfig {
     float min = 0.8F;
     float max = 1.2F;
+};
+
+struct BeltPositioningConfig {
+    float acceleration = 180.0F;
+    float arrival_dead_zone = 3.0F;
+    float edge_inset = 4.0F;
+    float melee_band = 58.0F;
+    float ranged_base_tolerance = 24.0F;
+    float ranged_angle_slope = 0.18F;
+    float ranged_max_tolerance = 90.0F;
+    float desired_gap = 30.0F;
+    float minimum_gap = 16.0F;
+    float reassignment_hysteresis = 12.0F;
+    float footprint_half_width = 18.0F;
+    float footprint_half_depth = 14.0F;
+    float overlap_dead_zone = 2.0F;
+    float separation_weight = 1.0F;
+    float moving_yield = 1.0F;
+    float attacking_yield = 0.45F;
+    float attack_y_speed_scale = 0.65F;
+    float min_locomotion_speed = 3.0F;
+    float y_dominance_enter = 1.25F;
+    float y_dominance_exit = 0.8F;
 };
 
 struct ProjectileAttackConfig {
@@ -96,6 +126,10 @@ struct GlobalUnitConfig {
     GlobalShootSfxConfig shoot_sfx;
     RangeVariationConfig melee_attack_range_variation;
     RangeVariationConfig ranged_attack_range_variation;
+    AnimConfig shuffle_animation;
+    BeltPositioningConfig belt_positioning;
+    float aggro_range = 0.0F;
+    float belt_slide_speed_pixels_per_second = 0.0F;
     Color friendly_health_bar_color = {0.0F, 1.0F, 0.0F, 0.9F};
     Color hostile_health_bar_color = {1.0F, 0.0F, 0.0F, 0.9F};
     Color friendly_melee_flash_color = {1.0F, 1.0F, 1.0F, 1.0F};
@@ -123,6 +157,7 @@ struct UnitConfig {
     // How fast this unit closes the gap on the belt's depth axis once it holds a target, in pixels per second. Zero is
     // "does not slide", which is every unit that has not opted in, and leaves its y exactly where it spawned.
     float belt_slide_speed_pixels_per_second = 0.0F;
+    BeltPositioningConfig belt_positioning;
     // How hard this unit pulls enemy fire, and which enemy it reaches for itself. The two levers that make a unit's
     // value depend on what else is on the field; both default to no effect.
     float threat_weight = 1.0F;

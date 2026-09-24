@@ -36,6 +36,56 @@ DEFN_TEST(unit_animation_state_starts_walking) {
     DEFN_CHECK(!state.is_attack_animation_playing());
 }
 
+DEFN_TEST(unit_animation_state_shuffles_on_applied_y_motion_with_hysteresis) {
+    UnitAnimationState state;
+    auto clips = make_animations();
+    clips.emplace_back("shuffle", AnimConfig{.source_animation = "walk", .source_frame_indices = {4, 5, 4}, .frame_count = 3, .speed = 6.0, .loop = true});
+    state.configure(clips);
+    state.set_pose(UnitPose::WALK);
+    BeltPositioningConfig config;
+    state.update_locomotion(1.0F, 5.0F, 0.1, config);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("shuffle"));
+    state.advance(0.2);
+    const int frame = state.get_clock().frame();
+    state.update_locomotion(1.0F, 4.0F, 0.1, config);
+    DEFN_CHECK_EQ(state.get_clock().frame(), frame);
+    state.update_locomotion(5.0F, 1.0F, 0.1, config);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+}
+
+DEFN_TEST(unit_animation_state_does_not_interrupt_a_committed_shot_for_shuffle) {
+    UnitAnimationState state;
+    auto clips = make_animations();
+    clips.emplace_back("shuffle", AnimConfig{.source_animation = "walk", .source_frame_indices = {4, 5}, .frame_count = 2, .speed = 6.0, .loop = true});
+    state.configure(clips);
+    state.set_pose(UnitPose::WALK);
+    state.play_shoot(3);
+    state.update_locomotion(0.0F, 8.0F, 0.1, BeltPositioningConfig{});
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("shoot"));
+    state.advance(0.31);
+    DEFN_CHECK(state.consume_shoot_effect_triggered());
+}
+
+DEFN_TEST(unit_animation_state_applies_optional_logical_planting_window) {
+    UnitAnimationState state;
+    auto clips = make_animations();
+    for (auto &[name, clip] : clips) {
+        if (name == "attack") {
+            clip.plant_start_frame = 2;
+            clip.plant_end_frame = 3;
+            clip.plant_y_speed_scale = 0.1F;
+        }
+    }
+    state.configure(clips);
+    state.play_attack();
+    BeltPositioningConfig config;
+    DEFN_CHECK_CLOSE(state.belt_y_speed_scale(config), config.attack_y_speed_scale, 0.001);
+    state.advance(0.25);
+    DEFN_CHECK_CLOSE(state.belt_y_speed_scale(config), 0.1, 0.001);
+    state.advance(0.20);
+    DEFN_CHECK_CLOSE(state.belt_y_speed_scale(config), config.attack_y_speed_scale, 0.001);
+}
+
 DEFN_TEST(unit_animation_state_reports_the_attack_windup_and_its_end) {
     UnitAnimationState state = make_state();
     state.play_attack();
