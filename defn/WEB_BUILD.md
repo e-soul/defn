@@ -150,18 +150,26 @@ files are committed and no `gh-pages` branch is needed.
 
 Both `v*` tag pushes and manual **Release** runs deploy the selected ref's Web
 build to **https://e-soul.github.io/defn/**. Ordinary `master` pushes and manual
-**Web CI** runs only build and test. Native release ZIP publishing remains
-tag-only. Pages deployments are serialized without cancelling an active deploy;
-the `github-pages` environment records the deployed URL.
+**Web CI** runs only build and test. To deploy only the Web build, open
+**Actions > Deploy Web to Pages > Run workflow** and select the source branch
+from the **Branch** dropdown (the repository default is `master`). The manual
+workflow reuses Web CI's pinned toolchain, build caches, tests, and release
+export; it deploys only after the build and browser checks succeed. From the
+CLI, run `gh workflow run deploy-web.yml --ref BRANCH`, omitting `--ref` for
+`master`. Native release ZIP publishing remains tag-only. Pages deployments
+are serialized without cancelling an active deploy; the `github-pages`
+environment records the deployed URL.
 
 One-time repository setup (requires administrator access):
 
 1. In **Settings > Pages > Build and deployment**, set **Source** to
    **GitHub Actions**, not a branch.
 2. If the `github-pages` environment restricts deployment refs, allow release
-   tags matching `v*` and any branches used for manual Release runs.
-3. Push a release tag or run **Release** after these workflow changes are on
-   the selected ref. The site becomes available after its first deployment.
+   tags matching `v*` and any branches used for manual Release or **Deploy Web
+   to Pages** runs.
+3. Push a release tag or run **Release** or **Deploy Web to Pages** after these
+   workflow changes are on the selected ref. The site becomes available after
+   its first deployment.
 
 The Pages artifact contains the complete release export at its root, including
 `index.html`, the PCK, engine WASM and extension WASM. Relative asset URLs work
