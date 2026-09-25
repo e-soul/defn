@@ -1029,4 +1029,24 @@ DEFN_TEST(unit_loader_validates_minimum_belt_move_distance) {
     DEFN_CHECK(!loader.load_from_data(make_unit_data(), global));
 }
 
+DEFN_TEST(unit_loader_rejects_invalid_animation_without_retaining_old_units) {
+    UnitDataLoader loader;
+    DEFN_REQUIRE(loader.load_from_data(make_unit_data(), make_global_data()));
+
+    Dictionary animation;
+    animation["speed"] = 0.0;
+    Dictionary animations;
+    animations["idle"] = animation;
+    Dictionary unit;
+    unit["animations"] = animations;
+    Dictionary units;
+    units["invalid"] = unit;
+    Dictionary data;
+    data["units"] = units;
+
+    DEFN_CHECK(!loader.load_from_data(data, Dictionary()));
+    DEFN_CHECK(!loader.get_unit("operator").has_value());
+    DEFN_CHECK(!loader.get_unit("invalid").has_value());
+}
+
 } // namespace defn

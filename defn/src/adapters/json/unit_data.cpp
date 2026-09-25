@@ -10,7 +10,8 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <stdexcept>
+#include <optional>
+#include <utility>
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -54,13 +55,18 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
     return fallback;
 }
 
-AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig &fallback) {
+std::optional<AnimConfig> parse_anim_config(const Dictionary &animation_dict, const AnimConfig &fallback) {
     AnimConfig animation = fallback;
     animation.path_template = to_std_string(String(animation_dict.get("path_template", to_godot_string(animation.path_template))));
     animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
     animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
     animation.offset = parse_vector2(animation_dict.get("offset", Array()), animation.offset);
+    if (!std::isfinite(animation.speed) || animation.speed <= 0.0 || animation.frame_count <= 0 || !std::isfinite(animation.offset.x) ||
+        !std::isfinite(animation.offset.y)) {
+        UtilityFunctions::printerr("UnitDataLoader: animation speed and frame count must be positive");
+        return std::nullopt;
+    }
     animation.windup_frames = std::clamp(VariantTools::as_int(animation_dict.get("windup_frames", animation.windup_frames)), 0, animation.frame_count);
     if (animation_dict.has("planting")) {
         const Dictionary planting = animation_dict["planting"];
@@ -70,12 +76,9 @@ AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig 
         if (*animation.plant_start_frame < 0 || *animation.plant_end_frame < *animation.plant_start_frame ||
             *animation.plant_end_frame >= animation.frame_count || !std::isfinite(animation.plant_y_speed_scale) || animation.plant_y_speed_scale < 0.0F ||
             animation.plant_y_speed_scale > 1.0F) {
-            throw std::invalid_argument("invalid animation planting window");
+            UtilityFunctions::printerr("UnitDataLoader: invalid animation planting window");
+            return std::nullopt;
         }
-    }
-    if (!std::isfinite(animation.speed) || animation.speed <= 0.0 || animation.frame_count <= 0 || !std::isfinite(animation.offset.x) ||
-        !std::isfinite(animation.offset.y)) {
-        throw std::invalid_argument("animation speed and frame count must be positive");
     }
     return animation;
 }
@@ -101,48 +104,45 @@ float normalize_fraction(float value) {
     return std::clamp(value, 0.0F, 1.0F);
 }
 
-BeltPositioningConfig parse_belt_positioning(const Dictionary &values, BeltPositioningConfig config) {
+std::optional<BeltPositioningConfig> parse_belt_positioning(const Dictionary &values, BeltPositioningConfig config) {
     auto read = [&values](const char *name, float &field) {
         field = VariantTools::as_float(values.get(name, field));
-        if (!std::isfinite(field) || field < 0.0F) {
-            throw std::invalid_argument("belt positioning values must be finite and nonnegative");
-        }
+        return std::isfinite(field) && field >= 0.0F;
     };
-    read("acceleration", config.acceleration);
-    read("arrival_dead_zone", config.arrival_dead_zone);
-    read("minimum_move_distance", config.minimum_move_distance);
-    read("edge_inset", config.edge_inset);
-    read("melee_band", config.melee_band);
-    read("ranged_base_tolerance", config.ranged_base_tolerance);
-    read("ranged_angle_slope", config.ranged_angle_slope);
-    read("ranged_max_tolerance", config.ranged_max_tolerance);
-    read("desired_gap", config.desired_gap);
-    read("minimum_gap", config.minimum_gap);
-    read("reassignment_hysteresis", config.reassignment_hysteresis);
-    read("footprint_half_width", config.footprint_half_width);
-    read("footprint_half_depth", config.footprint_half_depth);
-    read("overlap_dead_zone", config.overlap_dead_zone);
-    read("separation_weight", config.separation_weight);
-    read("moving_yield", config.moving_yield);
-    read("attacking_yield", config.attacking_yield);
-    read("attack_y_speed_scale", config.attack_y_speed_scale);
+    if (!read("acceleration", config.acceleration) || !read("arrival_dead_zone", config.arrival_dead_zone) ||
+        !read("minimum_move_distance", config.minimum_move_distance) || !read("edge_inset", config.edge_inset) || !read("melee_band", config.melee_band) ||
+        !read("ranged_base_tolerance", config.ranged_base_tolerance) || !read("ranged_angle_slope", config.ranged_angle_slope) ||
+        !read("ranged_max_tolerance", config.ranged_max_tolerance) || !read("desired_gap", config.desired_gap) || !read("minimum_gap", config.minimum_gap) ||
+        !read("reassignment_hysteresis", config.reassignment_hysteresis) || !read("footprint_half_width", config.footprint_half_width) ||
+        !read("footprint_half_depth", config.footprint_half_depth) || !read("overlap_dead_zone", config.overlap_dead_zone) ||
+        !read("separation_weight", config.separation_weight) || !read("moving_yield", config.moving_yield) ||
+        !read("attacking_yield", config.attacking_yield) || !read("attack_y_speed_scale", config.attack_y_speed_scale)) {
+        UtilityFunctions::printerr("UnitDataLoader: belt positioning values must be finite and nonnegative");
+        return std::nullopt;
+    }
     if (config.footprint_half_width <= 0.0F || config.footprint_half_depth <= 0.0F || config.desired_gap < config.minimum_gap ||
         config.minimum_move_distance <= config.arrival_dead_zone || config.attack_y_speed_scale > 1.0F) {
-        throw std::invalid_argument("invalid belt positioning dimensions or hysteresis");
+        UtilityFunctions::printerr("UnitDataLoader: invalid belt positioning dimensions or hysteresis");
+        return std::nullopt;
     }
     return config;
 }
 
-void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
+bool load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
     globals.aggro_range = VariantTools::as_float(global_data.get("aggro_range", globals.aggro_range));
     globals.belt_slide_speed_pixels_per_second =
         VariantTools::as_float(global_data.get("belt_slide_speed_pixels_per_second", globals.belt_slide_speed_pixels_per_second));
     if (!std::isfinite(globals.aggro_range) || globals.aggro_range < 0.0F || !std::isfinite(globals.belt_slide_speed_pixels_per_second) ||
         globals.belt_slide_speed_pixels_per_second < 0.0F) {
-        throw std::invalid_argument("global aggro and belt speeds must be finite and nonnegative");
+        UtilityFunctions::printerr("UnitDataLoader: global aggro and belt speeds must be finite and nonnegative");
+        return false;
     }
     if (global_data.has("belt_positioning")) {
-        globals.belt_positioning = parse_belt_positioning(global_data["belt_positioning"], globals.belt_positioning);
+        const auto positioning = parse_belt_positioning(global_data["belt_positioning"], globals.belt_positioning);
+        if (!positioning) {
+            return false;
+        }
+        globals.belt_positioning = *positioning;
     }
     if (global_data.has("field_promotion")) {
         const Dictionary promotion = global_data["field_promotion"];
@@ -193,6 +193,7 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
         globals.friendly_ranged_flash_color = parse_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
         globals.hostile_ranged_flash_color = parse_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
     }
+    return true;
 }
 
 // An unknown name falls back to NEAREST rather than failing the load: a typo in the catalog should cost a unit its
@@ -309,9 +310,9 @@ ShootSfxConfig parse_shoot_sfx_config(const Dictionary &shoot_sfx_dict, const Sh
     return config;
 }
 
-void apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
+bool apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
     if (!unit_dict.has("projectile_attack")) {
-        return;
+        return true;
     }
 
     const Dictionary projectile_dict = unit_dict["projectile_attack"];
@@ -338,18 +339,27 @@ void apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
     }
 
     if (projectile_dict.has("animation")) {
-        projectile.projectile_animation = parse_anim_config(projectile_dict["animation"], projectile.projectile_animation);
+        const auto animation = parse_anim_config(projectile_dict["animation"], projectile.projectile_animation);
+        if (!animation) {
+            return false;
+        }
+        projectile.projectile_animation = *animation;
     }
     if (projectile_dict.has("explosion_animation")) {
-        projectile.explosion_animation = parse_anim_config(projectile_dict["explosion_animation"], projectile.explosion_animation);
+        const auto animation = parse_anim_config(projectile_dict["explosion_animation"], projectile.explosion_animation);
+        if (!animation) {
+            return false;
+        }
+        projectile.explosion_animation = *animation;
     }
 
     config.projectile_attack = projectile;
+    return true;
 }
 
-void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
+bool apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
     if (!unit_dict.has("animations")) {
-        return;
+        return true;
     }
 
     Dictionary animations = unit_dict["animations"];
@@ -357,11 +367,16 @@ void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
     for (const Variant &animation_key : animation_keys) {
         String animation_name = animation_key;
         Dictionary animation_dict = animations[animation_name];
-        config.animations.emplace_back(to_std_string(animation_name), parse_anim_config(animation_dict, AnimConfig{}));
+        const auto animation = parse_anim_config(animation_dict, AnimConfig{});
+        if (!animation) {
+            return false;
+        }
+        config.animations.emplace_back(to_std_string(animation_name), *animation);
     }
+    return true;
 }
 
-UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, const GlobalUnitConfig &globals) {
+std::optional<UnitConfig> parse_unit_config(const String &key, const Dictionary &unit_dict, const GlobalUnitConfig &globals) {
     UnitConfig config;
     config.name = to_std_string(key);
     config.description = to_std_string(String(unit_dict.get("description", "")));
@@ -392,11 +407,16 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
         unit_dict.get("belt_slide_speed_pixels_per_second", config.move_speed_pixels_per_second > 0.0F ? globals.belt_slide_speed_pixels_per_second : 0.0F));
     if (!std::isfinite(config.aggro_range) || config.aggro_range < 0.0F || !std::isfinite(config.belt_slide_speed_pixels_per_second) ||
         config.belt_slide_speed_pixels_per_second < 0.0F) {
-        throw std::invalid_argument("unit aggro and belt speeds must be finite and nonnegative");
+        UtilityFunctions::printerr("UnitDataLoader: unit aggro and belt speeds must be finite and nonnegative");
+        return std::nullopt;
     }
     config.belt_positioning = globals.belt_positioning;
     if (unit_dict.has("belt_positioning")) {
-        config.belt_positioning = parse_belt_positioning(unit_dict["belt_positioning"], config.belt_positioning);
+        const auto positioning = parse_belt_positioning(unit_dict["belt_positioning"], config.belt_positioning);
+        if (!positioning) {
+            return std::nullopt;
+        }
+        config.belt_positioning = *positioning;
     }
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
@@ -406,8 +426,9 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     apply_unit_colors(unit_dict, globals, config);
     apply_muzzle_flash(unit_dict, config);
     apply_shoot_sfx(unit_dict, globals, config);
-    apply_projectile_attack(unit_dict, config);
-    apply_animations(unit_dict, config);
+    if (!apply_projectile_attack(unit_dict, config) || !apply_animations(unit_dict, config)) {
+        return std::nullopt;
+    }
 
     return config;
 }
@@ -440,24 +461,23 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
 bool UnitDataLoader::load_from_data(const Dictionary &unit_data, const Dictionary &global_data) {
     globals_ = {};
-    try {
-        load_global_config(global_data, globals_);
-
-        Dictionary units_dict = unit_data.get("units", Dictionary());
-        Array keys = units_dict.keys();
-        units_.clear();
-
-        for (const Variant &key_variant : keys) {
-            const String key = key_variant;
-            const Dictionary unit_dict = units_dict[key];
-            units_.push_back(parse_unit_config(key, unit_dict, globals_));
-        }
-    } catch (const std::invalid_argument &error) {
-        UtilityFunctions::printerr("UnitDataLoader: ", error.what());
-        units_.clear();
+    units_.clear();
+    if (!load_global_config(global_data, globals_)) {
         return false;
     }
 
+    const Dictionary units_dict = unit_data.get("units", Dictionary());
+    const Array keys = units_dict.keys();
+    for (const Variant &key_variant : keys) {
+        const String key = key_variant;
+        const Dictionary unit_dict = units_dict[key];
+        auto unit = parse_unit_config(key, unit_dict, globals_);
+        if (!unit) {
+            units_.clear();
+            return false;
+        }
+        units_.push_back(std::move(*unit));
+    }
     return true;
 }
 
