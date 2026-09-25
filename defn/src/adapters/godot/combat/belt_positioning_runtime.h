@@ -22,7 +22,6 @@ class BeltPositioningRuntime {
   private:
     BeltPositioning solver_;
     std::map<uint64_t, uint64_t> spawn_order_;
-    std::map<uint64_t, float> previous_x_;
     uint64_t next_order_ = 1;
 };
 

@@ -30,7 +30,7 @@ class AnimationController : public Node {
 
     UnitPose get_anim_state() const { return state_.get_pose(); }
     void set_anim_state(UnitPose pose);
-    void update_locomotion(float displacement_x, float displacement_y, double delta, const BeltPositioningConfig &config);
+    void update_belt_motion(float displacement_y);
     void hold_anim_state(UnitPose pose);
     bool play_named_animation(const StringName &animation_name, bool restart = true);
     void play_attack_animation();

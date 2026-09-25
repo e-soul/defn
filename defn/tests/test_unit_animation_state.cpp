@@ -36,34 +36,43 @@ DEFN_TEST(unit_animation_state_starts_walking) {
     DEFN_CHECK(!state.is_attack_animation_playing());
 }
 
-DEFN_TEST(unit_animation_state_shuffles_on_applied_y_motion_with_hysteresis) {
-    UnitAnimationState state;
-    auto clips = make_animations();
-    clips.emplace_back("shuffle", AnimConfig{.source_animation = "walk", .source_frame_indices = {4, 5, 4}, .frame_count = 3, .speed = 6.0, .loop = true});
-    state.configure(clips);
-    state.set_pose(UnitPose::WALK);
-    BeltPositioningConfig config;
-    state.update_locomotion(1.0F, 5.0F, 0.1, config);
-    DEFN_CHECK_EQ(state.get_current_animation(), std::string("shuffle"));
+DEFN_TEST(unit_animation_state_keeps_normal_walk_during_y_only_motion) {
+    UnitAnimationState state = make_state();
+    state.update_belt_motion(4.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    DEFN_CHECK(state.is_belt_walking());
     state.advance(0.2);
     const int frame = state.get_clock().frame();
-    state.update_locomotion(1.0F, 4.0F, 0.1, config);
+    state.update_belt_motion(3.0F);
     DEFN_CHECK_EQ(state.get_clock().frame(), frame);
-    state.update_locomotion(5.0F, 1.0F, 0.1, config);
-    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    state.update_belt_motion(0.0F);
+    DEFN_CHECK(!state.is_belt_walking());
 }
 
-DEFN_TEST(unit_animation_state_does_not_interrupt_a_committed_shot_for_shuffle) {
-    UnitAnimationState state;
-    auto clips = make_animations();
-    clips.emplace_back("shuffle", AnimConfig{.source_animation = "walk", .source_frame_indices = {4, 5}, .frame_count = 2, .speed = 6.0, .loop = true});
-    state.configure(clips);
-    state.set_pose(UnitPose::WALK);
+DEFN_TEST(unit_animation_state_does_not_interrupt_a_committed_shot_for_belt_motion) {
+    UnitAnimationState state = make_state();
     state.play_shoot(3);
-    state.update_locomotion(0.0F, 8.0F, 0.1, BeltPositioningConfig{});
+    state.update_belt_motion(8.0F);
     DEFN_CHECK_EQ(state.get_current_animation(), std::string("shoot"));
     state.advance(0.31);
     DEFN_CHECK(state.consume_shoot_effect_triggered());
+}
+
+DEFN_TEST(unit_animation_state_uses_normal_walk_when_a_held_shooter_repositions) {
+    UnitAnimationState state = make_state();
+    state.hold_pose(UnitPose::SHOOT);
+    state.update_belt_motion(4.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    DEFN_CHECK(state.is_belt_walking());
+    DEFN_CHECK_EQ(state.get_pose(), UnitPose::WALK);
+}
+
+DEFN_TEST(unit_animation_state_uses_normal_walk_between_melee_attacks) {
+    UnitAnimationState state = make_state();
+    state.hold_pose(UnitPose::ATTACK);
+    state.update_belt_motion(1.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    DEFN_CHECK(state.is_belt_walking());
 }
 
 DEFN_TEST(unit_animation_state_applies_optional_logical_planting_window) {

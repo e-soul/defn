@@ -10,10 +10,8 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <stdexcept>
 
-#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 namespace defn {
@@ -59,29 +57,10 @@ RangeVariationConfig parse_range_variation(const Variant &value, const RangeVari
 AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig &fallback) {
     AnimConfig animation = fallback;
     animation.path_template = to_std_string(String(animation_dict.get("path_template", to_godot_string(animation.path_template))));
-    animation.source_animation = to_std_string(String(animation_dict.get("source_animation", to_godot_string(animation.source_animation))));
-    if (animation_dict.has("source_frame_indices")) {
-        const Array indices = animation_dict["source_frame_indices"];
-        if (indices.is_empty() || animation_dict.has("frame_count")) {
-            throw std::invalid_argument("source_frame_indices must be nonempty and cannot be combined with frame_count");
-        }
-        animation.source_frame_indices.clear();
-        for (const Variant &value : indices) {
-            const double source_index = VariantTools::as_double(value);
-            if ((value.get_type() != Variant::INT && value.get_type() != Variant::FLOAT) || !std::isfinite(source_index) || source_index < 0.0 ||
-                source_index > static_cast<double>(std::numeric_limits<int>::max()) || std::floor(source_index) != source_index) {
-                throw std::invalid_argument("source_frame_indices must contain nonnegative integers");
-            }
-            animation.source_frame_indices.push_back(static_cast<int>(source_index));
-        }
-        animation.frame_count = static_cast<int>(animation.source_frame_indices.size());
-    } else {
-        animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
-    }
+    animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
     animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
     animation.offset = parse_vector2(animation_dict.get("offset", Array()), animation.offset);
-    animation.has_offset_override = animation_dict.has("offset") || animation.has_offset_override;
     animation.windup_frames = std::clamp(VariantTools::as_int(animation_dict.get("windup_frames", animation.windup_frames)), 0, animation.frame_count);
     if (animation_dict.has("planting")) {
         const Dictionary planting = animation_dict["planting"];
@@ -131,6 +110,7 @@ BeltPositioningConfig parse_belt_positioning(const Dictionary &values, BeltPosit
     };
     read("acceleration", config.acceleration);
     read("arrival_dead_zone", config.arrival_dead_zone);
+    read("minimum_move_distance", config.minimum_move_distance);
     read("edge_inset", config.edge_inset);
     read("melee_band", config.melee_band);
     read("ranged_base_tolerance", config.ranged_base_tolerance);
@@ -146,11 +126,8 @@ BeltPositioningConfig parse_belt_positioning(const Dictionary &values, BeltPosit
     read("moving_yield", config.moving_yield);
     read("attacking_yield", config.attacking_yield);
     read("attack_y_speed_scale", config.attack_y_speed_scale);
-    read("min_locomotion_speed", config.min_locomotion_speed);
-    read("y_dominance_enter", config.y_dominance_enter);
-    read("y_dominance_exit", config.y_dominance_exit);
     if (config.footprint_half_width <= 0.0F || config.footprint_half_depth <= 0.0F || config.desired_gap < config.minimum_gap ||
-        config.y_dominance_enter <= config.y_dominance_exit || config.y_dominance_exit <= 0.0F || config.attack_y_speed_scale > 1.0F) {
+        config.minimum_move_distance <= config.arrival_dead_zone || config.attack_y_speed_scale > 1.0F) {
         throw std::invalid_argument("invalid belt positioning dimensions or hysteresis");
     }
     return config;
@@ -166,9 +143,6 @@ void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
     }
     if (global_data.has("belt_positioning")) {
         globals.belt_positioning = parse_belt_positioning(global_data["belt_positioning"], globals.belt_positioning);
-    }
-    if (global_data.has("shuffle_animation")) {
-        globals.shuffle_animation = parse_anim_config(global_data["shuffle_animation"], globals.shuffle_animation);
     }
     if (global_data.has("field_promotion")) {
         const Dictionary promotion = global_data["field_promotion"];
@@ -373,44 +347,7 @@ void apply_projectile_attack(const Dictionary &unit_dict, UnitConfig &config) {
     config.projectile_attack = projectile;
 }
 
-void resolve_animation(std::vector<std::pair<std::string, AnimConfig>> &animations, std::size_t index, std::vector<bool> &visiting,
-                       std::vector<bool> &resolved) {
-    if (resolved[index]) {
-        return;
-    }
-    if (visiting[index]) {
-        throw std::invalid_argument("cyclic animation source reference");
-    }
-    visiting[index] = true;
-    AnimConfig &animation = animations[index].second;
-    if (!animation.source_animation.empty()) {
-        const auto source = std::ranges::find_if(animations, [&animation](const auto &entry) { return entry.first == animation.source_animation; });
-        if (source == animations.end()) {
-            throw std::invalid_argument("missing source animation");
-        }
-        const auto source_index = static_cast<std::size_t>(source - animations.begin());
-        resolve_animation(animations, source_index, visiting, resolved);
-        const AnimConfig &parent = animations[source_index].second;
-        if (animation.path_template.empty()) {
-            animation.path_template = parent.path_template;
-        }
-        if (!animation.has_offset_override) {
-            animation.offset = parent.offset;
-        }
-        for (int &frame : animation.source_frame_indices) {
-            if (frame >= parent.frame_count) {
-                throw std::invalid_argument("source animation frame is unavailable");
-            }
-            if (!parent.source_frame_indices.empty()) {
-                frame = parent.source_frame_indices[static_cast<std::size_t>(frame)];
-            }
-        }
-    }
-    visiting[index] = false;
-    resolved[index] = true;
-}
-
-void apply_animations(const Dictionary &unit_dict, const GlobalUnitConfig &globals, UnitConfig &config) {
+void apply_animations(const Dictionary &unit_dict, UnitConfig &config) {
     if (!unit_dict.has("animations")) {
         return;
     }
@@ -421,17 +358,6 @@ void apply_animations(const Dictionary &unit_dict, const GlobalUnitConfig &globa
         String animation_name = animation_key;
         Dictionary animation_dict = animations[animation_name];
         config.animations.emplace_back(to_std_string(animation_name), parse_anim_config(animation_dict, AnimConfig{}));
-    }
-    const bool mobile = config.move_speed_pixels_per_second > 0.0F;
-    const bool has_walk = std::ranges::any_of(config.animations, [](const auto &entry) { return entry.first == WALK_ANIMATION; });
-    const bool has_shuffle = std::ranges::any_of(config.animations, [](const auto &entry) { return entry.first == SHUFFLE_ANIMATION; });
-    if (mobile && has_walk && !has_shuffle && !globals.shuffle_animation.source_frame_indices.empty()) {
-        config.animations.emplace_back(std::string(SHUFFLE_ANIMATION), globals.shuffle_animation);
-    }
-    std::vector<bool> visiting(config.animations.size());
-    std::vector<bool> resolved(config.animations.size());
-    for (std::size_t index = 0; index < config.animations.size(); ++index) {
-        resolve_animation(config.animations, index, visiting, resolved);
     }
 }
 
@@ -481,7 +407,7 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     apply_muzzle_flash(unit_dict, config);
     apply_shoot_sfx(unit_dict, globals, config);
     apply_projectile_attack(unit_dict, config);
-    apply_animations(unit_dict, globals, config);
+    apply_animations(unit_dict, config);
 
     return config;
 }
@@ -507,19 +433,6 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
     const bool loaded = load_from_data(*unit_data, *global_data);
     if (loaded) {
-        for (const UnitConfig &unit : units_) {
-            for (const auto &[name, animation] : unit.animations) {
-                for (int source_index : animation.source_frame_indices) {
-                    const String path = vformat(to_godot_string(animation.path_template), source_index);
-                    if (!godot::FileAccess::file_exists(path)) {
-                        UtilityFunctions::printerr("UnitDataLoader: missing source frame for ", to_godot_string(unit.name), "/", to_godot_string(name), ": ",
-                                                   path);
-                        units_.clear();
-                        return false;
-                    }
-                }
-            }
-        }
         UtilityFunctions::print("UnitDataLoader: Loaded ", static_cast<uint64_t>(units_.size()), " unit types");
     }
     return loaded;

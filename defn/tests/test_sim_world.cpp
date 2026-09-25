@@ -930,14 +930,14 @@ SimRoster make_belt_slide_roster(float belt_slide_speed) {
     return roster;
 }
 
-// The post sits 360 px ahead: sensed from the first tick, and far outside the rusher's 100 px reach for every tick
-// after it. Nothing is ever selected, so whatever happens to y is the approach curve and nothing else.
+// The post sits 360 px ahead and 70 px off the rusher's depth: sensed from the first tick, and far outside the
+// rusher's 100 px reach. The gap exceeds the minimum move distance even after slot assignment.
 float belt_y_after_one_second(float belt_slide_speed) {
     SimRoster roster = make_belt_slide_roster(belt_slide_speed);
     StdRandomSource random(1U);
     SimWorld world(roster, make_globals(), random);
     const EntityId rusher = world.spawn("rusher", UnitSide::HOSTILE, {.x = 400.0F, .y = BELT_Y + 40.0F}).id;
-    world.spawn("post", UnitSide::FRIENDLY, {.x = 40.0F, .y = BELT_Y});
+    world.spawn("post", UnitSide::FRIENDLY, {.x = 40.0F, .y = BELT_Y - 30.0F});
     world.begin_run();
 
     for (int tick = 0; tick < 60; ++tick) {

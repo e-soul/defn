@@ -9,7 +9,6 @@
 #include "unit_runtime_profile.h"
 
 #include <algorithm>
-#include <map>
 #include <utility>
 #include <vector>
 
@@ -64,7 +63,7 @@ int take_damage(SimEntity &entity, int amount, DamageDelivery delivery) {
 } // namespace
 
 SimWorld::SimWorld(const UnitCatalog &catalog, GlobalUnitConfig globals, RandomSource &random, const SimWorldConfig &config)
-    : catalog_(catalog), globals_(std::move(globals)), random_(random), config_(config) {}
+    : catalog_(catalog), globals_(globals), random_(random), config_(config) {}
 
 SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector2 position, const SimSpawnOverrides &overrides) {
     const std::optional<UnitConfig> catalog_config = catalog_.get_unit(unit_id);
@@ -104,7 +103,6 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.move_speed_pixels_per_second = config->move_speed_pixels_per_second;
     entity.belt_slide_speed_pixels_per_second = config->belt_slide_speed_pixels_per_second;
     entity.belt_positioning = config->belt_positioning;
-    entity.previous_positioning_x = position.x;
     entity.combat_enabled = profile.enable_combat;
     entity.movement_enabled = profile.enable_movement;
     entity.animation.configure(config->animations);
@@ -173,6 +171,7 @@ void SimWorld::step_entity(SimEntity &entity) {
     input.projectile_pending = entity.pending_projectile.active;
     input.manual_repositioning = false;
     input.attack_animation_playing = entity.animation.is_attack_animation_playing();
+    input.belt_repositioning = entity.animation.is_belt_walking();
     input.attack_windup_active = entity.animation.is_attack_windup_active();
     input.target_out_of_range = is_target_out_of_range(entity);
 
@@ -426,31 +425,27 @@ void SimWorld::move(SimEntity &entity, float direction) const {
 
 void SimWorld::position_belt() {
     std::vector<BeltUnitSnapshot> snapshots;
-    std::map<uint64_t, float> displacement_x;
     snapshots.reserve(entities_.size());
     for (SimEntity &entity : entities_) {
         if (entity.dead || entity.spawn_tick >= tick_index_) {
             continue;
         }
-        const float displacement = entity.position.x - entity.previous_positioning_x;
-        displacement_x[entity.id.value] = displacement;
         snapshots.push_back({
             .id = entity.id,
             .side = entity.side,
             .position = entity.position,
             .approach_id = entity.combat_state.falling_back && entity.previous_selection.has_unpassed_army ? entity.previous_selection.unpassed_army_id
                                                                                                            : entity.previous_selection.approach_id,
+            .target_id = entity.previous_selection.target_id,
             .approach_position = entity.combat_state.falling_back && entity.previous_selection.has_unpassed_army
                                      ? entity.previous_selection.unpassed_army_position
                                      : entity.previous_selection.approach_position,
             .attack_mode = entity.previous_selection.attack_mode,
-            .moving = displacement != 0.0F,
             .attacking = entity.animation.is_attack_animation_playing(),
             .attack_y_speed_scale = entity.animation.belt_y_speed_scale(entity.belt_positioning),
             .speed = entity.belt_slide_speed_pixels_per_second,
             .config = entity.belt_positioning,
         });
-        entity.previous_positioning_x = entity.position.x;
     }
     const auto &rules = globals_.gameplay_rules;
     const std::vector<BeltPositionResult> results = belt_positioning_.advance(snapshots, config_.belt_top_y.value_or(rules.belt_top_y),
@@ -462,7 +457,7 @@ void SimWorld::position_belt() {
         }
         const float displacement = result.next_y - entity->position.y;
         entity->position.y = result.next_y;
-        entity->animation.update_locomotion(displacement_x.at(entity->id.value), displacement, config_.fixed_delta_seconds, entity->belt_positioning);
+        entity->animation.update_belt_motion(displacement);
     }
 }
 

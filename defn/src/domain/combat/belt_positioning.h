@@ -18,11 +18,11 @@ struct BeltUnitSnapshot {
     UnitSide side = UnitSide::FRIENDLY;
     Vector2 position;
     EntityId approach_id;
+    EntityId target_id;
     Vector2 approach_position;
     AttackMode attack_mode = AttackMode::NONE;
     bool dead = false;
     bool manual = false;
-    bool moving = false;
     bool attacking = false;
     float attack_y_speed_scale = 1.0F;
     float speed = 0.0F;
@@ -43,8 +43,11 @@ class BeltPositioning {
   private:
     struct State {
         EntityId target;
+        EntityId ranged_target;
         int slot = 0;
         bool assigned = false;
+        bool moving = false;
+        bool ranged_repositioning = false;
         float velocity = 0.0F;
     };
     void retain_assignments(std::span<const BeltUnitSnapshot> units, float top, float bottom);

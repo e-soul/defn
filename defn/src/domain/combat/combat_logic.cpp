@@ -413,9 +413,9 @@ void apply_engaged_intents(const CombatConfig &config, const CombatLogicInput &i
 
     // A running attack animation owns the sprite; re-posing here would freeze it mid-swing.
     if (!input.attack_animation_playing) {
-        if (input.selection.attack_mode == AttackMode::MELEE && input.current_pose != CombatPoseState::ATTACK) {
+        if (input.selection.attack_mode == AttackMode::MELEE && !input.belt_repositioning && input.current_pose != CombatPoseState::ATTACK) {
             step.intent.pose = CombatPoseIntent::ATTACK;
-        } else if (input.selection.attack_mode == AttackMode::RANGED && input.current_pose != CombatPoseState::SHOOT) {
+        } else if (input.selection.attack_mode == AttackMode::RANGED && !input.belt_repositioning && input.current_pose != CombatPoseState::SHOOT) {
             step.intent.pose = CombatPoseIntent::SHOOT;
         }
     }

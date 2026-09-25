@@ -415,11 +415,12 @@ ahead inside the sensor. A unit only selects a target once it can attack it, so 
 almost its entire run; steering by selection would send it straight down its spawn lane and step it sideways on
 arrival. Steering by what it is walking at bends the run from the moment the line comes into sensor range.
 
-The position solver does not gate attacks or change X-based range classification. An action animation takes precedence
-over shuffle locomotion, while a configurable speed scale permits restrained Y correction during repeated attacks.
-Optional logical action-frame planting windows can reduce it further. `AnimConfig` can reference another clip and list
-explicit source frames; the default shuffle references walk frames 004/005, inheriting its path and offset. The domain
-animation clock counts logical frames, and the Godot loader maps each logical frame to its configured source index.
+The position solver does not gate attacks or change X-based range classification. Ranged units plant while shooting
+and while holding fire on the same target. A target change may produce a Y adjustment between active shots; that
+adjustment changes the held shoot pose to the normal walk animation until the unit settles. All units plant during a
+playing attack animation. A new Y move starts only when the planned correction exceeds the configured minimum move
+distance; once started, it continues to the arrival dead zone. A held melee pose can give way to the normal walk
+animation between attacks. The same walk clip is used for X, Y, and diagonal movement.
 Y remains visible to circular sensing, projectile travel and splash resolution, so conformance traces both axes.
 
 Pursuit is what lets a unit end up *behind* the line it was walking into, so pursuit is also what owes it a way back.

@@ -1425,4 +1425,32 @@ DEFN_TEST(preferred_pursuit_retains_its_sensed_candidate) {
     DEFN_CHECK(!selection.target_id.is_valid());
 }
 
+DEFN_TEST(ranged_repositioning_keeps_the_walk_pose_between_shots) {
+    CombatLogicInput input;
+    input.state.attack_cooldown_seconds = 1.0;
+    input.selection = {.engaged = true, .attack_mode = AttackMode::RANGED, .target_id = {.value = 2}};
+    input.current_pose = CombatPoseState::WALK;
+    input.belt_repositioning = true;
+    input.delta = 1.0 / 60.0;
+    const CombatLogicStep moving = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(moving.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!moving.intent.trigger_attack);
+
+    input.belt_repositioning = false;
+    const CombatLogicStep planted = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(planted.intent.pose, CombatPoseIntent::SHOOT);
+}
+
+DEFN_TEST(melee_repositioning_keeps_the_walk_pose_between_attacks) {
+    CombatLogicInput input;
+    input.state.attack_cooldown_seconds = 1.0;
+    input.selection = {.engaged = true, .attack_mode = AttackMode::MELEE, .target_id = {.value = 2}};
+    input.current_pose = CombatPoseState::WALK;
+    input.belt_repositioning = true;
+    input.delta = 1.0 / 60.0;
+    const CombatLogicStep moving = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(moving.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!moving.intent.trigger_attack);
+}
+
 } // namespace defn

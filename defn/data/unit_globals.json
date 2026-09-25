@@ -17,17 +17,12 @@
     "melee": [0.95, 1.05],
     "ranged": [0.95, 1.05]
   },
-  "shuffle_animation": {
-    "source_animation": "walk",
-    "source_frame_indices": [4, 5],
-    "speed": 6.0,
-    "loop": true
-  },
   "aggro_range": 520.0,
   "belt_slide_speed_pixels_per_second": 28.0,
   "belt_positioning": {
     "acceleration": 180.0,
     "arrival_dead_zone": 3.0,
+    "minimum_move_distance": 20.0,
     "edge_inset": 4.0,
     "melee_band": 88.0,
     "ranged_base_tolerance": 24.0,
@@ -42,10 +37,7 @@
     "separation_weight": 1.0,
     "moving_yield": 1.0,
     "attacking_yield": 0.45,
-    "attack_y_speed_scale": 0.65,
-    "min_locomotion_speed": 3.0,
-    "y_dominance_enter": 1.25,
-    "y_dominance_exit": 0.8
+    "attack_y_speed_scale": 0.65
   },
   "health_bar_color": {
     "friendly": [0.2, 0.9, 0.2, 0.9],

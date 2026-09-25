@@ -30,12 +30,13 @@ class UnitAnimationState {
     void configure(std::vector<std::pair<std::string, AnimConfig>> animations);
 
     [[nodiscard]] UnitPose get_pose() const { return pose_; }
+    [[nodiscard]] bool is_belt_walking() const { return pose_ == UnitPose::WALK && belt_walking_; }
     [[nodiscard]] const std::string &get_current_animation() const { return current_animation_; }
     [[nodiscard]] const AnimationClock &get_clock() const { return clock_; }
     [[nodiscard]] const AnimConfig *find_animation(std::string_view name) const;
 
     void set_pose(UnitPose pose);
-    void update_locomotion(float displacement_x, float displacement_y, double delta, const BeltPositioningConfig &config);
+    void update_belt_motion(float displacement_y);
     void hold_pose(UnitPose pose);
     void play_attack();
     // effect_frame is the animation frame the shot is released on; frame 0 releases it immediately.
@@ -63,7 +64,7 @@ class UnitAnimationState {
     bool shoot_effect_pending_ = false;
     bool shoot_effect_ready_ = false;
     int shoot_effect_frame_ = 0;
-    bool shuffling_ = false;
+    bool belt_walking_ = false;
 };
 
 [[nodiscard]] CombatPoseState to_combat_pose_state(UnitPose pose);

@@ -59,7 +59,6 @@ struct SimEntity {
     float belt_slide_speed_pixels_per_second = 0.0F;
     BeltPositioningConfig belt_positioning;
     CombatTargetSelection previous_selection;
-    float previous_positioning_x = 0.0F;
     int bounty = 0;
     bool combat_enabled = true;
     bool movement_enabled = true;

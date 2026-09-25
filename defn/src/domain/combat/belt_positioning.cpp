@@ -88,9 +88,14 @@ void BeltPositioning::retain_assignments(std::span<const BeltUnitSnapshot> units
             continue;
         }
         State &state = states_[unit.id.value];
+        if (unit.attack_mode == AttackMode::RANGED && unit.target_id.is_valid() && state.ranged_target != unit.target_id) {
+            state.ranged_repositioning = state.ranged_target.is_valid();
+            state.ranged_target = unit.target_id;
+        }
         if (state.target != unit.approach_id) {
             state.target = unit.approach_id;
             state.assigned = false;
+            state.moving = false;
             state.velocity = 0.0F;
         }
     }
@@ -117,9 +122,25 @@ void BeltPositioning::retain_assignments(std::span<const BeltUnitSnapshot> units
 
 BeltPositionResult BeltPositioning::move_unit(const BeltUnitSnapshot &unit, std::span<const BeltUnitSnapshot> units, float top, float bottom, double delta) {
     if (unit.dead || unit.manual || unit.speed <= 0.0F || bottom - top <= 2.0F * unit.config.edge_inset) {
+        if (auto found = states_.find(unit.id.value); found != states_.end()) {
+            found->second.moving = false;
+            found->second.velocity = 0.0F;
+        }
         return {.id = unit.id, .next_y = unit.position.y};
     }
     State &state = states_[unit.id.value];
+    // A ranged unit holds its feet for the current target. A target change may be followed by a visible adjustment
+    // between shots, but a playing shot never translates the sprite.
+    if (unit.attacking) {
+        state.moving = false;
+        state.velocity = 0.0F;
+        return {.id = unit.id, .next_y = unit.position.y};
+    }
+    if (unit.attack_mode == AttackMode::RANGED && unit.target_id.is_valid() && !state.ranged_repositioning) {
+        state.moving = false;
+        state.velocity = 0.0F;
+        return {.id = unit.id, .next_y = unit.position.y};
+    }
     float destination = unit.position.y;
     if (unit.approach_id.is_valid()) {
         const float assigned_y = slot_y(unit, state.slot, top, bottom);
@@ -137,9 +158,16 @@ BeltPositionResult BeltPositioning::move_unit(const BeltUnitSnapshot &unit, std:
     destination = std::clamp(destination, top + unit.config.edge_inset, bottom - unit.config.edge_inset);
     const float difference = destination - unit.position.y;
     if (std::abs(difference) <= unit.config.arrival_dead_zone) {
+        state.moving = false;
+        state.velocity = 0.0F;
+        state.ranged_repositioning = false;
+        return {.id = unit.id, .next_y = unit.position.y};
+    }
+    if (!state.moving && std::abs(difference) < unit.config.minimum_move_distance) {
         state.velocity = 0.0F;
         return {.id = unit.id, .next_y = unit.position.y};
     }
+    state.moving = true;
     const float max_speed = unit.speed * unit.attack_y_speed_scale;
     const float wanted_velocity = std::copysign(max_speed, difference);
     const float max_change = unit.config.acceleration * static_cast<float>(delta);

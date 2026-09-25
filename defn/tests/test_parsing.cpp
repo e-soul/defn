@@ -1012,44 +1012,21 @@ DEFN_TEST(content_validator_reports_cross_reference_issues_from_loaded_data) {
                                         "non-hostile spawn type 'operator'"}));
 }
 
-DEFN_TEST(unit_loader_resolves_variable_and_repeated_shuffle_source_frames) {
+DEFN_TEST(unit_loader_validates_minimum_belt_move_distance) {
     Dictionary global = make_global_data();
-    Dictionary shuffle;
-    shuffle["source_animation"] = "walk";
-    shuffle["source_frame_indices"] = make_array({4, 5, 4});
-    shuffle["speed"] = 6.0;
-    shuffle["loop"] = true;
-    global["shuffle_animation"] = shuffle;
-
-    Dictionary data = make_unit_data();
-    Dictionary units = data["units"];
-    Dictionary operator_unit = units["operator"];
-    Dictionary animations = operator_unit["animations"];
-    Dictionary walk;
-    walk["path_template"] = "res://walk_%03d.png";
-    walk["frame_count"] = 10;
-    walk["offset"] = make_array({-8, 3});
-    animations["walk"] = walk;
-    operator_unit["animations"] = animations;
-    units["operator"] = operator_unit;
-    data["units"] = units;
-
+    Dictionary positioning;
+    positioning["arrival_dead_zone"] = 3.0;
+    positioning["minimum_move_distance"] = 20.0;
+    global["belt_positioning"] = positioning;
     UnitDataLoader loader;
-    DEFN_REQUIRE(loader.load_from_data(data, global));
+    DEFN_REQUIRE(loader.load_from_data(make_unit_data(), global));
     const auto unit = loader.get_unit("operator");
     DEFN_REQUIRE(unit.has_value());
-    const auto found = std::ranges::find_if(unit->animations, [](const auto &entry) { return entry.first == "shuffle"; });
-    DEFN_REQUIRE(found != unit->animations.end());
-    DEFN_CHECK_EQ(found->second.frame_count, 3);
-    DEFN_CHECK_EQ(found->second.source_frame_indices[0], 4);
-    DEFN_CHECK_EQ(found->second.source_frame_indices[1], 5);
-    DEFN_CHECK_EQ(found->second.source_frame_indices[2], 4);
-    DEFN_CHECK_EQ(found->second.path_template, std::string("res://walk_%03d.png"));
-    DEFN_CHECK_CLOSE(found->second.offset.x, -8.0, 0.001);
+    DEFN_CHECK_CLOSE(unit->belt_positioning.minimum_move_distance, 20.0F, 0.001);
 
-    shuffle["frame_count"] = 3;
-    global["shuffle_animation"] = shuffle;
-    DEFN_CHECK(!loader.load_from_data(data, global));
+    positioning["minimum_move_distance"] = 2.0;
+    global["belt_positioning"] = positioning;
+    DEFN_CHECK(!loader.load_from_data(make_unit_data(), global));
 }
 
 } // namespace defn

@@ -20,15 +20,12 @@ namespace defn {
 
 // The clip names `unit_data.json` is written in, and the contract between that file and the code that poses a unit.
 inline constexpr std::string_view WALK_ANIMATION = "walk";
-inline constexpr std::string_view SHUFFLE_ANIMATION = "shuffle";
 inline constexpr std::string_view ATTACK_ANIMATION = "attack";
 inline constexpr std::string_view SHOOT_ANIMATION = "shoot";
 inline constexpr std::string_view DEATH_ANIMATION = "death";
 
 struct AnimConfig {
     std::string path_template;
-    std::string source_animation;
-    std::vector<int> source_frame_indices;
     int frame_count = 10;
     double speed = 10.0;
     bool loop = false;
@@ -37,7 +34,6 @@ struct AnimConfig {
     // the *character*, and switching clips would jump the body by the difference in padding. One offset per clip pins
     // the body instead. Measured against the unit's `idle` clip, which is therefore always zero.
     Vector2 offset;
-    bool has_offset_override = false;
     // Attack and shoot animations commit to their first frames: the unit may not be re-posed or moved until they play
     // out. The remaining frames are the cancelable backswing. Meaningless for animations combat never triggers.
     int windup_frames = 3;
@@ -71,6 +67,7 @@ struct RangeVariationConfig {
 struct BeltPositioningConfig {
     float acceleration = 180.0F;
     float arrival_dead_zone = 3.0F;
+    float minimum_move_distance = 20.0F;
     float edge_inset = 4.0F;
     float melee_band = 58.0F;
     float ranged_base_tolerance = 24.0F;
@@ -86,9 +83,6 @@ struct BeltPositioningConfig {
     float moving_yield = 1.0F;
     float attacking_yield = 0.45F;
     float attack_y_speed_scale = 0.65F;
-    float min_locomotion_speed = 3.0F;
-    float y_dominance_enter = 1.25F;
-    float y_dominance_exit = 0.8F;
 };
 
 struct ProjectileAttackConfig {
@@ -126,7 +120,6 @@ struct GlobalUnitConfig {
     GlobalShootSfxConfig shoot_sfx;
     RangeVariationConfig melee_attack_range_variation;
     RangeVariationConfig ranged_attack_range_variation;
-    AnimConfig shuffle_animation;
     BeltPositioningConfig belt_positioning;
     float aggro_range = 0.0F;
     float belt_slide_speed_pixels_per_second = 0.0F;

@@ -50,6 +50,7 @@ void CombatRuntime::update(double delta) {
     input.projectile_pending = pending_projectile_.active;
     input.manual_repositioning = manual_repositioning_;
     input.attack_animation_playing = animation_ != nullptr && animation_->is_attack_animation_playing();
+    input.belt_repositioning = animation_ != nullptr && animation_->get_animation_state().is_belt_walking();
     input.attack_windup_active = animation_ != nullptr && animation_->is_attack_windup_active();
     input.target_out_of_range = CombatTargetSelector::is_target_out_of_range(unit_, config_, last_target_id_);
 

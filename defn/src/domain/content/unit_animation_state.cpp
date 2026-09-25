@@ -35,7 +35,7 @@ void UnitAnimationState::configure(std::vector<std::pair<std::string, AnimConfig
     shoot_effect_pending_ = false;
     shoot_effect_ready_ = false;
     shoot_effect_frame_ = 0;
-    shuffling_ = false;
+    belt_walking_ = false;
 }
 
 const AnimConfig *UnitAnimationState::find_animation(std::string_view name) const {
@@ -86,27 +86,18 @@ void UnitAnimationState::set_pose(UnitPose pose) {
         return;
     }
     pose_ = pose;
-    apply_animation(pose == UnitPose::WALK && shuffling_ ? SHUFFLE_ANIMATION : animation_name_for(pose), Start::RESUME);
+    apply_animation(animation_name_for(pose), Start::RESUME);
 }
 
-void UnitAnimationState::update_locomotion(float displacement_x, float displacement_y, double delta, const BeltPositioningConfig &config) {
-    if (delta <= 0.0 || pose_ != UnitPose::WALK || is_attack_animation_playing()) {
+void UnitAnimationState::update_belt_motion(float displacement_y) {
+    belt_walking_ = false;
+    if (std::abs(displacement_y) <= 0.01F || is_attack_animation_playing() || pose_ == UnitPose::DEATH) {
         return;
     }
-    const float speed = std::hypot(displacement_x, displacement_y) / static_cast<float>(delta);
-    if (speed < config.min_locomotion_speed) {
-        if (shuffling_) {
-            shuffling_ = false;
-            apply_animation(WALK_ANIMATION, Start::RESUME);
-        }
-        return;
-    }
-    const float ratio = shuffling_ ? config.y_dominance_exit : config.y_dominance_enter;
-    const bool next = std::abs(displacement_y) > std::abs(displacement_x) * ratio && find_animation(SHUFFLE_ANIMATION) != nullptr;
-    if (next != shuffling_) {
-        shuffling_ = next;
-        apply_animation(shuffling_ ? SHUFFLE_ANIMATION : WALK_ANIMATION, Start::RESUME);
-    }
+    // A held action pose gives way to the ordinary walk when the feet move. Active attacks remain planted.
+    pose_ = UnitPose::WALK;
+    belt_walking_ = true;
+    apply_animation(WALK_ANIMATION, Start::RESUME);
 }
 
 void UnitAnimationState::hold_pose(UnitPose pose) {
