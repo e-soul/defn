@@ -84,7 +84,7 @@ bool DefnConformanceRunner::load_content() {
     globals.ranged_attack_range_variation = {.min = 1.0F, .max = 1.0F};
 
     std::vector<UnitConfig> shipped;
-    for (const char *unit_id : {"breacher", "marksman", "grime", "wrecker", "mason", "hound", "operator"}) {
+    for (const char *unit_id : {"breacher", "marksman", "impact", "grime", "wrecker", "mason", "hound", "operator"}) {
         auto config = loader.get_unit(unit_id);
         if (!config) {
             failures_.emplace_back(std::string("missing unit: ") + unit_id);
@@ -253,6 +253,36 @@ bool DefnConformanceRunner::load_content() {
         scenarios_.push_back(scenario);
     }
 
+    {
+        Scenario scenario;
+        scenario.name = "hound_crowd_depth";
+        scenario.globals = globals;
+        scenario.roster = shipped;
+        scenario.spawns = {
+            {.unit_id = "operator", .side = UnitSide::FRIENDLY, .position = {.x = 700.0F, .y = BELT_Y}},
+            {.unit_id = "hound", .side = UnitSide::HOSTILE, .position = {.x = 1050.0F, .y = BELT_Y - 70.0F}},
+            {.unit_id = "hound", .side = UnitSide::HOSTILE, .position = {.x = 1090.0F, .y = BELT_Y}},
+            {.unit_id = "hound", .side = UnitSide::HOSTILE, .position = {.x = 1130.0F, .y = BELT_Y + 70.0F}},
+        };
+        scenario.frames = 900;
+        scenarios_.push_back(scenario);
+    }
+
+    {
+        Scenario scenario;
+        scenario.name = "ranged_depth_and_edge";
+        scenario.globals = globals;
+        scenario.roster = shipped;
+        scenario.spawns = {
+            {.unit_id = "marksman", .side = UnitSide::FRIENDLY, .position = {.x = 500.0F, .y = BELT_Y - 75.0F}},
+            {.unit_id = "impact", .side = UnitSide::FRIENDLY, .position = {.x = 530.0F, .y = BELT_Y - 75.0F}},
+            {.unit_id = "grime", .side = UnitSide::HOSTILE, .position = {.x = 1150.0F, .y = BELT_Y + 75.0F}},
+            {.unit_id = "mason", .side = UnitSide::HOSTILE, .position = {.x = 1210.0F, .y = BELT_Y + 75.0F}},
+        };
+        scenario.frames = 900;
+        scenarios_.push_back(scenario);
+    }
+
     return true;
 }
 
@@ -269,6 +299,7 @@ void DefnConformanceRunner::start_scenario() {
     add_child(entity_container_);
 
     game_entities_.clear();
+    belt_positioning_.clear();
     game_trace_ = {};
     game_trace_.entities.resize(scenario.spawns.size());
     game_trace_.death_ticks.assign(scenario.spawns.size(), -1);
@@ -376,6 +407,8 @@ void DefnConformanceRunner::step_game(double delta) {
         }
     }
 
+    position_game_units(delta);
+
     // One frame of the shipped per-unit order: the animation controller runs before the combat component, and units
     // run in the order they were added to the container.
     for (const godot::ObjectID entity_id : game_entities_) {
@@ -402,6 +435,17 @@ void DefnConformanceRunner::step_game(double delta) {
     ++frame_;
 }
 
+void DefnConformanceRunner::position_game_units(double delta) {
+    std::vector<Unit *> units;
+    for (const godot::ObjectID entity_id : game_entities_) {
+        if (Unit *unit = resolve_unit(entity_id); unit != nullptr) {
+            units.push_back(unit);
+        }
+    }
+    const auto &rules = GridManager::get_singleton()->get_rules();
+    belt_positioning_.step(units, rules.belt_top_y, rules.belt_bottom_y, delta);
+}
+
 void DefnConformanceRunner::run_kernel() {
     const Scenario &scenario = scenarios_[scenario_index_];
 
@@ -411,7 +455,8 @@ void DefnConformanceRunner::run_kernel() {
     }
 
     StdRandomSource random(1U);
-    SimWorld world(roster, scenario.globals, random);
+    const float height = scenario.globals.gameplay_rules.viewport_height;
+    SimWorld world(roster, scenario.globals, random, {.belt_top_y = 0.66F * height, .belt_bottom_y = 0.825F * height});
 
     kernel_trace_ = {};
     kernel_trace_.entities.resize(scenario.spawns.size());

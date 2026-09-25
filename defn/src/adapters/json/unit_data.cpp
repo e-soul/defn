@@ -8,7 +8,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
+#include <stdexcept>
 
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -60,6 +62,21 @@ AnimConfig parse_anim_config(const Dictionary &animation_dict, const AnimConfig 
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
     animation.offset = parse_vector2(animation_dict.get("offset", Array()), animation.offset);
     animation.windup_frames = std::clamp(VariantTools::as_int(animation_dict.get("windup_frames", animation.windup_frames)), 0, animation.frame_count);
+    if (animation_dict.has("planting")) {
+        const Dictionary planting = animation_dict["planting"];
+        animation.plant_start_frame = VariantTools::as_int(planting.get("start_frame", -1));
+        animation.plant_end_frame = VariantTools::as_int(planting.get("end_frame", -1));
+        animation.plant_y_speed_scale = VariantTools::as_float(planting.get("y_speed_scale", 0.0F));
+        if (*animation.plant_start_frame < 0 || *animation.plant_end_frame < *animation.plant_start_frame ||
+            *animation.plant_end_frame >= animation.frame_count || !std::isfinite(animation.plant_y_speed_scale) || animation.plant_y_speed_scale < 0.0F ||
+            animation.plant_y_speed_scale > 1.0F) {
+            throw std::invalid_argument("invalid animation planting window");
+        }
+    }
+    if (!std::isfinite(animation.speed) || animation.speed <= 0.0 || animation.frame_count <= 0 || !std::isfinite(animation.offset.x) ||
+        !std::isfinite(animation.offset.y)) {
+        throw std::invalid_argument("animation speed and frame count must be positive");
+    }
     return animation;
 }
 
@@ -84,7 +101,49 @@ float normalize_fraction(float value) {
     return std::clamp(value, 0.0F, 1.0F);
 }
 
+BeltPositioningConfig parse_belt_positioning(const Dictionary &values, BeltPositioningConfig config) {
+    auto read = [&values](const char *name, float &field) {
+        field = VariantTools::as_float(values.get(name, field));
+        if (!std::isfinite(field) || field < 0.0F) {
+            throw std::invalid_argument("belt positioning values must be finite and nonnegative");
+        }
+    };
+    read("acceleration", config.acceleration);
+    read("arrival_dead_zone", config.arrival_dead_zone);
+    read("minimum_move_distance", config.minimum_move_distance);
+    read("edge_inset", config.edge_inset);
+    read("melee_band", config.melee_band);
+    read("ranged_base_tolerance", config.ranged_base_tolerance);
+    read("ranged_angle_slope", config.ranged_angle_slope);
+    read("ranged_max_tolerance", config.ranged_max_tolerance);
+    read("desired_gap", config.desired_gap);
+    read("minimum_gap", config.minimum_gap);
+    read("reassignment_hysteresis", config.reassignment_hysteresis);
+    read("footprint_half_width", config.footprint_half_width);
+    read("footprint_half_depth", config.footprint_half_depth);
+    read("overlap_dead_zone", config.overlap_dead_zone);
+    read("separation_weight", config.separation_weight);
+    read("moving_yield", config.moving_yield);
+    read("attacking_yield", config.attacking_yield);
+    read("attack_y_speed_scale", config.attack_y_speed_scale);
+    if (config.footprint_half_width <= 0.0F || config.footprint_half_depth <= 0.0F || config.desired_gap < config.minimum_gap ||
+        config.minimum_move_distance <= config.arrival_dead_zone || config.attack_y_speed_scale > 1.0F) {
+        throw std::invalid_argument("invalid belt positioning dimensions or hysteresis");
+    }
+    return config;
+}
+
 void load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals) {
+    globals.aggro_range = VariantTools::as_float(global_data.get("aggro_range", globals.aggro_range));
+    globals.belt_slide_speed_pixels_per_second =
+        VariantTools::as_float(global_data.get("belt_slide_speed_pixels_per_second", globals.belt_slide_speed_pixels_per_second));
+    if (!std::isfinite(globals.aggro_range) || globals.aggro_range < 0.0F || !std::isfinite(globals.belt_slide_speed_pixels_per_second) ||
+        globals.belt_slide_speed_pixels_per_second < 0.0F) {
+        throw std::invalid_argument("global aggro and belt speeds must be finite and nonnegative");
+    }
+    if (global_data.has("belt_positioning")) {
+        globals.belt_positioning = parse_belt_positioning(global_data["belt_positioning"], globals.belt_positioning);
+    }
     if (global_data.has("field_promotion")) {
         const Dictionary promotion = global_data["field_promotion"];
         globals.field_promotion.damage_threshold = VariantTools::as_int(promotion.get("damage_threshold", globals.field_promotion.damage_threshold));
@@ -328,9 +387,17 @@ UnitConfig parse_unit_config(const String &key, const Dictionary &unit_dict, con
     config.target_preference = parse_target_preference(unit_dict);
     config.role = parse_unit_role(String(unit_dict.get("role", "none")));
     config.preferred_roles = parse_preferred_roles(unit_dict);
-    config.aggro_range = VariantTools::as_float(unit_dict.get("aggro_range", config.aggro_range));
-    config.belt_slide_speed_pixels_per_second =
-        VariantTools::as_float(unit_dict.get("belt_slide_speed_pixels_per_second", config.belt_slide_speed_pixels_per_second));
+    config.aggro_range = VariantTools::as_float(unit_dict.get("aggro_range", globals.aggro_range));
+    config.belt_slide_speed_pixels_per_second = VariantTools::as_float(
+        unit_dict.get("belt_slide_speed_pixels_per_second", config.move_speed_pixels_per_second > 0.0F ? globals.belt_slide_speed_pixels_per_second : 0.0F));
+    if (!std::isfinite(config.aggro_range) || config.aggro_range < 0.0F || !std::isfinite(config.belt_slide_speed_pixels_per_second) ||
+        config.belt_slide_speed_pixels_per_second < 0.0F) {
+        throw std::invalid_argument("unit aggro and belt speeds must be finite and nonnegative");
+    }
+    config.belt_positioning = globals.belt_positioning;
+    if (unit_dict.has("belt_positioning")) {
+        config.belt_positioning = parse_belt_positioning(unit_dict["belt_positioning"], config.belt_positioning);
+    }
     config.cost = VariantTools::as_int(unit_dict.get("cost", 0));
     config.bounty = VariantTools::as_int(unit_dict.get("bounty", 0));
     config.scale = VariantTools::as_real(unit_dict.get("scale", 0.27));
@@ -373,16 +440,22 @@ bool UnitDataLoader::load(const String &unit_path, const String &global_path) {
 
 bool UnitDataLoader::load_from_data(const Dictionary &unit_data, const Dictionary &global_data) {
     globals_ = {};
-    load_global_config(global_data, globals_);
+    try {
+        load_global_config(global_data, globals_);
 
-    Dictionary units_dict = unit_data.get("units", Dictionary());
-    Array keys = units_dict.keys();
-    units_.clear();
+        Dictionary units_dict = unit_data.get("units", Dictionary());
+        Array keys = units_dict.keys();
+        units_.clear();
 
-    for (const Variant &key_variant : keys) {
-        const String key = key_variant;
-        const Dictionary unit_dict = units_dict[key];
-        units_.push_back(parse_unit_config(key, unit_dict, globals_));
+        for (const Variant &key_variant : keys) {
+            const String key = key_variant;
+            const Dictionary unit_dict = units_dict[key];
+            units_.push_back(parse_unit_config(key, unit_dict, globals_));
+        }
+    } catch (const std::invalid_argument &error) {
+        UtilityFunctions::printerr("UnitDataLoader: ", error.what());
+        units_.clear();
+        return false;
     }
 
     return true;

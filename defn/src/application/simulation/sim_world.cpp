@@ -9,6 +9,7 @@
 #include "unit_runtime_profile.h"
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 namespace defn {
@@ -61,7 +62,7 @@ int take_damage(SimEntity &entity, int amount, DamageDelivery delivery) {
 
 } // namespace
 
-SimWorld::SimWorld(const UnitCatalog &catalog, const GlobalUnitConfig &globals, RandomSource &random, const SimWorldConfig &config)
+SimWorld::SimWorld(const UnitCatalog &catalog, GlobalUnitConfig globals, RandomSource &random, const SimWorldConfig &config)
     : catalog_(catalog), globals_(globals), random_(random), config_(config) {}
 
 SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector2 position, const SimSpawnOverrides &overrides) {
@@ -101,6 +102,7 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.muzzle_offset = {.x = anchor.x * config->scale, .y = anchor.y * config->scale};
     entity.move_speed_pixels_per_second = config->move_speed_pixels_per_second;
     entity.belt_slide_speed_pixels_per_second = config->belt_slide_speed_pixels_per_second;
+    entity.belt_positioning = config->belt_positioning;
     entity.combat_enabled = profile.enable_combat;
     entity.movement_enabled = profile.enable_movement;
     entity.animation.configure(config->animations);
@@ -126,6 +128,8 @@ void SimWorld::tick() {
         entity.pending_sensed_position = entity.position;
     }
 
+    position_belt();
+
     // Ascending id is the scene-tree order the shipped game processes in: entities are appended in spawn order, and
     // Godot walks the process group depth-first over that same order.
     for (SimEntity &entity : entities_) {
@@ -150,7 +154,10 @@ void SimWorld::step_entity(SimEntity &entity) {
     launch_pending_projectile(entity);
 
     build_snapshots(entity);
-    const CombatTargetSelection selection = select_target_from_snapshots(entity.position, entity.combat, entity.combat_state.target_id, snapshots_);
+    const CombatTargetSelection selection =
+        select_target_from_snapshots(entity.position, entity.combat, entity.combat_state.target_id, snapshots_, entity.approach_id);
+    entity.approach_id = selection.approach_id;
+    entity.previous_selection = selection;
     if (selection.target_id.is_valid()) {
         entity.last_target_id = selection.target_id;
     }
@@ -164,6 +171,7 @@ void SimWorld::step_entity(SimEntity &entity) {
     input.projectile_pending = entity.pending_projectile.active;
     input.manual_repositioning = false;
     input.attack_animation_playing = entity.animation.is_attack_animation_playing();
+    input.belt_repositioning = entity.animation.is_belt_walking();
     input.attack_windup_active = entity.animation.is_attack_windup_active();
     input.target_out_of_range = is_target_out_of_range(entity);
 
@@ -250,7 +258,7 @@ void SimWorld::apply_commands(SimEntity &entity, const std::vector<CombatCommand
             move(entity, -1.0F);
             break;
         case CombatCommandType::SLIDE_BELT:
-            slide_belt(entity, command.target_position.y);
+            // The shared snapshot phase already applied Y movement this tick.
             break;
         case CombatCommandType::PLAY_POSE:
             apply_pose(entity, command.pose);
@@ -415,13 +423,42 @@ void SimWorld::move(SimEntity &entity, float direction) const {
     entity.position.x += entity.side == UnitSide::FRIENDLY ? displacement : -displacement;
 }
 
-// Mirrors MovementComponent::slide_toward_belt_y, off the same domain step.
-void SimWorld::slide_belt(SimEntity &entity, float target_y) const {
-    if (entity.belt_slide_speed_pixels_per_second <= 0.0F) {
-        return;
+void SimWorld::position_belt() {
+    std::vector<BeltUnitSnapshot> snapshots;
+    snapshots.reserve(entities_.size());
+    for (SimEntity &entity : entities_) {
+        if (entity.dead || entity.spawn_tick >= tick_index_) {
+            continue;
+        }
+        snapshots.push_back({
+            .id = entity.id,
+            .side = entity.side,
+            .position = entity.position,
+            .approach_id = entity.combat_state.falling_back && entity.previous_selection.has_unpassed_army ? entity.previous_selection.unpassed_army_id
+                                                                                                           : entity.previous_selection.approach_id,
+            .target_id = entity.previous_selection.target_id,
+            .approach_position = entity.combat_state.falling_back && entity.previous_selection.has_unpassed_army
+                                     ? entity.previous_selection.unpassed_army_position
+                                     : entity.previous_selection.approach_position,
+            .attack_mode = entity.previous_selection.attack_mode,
+            .attacking = entity.animation.is_attack_animation_playing(),
+            .attack_y_speed_scale = entity.animation.belt_y_speed_scale(entity.belt_positioning),
+            .speed = entity.belt_slide_speed_pixels_per_second,
+            .config = entity.belt_positioning,
+        });
     }
-
-    entity.position.y = advance_belt_slide(entity.position.y, target_y, entity.belt_slide_speed_pixels_per_second, config_.fixed_delta_seconds);
+    const auto &rules = globals_.gameplay_rules;
+    const std::vector<BeltPositionResult> results = belt_positioning_.advance(snapshots, config_.belt_top_y.value_or(rules.belt_top_y),
+                                                                              config_.belt_bottom_y.value_or(rules.belt_bottom_y), config_.fixed_delta_seconds);
+    for (const BeltPositionResult &result : results) {
+        SimEntity *entity = find_mutable_entity(result.id);
+        if (entity == nullptr) {
+            continue;
+        }
+        const float displacement = result.next_y - entity->position.y;
+        entity->position.y = result.next_y;
+        entity->animation.update_belt_motion(displacement);
+    }
 }
 
 // Mirrors DamageDispatcher::apply plus the death handling GameManager wires up through the "died" signal.

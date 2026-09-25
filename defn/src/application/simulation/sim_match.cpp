@@ -47,7 +47,7 @@ int peak_spawn_window(const std::vector<double> &spawn_times) {
 SimMatch::SimMatch(const UnitCatalog &catalog, const GlobalUnitConfig &globals, const LevelDefinition &level, const SimScenario &scenario,
                    const std::vector<std::string> &base_unit_ids, const std::vector<ProgressionUpgradeCard> &upgrade_cards)
     : scenario_(scenario), level_(level), random_(scenario.seed), grid_(make_belt_rules(globals.gameplay_rules, level), random_),
-      world_(catalog, globals, random_) {
+      world_(catalog, globals, random_, {.belt_top_y = grid_.get_rules().belt_top_y, .belt_bottom_y = grid_.get_rules().belt_bottom_y}) {
     camera_.configure(grid_.get_rules(), scenario_.camera);
     grid_.set_camera_x(camera_.get_position().x);
 

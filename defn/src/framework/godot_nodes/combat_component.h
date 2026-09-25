@@ -37,6 +37,9 @@ class CombatComponent : public Node {
     void end_manual_reposition() { runtime_.end_manual_reposition(); }
     void apply_field_promotion(const FieldPromotionRules &rules);
     [[nodiscard]] const CombatConfig &get_runtime_config() const { return runtime_.get_config(); }
+    [[nodiscard]] const CombatTargetSelection &get_selection() const { return runtime_.get_selection(); }
+    [[nodiscard]] bool is_manual_repositioning() const { return runtime_.is_manual_repositioning(); }
+    [[nodiscard]] bool is_falling_back() const { return runtime_.is_falling_back(); }
 
   protected:
     static void _bind_methods();

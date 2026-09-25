@@ -43,6 +43,7 @@ struct CombatTargetSelection {
     // run that started hundreds of pixels back; steering by selection would leave it charging straight down its own
     // lane and then stepping sideways on arrival. Steering by what it is walking at bends the whole approach.
     bool has_approach_target = false;
+    EntityId approach_id;
     Vector2 approach_position;
     // Where the enemy *army* stands relative to this unit, which is a different question from where its next target
     // is: structures are left out of all three, because a base is never a reason to give up on the army and is
@@ -57,6 +58,7 @@ struct CombatTargetSelection {
     bool army_ahead = false;
     bool army_beyond_standoff = false;
     bool has_unpassed_army = false;
+    EntityId unpassed_army_id;
     Vector2 unpassed_army_position;
 };
 
@@ -96,6 +98,7 @@ struct CombatLogicInput {
     bool manual_repositioning = false;
     // Observed from the sprite: an attack animation is on screen, and it is still inside its committed windup frames.
     bool attack_animation_playing = false;
+    bool belt_repositioning = false;
     bool attack_windup_active = false;
     // The unit's most recent target is still alive but no longer within any attack range, so it must be chased.
     bool target_out_of_range = false;
@@ -135,7 +138,7 @@ float resolve_aggro_range(const CombatConfig &config);
 float engagement_standoff(const CombatConfig &config);
 AttackMode classify_target_by_distance(const CombatConfig &config, float distance);
 CombatTargetSelection select_target_from_snapshots(const Vector2 &origin, const CombatConfig &config, EntityId current_target_id,
-                                                   std::span<const CombatTargetSnapshot> targets);
+                                                   std::span<const CombatTargetSnapshot> targets, EntityId previous_approach_id = {});
 CombatLogicStep advance_combat_logic(const CombatConfig &config, const CombatLogicInput &input);
 
 } // namespace defn

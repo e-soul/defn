@@ -4,6 +4,7 @@
 #ifndef GAME_MANAGER_H
 #define GAME_MANAGER_H
 
+#include "belt_positioning_runtime.h"
 #include "camera_scroll_controller.h"
 #include "endless_director.h"
 #include "match_director.h"
@@ -60,6 +61,7 @@ class GameManager : public Node2D {
     godot::Vector2 get_base_objective_position() const;
     static bool is_valid_scroll_trigger_unit(Area2D *area, const char *required_group);
     void update_camera_scroll(double delta);
+    void update_belt_positioning(double delta);
     Unit *materialize_spawn_intent(const SpawnUnitIntent &intent);
     void add_friendly_unit(Unit *unit);
     void refresh_supply_readout();
@@ -108,6 +110,7 @@ class GameManager : public Node2D {
 
     // Scrolling state
     CameraScrollController camera_scroll_controller_;
+    BeltPositioningRuntime belt_positioning_;
 
     // Unit data
     UnitDataLoader unit_data_;

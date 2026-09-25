@@ -36,6 +36,65 @@ DEFN_TEST(unit_animation_state_starts_walking) {
     DEFN_CHECK(!state.is_attack_animation_playing());
 }
 
+DEFN_TEST(unit_animation_state_keeps_normal_walk_during_y_only_motion) {
+    UnitAnimationState state = make_state();
+    state.update_belt_motion(4.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    DEFN_CHECK(state.is_belt_walking());
+    state.advance(0.2);
+    const int frame = state.get_clock().frame();
+    state.update_belt_motion(3.0F);
+    DEFN_CHECK_EQ(state.get_clock().frame(), frame);
+    state.update_belt_motion(0.0F);
+    DEFN_CHECK(!state.is_belt_walking());
+}
+
+DEFN_TEST(unit_animation_state_does_not_interrupt_a_committed_shot_for_belt_motion) {
+    UnitAnimationState state = make_state();
+    state.play_shoot(3);
+    state.update_belt_motion(8.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("shoot"));
+    state.advance(0.31);
+    DEFN_CHECK(state.consume_shoot_effect_triggered());
+}
+
+DEFN_TEST(unit_animation_state_uses_normal_walk_when_a_held_shooter_repositions) {
+    UnitAnimationState state = make_state();
+    state.hold_pose(UnitPose::SHOOT);
+    state.update_belt_motion(4.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    DEFN_CHECK(state.is_belt_walking());
+    DEFN_CHECK_EQ(state.get_pose(), UnitPose::WALK);
+}
+
+DEFN_TEST(unit_animation_state_uses_normal_walk_between_melee_attacks) {
+    UnitAnimationState state = make_state();
+    state.hold_pose(UnitPose::ATTACK);
+    state.update_belt_motion(1.0F);
+    DEFN_CHECK_EQ(state.get_current_animation(), std::string("walk"));
+    DEFN_CHECK(state.is_belt_walking());
+}
+
+DEFN_TEST(unit_animation_state_applies_optional_logical_planting_window) {
+    UnitAnimationState state;
+    auto clips = make_animations();
+    for (auto &[name, clip] : clips) {
+        if (name == "attack") {
+            clip.plant_start_frame = 2;
+            clip.plant_end_frame = 3;
+            clip.plant_y_speed_scale = 0.1F;
+        }
+    }
+    state.configure(clips);
+    state.play_attack();
+    BeltPositioningConfig config;
+    DEFN_CHECK_CLOSE(state.belt_y_speed_scale(config), config.attack_y_speed_scale, 0.001);
+    state.advance(0.25);
+    DEFN_CHECK_CLOSE(state.belt_y_speed_scale(config), 0.1, 0.001);
+    state.advance(0.20);
+    DEFN_CHECK_CLOSE(state.belt_y_speed_scale(config), config.attack_y_speed_scale, 0.001);
+}
+
 DEFN_TEST(unit_animation_state_reports_the_attack_windup_and_its_end) {
     UnitAnimationState state = make_state();
     state.play_attack();

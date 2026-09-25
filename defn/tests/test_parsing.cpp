@@ -1012,4 +1012,21 @@ DEFN_TEST(content_validator_reports_cross_reference_issues_from_loaded_data) {
                                         "non-hostile spawn type 'operator'"}));
 }
 
+DEFN_TEST(unit_loader_validates_minimum_belt_move_distance) {
+    Dictionary global = make_global_data();
+    Dictionary positioning;
+    positioning["arrival_dead_zone"] = 3.0;
+    positioning["minimum_move_distance"] = 20.0;
+    global["belt_positioning"] = positioning;
+    UnitDataLoader loader;
+    DEFN_REQUIRE(loader.load_from_data(make_unit_data(), global));
+    const auto unit = loader.get_unit("operator");
+    DEFN_REQUIRE(unit.has_value());
+    DEFN_CHECK_CLOSE(unit->belt_positioning.minimum_move_distance, 20.0F, 0.001);
+
+    positioning["minimum_move_distance"] = 2.0;
+    global["belt_positioning"] = positioning;
+    DEFN_CHECK(!loader.load_from_data(make_unit_data(), global));
+}
+
 } // namespace defn

@@ -4,6 +4,7 @@
 #ifndef DEFN_CONFORMANCE_RUNNER_H
 #define DEFN_CONFORMANCE_RUNNER_H
 
+#include "belt_positioning_runtime.h"
 #include "sim_world.h"
 #include "unit_definition.h"
 
@@ -78,6 +79,7 @@ class DefnConformanceRunner : public Node {
     void build_scenarios();
     void start_scenario();
     void step_game(double delta);
+    void position_game_units(double delta);
     void sample_game(int tick);
     void teardown_scenario();
     void run_kernel();
@@ -98,6 +100,7 @@ class DefnConformanceRunner : public Node {
     std::vector<godot::ObjectID> game_entities_;
     Trace game_trace_;
     Trace kernel_trace_;
+    BeltPositioningRuntime belt_positioning_;
 
     std::vector<std::string> failures_;
     int compared_scenarios_ = 0;

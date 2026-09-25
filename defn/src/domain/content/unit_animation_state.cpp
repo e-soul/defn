@@ -4,6 +4,7 @@
 #include "unit_animation_state.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace defn {
 
@@ -34,6 +35,7 @@ void UnitAnimationState::configure(std::vector<std::pair<std::string, AnimConfig
     shoot_effect_pending_ = false;
     shoot_effect_ready_ = false;
     shoot_effect_frame_ = 0;
+    belt_walking_ = false;
 }
 
 const AnimConfig *UnitAnimationState::find_animation(std::string_view name) const {
@@ -85,6 +87,17 @@ void UnitAnimationState::set_pose(UnitPose pose) {
     }
     pose_ = pose;
     apply_animation(animation_name_for(pose), Start::RESUME);
+}
+
+void UnitAnimationState::update_belt_motion(float displacement_y) {
+    belt_walking_ = false;
+    if (std::abs(displacement_y) <= 0.01F || is_attack_animation_playing() || pose_ == UnitPose::DEATH) {
+        return;
+    }
+    // A held action pose gives way to the ordinary walk when the feet move. Active attacks remain planted.
+    pose_ = UnitPose::WALK;
+    belt_walking_ = true;
+    apply_animation(WALK_ANIMATION, Start::RESUME);
 }
 
 void UnitAnimationState::hold_pose(UnitPose pose) {
@@ -180,6 +193,18 @@ bool UnitAnimationState::is_attack_animation_playing() const {
 }
 
 bool UnitAnimationState::is_attack_windup_active() const { return is_attack_animation_playing() && clock_.is_windup_active(); }
+
+float UnitAnimationState::belt_y_speed_scale(const BeltPositioningConfig &config) const {
+    if (!is_attack_animation_playing()) {
+        return 1.0F;
+    }
+    const AnimConfig *animation = find_animation(current_animation_);
+    if (animation != nullptr && animation->plant_start_frame.has_value() && animation->plant_end_frame.has_value() &&
+        clock_.frame() >= *animation->plant_start_frame && clock_.frame() <= *animation->plant_end_frame) {
+        return animation->plant_y_speed_scale;
+    }
+    return config.attack_y_speed_scale;
+}
 
 CombatPoseState to_combat_pose_state(UnitPose pose) {
     switch (pose) {

@@ -184,6 +184,11 @@ void AnimationController::set_anim_state(UnitPose pose) {
     sync_presentation();
 }
 
+void AnimationController::update_belt_motion(float displacement_y) {
+    state_.update_belt_motion(displacement_y);
+    sync_presentation();
+}
+
 void AnimationController::hold_anim_state(UnitPose pose) {
     state_.hold_pose(pose);
     sync_presentation();

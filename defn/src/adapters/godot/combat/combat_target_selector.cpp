@@ -20,7 +20,8 @@ AttackTarget *resolve_entity_id(EntityId entity_id) { return entity_id.is_valid(
 
 } // namespace
 
-CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Area2D *detection_area, const CombatConfig &config, EntityId current_target_id) {
+CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Area2D *detection_area, const CombatConfig &config, EntityId current_target_id,
+                                                   EntityId previous_approach_id) {
     if (unit == nullptr || detection_area == nullptr) {
         return {};
     }
@@ -68,7 +69,7 @@ CombatTargetSelection CombatTargetSelector::select(const BattleEntity *unit, Are
         }
     }
 
-    return select_target_from_snapshots(origin, config, current_target_id, snapshots);
+    return select_target_from_snapshots(origin, config, current_target_id, snapshots, previous_approach_id);
 }
 
 bool CombatTargetSelector::is_target_out_of_range(const BattleEntity *unit, const CombatConfig &config, EntityId target_id) {

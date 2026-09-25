@@ -1399,4 +1399,58 @@ DEFN_TEST(compute_affected_projectile_target_count_uses_rounding_and_minimums) {
     DEFN_CHECK_EQ(compute_affected_projectile_target_count(config, 5), 2);
 }
 
+DEFN_TEST(approach_identity_is_retained_without_changing_attack_eligibility) {
+    CombatConfig config = make_combat_config();
+    config.aggro_range = 500.0F;
+    std::array<CombatTargetSnapshot, 2> field{
+        CombatTargetSnapshot{.id = {.value = 1}, .side = UnitSide::HOSTILE, .position = {.x = 300.0F, .y = -30.0F}},
+        CombatTargetSnapshot{.id = {.value = 2}, .side = UnitSide::HOSTILE, .position = {.x = 305.0F, .y = 30.0F}},
+    };
+    const CombatTargetSelection retained = select_target_from_snapshots(Vector2{}, config, {}, field, {.value = 2});
+    DEFN_CHECK(!retained.engaged);
+    DEFN_CHECK(!retained.target_id.is_valid());
+    DEFN_CHECK_EQ(retained.approach_id.value, 2U);
+
+    field[1].dead = true;
+    const CombatTargetSelection replacement = select_target_from_snapshots(Vector2{}, config, {}, field, retained.approach_id);
+    DEFN_CHECK_EQ(replacement.approach_id.value, 1U);
+}
+
+DEFN_TEST(preferred_pursuit_retains_its_sensed_candidate) {
+    const CombatConfig config = make_rusher_config(UnitSide::FRIENDLY);
+    const std::array<CombatTargetSnapshot, 2> field{make_enemy(1, 300.0F, UnitRole::SNIPER), make_enemy(2, 305.0F, UnitRole::SNIPER)};
+    const CombatTargetSelection selection = select_target_from_snapshots(Vector2{}, config, {}, field, {.value = 2});
+    DEFN_CHECK(selection.pursuing);
+    DEFN_CHECK_EQ(selection.approach_id.value, 2U);
+    DEFN_CHECK(!selection.target_id.is_valid());
+}
+
+DEFN_TEST(ranged_repositioning_keeps_the_walk_pose_between_shots) {
+    CombatLogicInput input;
+    input.state.attack_cooldown_seconds = 1.0;
+    input.selection = {.engaged = true, .attack_mode = AttackMode::RANGED, .target_id = {.value = 2}};
+    input.current_pose = CombatPoseState::WALK;
+    input.belt_repositioning = true;
+    input.delta = 1.0 / 60.0;
+    const CombatLogicStep moving = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(moving.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!moving.intent.trigger_attack);
+
+    input.belt_repositioning = false;
+    const CombatLogicStep planted = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(planted.intent.pose, CombatPoseIntent::SHOOT);
+}
+
+DEFN_TEST(melee_repositioning_keeps_the_walk_pose_between_attacks) {
+    CombatLogicInput input;
+    input.state.attack_cooldown_seconds = 1.0;
+    input.selection = {.engaged = true, .attack_mode = AttackMode::MELEE, .target_id = {.value = 2}};
+    input.current_pose = CombatPoseState::WALK;
+    input.belt_repositioning = true;
+    input.delta = 1.0 / 60.0;
+    const CombatLogicStep moving = advance_combat_logic(make_combat_config(), input);
+    DEFN_CHECK_EQ(moving.intent.pose, CombatPoseIntent::NONE);
+    DEFN_CHECK(!moving.intent.trigger_attack);
+}
+
 } // namespace defn
