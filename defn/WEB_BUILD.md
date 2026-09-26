@@ -95,6 +95,34 @@ cross-origin isolation. Use HTTPS for production hosting.
 After replacing an export, clear cached site data if the browser still runs an
 old build, including any service worker left by an earlier PWA export.
 
+## Android emulator
+
+Make sure `ANDROID_HOME` is set and **Android SDK Command-line Tools (latest)** is installed.
+From the repository root, create `Defn_Phone`.
+
+```bat
+set "ANDROID_AVD_HOME=%CD%\build\android-avd-web"
+if not exist "%ANDROID_AVD_HOME%" mkdir "%ANDROID_AVD_HOME%"
+
+echo no| "%ANDROID_HOME%\cmdline-tools\latest\bin\avdmanager.bat" create avd -n Defn_Phone -k "system-images;android-36;google_apis;x86_64" -d pixel_6a
+```
+
+Start it:
+
+```bat
+"%ANDROID_HOME%\emulator\emulator.exe" -avd Defn_Phone
+```
+
+Keep the Python server from **Serve** running in another terminal. Once Android
+boots, map the emulator's port 8000 to the host server (repeat after restarting the emulator):
+
+```bat
+"%ANDROID_HOME%\platform-tools\adb.exe" -e reverse tcp:8000 tcp:8000
+```
+
+Open Chrome in the emulator, complete its first-run prompts, and browse to
+**http://localhost:8000/index.html**.
+
 ## Custom page
 
 [export_templates/web_shell.html](export_templates/web_shell.html) is the Web

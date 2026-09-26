@@ -5,6 +5,8 @@ It builds the C++23 extension through godot-cpp and supports Windows, Linux and
 the [pinned Web toolchain](../scripts/build_web.py). Native tests build independently
 of Godot.
 
+See [Web build](WEB_BUILD.md) for Web toolchain setup, builds and exports.
+
 ## Common commands
 
 | Command | Purpose |
