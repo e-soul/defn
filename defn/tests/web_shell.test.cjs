@@ -230,6 +230,16 @@ test("fullscreen toggles correctly and returns focus to the game", async () => {
 	assert.equal(h.calls.focus, h.element("canvas"));
 });
 
+test("fullscreen requests landscape when the browser supports orientation locking", async () => {
+	const h = harness();
+	await h.calls.script.onload();
+	let requested;
+	h.window.screen = { orientation: { async lock(mode) { requested = mode; } } };
+	await h.element("fullscreen").listeners.click();
+	assert.equal(requested, "landscape");
+	assert.equal(h.element("browser-notice").hidden, true);
+});
+
 test("unsupported fullscreen is hidden; rejected requests do not interrupt play", async () => {
 	assert.equal(harness({ fullscreenEnabled: false }).element("fullscreen").hidden, true);
 	const h = harness();

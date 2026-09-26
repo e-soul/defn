@@ -75,6 +75,10 @@
 		#stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 		#canvas { display: block; width: 100%; height: 100%; outline: none; }
 		#canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+		:fullscreen footer { display: none; }
+		:fullscreen header { position: absolute; top: 0; right: 0; z-index: 2; background: transparent; border: 0; padding: 6px; }
+		:fullscreen .brand { display: none; }
+		:fullscreen #fullscreen { opacity: 0.65; }
 		#overlay {
 			position: absolute;
 			inset: 0;
@@ -198,6 +202,17 @@
 					await document.exitFullscreen();
 				} else {
 					await document.documentElement.requestFullscreen();
+					if (window.screen?.orientation?.lock) {
+						try {
+							await window.screen.orientation.lock("landscape");
+						} catch (orientationError) {
+							console.info("Landscape lock unavailable:", orientationError);
+							if (window.innerHeight > window.innerWidth) {
+								notice.textContent = "Rotate your device for a wider game view.";
+								notice.hidden = false;
+							}
+						}
+					}
 				}
 			} catch (error) {
 				console.error("Defn fullscreen:", error);

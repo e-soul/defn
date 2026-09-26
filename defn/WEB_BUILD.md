@@ -53,8 +53,8 @@ The wrapper:
    zero. Existing unrelated files in the output directories are not removed.
 
 The default target is `release`; `--target debug` builds only the debug export.
-Use `--jobs N` to control compilation parallelism, `--output-dir <directory>` to
-change the export root, or `--build-only` to compile WASM without invoking Godot.
+Use `--output-dir <directory>` to change the export root,
+or `--build-only` to compile WASM without invoking Godot.
 Godot downloads are cached in `build/.cache/godot`.
 
 Web builds default to `threads=no`, matching the Web preset and the library

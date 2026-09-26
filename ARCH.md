@@ -198,6 +198,11 @@ Current boundary ownership:
   campaign/level definition composition and threaded texture requests before it
   passes plain campaign state to `CampaignMapPresenter` and builds the map UI.
   Preview framing and Godot controls remain adapter concerns.
+  On narrow web viewports the adapter presents the same campaign model as a
+  scrollable mission list and a separate detail page with persistent Deploy and
+  Back actions; the illustrated map remains the wide-screen presentation.
+  The browser shell requests landscape when the player enters fullscreen, while
+  touch pause control stays in the Godot pause adapter.
 
 Keep these translations at the edge. A new engine-facing value in domain or
 application code is an architectural regression, not a convenience shortcut.

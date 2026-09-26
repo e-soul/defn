@@ -115,11 +115,7 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--emsdk-dir", type=Path, default=DEFAULT_SDK_DIR)
     parser.add_argument("--godot-exe", help="Godot editor path; otherwise use GODOT_BIN or download the pinned editor.")
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "build" / "web")
-    parser.add_argument("--jobs", type=int, default=min(4, os.cpu_count() or 1))
-    args = parser.parse_args(argv)
-    if args.jobs < 1:
-        parser.error("--jobs must be positive")
-    return args
+    return parser.parse_args(argv)
 
 
 def main(argv=None) -> int:
@@ -150,12 +146,10 @@ def main(argv=None) -> int:
             if not template.is_file():
                 raise RuntimeError(f"Missing {template}. Reinstall the matching Godot export templates.")
         # The native editor must load our classes before importing scenes and exporting.
-        run([sys.executable, "-m", "SCons", f"platform={host}",
-             "target=template_debug", f"-j{args.jobs}"], cwd=PROJECT_DIR)
+        run([sys.executable, "-m", "SCons", f"platform={host}", "target=template_debug"], cwd=PROJECT_DIR)
 
     for mode in modes:
-        run([sys.executable, "-m", "SCons", "platform=web", "threads=no",
-             f"target=template_{mode}", f"-j{args.jobs}"], cwd=PROJECT_DIR, env=env)
+        run([sys.executable, "-m", "SCons", "platform=web", "threads=no", f"target=template_{mode}"], cwd=PROJECT_DIR, env=env)
         library = PROJECT_DIR / "bin" / web_library(mode)
         if not library.is_file():
             raise RuntimeError(f"Web build did not produce {library}")

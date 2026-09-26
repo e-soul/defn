@@ -6,6 +6,7 @@
 
 #include "menu_models.h"
 
+#include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event.hpp>
@@ -40,6 +41,7 @@ class PauseMenu : public CanvasLayer {
 
     Control *screen_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
+    Button *touch_pause_button_ = nullptr;
 };
 
 } // namespace defn

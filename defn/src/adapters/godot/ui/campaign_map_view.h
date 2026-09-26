@@ -6,11 +6,13 @@
 
 #include "campaign_map_view_model.h"
 
+#include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/cpu_particles2d.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
+#include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/callable.hpp>
 
@@ -24,6 +26,7 @@ namespace defn {
 class CampaignMapNodeView;
 class OperationDossierView;
 class ProgressionService;
+class CampaignPreviewView;
 
 class CampaignMapView : public godot::Control {
     GDCLASS(CampaignMapView, godot::Control)
@@ -60,6 +63,10 @@ class CampaignMapView : public godot::Control {
     void update_loading_animation(double delta);
     [[nodiscard]] godot::Ref<godot::Texture2D> texture_for(const CampaignTextureDefinition &definition) const;
     void build_map_content();
+    void build_mobile_content();
+    void show_mobile_mission(const godot::String &level_id);
+    void show_mobile_list();
+    void mobile_back();
     void build_routes(godot::Control *route_layer);
     void build_nodes(godot::Control *node_layer);
     void build_endless_button(godot::HBoxContainer *header_row);
@@ -88,6 +95,12 @@ class CampaignMapView : public godot::Control {
     std::vector<std::string> requested_texture_paths_;
     std::unordered_map<std::string, godot::Ref<godot::Texture2D>> loaded_textures_;
     godot::Control *reference_surface_ = nullptr;
+    godot::Control *mobile_root_ = nullptr;
+    godot::Control *mobile_list_ = nullptr;
+    godot::Control *mobile_detail_ = nullptr;
+    godot::VBoxContainer *mobile_detail_body_ = nullptr;
+    godot::Button *mobile_deploy_ = nullptr;
+    godot::Button *mobile_back_ = nullptr;
     OperationDossierView *dossier_ = nullptr;
     godot::Callable endless_action_;
     godot::CPUParticles2D *ambience_ = nullptr;

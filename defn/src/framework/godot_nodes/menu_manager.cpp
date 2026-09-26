@@ -21,8 +21,10 @@
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/h_slider.hpp>
+#include <godot_cpp/classes/java_script_bridge.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/option_button.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -35,6 +37,21 @@ namespace {
 
 constexpr real_t PROGRESSION_SCREEN_WIDTH_RATIO = 0.58;
 constexpr real_t PROGRESSION_SCREEN_HEIGHT_RATIO = 0.6;
+
+bool small_web_screen() {
+    if (!godot::OS::get_singleton()->has_feature("web")) {
+        return false;
+    }
+    return static_cast<double>(godot::JavaScriptBridge::get_singleton()->eval("document.getElementById('canvas')?.clientWidth || 1920", true)) < 900.0;
+}
+
+void size_mobile_button(godot::Button *button) {
+    if (button == nullptr || !small_web_screen()) {
+        return;
+    }
+    button->set_custom_minimum_size({600.0F, 96.0F});
+    button->add_theme_font_size_override("font_size", 38);
+}
 
 MenuSettingViewKind to_setting_view_kind(MenuSettingKind kind) {
     switch (kind) {
@@ -161,7 +178,10 @@ HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
     row->add_theme_constant_override("separation", UiThemeProvider::spacing("section_gap"));
 
     auto *name_label = make_label(setting.label.empty() ? String("???") : to_godot_string(setting.label), "option_label");
-    name_label->set_custom_minimum_size({UiThemeProvider::metric("option_label_width"), 0.0F});
+    name_label->set_custom_minimum_size({small_web_screen() ? 300.0F : UiThemeProvider::metric("option_label_width"), 0.0F});
+    if (small_web_screen()) {
+        name_label->add_theme_font_size_override("font_size", 30);
+    }
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(name_label);
 
@@ -169,6 +189,9 @@ HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
 }
 
 godot::Vector2 option_control_size() {
+    if (small_web_screen()) {
+        return {360.0F, 80.0F};
+    }
     const UiButtonVariant *variant = UiThemeProvider::data().find_button("option_control");
     if (variant == nullptr) {
         return {300.0F, 40.0F};
@@ -297,6 +320,7 @@ void add_menu_button(MenuManager *manager, VBoxContainer *button_container, cons
     const Callable pressed =
         callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(button_model.intent.type), to_godot_string(button_model.intent.target));
     auto *button = make_button(to_godot_string(button_model.label), "menu", pressed);
+    size_mobile_button(button);
     apply_enabled(button, button_model.enabled);
     button_container->add_child(button);
 }
@@ -309,6 +333,7 @@ void add_back_button(MenuManager *manager, HBoxContainer *footer, const std::opt
     const Callable pressed =
         callable_mp(manager, &MenuManager::on_button_pressed).bind(static_cast<int>(back->intent.type), to_godot_string(back->intent.target));
     auto *button = make_button(to_godot_string(back->label), "secondary", pressed);
+    size_mobile_button(button);
     apply_enabled(button, back->enabled);
     footer->add_child(button);
 }

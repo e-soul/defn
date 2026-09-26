@@ -12,6 +12,8 @@
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
+#include <godot_cpp/classes/java_script_bridge.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -92,6 +94,20 @@ void PauseMenu::build_ui() {
         auto *btn = make_button(entry.label.empty() ? String("???") : to_godot_string(entry.label), "menu", pressed);
         button_container_->add_child(btn);
     }
+
+    if (OS::get_singleton()->has_feature("web") &&
+        static_cast<double>(JavaScriptBridge::get_singleton()->eval("document.getElementById('canvas')?.clientWidth || 1920", true)) < 900.0) {
+        touch_pause_button_ = make_button("Pause", "secondary", callable_mp(this, &PauseMenu::toggle_pause));
+        touch_pause_button_->set_name("TouchPauseButton");
+        touch_pause_button_->set_custom_minimum_size({180.0F, 80.0F});
+        touch_pause_button_->add_theme_font_size_override("font_size", 30);
+        add_child(touch_pause_button_);
+        touch_pause_button_->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_RIGHT);
+        touch_pause_button_->set_offset(SIDE_LEFT, -204.0F);
+        touch_pause_button_->set_offset(SIDE_TOP, -104.0F);
+        touch_pause_button_->set_offset(SIDE_RIGHT, -24.0F);
+        touch_pause_button_->set_offset(SIDE_BOTTOM, -24.0F);
+    }
 }
 
 void PauseMenu::toggle_pause() { set_paused(!paused_); }
@@ -103,6 +119,9 @@ void PauseMenu::set_paused(bool paused) {
     if (screen_ != nullptr) {
         screen_->set_visible(paused_);
         screen_->set_process_mode(paused_ ? PROCESS_MODE_ALWAYS : PROCESS_MODE_DISABLED);
+    }
+    if (touch_pause_button_ != nullptr) {
+        touch_pause_button_->set_text(paused_ ? "Resume" : "Pause");
     }
 }
 
