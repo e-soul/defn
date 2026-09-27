@@ -15,6 +15,7 @@
 #include "progression_service.h"
 #include "ui_screen_scaffold.h"
 #include "ui_theme_provider.h"
+#include "ui_viewport_metrics.h"
 #include "ui_widgets.h"
 
 #include <godot_cpp/classes/box_container.hpp>
@@ -122,6 +123,12 @@ CampaignMapView::CampaignMapView() {
 void CampaignMapView::_bind_methods() {}
 
 void CampaignMapView::_process(double delta) {
+    layout_poll_seconds_ += delta;
+    if (layout_poll_seconds_ >= 0.2) {
+        layout_poll_seconds_ = 0.0;
+        UiThemeProvider::update_typography(measure_ui_viewport(get_viewport()));
+        layout_reference_surface();
+    }
     update_loading_animation(delta);
     switch (loading_state_) {
     case LoadingState::WaitingToStart:
@@ -342,7 +349,6 @@ void CampaignMapView::complete_loading() {
     select_level(to_godot_string(initial_selected_level_id));
     layout_reference_surface();
     loading_state_ = LoadingState::Ready;
-    set_process(false);
     Ref<Tween> tween = create_tween();
     tween->tween_property(loading_overlay_, "modulate:a", 0.0F, UiThemeProvider::motion("slow"));
     tween->tween_callback(callable_mp(this, &CampaignMapView::finish_overlay_fade));
@@ -377,7 +383,7 @@ void CampaignMapView::finish_overlay_fade() {
 }
 
 void CampaignMapView::update_loading_animation(double delta) {
-    if (loading_spinner_ == nullptr || loading_state_ == LoadingState::Failed) {
+    if (loading_spinner_ == nullptr || loading_state_ == LoadingState::Failed || loading_state_ == LoadingState::Ready) {
         return;
     }
     constexpr std::array<const char *, 4> frames = {"|", "/", "-", "\\"};
@@ -763,14 +769,32 @@ void CampaignMapView::layout_reference_surface() {
         mobile_root_->set_visible(mobile);
         reference_surface_->set_visible(!mobile);
         if (mobile) {
-            const float design_width = css_width < 600.0F ? 960.0F : 1600.0F;
-            const float mobile_scale = get_size().x / design_width;
-            mobile_root_->set_scale({mobile_scale, mobile_scale});
-            mobile_root_->set_size(get_size() / mobile_scale);
+            mobile_root_->set_scale({1.0F, 1.0F});
+            mobile_root_->set_size(get_size());
+            const UiViewportMetrics viewport = measure_ui_viewport(get_viewport());
+            const HudSizing sizing = resolve_hud_sizing(viewport);
+            const float button_height = sizing.pause_height;
+            for (int index = 0; index < mobile_list_->get_child(0)->get_child_count(); ++index) {
+                auto *button = Object::cast_to<Button>(mobile_list_->get_child(0)->get_child(index));
+                if (button != nullptr && button->get_custom_minimum_size().y != button_height) {
+                    button->set_custom_minimum_size({0.0F, button_height});
+                }
+            }
+            for (Button *button : {mobile_back_, mobile_deploy_}) {
+                if (button->get_custom_minimum_size().y != button_height) {
+                    button->set_custom_minimum_size({0.0F, button_height});
+                }
+            }
+            auto *column = Object::cast_to<Control>(mobile_root_->find_child("MobileCampaignColumn", false, false));
+            const float top = std::max(18.0F, viewport.overlay_height / sizing.pixels_per_unit);
+            if (column->get_offset(SIDE_TOP) != top) {
+                column->set_offset(SIDE_TOP, top);
+            }
         }
     }
     const float scale = std::min(get_size().x / reference.x, get_size().y / reference.y);
     reference_surface_->set_scale({scale, scale});
+    UiThemeProvider::apply_scaled_typography(reference_surface_, scale);
     reference_surface_->set_position((get_size() - (reference * scale)) * 0.5F);
 }
 

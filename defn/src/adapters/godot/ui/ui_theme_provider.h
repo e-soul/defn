@@ -4,6 +4,7 @@
 #ifndef UI_THEME_PROVIDER_H
 #define UI_THEME_PROVIDER_H
 
+#include "hud_layout.h"
 #include "ui_theme_models.h"
 
 #include <godot_cpp/classes/control.hpp>
@@ -27,6 +28,10 @@ class UiThemeProvider {
     static void install(godot::SceneTree *tree);
     static void apply_to(godot::Control *control);
     static void reload();
+    /// Update the shared font sizes after a browser resize/fullscreen change. Controls inherit the theme.
+    static void update_typography(const UiViewportMetrics &viewport);
+    /// Compensate a composed map's parent transform so its text uses the same displayed sizes as other UI.
+    static void apply_scaled_typography(godot::Control *control, float scale);
 
     static godot::Color color(std::string_view role);
     /// A named layout figure as the `real_t` Godot sizing calls want. `UiThemeData::metric` still serves the few

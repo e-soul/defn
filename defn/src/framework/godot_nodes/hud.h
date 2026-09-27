@@ -4,6 +4,7 @@
 #ifndef HUD_H
 #define HUD_H
 
+#include "hud_layout.h"
 #include "hud_meters.h"
 #include "hud_presenter.h"
 #include "icon_medallion.h"
@@ -16,6 +17,7 @@
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
+#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <optional>
 #include <string_view>
@@ -40,6 +42,7 @@ struct HudValueLabel {
     int reserved_digits = 0;
 
     void set_value(const String &text);
+    void remeasure();
 };
 
 class HUD : public CanvasLayer {
@@ -49,6 +52,7 @@ class HUD : public CanvasLayer {
     HUD();
 
     void _ready() override;
+    void _process(double delta) override;
 
     void set_friendly_units(const std::vector<UnitConfig> &units);
     void set_level(const String &level_name);
@@ -77,6 +81,9 @@ class HUD : public CanvasLayer {
     void build_energy_plate();
     void build_info_plate();
     void build_integrity_plate();
+    void collect_readout_sizes(Node *node);
+    void apply_readout_sizing();
+    void layout_ui();
     void refresh();
     void render(const HudModel &model);
     void render_supply_state(const HudCapModel &supply);
@@ -84,6 +91,8 @@ class HUD : public CanvasLayer {
     void render_deploy_cards(const std::vector<HudDeployCardModel> &cards);
     void clear_deploy_cards();
     void on_card_pressed(const String &unit_type);
+    void on_deploy_scroll_started();
+    void on_deploy_card_focused(Control *button);
     void on_next_level_pressed(const String &level_id);
     void on_retry_pressed(const String &level_id);
     void on_endless_pressed();
@@ -91,10 +100,14 @@ class HUD : public CanvasLayer {
     void on_upgrade_card_pressed(const String &upgrade_id);
 
     // Energy plate
+    PanelContainer *energy_plate = nullptr;
     HudValueLabel energy_value_label;
     Label *energy_cap_label = nullptr;
 
     // Info plate
+    PanelContainer *info_plate = nullptr;
+    BoxContainer *info_row = nullptr;
+    BoxContainer *stats_row = nullptr;
     HBoxContainer *level_group = nullptr;
     Label *level_label = nullptr;
     HudValueLabel wave_current_label;
@@ -107,13 +120,33 @@ class HUD : public CanvasLayer {
     HudValueLabel score_label;
 
     // Integrity plate
+    PanelContainer *integrity_plate = nullptr;
     IconMedallionNodes integrity_medallion;
     HudIntegrityMeter *integrity_meter = nullptr;
     std::optional<IntegrityTier> integrity_tier;
 
-    HBoxContainer *card_container = nullptr;
+    Control *card_container = nullptr;
+    ScrollContainer *card_tray = nullptr;
+    Label *card_scroll_hint = nullptr;
     std::vector<DeployCardUI> deploy_cards;
     HudPresentationInput hud_input_{.energy = 100, .current_wave = 1, .total_waves = 3, .base_health = 300, .base_max_health = 300, .score = 0};
+
+    struct ReadoutLabelSize {
+        Label *label;
+        int outline;
+        bool hide_in_compact;
+    };
+    struct ReadoutGap {
+        BoxContainer *box;
+        int separation;
+    };
+    std::vector<ReadoutLabelSize> readout_labels;
+    std::vector<ReadoutGap> readout_gaps;
+    std::vector<Control *> readout_icons;
+    UiViewportMetrics viewport_metrics;
+    HudSizing sizing;
+    double viewport_poll_seconds = 0.0;
+    bool layout_dirty = true;
 
     // Score screen
     ColorRect *match_result_overlay = nullptr;

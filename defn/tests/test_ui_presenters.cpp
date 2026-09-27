@@ -47,6 +47,7 @@
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/file_access.hpp>
+#include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
 #include <godot_cpp/classes/json.hpp>
@@ -561,7 +562,7 @@ DEFN_TEST(deploy_card_presenter_builds_card_content_from_unit_config) {
     auto *button = DeployCardPresenter::create(config, make_valid_callable(receiver));
 
     DEFN_REQUIRE(button != nullptr);
-    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().x, 190.0, 0.001);
+    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().x, 240.0, 0.001);
     DEFN_CHECK_CLOSE(button->get_custom_minimum_size().y, 110.0, 0.001);
     DEFN_CHECK(button->get_theme_type_variation() == StringName("DefnDeployCardButton"));
     DEFN_CHECK(has_label_text(button, "Operator"));
@@ -861,6 +862,119 @@ DEFN_TEST(hud_shows_and_hides_match_result_banner) {
     hud->show_match_result_banner(MatchResultCutscenePresenter::build(false));
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
     DEFN_CHECK(label_font_color_matches(hud, "DEFEAT", godot::Color(1.0, 0.2, 0.2, 1.0)));
+}
+
+DEFN_TEST(deploy_card_resizes_in_place_and_restores_its_desktop_dimensions) {
+    const TreeMountedNode<Control> host;
+    const GodotObjectOwner<Button> owner(DeployCardPresenter::create(make_presenter_unit_config("operator", 25), Callable()));
+    Button *button = owner.get();
+    UiThemeProvider::apply_to(button);
+    host.get()->add_child(button);
+    button->set_disabled(true);
+    const godot::Vector2 original_size = button->get_custom_minimum_size();
+    const HudSizing mobile = resolve_hud_sizing({.width = 2400.0F, .height = 1080.0F, .css_width = 844.0F, .css_height = 380.0F, .web = true});
+    DeployCardPresenter::apply_sizing(button, mobile);
+    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().y * mobile.pixels_per_unit, 44.0F, 0.01F);
+    DEFN_CHECK(button->get_custom_minimum_size().x < mobile.card_width);
+    auto *body = button->find_child("CardBody", true, false);
+    auto *text = button->find_child("CardText", true, false);
+    auto *cost_row = button->find_child("Cost", true, false);
+    DEFN_REQUIRE(body != nullptr);
+    DEFN_REQUIRE(text != nullptr);
+    DEFN_REQUIRE(cost_row != nullptr);
+    DEFN_CHECK_EQ(cost_row->get_parent(), body);
+    DEFN_CHECK_EQ(body->get_child(0)->get_name(), StringName("CardPortrait"));
+    DEFN_CHECK_EQ(body->get_child(1), text);
+    DEFN_CHECK_EQ(body->get_child(2), cost_row);
+    DeployCardPresenter::apply_sizing(button, mobile);
+    DEFN_CHECK_EQ(body->get_child_count(), 3);
+    auto *cost = Object::cast_to<Label>(button->find_child("CardCost", true, false));
+    DEFN_REQUIRE(cost != nullptr);
+    DEFN_CHECK_EQ(cost->get_text(), String("25"));
+    DEFN_CHECK(!cost->has_theme_font_size_override("font_size"));
+    DEFN_CHECK(button->is_disabled());
+    DeployCardPresenter::apply_sizing(button, {});
+    DEFN_CHECK_EQ(button->get_custom_minimum_size(), original_size);
+    DEFN_CHECK_EQ(cost_row->get_parent(), text);
+    DEFN_CHECK_EQ(text->get_child(1), cost_row);
+    DEFN_CHECK_EQ(cost->get_theme_font_size("font_size"), UiThemeProvider::font_size("micro"));
+}
+
+DEFN_TEST(deploy_card_measures_current_browser_typography_during_rotation) {
+    const TreeMountedNode<Control> host;
+    const GodotObjectOwner<Button> owner(DeployCardPresenter::create(make_presenter_unit_config("operator", 25), Callable()));
+    Button *button = owner.get();
+    host.get()->add_child(button);
+    const UiViewportMetrics portrait{.width = 1920.0F, .height = 3600.0F, .css_width = 412.0F, .css_height = 773.0F, .web = true};
+    UiThemeProvider::update_typography(portrait);
+    const auto sizing = resolve_hud_sizing(portrait);
+    DeployCardPresenter::apply_sizing(button, sizing);
+    auto *title = Object::cast_to<Label>(button->find_child("CardTitle", true, false));
+    DEFN_REQUIRE(title != nullptr);
+    const float name_width =
+        title->get_theme_font("font")->get_string_size(title->get_text(), HORIZONTAL_ALIGNMENT_LEFT, -1, UiThemeProvider::font_size("body")).x;
+    DEFN_CHECK(title->get_custom_minimum_size().x >= name_width);
+    DEFN_CHECK(button->get_custom_minimum_size().x < sizing.card_width);
+    UiThemeProvider::update_typography({});
+}
+
+DEFN_TEST(hud_integrity_meter_holds_its_width_budget_as_capacity_grows) {
+    const TreeMountedNode<Control> host;
+    const GodotObjectOwner<HudIntegrityMeter> owner(memnew(HudIntegrityMeter));
+    HudIntegrityMeter *meter = owner.get();
+    host.get()->add_child(meter);
+    meter->set_layout(2.0F, 180.0F);
+    meter->configure({.segments = 100, .filled_segments = 75.5}, UiThemeProvider::color("state_success"));
+    DEFN_CHECK_EQ(meter->get_segment_count(), 100);
+    DEFN_CHECK_CLOSE(meter->get_custom_minimum_size().x, 180.0F, 0.01F);
+    auto *percentage = Object::cast_to<Label>(meter->find_child("IntegrityPercentage", true, false));
+    DEFN_REQUIRE(percentage != nullptr);
+    DEFN_CHECK(percentage->is_visible());
+    DEFN_CHECK_EQ(percentage->get_text(), String("76%"));
+    DEFN_CHECK(percentage->get_position().x > 0.0F);
+    DEFN_CHECK_CLOSE(percentage->get_position().y + (percentage->get_size().y * 0.5F), meter->get_custom_minimum_size().y * 0.5F, 0.01F);
+    UiThemeProvider::update_typography({.width = 1920.0F, .height = 3600.0F, .css_width = 412.0F, .css_height = 773.0F, .web = true});
+    meter->set_layout(3.0F, 300.0F);
+    DEFN_CHECK(percentage->get_position().x + percentage->get_size().x <= meter->get_custom_minimum_size().x + 0.01F);
+    UiThemeProvider::update_typography({});
+    meter->set_layout(1.0F, 0.0F);
+    DEFN_CHECK(meter->get_custom_minimum_size().x > 180.0F);
+}
+
+DEFN_TEST(hud_numeric_reservations_remeasure_without_losing_their_digit_floor) {
+    const GodotObjectOwner<Label> owner(memnew(Label));
+    Label *label = owner.get();
+    UiThemeProvider::apply_to(label);
+    label->add_theme_font_size_override("font_size", 20);
+    HudValueLabel value{.label = label, .floor_digits = 3};
+    value.set_value("10000");
+    const float original_width = label->get_custom_minimum_size().x;
+    value.set_value("7");
+    label->add_theme_font_size_override("font_size", 40);
+    value.remeasure();
+    DEFN_CHECK(label->get_custom_minimum_size().x > original_width);
+    DEFN_CHECK_EQ(value.reserved_digits, 5);
+    label->add_theme_font_size_override("font_size", 20);
+    value.remeasure();
+    DEFN_CHECK_CLOSE(label->get_custom_minimum_size().x, original_width, 0.01F);
+}
+
+DEFN_TEST(hud_touch_scrolling_releases_card_focus_without_rebuilding_the_roster) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+    hud->set_friendly_units({make_presenter_unit_config("operator", 25)});
+    Button *button = find_deploy_card_button(hud);
+    auto *tray = Object::cast_to<ScrollContainer>(find_node_named(hud, "DeployTray"));
+    DEFN_REQUIRE(button != nullptr);
+    DEFN_REQUIRE(tray != nullptr);
+    DEFN_CHECK_EQ(button->get_mouse_filter(), Control::MOUSE_FILTER_PASS);
+    DEFN_CHECK_EQ(tray->get_mouse_filter(), Control::MOUSE_FILTER_STOP);
+    button->grab_focus();
+    tray->emit_signal("scroll_started");
+    DEFN_CHECK(!button->has_focus());
+    hud->update_core_resource(40);
+    DEFN_CHECK_EQ(find_deploy_card_button(hud), button);
+    DEFN_CHECK(!button->is_disabled());
 }
 
 DEFN_TEST(unit_factory_creates_materializes_and_initializes_runtime_profiles) {

@@ -30,12 +30,14 @@ namespace defn {
 using namespace godot;
 
 class SettingsRuntime;
+struct UiViewportMetrics;
 
 class MenuManager : public Node2D {
     GDCLASS(MenuManager, Node2D)
 
   public:
     void _ready() override;
+    void _process(double delta) override;
     void on_button_pressed(int intent_type, const String &target);
     void on_level_selected(const String &level_id);
     void on_endless_selected();
@@ -51,6 +53,7 @@ class MenuManager : public Node2D {
     bool load_menu_data();
     void setup_backdrop();
     void build_career_score();
+    void layout_career_score(const UiViewportMetrics &viewport);
     void show_menu(const String &menu_name);
     void show_level_select();
     void show_progression();
@@ -72,6 +75,7 @@ class MenuManager : public Node2D {
     PanelContainer *career_score_plate_ = nullptr;
     Label *total_score_label_ = nullptr;
     Control *active_screen_ = nullptr;
+    double typography_poll_seconds_ = 0.0;
 
     // Options-menu state (reset by clear_active_screen)
     OptionButton *resolution_dropdown_ = nullptr;

@@ -176,14 +176,14 @@ func _boot() -> bool:
 
 func _index_cards() -> void:
 	_cards.clear()
-	for child in _hud.get_children():
-		if not (child is HBoxContainer):
-			continue
-		for card in child.get_children():
-			if card is Button:
-				_cards[_card_unit_id(card)] = card
-		if not _cards.is_empty():
-			return
+	# The deployment row lives inside a bounded scroll tray now; the named row stays stable across resizes.
+	var row := _hud.find_child("DeployCards", true, false) as Control
+	if row == null:
+		printerr("[capture] deployment row missing")
+		return
+	for card in row.get_children():
+		if card is Button:
+			_cards[_card_unit_id(card)] = card
 
 
 ## The HUD keeps unit ids on the C++ side only, so the card is matched by its title -- "Breacher" is

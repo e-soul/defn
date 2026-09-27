@@ -4,6 +4,7 @@
 #ifndef PAUSE_MENU_H
 #define PAUSE_MENU_H
 
+#include "hud_layout.h"
 #include "menu_models.h"
 
 #include <godot_cpp/classes/button.hpp>
@@ -23,6 +24,7 @@ class PauseMenu : public CanvasLayer {
   public:
     void _ready() override;
     void _input(const Ref<InputEvent> &event) override;
+    void _process(double delta) override;
 
     void toggle_pause();
 
@@ -35,6 +37,7 @@ class PauseMenu : public CanvasLayer {
     void set_paused(bool paused);
     void on_resume();
     void on_main_menu();
+    void layout_touch_button();
 
     MenuContentData menu_data_;
     bool paused_ = false;
@@ -42,6 +45,8 @@ class PauseMenu : public CanvasLayer {
     Control *screen_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
     Button *touch_pause_button_ = nullptr;
+    UiViewportMetrics viewport_metrics_;
+    double viewport_poll_seconds_ = 0.0;
 };
 
 } // namespace defn

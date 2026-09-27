@@ -29,6 +29,10 @@ using namespace godot;
 
 namespace {
 
+struct RestoreNativeTypography {
+    ~RestoreNativeTypography() { UiThemeProvider::update_typography({}); }
+};
+
 Array color_array(double red, double green, double blue, double alpha) {
     Array values;
     values.append(red);
@@ -167,6 +171,9 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
 
     Dictionary typography;
     typography["body"] = 21;
+    Dictionary browser_typography;
+    browser_typography["body"] = 17;
+    browser_typography["heading"] = 19;
 
     Dictionary surface;
     surface["bg"] = "surface_sunken";
@@ -203,6 +210,7 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     Dictionary data;
     data["palette"] = palette;
     data["typography"] = typography;
+    data["browser_typography"] = browser_typography;
     data["surfaces"] = surfaces;
     data["buttons"] = buttons;
     data["medallions"] = medallions;
@@ -212,7 +220,9 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     const UiThemeData theme = UiThemeLoader::load_from_data(data);
     DEFN_CHECK_CLOSE(theme.palette.accent.r, 0.1F, 0.0001F);
     DEFN_CHECK_EQ(theme.typography.body, 21);
-    DEFN_CHECK_EQ(theme.typography.title, UiThemeData().typography.title);
+    DEFN_CHECK_EQ(theme.browser_typography.body, 17);
+    DEFN_CHECK_EQ(theme.browser_typography.heading, 19);
+    DEFN_CHECK_EQ(theme.typography.heading, UiThemeData().typography.heading);
 
     const UiSurfaceStyle *card = theme.find_surface("card");
     DEFN_REQUIRE(card != nullptr);
@@ -502,9 +512,9 @@ DEFN_TEST(ui_theme_provider_wires_the_score_screen_chrome_to_its_roles) {
     DEFN_CHECK_EQ(action_button->get_corner_radius(CORNER_TOP_LEFT), 8);
     DEFN_CHECK_CLOSE(action_button->get_content_margin(SIDE_LEFT), 12.0F, 0.0001F);
     DEFN_CHECK_CLOSE(action_button->get_content_margin(SIDE_RIGHT), 12.0F, 0.0001F);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnSecondaryButton"), 20);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnScoreStatLabel"), 22);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), 32);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnSecondaryButton"), 24);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnScoreStatLabel"), 24);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), 24);
 }
 
 DEFN_TEST(ui_theme_provider_wires_the_menu_chrome_to_its_roles) {
@@ -517,15 +527,15 @@ DEFN_TEST(ui_theme_provider_wires_the_menu_chrome_to_its_roles) {
     DEFN_CHECK_EQ(normal->get_border_width(SIDE_TOP), 2);
     DEFN_CHECK_EQ(normal->get_corner_radius(CORNER_TOP_LEFT), 8);
 
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), 32);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), 24);
     check_theme_color(theme, "DefnMenuButton", "text_primary");
     DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionLabelLabel"), 24);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionValueLabel"), 20);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionValueLabel"), 24);
     // The menu's career score is an instrument readout now, wearing the same styles as the HUD score plate.
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudScoreLabel"), 22);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudLabelLabel"), 13);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudScoreLabel"), 24);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudLabelLabel"), 24);
     // Deploy cards, roster chips and upgrade cards all name their card through one title style.
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnCardTitleLabel"), 15);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnCardTitleLabel"), 24);
 
     const UiThemeData &data = UiThemeProvider::data();
     const UiButtonVariant *menu = data.find_button("menu");
@@ -537,11 +547,41 @@ DEFN_TEST(ui_theme_provider_wires_the_menu_chrome_to_its_roles) {
 
 DEFN_TEST(ui_theme_provider_resolves_token_roles) {
     const UiThemeData &data = UiThemeProvider::data();
-    DEFN_CHECK_EQ(UiThemeProvider::font_size("title"), data.typography.title);
+    DEFN_CHECK_EQ(UiThemeProvider::font_size("title"), data.typography.heading);
     DEFN_CHECK_EQ(UiThemeProvider::spacing("xl"), data.spacing.xl);
     DEFN_CHECK_EQ(UiThemeProvider::shape("corner_lg"), data.shape.corner_lg);
     DEFN_CHECK_CLOSE(UiThemeProvider::color("accent").r, data.palette.accent.r, 0.0001F);
     DEFN_CHECK(UiThemeProvider::surface("panel").is_valid());
+}
+
+DEFN_TEST(ui_theme_provider_shares_browser_font_sizes_and_converts_only_engine_units) {
+    const RestoreNativeTypography restore;
+    const Ref<Theme> shared = UiThemeProvider::theme();
+    UiThemeProvider::update_typography({.css_width = 960.0F, .css_height = 540.0F, .web = true});
+    const int body = UiThemeProvider::data().browser_typography.body * 2;
+    for (const char *type : {"DefnMenuButton", "DefnSecondaryButton", "DefnPrimaryButton", "DefnOptionLabelLabel", "DefnHudValueLabel", "DefnHudLabelLabel",
+                             "DefnHudWaveLabel", "DefnHudLevelLabel", "DefnHudScoreLabel", "DefnCardTitleLabel", "DefnCardCostLabel"}) {
+        DEFN_CHECK_EQ(shared->get_font_size("font_size", type), body);
+    }
+    DEFN_CHECK_EQ(shared->get_font_size("font_size", "DefnScreenHeadingLabel"), UiThemeProvider::data().browser_typography.heading * 2);
+    UiThemeProvider::update_typography({.width = 3840.0F, .height = 2160.0F, .css_width = 960.0F, .css_height = 540.0F, .web = true});
+    DEFN_CHECK_EQ(shared->get_font_size("font_size", "DefnMenuButton"), body * 2);
+    DEFN_CHECK_EQ(UiThemeProvider::theme(), shared);
+}
+
+DEFN_TEST(ui_theme_provider_compensates_composed_map_scale_without_changing_the_shared_theme) {
+    const RestoreNativeTypography restore;
+    UiThemeProvider::update_typography({});
+    auto *control = memnew(Control);
+    auto *label = make_label("MISSION", "card_title");
+    control->add_child(label);
+    UiThemeProvider::apply_scaled_typography(control, 0.5F);
+    DEFN_CHECK(label->get_theme().is_null());
+    DEFN_CHECK_EQ(control->get_theme()->get_font_size("font_size", "DefnCardTitleLabel"), UiThemeProvider::font_size("body") * 2);
+    DEFN_CHECK_EQ(UiThemeProvider::theme()->get_font_size("font_size", "DefnCardTitleLabel"), UiThemeProvider::font_size("body"));
+    UiThemeProvider::apply_scaled_typography(control, 1.0F);
+    DEFN_CHECK_EQ(control->get_theme()->get_font_size("font_size", "DefnCardTitleLabel"), UiThemeProvider::font_size("body"));
+    memdelete(control);
 }
 
 DEFN_TEST(ui_widgets_make_button_applies_theme_variation_and_min_size) {

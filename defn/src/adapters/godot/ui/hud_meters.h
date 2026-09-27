@@ -7,6 +7,7 @@
 #include "hud_presenter.h"
 
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/color.hpp>
 
@@ -21,6 +22,7 @@ class HudIntegrityMeter : public godot::Control {
     HudIntegrityMeter();
 
     void configure(const HudIntegrityModel &model, const godot::Color &color);
+    void set_layout(float scale, float maximum_width);
     void _draw() override;
 
     [[nodiscard]] int get_segment_count() const;
@@ -31,6 +33,12 @@ class HudIntegrityMeter : public godot::Control {
   private:
     HudIntegrityModel model_;
     godot::Color color_;
+    float layout_scale_ = 1.0F;
+    float maximum_width_ = 0.0F;
+    float continuous_bar_width_ = 0.0F;
+    float continuous_bar_y_ = 0.0F;
+    godot::Label *percentage_label_ = nullptr;
+    void update_layout();
 };
 
 } // namespace defn

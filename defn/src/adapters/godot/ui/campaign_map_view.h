@@ -92,6 +92,7 @@ class CampaignMapView : public godot::Control {
     godot::Label *loading_status_ = nullptr;
     godot::HBoxContainer *loading_actions_ = nullptr;
     double loading_animation_elapsed_ = 0.0;
+    double layout_poll_seconds_ = 0.0;
     std::vector<std::string> requested_texture_paths_;
     std::unordered_map<std::string, godot::Ref<godot::Texture2D>> loaded_textures_;
     godot::Control *reference_surface_ = nullptr;

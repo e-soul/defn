@@ -8,12 +8,11 @@
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
+#include "ui_viewport_metrics.h"
 #include "ui_widgets.h"
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event_key.hpp>
-#include <godot_cpp/classes/java_script_bridge.hpp>
-#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/viewport.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
@@ -45,6 +44,32 @@ void PauseMenu::_input(const Ref<InputEvent> &event) {
         toggle_pause();
         get_viewport()->set_input_as_handled();
     }
+}
+
+void PauseMenu::_process(double delta) {
+    viewport_poll_seconds_ += delta;
+    if (touch_pause_button_ != nullptr && viewport_poll_seconds_ >= 0.2) {
+        viewport_poll_seconds_ = 0.0;
+        const UiViewportMetrics measured = measure_ui_viewport(get_viewport());
+        UiThemeProvider::update_typography(measured);
+        if (measured != viewport_metrics_) {
+            viewport_metrics_ = measured;
+            layout_touch_button();
+        }
+    }
+}
+
+void PauseMenu::layout_touch_button() {
+    const HudSizing sizing = resolve_hud_sizing(viewport_metrics_);
+    touch_pause_button_->set_visible(sizing.responsive);
+    if (!sizing.responsive) {
+        return;
+    }
+    const HudPlacement placement = place_hud(viewport_metrics_, sizing, {}, 0.0F, 0.0F);
+    touch_pause_button_->set_anchors_and_offsets_preset(Control::PRESET_TOP_LEFT);
+    touch_pause_button_->set_custom_minimum_size({sizing.pause_width, sizing.pause_height});
+    touch_pause_button_->set_size({sizing.pause_width, sizing.pause_height});
+    touch_pause_button_->set_position({placement.pause.x, placement.pause.y});
 }
 
 bool PauseMenu::load_config() {
@@ -95,19 +120,11 @@ void PauseMenu::build_ui() {
         button_container_->add_child(btn);
     }
 
-    if (OS::get_singleton()->has_feature("web") &&
-        static_cast<double>(JavaScriptBridge::get_singleton()->eval("document.getElementById('canvas')?.clientWidth || 1920", true)) < 900.0) {
-        touch_pause_button_ = make_button("Pause", "secondary", callable_mp(this, &PauseMenu::toggle_pause));
-        touch_pause_button_->set_name("TouchPauseButton");
-        touch_pause_button_->set_custom_minimum_size({180.0F, 80.0F});
-        touch_pause_button_->add_theme_font_size_override("font_size", 30);
-        add_child(touch_pause_button_);
-        touch_pause_button_->set_anchors_and_offsets_preset(Control::PRESET_BOTTOM_RIGHT);
-        touch_pause_button_->set_offset(SIDE_LEFT, -204.0F);
-        touch_pause_button_->set_offset(SIDE_TOP, -104.0F);
-        touch_pause_button_->set_offset(SIDE_RIGHT, -24.0F);
-        touch_pause_button_->set_offset(SIDE_BOTTOM, -24.0F);
-    }
+    touch_pause_button_ = make_button("Pause", "secondary", callable_mp(this, &PauseMenu::toggle_pause));
+    touch_pause_button_->set_name("TouchPauseButton");
+    add_child(touch_pause_button_);
+    viewport_metrics_ = measure_ui_viewport(get_viewport());
+    layout_touch_button();
 }
 
 void PauseMenu::toggle_pause() { set_paused(!paused_); }

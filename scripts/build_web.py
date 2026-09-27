@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -101,9 +102,28 @@ def export_game(godot: str, output_dir: Path, mode: str) -> None:
             f"--export-{mode}", EXPORT_PRESET, str(staging / "index.html"),
         ])
         verify_export(staging, mode)
+        html_path = staging / "index.html"
+        theme = json.loads((PROJECT_DIR / "data" / "ui_theme.json").read_text(encoding="utf-8"))
+        html_path.write_text(apply_shell_typography(html_path.read_text(encoding="utf-8"), theme), encoding="utf-8")
+        verify_export(staging, mode)
         destination = output_dir / mode
         shutil.copytree(staging, destination, dirs_exist_ok=True)
     print(f"Web {mode} export: {destination / 'index.html'}")
+
+
+def apply_shell_typography(html: str, theme: dict) -> str:
+    """Use the game's CSS pixel type scale for browser controls too."""
+    tokens = theme["browser_typography"]
+    declarations = []
+    for role in ("body", "heading", "display", "banner"):
+        size = tokens[role]
+        if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
+            raise ValueError(f"Invalid browser typography size for {role}: {size!r}")
+        declarations.append(f"--ui-{role}: {size}px;")
+    marker = "/* DEFN_BROWSER_TYPOGRAPHY */"
+    if marker not in html:
+        raise RuntimeError("Web shell lacks its browser typography marker.")
+    return html.replace(marker, "\n\t\t\t".join(declarations))
 
 
 def parse_args(argv=None) -> argparse.Namespace:

@@ -102,20 +102,20 @@ std::optional<Color> UiThemeData::find_color_role(std::string_view role) const {
     return std::nullopt;
 }
 
-std::optional<int> UiThemeData::find_font_size_role(std::string_view role) const {
+std::optional<int> UiTypography::find_size(std::string_view role) const {
     const std::array<std::pair<std::string_view, int>, 12> roles = {{
-        {"banner", typography.banner},
-        {"display", typography.display},
-        {"title", typography.title},
-        {"menu", typography.menu},
-        {"section", typography.section},
-        {"heading", typography.heading},
-        {"stat", typography.stat},
-        {"subheading", typography.subheading},
-        {"body", typography.body},
-        {"caption", typography.caption},
-        {"card_body", typography.card_body},
-        {"micro", typography.micro},
+        {"banner", banner},
+        {"display", display},
+        {"title", heading},
+        {"menu", body},
+        {"section", heading},
+        {"heading", heading},
+        {"stat", body},
+        {"subheading", body},
+        {"body", body},
+        {"caption", body},
+        {"card_body", body},
+        {"micro", body},
     }};
 
     for (const auto &[name, size] : roles) {
@@ -125,6 +125,8 @@ std::optional<int> UiThemeData::find_font_size_role(std::string_view role) const
     }
     return std::nullopt;
 }
+
+std::optional<int> UiThemeData::find_font_size_role(std::string_view role) const { return typography.find_size(role); }
 
 std::optional<int> UiThemeData::find_spacing_role(std::string_view role) const {
     const std::array<std::pair<std::string_view, int>, 7> roles = {{

@@ -30,6 +30,8 @@
 			--muted: #969cb0;
 			--danger: #e25054;
 			--space: clamp(12px, 2vw, 24px);
+			/* DEFN_BROWSER_TYPOGRAPHY */
+			font-size: var(--ui-body, 14px);
 			font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 			background: var(--ink);
 			color: var(--text);
@@ -55,12 +57,12 @@
 		}
 		header { border-bottom: 1px solid var(--border); }
 		.brand { display: flex; align-items: baseline; gap: 16px; }
-		.wordmark { color: var(--accent); font-size: 24px; font-weight: 900; letter-spacing: 0.18em; }
-		.tagline, footer { color: var(--muted); font-size: 12px; }
+		.wordmark { color: var(--accent); font-size: var(--ui-display, 22px); font-weight: 900; letter-spacing: 0.18em; }
+		.tagline, footer { color: var(--muted); font-size: var(--ui-body, 14px); }
 		.tagline { letter-spacing: 0.12em; text-transform: uppercase; }
 		button {
 			font: inherit;
-			font-size: 13px;
+			font-size: var(--ui-body, 14px);
 			font-weight: 600;
 			color: var(--text);
 			background: var(--raised);
@@ -89,10 +91,10 @@
 			background: radial-gradient(ellipse at 50% 35%, var(--raised), var(--ink) 75%);
 		}
 		.panel { width: min(100%, 440px); padding: clamp(20px, 4vw, 40px); border: 1px solid var(--border); border-top: 3px solid var(--accent); background: var(--surface); }
-		.eyebrow { margin: 0 0 16px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
-		h1 { margin: 0 0 12px; font-size: clamp(24px, 4vw, 36px); letter-spacing: -0.03em; }
-		#message { color: var(--muted); font-size: 14px; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
-		.download { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; font-size: 12px; }
+		.eyebrow { margin: 0 0 16px; color: var(--accent); font-size: var(--ui-body, 14px); font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+		h1 { margin: 0 0 12px; font-size: var(--ui-display, 22px); letter-spacing: -0.03em; }
+		#message { color: var(--muted); font-size: var(--ui-body, 14px); line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+		.download { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; font-size: var(--ui-body, 14px); }
 		#progress { display: block; width: 100%; height: 6px; margin: 12px 0 20px; border: 0; border-radius: 0; background: var(--raised); accent-color: var(--accent); }
 		#progress::-webkit-progress-bar { background: var(--raised); }
 		#progress::-webkit-progress-value { background: var(--accent); }
@@ -100,12 +102,11 @@
 		#overlay[data-state="error"] .panel { border-top-color: var(--danger); }
 		#retry { margin-top: 12px; color: var(--ink); background: var(--accent); }
 		footer { border-top: 1px solid var(--border); line-height: 1.4; flex-wrap: wrap; }
-		#browser-notice { color: var(--danger); font-size: 12px; margin: 0; }
+		#browser-notice { color: var(--danger); font-size: var(--ui-body, 14px); margin: 0; }
 		noscript { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 24px; background: var(--surface); }
 		@media (max-width: 600px) {
 			.tagline, .controls-hint { display: none; }
 			header, footer { padding: 8px 12px; }
-			.wordmark { font-size: 20px; }
 		}
 		@media (max-height: 450px) {
 			.tagline, footer { display: none; }

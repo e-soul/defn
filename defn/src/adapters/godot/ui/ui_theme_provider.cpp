@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "ui_theme_provider.h"
+#include "ui_viewport_metrics.h"
 
 #include "data_paths.h"
 #include "godot_color.h"
@@ -16,8 +17,10 @@
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
+#include <cmath>
 #include <optional>
 #include <string>
 
@@ -29,6 +32,17 @@ namespace {
 
 std::optional<UiThemeData> g_data;
 Ref<Theme> g_theme;
+std::optional<UiTypography> g_active_typography;
+
+void inherit_composed_theme(Node *node, const Ref<Theme> &shared) {
+    for (int index = 0; index < node->get_child_count(); ++index) {
+        Node *child = node->get_child(index);
+        if (auto *control = Object::cast_to<Control>(child); control != nullptr && control->get_theme() == shared) {
+            control->set_theme(Ref<Theme>{});
+        }
+        inherit_composed_theme(child, shared);
+    }
+}
 
 std::string to_pascal_case(std::string_view snake_case) {
     std::string pascal;
@@ -307,6 +321,7 @@ Ref<Theme> UiThemeProvider::theme() {
 void UiThemeProvider::install(SceneTree *tree) {
     if (tree != nullptr && tree->get_root() != nullptr) {
         tree->get_root()->set_theme(theme());
+        update_typography(measure_ui_viewport(tree->get_root()));
     }
 }
 
@@ -319,13 +334,82 @@ void UiThemeProvider::apply_to(Control *control) {
 void UiThemeProvider::reload() {
     g_data.reset();
     g_theme.unref();
+    g_active_typography.reset();
+}
+
+void UiThemeProvider::update_typography(const UiViewportMetrics &viewport) {
+    UiTypography sizes = data().typography;
+    if (viewport.web && viewport.width > 0.0F && viewport.height > 0.0F && viewport.css_width > 0.0F && viewport.css_height > 0.0F) {
+        const float pixels_per_unit = std::min(viewport.css_width / viewport.width, viewport.css_height / viewport.height);
+        const auto converted = [pixels_per_unit](int pixels) {
+            return std::max(1, static_cast<int>(std::round(static_cast<float>(pixels) / pixels_per_unit)));
+        };
+        const UiTypography &browser = data().browser_typography;
+        sizes = {
+            .banner = converted(browser.banner), .display = converted(browser.display), .heading = converted(browser.heading), .body = converted(browser.body)};
+    }
+    if (g_active_typography == sizes) {
+        return;
+    }
+    g_active_typography = sizes;
+    const Ref<Theme> shared = theme();
+    shared->set_default_font_size(sizes.body);
+    for (const char *type : {"Label", "Button", "OptionButton", "CheckButton", "PopupMenu"}) {
+        shared->set_font_size("font_size", type, sizes.body);
+    }
+    for (const auto &[name, style] : data().text_styles) {
+        shared->set_font_size("font_size", label_variation(name), font_size(style.font_size_role));
+    }
+    for (const auto &[name, button] : data().buttons) {
+        shared->set_font_size("font_size", button_variation(name), font_size(button.font_size_role));
+    }
+}
+
+void UiThemeProvider::apply_scaled_typography(Control *control, float scale) {
+    if (control == nullptr || scale <= 0.0F) {
+        return;
+    }
+    Ref<Theme> local = control->get_theme();
+    if (local.is_null() || local == theme()) {
+        local.instantiate();
+        control->set_theme(local);
+    }
+    const auto apply = [&local, scale](const StringName &type, std::string_view role) {
+        const int size = std::max(1, static_cast<int>(std::round(static_cast<float>(font_size(role)) / scale)));
+        if (!local->has_font_size("font_size", type) || local->get_font_size("font_size", type) != size) {
+            local->set_font_size("font_size", type, size);
+        }
+    };
+    for (const char *type : {"Label", "Button", "OptionButton", "PopupMenu"}) {
+        apply(type, "body");
+    }
+    for (const auto &[name, style] : data().text_styles) {
+        const StringName type = label_variation(name);
+        if (local->get_type_variation_base(type) != StringName("Label")) {
+            local->set_type_variation(type, "Label");
+        }
+        apply(type, style.font_size_role);
+    }
+    for (const auto &[name, button] : data().buttons) {
+        const StringName type = button_variation(name);
+        if (local->get_type_variation_base(type) != StringName("Button")) {
+            local->set_type_variation(type, "Button");
+        }
+        apply(type, button.font_size_role);
+    }
+    // Widget factories attach the shared theme explicitly. Let composed descendants inherit this font layer
+    // while palette, surfaces and icons continue to come from the surrounding shared theme.
+    inherit_composed_theme(control, theme());
 }
 
 godot::Color UiThemeProvider::color(std::string_view role) { return role_color(data(), role); }
 
 real_t UiThemeProvider::metric(std::string_view name, int fallback) { return static_cast<real_t>(data().metric(name, fallback)); }
 
-int UiThemeProvider::font_size(std::string_view role) { return role_font_size(data(), role, data().typography.body); }
+int UiThemeProvider::font_size(std::string_view role) {
+    const UiTypography &sizes = g_active_typography.has_value() ? *g_active_typography : data().typography;
+    return sizes.find_size(role).value_or(sizes.body);
+}
 
 int UiThemeProvider::spacing(std::string_view role) { return role_spacing(data(), role, data().spacing.md); }
 

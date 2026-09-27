@@ -19,6 +19,16 @@ import web_toolchain
 
 
 class WebToolchainTests(unittest.TestCase):
+    def test_shell_typography_comes_from_the_same_browser_theme_data(self):
+        theme = {"browser_typography": {"body": 17, "heading": 19, "display": 25, "banner": 32}}
+        html = build_web.apply_shell_typography(":root{/* DEFN_BROWSER_TYPOGRAPHY */}", theme)
+        self.assertIn("--ui-body: 17px;", html)
+        self.assertIn("--ui-heading: 19px;", html)
+        self.assertNotIn("DEFN_BROWSER_TYPOGRAPHY", html)
+        theme["browser_typography"]["body"] = 0
+        with self.assertRaises(ValueError):
+            build_web.apply_shell_typography("/* DEFN_BROWSER_TYPOGRAPHY */", theme)
+
     def setUp(self):
         self.pin = web_toolchain.load_toolchain()
 
