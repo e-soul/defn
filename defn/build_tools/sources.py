@@ -41,7 +41,6 @@ src/adapters/presenters/progression_stats_presenter.cpp
 src/adapters/presenters/progression_stat_visualization.cpp
 src/adapters/presenters/deploy_card_view_model.cpp
 src/adapters/presenters/hud_presenter.cpp
-src/adapters/presenters/hud_layout.cpp
 src/adapters/presenters/match_result_cutscene_view_model.cpp
 src/adapters/presenters/menu_view_model.cpp
 src/adapters/presenters/campaign_map_view_model.cpp
@@ -71,7 +70,6 @@ src/adapters/godot/ui/progression_stat_meter.cpp
 src/adapters/godot/ui/meter_geometry.cpp
 src/adapters/godot/ui/icon_medallion.cpp
 src/adapters/godot/ui/hud_meters.cpp
-src/adapters/godot/ui/ui_viewport_metrics.cpp
 src/adapters/godot/ui/ui_sfx_player.cpp
 src/framework/godot_nodes/vfx/bounty_energy_effect.cpp
 src/framework/godot_nodes/vfx/field_promotion_effect.cpp
@@ -187,7 +185,6 @@ tests/test_endless_director.cpp
 tests/test_menu_flow_use_case.cpp
 tests/test_ui_theme.cpp
 tests/test_presentation_view_models.cpp
-tests/test_hud_layout.cpp
 tests/test_campaign_map_presenter.cpp
 tests/test_settings_session.cpp
 tests/test_settings_use_case.cpp

@@ -93,13 +93,18 @@ struct UiPalette {
 };
 
 struct UiTypography {
-    int banner = 56;
-    int display = 40;
-    int heading = 28;
-    int body = 24;
-
-    [[nodiscard]] std::optional<int> find_size(std::string_view role) const;
-    bool operator==(const UiTypography &) const = default;
+    int banner = 72;
+    int display = 48;
+    int title = 34;
+    int menu = 32;
+    int section = 28;
+    int heading = 24;
+    int stat = 22;
+    int subheading = 20;
+    int body = 18;
+    int caption = 15;
+    int card_body = 14;
+    int micro = 13;
 };
 
 struct UiSpacing {
@@ -203,8 +208,6 @@ struct UiScreenStyle {
 struct UiThemeData {
     UiPalette palette;
     UiTypography typography;
-    /// Displayed CSS pixel sizes; converted to engine units once for the shared browser theme.
-    UiTypography browser_typography{.banner = 28, .display = 22, .heading = 16, .body = 14};
     UiSpacing spacing;
     UiShape shape;
     UiMotion motion;

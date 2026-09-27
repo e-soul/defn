@@ -21,7 +21,7 @@ UiThemeData make_theme() {
 
 DEFN_TEST(ui_theme_defaults_are_populated) {
     const UiThemeData theme;
-    DEFN_CHECK_EQ(theme.typography.body, 24);
+    DEFN_CHECK_EQ(theme.typography.body, 18);
     DEFN_CHECK_EQ(theme.spacing.section_gap, 16);
     DEFN_CHECK_EQ(theme.shape.corner_md, 8);
     DEFN_CHECK_EQ(theme.screen.panel_surface, std::string("panel"));
@@ -81,7 +81,7 @@ DEFN_TEST(ui_theme_role_lookups_resolve_tokens) {
 
     const auto title = theme.find_font_size_role("title");
     DEFN_REQUIRE(title.has_value());
-    DEFN_CHECK_EQ(*title, theme.typography.heading);
+    DEFN_CHECK_EQ(*title, theme.typography.title);
 
     const auto gap = theme.find_spacing_role("section_gap");
     DEFN_REQUIRE(gap.has_value());
@@ -98,18 +98,6 @@ DEFN_TEST(ui_theme_role_lookups_reject_unknown_roles) {
     DEFN_CHECK(!theme.find_font_size_role("gigantic").has_value());
     DEFN_CHECK(!theme.find_spacing_role("xxl").has_value());
     DEFN_CHECK(!theme.find_shape_role("corner_xl").has_value());
-}
-
-DEFN_TEST(ui_typography_uses_four_shared_levels_including_legacy_role_names) {
-    const UiTypography sizes{.banner = 60, .display = 42, .heading = 30, .body = 25};
-    for (const char *role : {"body", "menu", "stat", "subheading", "caption", "card_body", "micro"}) {
-        DEFN_CHECK_EQ(sizes.find_size(role).value_or(0), 25);
-    }
-    for (const char *role : {"heading", "title", "section"}) {
-        DEFN_CHECK_EQ(sizes.find_size(role).value_or(0), 30);
-    }
-    DEFN_CHECK_EQ(sizes.find_size("display").value_or(0), 42);
-    DEFN_CHECK_EQ(sizes.find_size("banner").value_or(0), 60);
 }
 
 DEFN_TEST(ui_theme_metrics_fall_back_when_missing) {

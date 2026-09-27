@@ -161,8 +161,16 @@ UiPalette parse_palette(const Dictionary &source, UiPalette palette) {
 UiTypography parse_typography(const Dictionary &source, UiTypography typography) {
     typography.banner = VariantTools::as_int(source.get("banner", typography.banner));
     typography.display = VariantTools::as_int(source.get("display", typography.display));
+    typography.title = VariantTools::as_int(source.get("title", typography.title));
+    typography.menu = VariantTools::as_int(source.get("menu", typography.menu));
+    typography.section = VariantTools::as_int(source.get("section", typography.section));
     typography.heading = VariantTools::as_int(source.get("heading", typography.heading));
+    typography.stat = VariantTools::as_int(source.get("stat", typography.stat));
+    typography.subheading = VariantTools::as_int(source.get("subheading", typography.subheading));
     typography.body = VariantTools::as_int(source.get("body", typography.body));
+    typography.caption = VariantTools::as_int(source.get("caption", typography.caption));
+    typography.card_body = VariantTools::as_int(source.get("card_body", typography.card_body));
+    typography.micro = VariantTools::as_int(source.get("micro", typography.micro));
     return typography;
 }
 
@@ -326,7 +334,6 @@ UiThemeData UiThemeLoader::load_from_data(const Dictionary &data) {
     theme.font_path = to_std_string(String(data.get("font", "")));
     theme.palette = parse_palette(data.get("palette", Dictionary()), theme.palette);
     theme.typography = parse_typography(data.get("typography", Dictionary()), theme.typography);
-    theme.browser_typography = parse_typography(data.get("browser_typography", Dictionary()), theme.browser_typography);
     theme.spacing = parse_spacing(data.get("spacing", Dictionary()), theme.spacing);
     theme.shape = parse_shape(data.get("shape", Dictionary()), theme.shape);
     theme.motion = parse_motion(data.get("motion", Dictionary()), theme.motion);

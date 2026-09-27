@@ -14,7 +14,6 @@
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
-#include "ui_viewport_metrics.h"
 #include "ui_widgets.h"
 #include "variant_tools.h"
 #include <cmath>
@@ -51,6 +50,7 @@ void size_mobile_button(godot::Button *button) {
         return;
     }
     button->set_custom_minimum_size({600.0F, 96.0F});
+    button->add_theme_font_size_override("font_size", 38);
 }
 
 MenuSettingViewKind to_setting_view_kind(MenuSettingKind kind) {
@@ -179,6 +179,9 @@ HBoxContainer *create_option_row(const MenuSettingViewModel &setting) {
 
     auto *name_label = make_label(setting.label.empty() ? String("???") : to_godot_string(setting.label), "option_label");
     name_label->set_custom_minimum_size({small_web_screen() ? 300.0F : UiThemeProvider::metric("option_label_width"), 0.0F});
+    if (small_web_screen()) {
+        name_label->add_theme_font_size_override("font_size", 30);
+    }
     name_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_RIGHT);
     row->add_child(name_label);
 
@@ -339,16 +342,6 @@ void add_back_button(MenuManager *manager, HBoxContainer *footer, const std::opt
 
 void MenuManager::_bind_methods() {}
 
-void MenuManager::_process(double delta) {
-    typography_poll_seconds_ += delta;
-    if (typography_poll_seconds_ >= 0.2) {
-        typography_poll_seconds_ = 0.0;
-        const UiViewportMetrics viewport = measure_ui_viewport(get_viewport());
-        UiThemeProvider::update_typography(viewport);
-        layout_career_score(viewport);
-    }
-}
-
 void MenuManager::_ready() {
     if (!load_menu_data()) {
         UtilityFunctions::printerr("MenuManager: Failed to load menu data");
@@ -367,7 +360,6 @@ void MenuManager::_ready() {
 
     setup_backdrop();
     build_career_score();
-    layout_career_score(measure_ui_viewport(get_viewport()));
 
     if (SceneNavigator::consume_campaign_map_request()) {
         show_level_select();
@@ -411,24 +403,6 @@ void MenuManager::build_career_score() {
     plate->add_child(readout.row);
     ui_layer_->add_child(plate);
     career_score_plate_ = plate;
-}
-
-void MenuManager::layout_career_score(const UiViewportMetrics &viewport) {
-    if (career_score_plate_ == nullptr) {
-        return;
-    }
-    const godot::Vector2 size = career_score_plate_->get_combined_minimum_size();
-    const HudPlacement placement = place_hud(viewport, resolve_hud_sizing(viewport), {.integrity = {.width = size.x, .height = size.y}}, 0.0F, 0.0F);
-    if (career_score_plate_->get_anchor(SIDE_LEFT) != 0.0F) {
-        career_score_plate_->set_anchors_preset(Control::PRESET_TOP_LEFT);
-    }
-    if (career_score_plate_->get_size() != size) {
-        career_score_plate_->set_size(size);
-    }
-    const godot::Vector2 position{placement.integrity.x, placement.integrity.y};
-    if (career_score_plate_->get_position() != position) {
-        career_score_plate_->set_position(position);
-    }
 }
 
 void MenuManager::clear_active_screen() {
