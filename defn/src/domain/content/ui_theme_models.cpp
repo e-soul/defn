@@ -17,6 +17,68 @@ template <typename Map> const typename Map::mapped_type *find_entry(const Map &e
 
 } // namespace
 
+UiThemeData apply_theme_patch(UiThemeData base, const UiThemePatch &patch) {
+    const std::array<std::pair<const char *, int *>, 4> type_fields = {{{"supporting", &base.typography.supporting},
+                                                                        {"body", &base.typography.body},
+                                                                        {"heading", &base.typography.heading},
+                                                                        {"display", &base.typography.display}}};
+    const std::array<std::pair<const char *, int *>, 7> space_fields = {{{"xs", &base.spacing.xs},
+                                                                         {"sm", &base.spacing.sm},
+                                                                         {"md", &base.spacing.md},
+                                                                         {"lg", &base.spacing.lg},
+                                                                         {"xl", &base.spacing.xl},
+                                                                         {"screen_margin", &base.spacing.screen_margin},
+                                                                         {"section_gap", &base.spacing.section_gap}}};
+    for (const auto &[name, field] : type_fields) {
+        if (const auto found = patch.typography.find(name); found != patch.typography.end()) {
+            *field = found->second;
+        }
+    }
+    for (const auto &[name, field] : space_fields) {
+        if (const auto found = patch.spacing.find(name); field != nullptr && found != patch.spacing.end()) {
+            *field = found->second;
+        }
+    }
+    for (const auto &[name, value] : patch.metrics) {
+        base.metrics.insert_or_assign(name, value);
+    }
+    for (const auto &[name, value] : patch.text_styles) {
+        auto &style = base.text_styles[name];
+        if (value.font_size_role) {
+            style.font_size_role = *value.font_size_role;
+        }
+        if (value.color_role) {
+            style.color_role = *value.color_role;
+        }
+        if (value.outline_size) {
+            style.outline_size = *value.outline_size;
+        }
+        if (value.outline_role) {
+            style.outline_role = *value.outline_role;
+        }
+    }
+    auto apply_card = [](UiCardGeometry &card, const UiCardPatch &value) {
+        if (value.width) {
+            card.width = *value.width;
+        }
+        if (value.height) {
+            card.height = *value.height;
+        }
+        if (value.portrait) {
+            card.portrait = *value.portrait;
+        }
+    };
+    apply_card(base.responsive.standard_card, patch.standard_card);
+    apply_card(base.responsive.small_card, patch.small_card);
+    if (patch.gap) {
+        base.responsive.gap = *patch.gap;
+    }
+    if (patch.margin) {
+        base.responsive.margin = *patch.margin;
+    }
+    return base;
+}
+
 UiButtonVariant apply_selection(UiButtonVariant variant, const UiSelectionStyle &selection) {
     const std::array<UiButtonState *, 5> states = {&variant.normal, &variant.hover, &variant.pressed, &variant.disabled, &variant.focus};
     for (UiButtonState *state : states) {
@@ -103,25 +165,24 @@ std::optional<Color> UiThemeData::find_color_role(std::string_view role) const {
 }
 
 std::optional<int> UiThemeData::find_font_size_role(std::string_view role) const {
-    const std::array<std::pair<std::string_view, int>, 12> roles = {{
-        {"banner", typography.banner},
-        {"display", typography.display},
-        {"title", typography.title},
-        {"menu", typography.menu},
-        {"section", typography.section},
-        {"heading", typography.heading},
-        {"stat", typography.stat},
-        {"subheading", typography.subheading},
-        {"body", typography.body},
-        {"caption", typography.caption},
-        {"card_body", typography.card_body},
-        {"micro", typography.micro},
-    }};
+    if (const auto found = type_roles.find(role); found != type_roles.end()) {
+        return typography.slot(found->second);
+    }
+    return typography.slot(role);
+}
 
-    for (const auto &[name, size] : roles) {
-        if (name == role) {
-            return size;
-        }
+std::optional<int> UiTypography::slot(std::string_view name) const {
+    if (name == "supporting") {
+        return supporting;
+    }
+    if (name == "body") {
+        return body;
+    }
+    if (name == "heading") {
+        return heading;
+    }
+    if (name == "display") {
+        return display;
     }
     return std::nullopt;
 }

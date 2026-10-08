@@ -27,6 +27,7 @@ var _recon := false
 var _recon_seconds := 60
 var _cursor_enabled := true
 var _level_override := ""
+var _logical_size := Vector2.ZERO
 
 var _frame := 0
 var _cursor: Control = null
@@ -34,6 +35,7 @@ var _cover: ColorRect = null
 var _hud: Node = null
 var _entities: Node = null
 var _camera: Camera2D = null
+var _game: Node = null
 var _cards: Dictionary = {}
 
 var _travel_from := Vector2.ZERO
@@ -68,6 +70,10 @@ func _parse_args() -> void:
 				index += 2
 			"--level":
 				_level_override = value
+				index += 2
+			"--logical-size":
+				var dimensions := value.split("x")
+				_logical_size = Vector2(float(dimensions[0]), float(dimensions[1]))
 				index += 2
 			"--recon":
 				_recon = true
@@ -118,6 +124,9 @@ func _boot() -> bool:
 	# level selection with nowhere to land.
 	change_scene_to_file("res://scenes/menu.tscn")
 	await _frames(BOOT_FRAMES)
+	if _logical_size != Vector2.ZERO:
+		root.size = Vector2i(_logical_size * root.get_screen_transform().get_scale())
+		await _frames(4)
 	if not Engine.has_singleton("CampaignService"):
 		printerr("[capture] CampaignService missing after the menu scene loaded")
 		return false
@@ -126,26 +135,63 @@ func _boot() -> bool:
 	# choreography be tried on another level.
 	var level: String = _level_override if _level_override != "" else str(_shot.get("level", "level_03"))
 	var campaign: Object = Engine.get_singleton("CampaignService")
-	campaign.call("set_current_level_id", level)
-	var selected: String = str(campaign.call("get_current_level_id"))
-	if selected != level:
-		# A locked or misspelled id is refused and the previous selection silently stands, which would
-		# otherwise be discovered only when the footage shows the wrong beach.
-		printerr("[capture] level %s was refused; current selection is %s" % [level, selected])
-		return false
-
-	change_scene_to_file("res://scenes/game.tscn")
+	if level == "endless":
+		if not bool(campaign.call("is_endless_available")):
+			printerr("[capture] endless is locked; use --fixture max_roster")
+			return false
+		# Enter through the real menu so its normal action selects endless mode. The desktop map's
+		# illustrated mode button has child labels rather than Button.text, hence its stable node name.
+		for target in ["Play", "Campaign", "EndlessButton"]:
+			var button: Button = null
+			var ready := false
+			# Fixed-frame captures can run faster than threaded preview I/O. Bound readiness by
+			# wall time and yield to the loader rather than counting simulated menu frames.
+			var deadline := Time.get_ticks_msec() + 10000
+			while Time.get_ticks_msec() < deadline:
+				OS.delay_msec(1)
+				button = root.find_child(target, true, false) as Button if target == "EndlessButton" else _find_button(target)
+				var loading := root.find_child("LoadingOverlay", true, false) as CanvasItem
+				if loading != null and loading.is_visible_in_tree():
+					await _frames(1)
+					continue
+				if button != null and button.is_visible_in_tree() and not button.disabled:
+					ready = true
+					break
+				await _frames(1)
+			if not ready:
+				printerr("[capture] missing enabled menu button: ", target)
+				return false
+			# Threaded preview loading can create the button before its containers have laid it out.
+			await _frames(4)
+			var point := button.get_global_rect().get_center()
+			print("[capture] opening endless via ", target, " at ", point)
+			_send_motion(point)
+			await _frames(1)
+			_send_click(point, MOUSE_BUTTON_LEFT)
+			await _frames(BOOT_FRAMES)
+	else:
+		campaign.call("set_current_level_id", level)
+		var selected: String = str(campaign.call("get_current_level_id"))
+		if selected != level:
+			# A locked or misspelled id is refused and the previous selection silently stands, which would
+			# otherwise be discovered only when the footage shows the wrong beach.
+			printerr("[capture] level %s was refused; current selection is %s" % [level, selected])
+			return false
+		change_scene_to_file("res://scenes/game.tscn")
 	await _frames(BOOT_FRAMES)
 
 	_hud = root.find_child("HUD", true, false)
 	_entities = root.find_child("EntityContainer", true, false)
 	_camera = root.find_child("Camera", true, false)
+	_game = root.find_child("GameManager", true, false)
+	if _game == null:
+		_game = current_scene
 	if _hud == null or _entities == null:
 		printerr("[capture] game scene did not build")
 		return false
 
 	if bool(_shot.get("mute_music", false)):
-		var music := current_scene.get_node_or_null("BackgroundMusicPlayer/MusicStreamPlayer") as AudioStreamPlayer
+		var music := _game.get_node_or_null("BackgroundMusicPlayer/MusicStreamPlayer") as AudioStreamPlayer
 		if music == null:
 			printerr("[capture] mute_music requested but the music player is missing")
 			return false
@@ -154,13 +200,16 @@ func _boot() -> bool:
 		print("[capture] music muted; recording gameplay effects only")
 
 	if bool(_shot.get("background_only", false)):
-		var background := current_scene.get_node_or_null("Background")
+		var background := _game.get_node_or_null("Background")
 		if background == null or _camera == null:
 			printerr("[capture] background-only shot needs the game's Background and Camera")
 			return false
 		# Keep the real composition and camera, but freeze gameplay and hide every other visual.
 		current_scene.process_mode = Node.PROCESS_MODE_DISABLED
-		for child in current_scene.get_children():
+		var screen_ui := current_scene.get_node_or_null("FullScreenUI") as CanvasItem
+		if screen_ui != null:
+			screen_ui.hide()
+		for child in _game.get_children():
 			if child != background and child != _camera:
 				if child is CanvasItem:
 					(child as CanvasItem).hide()
@@ -169,6 +218,12 @@ func _boot() -> bool:
 		_cursor_enabled = false
 
 	_index_cards()
+	print("[capture] UI logical bounds: ", root.get_visible_rect(), " render pixels: ", root.size)
+	var host := root.find_child("BattlefieldHost", true, false) as Control
+	if host != null:
+		print("[capture] fitted battlefield: ", host.get_rect())
+	if _camera != null:
+		print("[capture] world logical bounds: ", _camera.get_viewport().get_visible_rect(), " canvas transform: ", _camera.get_viewport().canvas_transform)
 	if _cursor_enabled:
 		_build_cursor()
 	return true
@@ -176,14 +231,11 @@ func _boot() -> bool:
 
 func _index_cards() -> void:
 	_cards.clear()
-	for child in _hud.get_children():
-		if not (child is HBoxContainer):
-			continue
-		for card in child.get_children():
-			if card is Button:
-				_cards[_card_unit_id(card)] = card
-		if not _cards.is_empty():
-			return
+	for card in _hud.find_children("*", "Button", true, false):
+		if card.has_meta("unit_id"):
+			_cards[str(card.get_meta("unit_id"))] = card
+		elif card.find_child("CardTitle", true, false) != null:
+			_cards[_card_unit_id(card)] = card
 
 
 ## The HUD keeps unit ids on the C++ side only, so the card is matched by its title -- "Breacher" is
@@ -262,6 +314,25 @@ func _send_click(canvas_point: Vector2, button: int) -> void:
 		_cursor.click(button)
 
 
+func _send_button(canvas_point: Vector2, pressed: bool) -> void:
+	var event := InputEventMouseButton.new()
+	event.position = _to_window(canvas_point)
+	event.global_position = event.position
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	Input.parse_input_event(event)
+
+
+func _find_button(text: String, node: Node = root) -> Button:
+	if node is Button and (node.text == text or node.accessibility_name == text) and node.is_visible_in_tree():
+		return node as Button
+	for child in node.get_children():
+		var found := _find_button(text, child)
+		if found != null:
+			return found
+	return null
+
+
 # ---------------------------------------------------------------- target resolution
 
 
@@ -274,12 +345,28 @@ func _units(group: String) -> Array:
 
 
 func _canvas_position(node: Node2D) -> Vector2:
-	return node.get_global_transform_with_canvas().origin
+	return _world_to_ui(node, Vector2.ZERO)
+
+
+func _world_to_ui(node: Node2D, local_point: Vector2) -> Vector2:
+	var viewport := node.get_viewport()
+	var point := node.get_global_transform_with_canvas() * local_point
+	if viewport is SubViewport and viewport.get_parent() is SubViewportContainer:
+		var host := viewport.get_parent() as Control
+		return host.get_global_transform_with_canvas() * (point / viewport.get_visible_rect().size * host.size)
+	return point
 
 
 ## Canvas point for whatever the action is aimed at, re-resolved every frame of the travel so the
 ## cursor tracks a walking unit the way a hand would.
 func _resolve(spec: Dictionary) -> Vector2:
+	if spec.has("button"):
+		var button := _find_button(str(spec["button"]))
+		if button != null:
+			return button.get_global_rect().get_center()
+		printerr("[capture] missing visible button: ", spec["button"])
+		quit(1)
+		return _point
 	if spec.has("canvas"):
 		var raw: Array = spec["canvas"]
 		return Vector2(float(raw[0]), float(raw[1]))
@@ -296,14 +383,13 @@ func _resolve(spec: Dictionary) -> Vector2:
 		if unit == null:
 			return _point
 		# Aimed at the torso rather than the origin at the feet, which is where a player would click.
-		return _canvas_position(unit) + Vector2(0.0, float(spec.get("offset_y", -34.0)))
+		return _world_to_ui(unit, Vector2(0.0, float(spec.get("offset_y", -34.0))))
 
 	if spec.has("ground_ahead"):
 		var anchor := _pick_unit("friendlies", str(spec.get("from", "rightmost")))
-		var base_point: Vector2 = _canvas_position(anchor) if anchor != null else _point
-		var ahead := base_point + Vector2(float(spec["ground_ahead"]), float(spec.get("offset_y", -10.0)))
-		var bounds := root.get_visible_rect().size
-		return Vector2(clampf(ahead.x, 90.0, bounds.x - 90.0), clampf(ahead.y, 120.0, bounds.y - 190.0))
+		if anchor != null:
+			return _world_to_ui(anchor, Vector2(float(spec["ground_ahead"]), float(spec.get("offset_y", -10.0))))
+		return _point
 
 	printerr("[capture] unrecognised target: ", spec)
 	return _point
@@ -342,7 +428,7 @@ func _compile_events() -> Array[Dictionary]:
 	for raw in timeline:
 		var entry: Dictionary = raw
 		var fire := int(round(float(entry.get("at", 0.0)) * _fps))
-		var travel := int(round(float(entry.get("travel", DEFAULT_TRAVEL)) * _fps))
+		var travel := 0 if _target_spec(entry).is_empty() else int(round(float(entry.get("travel", DEFAULT_TRAVEL)) * _fps))
 		events.append(
 			{
 				"fire": fire,
@@ -352,19 +438,21 @@ func _compile_events() -> Array[Dictionary]:
 				"entry": entry,
 			}
 		)
-	events.sort_custom(func(a, b): return int(a["travel_start"]) < int(b["travel_start"]))
+	events.sort_custom(func(a, b): return int(a["fire"]) < int(b["fire"]))
 	return events
 
 
 func _target_spec(entry: Dictionary) -> Dictionary:
 	match str(entry.get("action", "")):
-		"deploy":
+		"deploy", "press_card":
 			return {"card": str(entry.get("unit", ""))}
+		"click":
+			return {"button": str(entry.get("label", ""))}
 		"select":
 			return {"friendly": str(entry.get("target", "rightmost"))}
 		"move", "deselect":
 			return {"ground_ahead": float(entry.get("ahead", 300.0)), "from": str(entry.get("from", "rightmost"))}
-		"park":
+		"park", "press", "drag", "release":
 			return {"canvas": entry.get("canvas", [1600.0, 900.0])}
 	return {}
 
@@ -392,6 +480,64 @@ func _card_ready(unit_id: String) -> bool:
 	if not _cards.has(unit_id):
 		return false
 	return not (_cards[unit_id] as Button).disabled
+
+
+func _button_fully_visible(button: Button) -> bool:
+	if button == null or not button.is_visible_in_tree():
+		return false
+	var bounds := button.get_global_rect()
+	if not root.get_visible_rect().grow(1).encloses(bounds):
+		return false
+	var ancestor := button.get_parent()
+	while ancestor != null:
+		if ancestor is Control and (ancestor as Control).clip_contents:
+			if not (ancestor as Control).get_global_rect().grow(1).encloses(bounds):
+				return false
+		ancestor = ancestor.get_parent()
+	return true
+
+
+func _check_desktop_reference() -> bool:
+	var controls := _hud.find_child("MatchControls", true, false) as Control
+	var field := root.find_child("BattlefieldHost", true, false) as Control
+	if controls == null or controls.size != Vector2(1920, 1080):
+		return false
+	if not controls.get_global_rect().is_equal_approx(field.get_global_rect()):
+		return false
+	for plate_name in ["EnergyPlate", "InfoPlate", "IntegrityPlate"]:
+		var plate := controls.find_child(plate_name, true, false) as Control
+		print("[capture] desktop plate ", plate_name, " reference rect: ", plate.get_rect())
+		if not is_equal_approx(plate.position.y, 24.0) or not is_equal_approx(plate.size.y, 64.0):
+			return false
+		if plate_name == "InfoPlate" and (not is_equal_approx(plate.get_rect().get_center().x, 960.0) or plate.size.x < 500.0 or plate.size.x > 600.0):
+			return false
+	for label in _hud.find_children("*", "Label", true, false):
+		if label.text == "ENERGY" and label.get_theme_font_size("font_size") != 13:
+			return false
+	if _cards.size() != 4:
+		return false
+	for card in _cards.values():
+		var portrait := card.find_child("CardPortrait", true, false) as Control
+		print("[capture] desktop card ", card.get_meta("unit_id"), " reference rect: ", card.get_rect(), " portrait: ", portrait.size)
+		if card.size != Vector2(190, 110) or portrait.size != Vector2(80, 80):
+			return false
+		for label in card.find_children("*", "Label", true, false):
+			var expected := 13 if label.get_parent().name == "Cost" else 15
+			if label.get_theme_font_size("font_size") != expected:
+				return false
+	return true
+
+
+func _check_promotion_star() -> bool:
+	for unit in _units("friendlies"):
+		var star := unit.get_node_or_null("FieldPromotionView/FieldPromotionInsignia") as Label
+		if star == null or not star.is_visible_in_tree():
+			continue
+		var center := _world_to_ui(star.get_parent() as Node2D, star.position + star.size / 2)
+		if root.get_visible_rect().has_point(center) and star.get_theme_font_size("font_size") == 72 and star.get_theme_constant("outline_size") == 9:
+			print("[capture] promotion star at ", center, " world font size: ", star.get_theme_font_size("font_size"))
+			return true
+	return false
 
 
 func _save_still(label: String) -> void:
@@ -456,7 +602,7 @@ func _play() -> void:
 				break
 
 			match action:
-				"deploy", "select", "move":
+				"deploy", "select", "move", "click":
 					_send_click(_point, MOUSE_BUTTON_LEFT)
 					print("[capture] %6.2fs %s %s" % [_frame / float(_fps), action, str(entry.get("unit", entry.get("target", entry.get("ahead", ""))))])
 				"deselect":
@@ -464,6 +610,112 @@ func _play() -> void:
 					print("[capture] %6.2fs deselect" % (_frame / float(_fps)))
 				"still":
 					await _save_still(str(entry.get("label", "frame%d" % _frame)))
+				"press_card", "press":
+					_send_button(_point, true)
+				"release":
+					_send_button(_point, false)
+				"drag":
+					_send_motion(_point)
+				"resize":
+					var size: Array = entry["size"]
+					root.size = Vector2i(Vector2(float(size[0]), float(size[1])) * root.get_screen_transform().get_scale())
+				"key":
+					var key := InputEventKey.new()
+					key.keycode = KEY_TAB if str(entry.get("key", "Escape")) == "Tab" else KEY_ESCAPE
+					key.pressed = true
+					Input.parse_input_event(key)
+				"wheel":
+					var wheel := InputEventMouseButton.new()
+					var point: Array = entry.get("canvas", [195, 600])
+					wheel.position = _to_window(Vector2(float(point[0]), float(point[1])))
+					wheel.global_position = wheel.position
+					wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+					wheel.pressed = true
+					Input.parse_input_event(wheel)
+				"check":
+					if entry.get("promotion_star", false) and not _check_promotion_star():
+						printerr("[capture] check failed: missing, offscreen or undersized promotion star")
+						quit(1)
+						return
+					if entry.has("labels_visible"):
+						for text in entry["labels_visible"]:
+							var found := false
+							for node in root.find_children("*", "Label", true, false):
+								var label := node as Label
+								if label.text == str(text) and label.is_visible_in_tree() and root.get_visible_rect().grow(1).encloses(label.get_global_rect()):
+									found = true
+							if not found:
+								printerr("[capture] check failed: missing or clipped label ", text)
+								quit(1)
+								return
+					if entry.has("buttons_disabled"):
+						for text in entry["buttons_disabled"]:
+							var button := _find_button(str(text))
+							if button == null or not button.disabled:
+								printerr("[capture] check failed: button should be disabled ", text)
+								quit(1)
+								return
+					if entry.has("buttons_visible"):
+						for text in entry["buttons_visible"]:
+							var button := _find_button(str(text))
+							if not _button_fully_visible(button):
+								printerr("[capture] check failed: missing or clipped button ", text)
+								quit(1)
+								return
+					if entry.has("buttons_enabled"):
+						for text in entry["buttons_enabled"]:
+							var button := _find_button(str(text))
+							if not _button_fully_visible(button) or button.disabled:
+								printerr("[capture] check failed: button should be enabled ", text)
+								quit(1)
+								return
+					if entry.has("hud_readouts"):
+						for text in entry["hud_readouts"]:
+							var visible := false
+							for label in _hud.find_children("*", "Label", true, false):
+								if label.text == str(text) and label.is_visible_in_tree() and root.get_visible_rect().grow(1).encloses(label.get_global_rect()):
+									visible = true
+							if not visible:
+								printerr("[capture] check failed: missing or clipped HUD readout ", text)
+								quit(1)
+								return
+					if entry.has("landscape_field_height_ratio") and root.get_visible_rect().size.x >= root.get_visible_rect().size.y:
+						var field := root.find_child("BattlefieldHost", true, false) as Control
+						if field.get_global_rect().size.y < root.get_visible_rect().size.y * float(entry["landscape_field_height_ratio"]):
+							printerr("[capture] check failed: landscape battlefield is too small: ", field.size)
+							quit(1)
+							return
+					if entry.get("desktop_reference", false) and not _check_desktop_reference():
+						printerr("[capture] check failed: original desktop composition")
+						quit(1)
+						return
+					if entry.has("title"):
+						var visible_titles: Array[String] = []
+						for node in root.find_children("ScreenTitle", "Label", true, false):
+							if node.is_visible_in_tree():
+								visible_titles.append(node.text)
+						if not visible_titles.has(str(entry["title"])):
+							printerr("[capture] check failed: screen title expected ", entry["title"], " visible ", visible_titles)
+							quit(1)
+							return
+					if entry.has("selected"):
+						var indicator := root.find_child("SelectionIndicator", true, false) as Node2D
+						if indicator == null or indicator.is_visible_in_tree() != bool(entry["selected"]):
+							printerr("[capture] check failed: selection state")
+							quit(1)
+							return
+					if entry.has("friendlies") and _units("friendlies").size() != int(entry["friendlies"]):
+						printerr("[capture] check failed: friendlies ", _units("friendlies").size(), " expected ", entry["friendlies"])
+						quit(1)
+						return
+					if entry.has("paused") and paused != bool(entry["paused"]):
+						printerr("[capture] check failed: pause state")
+						quit(1)
+						return
+					print("[capture] check passed: ", entry)
+					if is_instance_valid(_entities):
+						for unit in _units("friendlies"):
+							print("[capture] friendly position ", unit.global_position)
 				"park", "hold":
 					pass
 				_:

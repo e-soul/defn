@@ -1,0 +1,22 @@
+{
+  "name": "audio_restoration",
+  "level": "level_03",
+  "seed": 20260911,
+  "fps": 60,
+  "duration_seconds": 26,
+  "mute_music": true,
+  "cursor": {"input_chip": false, "start": [1620, 900]},
+  "_notes": [
+    "Effects-only regression recording through real input: early card taps, then combat.",
+    "Music is muted so recorded audio distinguishes deployment clicks from spatial shooting effects."
+  ],
+  "timeline": [
+    {"at": 2.0, "action": "deploy", "unit": "breacher", "travel": 0.15},
+    {"at": 2.1, "action": "check", "friendlies": 1},
+    {"at": 2.2, "action": "park", "canvas": [1180, 640], "travel": 0.1},
+    {"at": 4.3, "action": "deploy", "unit": "marksman", "travel": 0.15},
+    {"at": 4.4, "action": "check", "friendlies": 2},
+    {"at": 4.5, "action": "park", "canvas": [1180, 640], "travel": 0.1},
+    {"at": 22.0, "action": "still", "label": "combat"}
+  ]
+}

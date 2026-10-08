@@ -1,0 +1,279 @@
+{
+  "name": "campaign_carousel",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 9,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "timeline": [
+    {
+      "at": 0.2,
+      "action": "key"
+    },
+    {
+      "at": 0.5,
+      "action": "click",
+      "label": "Main Menu",
+      "travel": 0.1
+    },
+    {
+      "at": 0.9,
+      "action": "click",
+      "label": "Play",
+      "travel": 0.1
+    },
+    {
+      "at": 1.2,
+      "action": "click",
+      "label": "Campaign",
+      "travel": 0.1
+    },
+    {
+      "at": 1.8,
+      "action": "check",
+      "labels_visible": [
+        "DESERT OUTPOST",
+        "AVAILABLE"
+      ],
+      "buttons_visible": [
+        "DEPLOY",
+        "BACK",
+        "Next mission"
+      ]
+    },
+    {
+      "at": 1.9,
+      "action": "still",
+      "label": "portrait-available"
+    },
+    {
+      "at": 2.1,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 2.4,
+      "action": "check",
+      "labels_visible": [
+        "JUNGLE RUINS",
+        "LOCKED",
+        "Secure Level 01 to open this operation."
+      ],
+      "buttons_disabled": [
+        "LOCKED"
+      ]
+    },
+    {
+      "at": 2.5,
+      "action": "still",
+      "label": "portrait-locked"
+    },
+    {
+      "at": 2.7,
+      "action": "press",
+      "canvas": [
+        300,
+        220
+      ],
+      "travel": 0.1
+    },
+    {
+      "at": 2.8,
+      "action": "drag",
+      "canvas": [
+        100,
+        220
+      ],
+      "travel": 0.1
+    },
+    {
+      "at": 3.0,
+      "action": "release",
+      "canvas": [
+        100,
+        220
+      ],
+      "travel": 0
+    },
+    {
+      "at": 3.3,
+      "action": "check",
+      "labels_visible": [
+        "SUMMAR BEACH"
+      ]
+    },
+    {
+      "at": 3.4,
+      "action": "resize",
+      "size": [
+        667,
+        322
+      ]
+    },
+    {
+      "at": 3.7,
+      "action": "check",
+      "labels_visible": [
+        "SUMMAR BEACH",
+        "THREAT",
+        "WAVES",
+        "DURATION"
+      ],
+      "buttons_visible": [
+        "LOCKED",
+        "BACK",
+        "Next mission"
+      ]
+    },
+    {
+      "at": 3.8,
+      "action": "still",
+      "label": "landscape-locked"
+    },
+    {
+      "at": 4.0,
+      "action": "resize",
+      "size": [
+        864,
+        230
+      ]
+    },
+    {
+      "at": 4.3,
+      "action": "still",
+      "label": "short-landscape-locked"
+    },
+    {
+      "at": 4.5,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 4.8,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 5.1,
+      "action": "check",
+      "labels_visible": [
+        "FELDKIRCHEN",
+        "Secure Level 04 to open this operation."
+      ],
+      "buttons_disabled": [
+        "Next mission",
+        "LOCKED"
+      ]
+    },
+    {
+      "at": 5.2,
+      "action": "still",
+      "label": "short-landscape-final"
+    },
+    {
+      "at": 5.4,
+      "action": "resize",
+      "size": [
+        390,
+        783
+      ]
+    },
+    {
+      "at": 5.7,
+      "action": "check",
+      "labels_visible": [
+        "FELDKIRCHEN"
+      ]
+    },
+    {
+      "at": 5.8,
+      "action": "still",
+      "label": "portrait-final"
+    },
+    {
+      "at": 6.0,
+      "action": "press",
+      "canvas": [
+        300,
+        200
+      ],
+      "travel": 0.1
+    },
+    {
+      "at": 6.1,
+      "action": "resize",
+      "size": [
+        864,
+        338
+      ]
+    },
+    {
+      "at": 6.4,
+      "action": "release",
+      "canvas": [
+        100,
+        200
+      ],
+      "travel": 0
+    },
+    {
+      "at": 6.7,
+      "action": "check",
+      "labels_visible": [
+        "FELDKIRCHEN"
+      ]
+    },
+    {
+      "at": 6.8,
+      "action": "still",
+      "label": "rotation-cancelled-swipe"
+    },
+    {
+      "at": 7.0,
+      "action": "click",
+      "label": "BACK",
+      "travel": 0.1
+    },
+    {
+      "at": 7.3,
+      "action": "click",
+      "label": "Campaign",
+      "travel": 0.1
+    },
+    {
+      "at": 7.9,
+      "action": "check",
+      "labels_visible": [
+        "DESERT OUTPOST"
+      ],
+      "buttons_visible": [
+        "DEPLOY"
+      ]
+    },
+    {
+      "at": 8.0,
+      "action": "click",
+      "label": "DEPLOY",
+      "travel": 0.1
+    },
+    {
+      "at": 8.5,
+      "action": "check",
+      "friendlies": 0,
+      "labels_visible": [
+        "ENERGY",
+        "WAVE",
+        "SCORE"
+      ]
+    },
+    {
+      "at": 8.6,
+      "action": "still",
+      "label": "deployment"
+    }
+  ]
+}

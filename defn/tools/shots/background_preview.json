@@ -7,7 +7,8 @@
   "background_only": true,
   "_notes": [
     "Capture the real level's opening background with gameplay frozen and all other visuals hidden.",
-    "Override --level and use a separate --out-dir for each campaign level."
+    "Override --level and use a separate --out-dir for each campaign level.",
+    "For Port Terminal use --level endless --fixture max_roster --size 1920x1080."
   ],
   "timeline": [
     {"at": 1.0, "action": "still", "label": "background"}

@@ -288,4 +288,36 @@ DEFN_TEST(content_validator_reports_unknown_ui_theme_roles) {
     DEFN_CHECK(contains_issue(report, "unknown surface 'missing_surface'"));
 }
 
+DEFN_TEST(content_validator_rejects_invalid_responsive_slots_targets_and_card_budgets) {
+    FakeUnitCatalog units;
+    auto input = make_valid_input(units);
+    auto theme = make_valid_ui_theme();
+    theme.type_roles["menu"] = "unknown";
+    theme.responsive.small_type.body = 0;
+    theme.responsive.touch_target = 44;
+    theme.responsive.small_card.height = 20;
+    theme.responsive.sky_bottom = 0.95F;
+    input.ui_theme = theme;
+    const auto report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(!report.is_valid());
+    DEFN_CHECK(contains_issue(report, "unknown slot"));
+    DEFN_CHECK(contains_issue(report, "typography profiles"));
+    DEFN_CHECK(contains_issue(report, "target minima"));
+    DEFN_CHECK(contains_issue(report, "card content"));
+    DEFN_CHECK(contains_issue(report, "overlay zones"));
+}
+
+DEFN_TEST(content_validator_checks_resolved_scoped_theme_references_and_geometry) {
+    FakeUnitCatalog units;
+    auto input = make_valid_input(units);
+    const auto base = make_valid_ui_theme();
+    UiThemePatch patch;
+    patch.text_styles["screen_title"].color_role = "unknown_override_color";
+    patch.small_card.height = 0;
+    input.ui_theme = base;
+    input.scoped_ui_themes.push_back(apply_theme_patch(base, patch));
+    const auto report = ContentValidator::validate_loaded_content(input);
+    DEFN_CHECK(contains_issue(report, "unknown_override_color"));
+    DEFN_CHECK(contains_issue(report, "card content"));
+}
 } // namespace defn

@@ -16,6 +16,14 @@
 #include <string_view>
 
 namespace defn {
+enum class UiThemeContext { Default, DesktopMatch, PhoneLandscape };
+struct UiAppearance {
+    const UiThemeData *data = nullptr;
+    godot::Ref<godot::Theme> theme;
+    UiCardGeometry card;
+    UiThemeContext context = UiThemeContext::Default;
+    std::size_t revision = 0;
+};
 
 /// Single source of look-and-feel: parses `res://data/ui_theme.json` once and turns it into a shared `godot::Theme`.
 class UiThemeProvider {
@@ -27,6 +35,15 @@ class UiThemeProvider {
     static void install(godot::SceneTree *tree);
     static void apply_to(godot::Control *control);
     static void reload();
+    static bool resolve_profile(UiProfile profile, bool touch);
+    static UiProfile profile();
+    static std::size_t revision();
+    static UiAppearance appearance(UiThemeContext context);
+    // The original match instruments are authored in the battlefield's reference coordinates.
+    static const UiThemeData &desktop_match_data();
+    static godot::Ref<godot::Theme> desktop_match_theme();
+    static const UiThemeData &phone_landscape_data();
+    static godot::Ref<godot::Theme> phone_landscape_theme();
 
     static godot::Color color(std::string_view role);
     /// A named layout figure as the `real_t` Godot sizing calls want. `UiThemeData::metric` still serves the few

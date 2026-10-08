@@ -1,0 +1,20 @@
+{
+  "name": "desktop_score_endless",
+  "level": "endless",
+  "fps": 60,
+  "duration_seconds": 162,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": ["Use --fixture max_roster and --level endless to enter the real unlocked Standing Engagement."],
+  "timeline": [
+    {"at": 154, "action": "still", "label": "results"},
+    {"at": 154.1, "action": "check", "labels_visible": ["RUN OVER", "Wave Reached:", "Survival Bonus:", "Run Score:", "Best Run:"], "buttons_enabled": ["Retry", "Campaign"]},
+    {"at": 155, "action": "click", "label": "Your upgrades (3)", "travel": 0.1},
+    {"at": 156, "action": "still", "label": "owned"},
+    {"at": 157, "action": "click", "label": "Back", "travel": 0.1},
+    {"at": 158, "action": "resize", "size": [960, 540]},
+    {"at": 159, "action": "still", "label": "results-compact"},
+    {"at": 160, "action": "check", "labels_visible": ["RUN OVER", "Wave Reached:", "Survival Bonus:", "Best Run:"], "buttons_enabled": ["Retry", "Campaign"]}
+  ]
+}

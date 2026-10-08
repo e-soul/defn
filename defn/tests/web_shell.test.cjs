@@ -230,14 +230,45 @@ test("fullscreen toggles correctly and returns focus to the game", async () => {
 	assert.equal(h.calls.focus, h.element("canvas"));
 });
 
-test("fullscreen requests landscape when the browser supports orientation locking", async () => {
+test("every fullscreen entry requests landscape after fullscreen succeeds and exit unlocks it", async () => {
 	const h = harness();
 	await h.calls.script.onload();
-	let requested;
-	h.window.screen = { orientation: { async lock(mode) { requested = mode; } } };
+	const requested = [];
+	let unlocked = 0;
+	h.window.screen = { orientation: {
+		async lock(mode) {
+			assert.equal(h.document.fullscreenElement, h.document.documentElement);
+			requested.push(mode);
+		},
+		unlock() { unlocked++; },
+	} };
 	await h.element("fullscreen").listeners.click();
-	assert.equal(requested, "landscape");
+	assert.deepEqual(requested, ["landscape"]);
+	await h.element("fullscreen").listeners.click();
+	assert.equal(unlocked, 1);
+	await h.element("fullscreen").listeners.click();
+	assert.deepEqual(requested, ["landscape", "landscape"]);
+	await h.document.exitFullscreen(); // Browser Escape must also release the orientation lock.
+	assert.equal(unlocked, 2);
 	assert.equal(h.element("browser-notice").hidden, true);
+});
+
+test("missing or rejected orientation APIs keep fullscreen and the game running", async () => {
+	for (const orientation of [undefined, {}, {
+		async lock() { throw new Error("Orientation lock unsupported"); },
+		unlock() { throw new Error("Orientation unlock unsupported"); },
+	}]) {
+		const h = harness();
+		h.window.screen = { orientation };
+		await h.calls.script.onload();
+		await h.element("fullscreen").listeners.click();
+		assert.equal(h.document.fullscreenElement, h.document.documentElement);
+		assert.equal(h.element("browser-notice").hidden, true);
+		assert.equal(h.element("overlay").hidden, true);
+		await h.element("fullscreen").listeners.click();
+		assert.equal(h.document.fullscreenElement, null);
+		assert.equal(h.calls.errors.length, 0);
+	}
 });
 
 test("unsupported fullscreen is hidden; rejected requests do not interrupt play", async () => {
@@ -245,8 +276,11 @@ test("unsupported fullscreen is hidden; rejected requests do not interrupt play"
 	const h = harness();
 	await h.calls.script.onload();
 	h.document.documentElement.requestFullscreen = async () => { throw new Error("Denied"); };
+	let orientationRequests = 0;
+	h.window.screen = { orientation: { async lock() { orientationRequests++; } } };
 	await h.element("fullscreen").listeners.click();
 	assert.equal(h.element("browser-notice").hidden, false);
 	assert.equal(h.element("overlay").hidden, true);
 	assert.equal(h.calls.errors.length, 1);
+	assert.equal(orientationRequests, 0);
 });

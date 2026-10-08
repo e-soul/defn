@@ -1,0 +1,25 @@
+{
+  "typography": { "supporting": 14, "body": 16, "heading": 20, "display": 28 },
+  "spacing": { "sm": 4 },
+  "text_styles": {
+    "hud_label": { "font_size": "supporting", "color": "text_muted", "outline_size": 0, "outline": "" },
+    "hud_value": { "font_size": "body", "color": "energy", "outline_size": 0, "outline": "" },
+    "hud_wave": { "font_size": "body", "color": "accent", "outline_size": 0, "outline": "" },
+    "hud_wave_total": { "font_size": "supporting", "color": "text_muted", "outline_size": 0, "outline": "" },
+    "hud_score": { "font_size": "body", "color": "text_secondary", "outline_size": 0, "outline": "" }
+  },
+  "responsive": {
+    "standard_card": { "width": 176, "height": 48, "portrait": 24 },
+    "small_card": { "width": 176, "height": 48, "portrait": 24 }
+  },
+  "metrics": {
+    "deploy_card_inline_height": 40,
+    "card_icon_size": 18,
+    "hud_icon_size": 20,
+    "hud_group_gap": 8,
+    "hud_segment_width": 14,
+    "hud_segment_height": 10,
+    "meter_segment_gap": 3,
+    "hud_min_value_digits": 2
+  }
+}

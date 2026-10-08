@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "test_harness.h"
+#include <algorithm>
 
 #include "deploy_card_view_model.h"
 #include "hud_presenter.h"
@@ -64,7 +65,7 @@ DEFN_TEST(score_screen_view_model_formats_victory_stats_and_buttons) {
 
     DEFN_CHECK_EQ(view_model.title, std::string("VICTORY"));
     DEFN_CHECK_EQ(view_model.stat_rows.size(), static_cast<size_t>(7));
-    DEFN_CHECK_EQ(view_model.stat_rows[2].second, std::string("2 / 3"));
+    DEFN_CHECK_EQ(view_model.stat_rows[2].value, std::string("2 / 3"));
     DEFN_CHECK(view_model.next_level_button_visible);
     DEFN_CHECK(view_model.next_level_button_enabled);
 }
@@ -140,13 +141,13 @@ DEFN_TEST(score_screen_view_model_reads_a_finished_run_as_over_rather_than_lost)
 
     DEFN_CHECK_EQ(view_model.title, std::string("RUN OVER"));
     DEFN_REQUIRE(!view_model.stat_rows.empty());
-    DEFN_CHECK_EQ(view_model.stat_rows[0].first, std::string("Wave Reached:"));
-    DEFN_CHECK(view_model.stat_rows[0].second.find("17") != std::string::npos);
-    DEFN_CHECK(view_model.stat_rows[0].second.find("BEST") != std::string::npos);
+    DEFN_CHECK_EQ(view_model.stat_rows[0].label, std::string("Wave Reached:"));
+    DEFN_CHECK(view_model.stat_rows[0].value.find("17") != std::string::npos);
+    DEFN_CHECK(view_model.stat_rows[0].value.find("BEST") != std::string::npos);
 
     const auto has_row = [&view_model](const std::string &label) {
         for (const auto &row : view_model.stat_rows) {
-            if (row.first == label) {
+            if (row.label == label) {
                 return true;
             }
         }
@@ -363,4 +364,17 @@ DEFN_TEST(hud_presenter_hides_the_supply_reading_when_the_match_is_uncapped) {
     DEFN_CHECK(!model.supply.at_cap);
 }
 
+DEFN_TEST(score_totals_have_semantic_identity_for_campaign_and_endless) {
+    for (const bool endless : {false, true}) {
+        const auto view = build_score_screen_view_model({.level_score = 73, .new_total_score = 99, .endless = {.run = endless}});
+        const auto match = std::ranges::find(view.stat_rows, ScoreStatKind::MatchTotal, &ScoreStatRow::kind);
+        const auto career = std::ranges::find(view.stat_rows, ScoreStatKind::CareerTotal, &ScoreStatRow::kind);
+        DEFN_REQUIRE(match != view.stat_rows.end());
+        DEFN_REQUIRE(career != view.stat_rows.end());
+        DEFN_CHECK_EQ(match->value, "73");
+        DEFN_CHECK_EQ(career->value, "99");
+        DEFN_CHECK_EQ(std::ranges::count(view.stat_rows, ScoreStatKind::MatchTotal, &ScoreStatRow::kind), 1);
+        DEFN_CHECK_EQ(std::ranges::count(view.stat_rows, ScoreStatKind::CareerTotal, &ScoreStatRow::kind), 1);
+    }
+}
 } // namespace defn

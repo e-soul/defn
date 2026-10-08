@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "test_harness.h"
+#include "ui_test_helpers.h"
 
 #include "attack_target_resolver.h"
 #include "base_objective.h"
@@ -16,15 +17,20 @@
 #include "defn_balance_runner.h"
 #include "defn_sim_runner.h"
 #include "deploy_card_presenter.h"
+#include "deploy_tray.h"
 #include "game_background_builder.h"
 #include "grid_manager.h"
 #include "health_component.h"
 #include "hud.h"
 #include "hud_meters.h"
+#include "match_presentation.h"
 #include "match_result_cutscene_view_model.h"
 #include "menu_backdrop.h"
 #include "menu_manager.h"
+#include "menu_screen_view.h"
+#include "mobile_campaign_view.h"
 #include "operation_dossier_view.h"
+#include "options_screen_view.h"
 #include "pause_menu.h"
 #include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
@@ -34,6 +40,7 @@
 #include "score_screen_view.h"
 #include "scripted_random_source.h"
 #include "selection_indicator.h"
+#include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
 #include "unit.h"
 #include "unit_factory.h"
@@ -41,6 +48,7 @@
 #include "upgrade_card_presenter.h"
 
 #include <godot_cpp/classes/audio_stream.hpp>
+#include <godot_cpp/classes/audio_stream_player.hpp>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
@@ -75,180 +83,18 @@
 #include <vector>
 
 namespace defn {
+using namespace ui_test;
 
 namespace {
-
-template <typename ObjectType> struct GodotObjectDeleter {
-    void operator()(ObjectType *object) const { memdelete(object); }
-};
-
-template <typename ObjectType> using GodotObjectOwner = std::unique_ptr<ObjectType, GodotObjectDeleter<ObjectType>>;
-
-Window *scene_root() {
-    auto *tree = Object::cast_to<SceneTree>(Engine::get_singleton()->get_main_loop());
-    return tree == nullptr ? nullptr : tree->get_root();
-}
-
-// Mounts the node under the real scene root so `_ready()` paths that use `get_tree()` behave as they do in game.
-template <typename NodeType> class TreeMountedNode {
-  public:
-    TreeMountedNode() : node_(memnew(NodeType)), root_(scene_root()) {
-        if (root_ != nullptr) {
-            root_->add_child(node_);
-        }
+void apply_hud_layout(HUD *hud, const MatchLayout &layout) {
+    auto context = UiThemeContext::Default;
+    if (layout.desktop_reference) {
+        context = UiThemeContext::DesktopMatch;
+    } else if (layout.hud == HudArrangement::SingleRow) {
+        context = UiThemeContext::PhoneLandscape;
     }
-
-    TreeMountedNode(const TreeMountedNode &) = delete;
-    TreeMountedNode &operator=(const TreeMountedNode &) = delete;
-    TreeMountedNode(TreeMountedNode &&) = delete;
-    TreeMountedNode &operator=(TreeMountedNode &&) = delete;
-
-    ~TreeMountedNode() {
-        if (root_ != nullptr) {
-            root_->remove_child(node_);
-        }
-        memdelete(node_);
-    }
-
-    [[nodiscard]] NodeType *get() const { return node_; }
-
-  private:
-    NodeType *node_;
-    Window *root_;
-};
-
-template <typename NodeType> void collect_nodes(Node *root, std::vector<NodeType *> &result) {
-    if (root == nullptr) {
-        return;
-    }
-
-    if (auto *typed_node = Object::cast_to<NodeType>(root); typed_node != nullptr) {
-        result.push_back(typed_node);
-    }
-
-    const int child_count = root->get_child_count();
-    for (int child_index = 0; child_index < child_count; ++child_index) {
-        collect_nodes(root->get_child(child_index), result);
-    }
-}
-
-std::vector<Label *> collect_labels(Node *root) {
-    std::vector<Label *> labels;
-    collect_nodes(root, labels);
-    return labels;
-}
-
-std::vector<Button *> collect_buttons(Node *root) {
-    std::vector<Button *> buttons;
-    collect_nodes(root, buttons);
-    return buttons;
-}
-
-bool has_label_text(Node *root, const String &text) {
-    const std::vector<Label *> labels = collect_labels(root);
-    return std::ranges::any_of(labels, [&text](const Label *label) { return label->get_text() == text; });
-}
-
-Label *find_label_by_text(Node *root, const String &text) {
-    const std::vector<Label *> labels = collect_labels(root);
-    const auto iter = std::ranges::find_if(labels, [&text](const Label *label) { return label->get_text() == text; });
-    return iter == labels.end() ? nullptr : *iter;
-}
-
-bool has_label_containing(Node *root, const String &needle) {
-    const std::vector<Label *> labels = collect_labels(root);
-    return std::ranges::any_of(labels, [&needle](const Label *label) { return label->get_text().contains(needle); });
-}
-
-Button *find_button_by_text(Node *root, const String &text) {
-    for (auto *button : collect_buttons(root)) {
-        if (button->get_text() == text) {
-            return button;
-        }
-    }
-
-    return nullptr;
-}
-
-/// A card carries its title in a label inside the frame rather than as the button's own text, so it is found
-/// by what it says rather than by a property Godot happens to draw.
-Button *find_card_by_title(Node *root, const String &title) {
-    for (auto *button : collect_buttons(root)) {
-        if (has_label_text(button, title)) {
-            return button;
-        }
-    }
-
-    return nullptr;
-}
-
-Callable make_valid_callable(Object *receiver) { return {receiver, "queue_free"}; }
-
-UnitConfig make_presenter_unit_config(const std::string &name, int cost) {
-    UnitConfig config;
-    config.name = name;
-    config.cost = cost;
-    config.hp = 120;
-    config.melee_damage = 0;
-    config.ranged_damage = 0;
-    config.move_speed_pixels_per_second = 0.0F;
-    config.melee_attack_range_variation = {.min = 1.0F, .max = 1.0F};
-    config.ranged_attack_range_variation = {.min = 1.0F, .max = 1.0F};
-    config.animations.push_back(
-        {"walk", {.path_template = "res://assets/Spec_Ops_-_Game_Sprites/png/Soldier4/Climb__%03d.png", .frame_count = 1, .loop = true}});
-    return config;
-}
-
-Node *find_node_named(Node *root, const String &name) {
-    if (root == nullptr) {
-        return nullptr;
-    }
-    if (String(root->get_name()) == name) {
-        return root;
-    }
-
-    const int child_count = root->get_child_count();
-    for (int child_index = 0; child_index < child_count; ++child_index) {
-        if (Node *found = find_node_named(root->get_child(child_index), name); found != nullptr) {
-            return found;
-        }
-    }
-
-    return nullptr;
-}
-
-bool has_node_named(Node *root, const String &name) { return find_node_named(root, name) != nullptr; }
-
-bool has_all_buttons(Node *root, std::initializer_list<const char *> labels) {
-    return std::ranges::all_of(labels, [root](const char *label) { return find_button_by_text(root, String(label)) != nullptr; });
-}
-
-bool has_all_labels(Node *root, std::initializer_list<const char *> labels) {
-    return std::ranges::all_of(labels, [root](const char *label) { return has_label_text(root, String(label)); });
-}
-
-bool has_all_named_nodes(Node *root, std::initializer_list<const char *> names) {
-    return std::ranges::all_of(names, [root](const char *name) { return has_node_named(root, String(name)); });
-}
-
-bool nearly_equal(double left, double right) { return std::abs(left - right) <= 0.001; }
-
-bool color_matches(const godot::Color &actual, const godot::Color &expected) {
-    return nearly_equal(actual.r, expected.r) && nearly_equal(actual.g, expected.g) && nearly_equal(actual.b, expected.b) && nearly_equal(actual.a, expected.a);
-}
-
-bool label_font_color_matches(Node *root, const String &text, const godot::Color &expected_color) {
-    Label *label = find_label_by_text(root, text);
-    return label != nullptr && label->has_theme_color_override("font_color") && color_matches(label->get_theme_color("font_color"), expected_color);
-}
-
-bool button_minimum_size_is(Button *button, double width, double height) {
-    if (button == nullptr) {
-        return false;
-    }
-
-    const godot::Vector2 minimum_size = button->get_custom_minimum_size();
-    return nearly_equal(minimum_size.x, width) && nearly_equal(minimum_size.y, height);
+    hud->apply_appearance(UiThemeProvider::appearance(context));
+    hud->apply_layout(layout);
 }
 
 bool roster_button_uses_variation(Button *button, const char *variation) {
@@ -257,15 +103,8 @@ bool roster_button_uses_variation(Button *button, const char *variation) {
 
 /// A card names its subject with a tinted theme mark, not a glyph from the machine's colour emoji font. An
 /// unknown key still has to draw something, which is what `generic` is for.
-bool card_shows_a_tinted_mark(Button *button) {
-    std::vector<TextureRect *> marks;
-    collect_nodes(button, marks);
-    const auto is_icon = [](TextureRect *mark) { return mark->get_name() == StringName("Icon") && mark->get_texture().is_valid(); };
-    return std::ranges::any_of(marks, is_icon);
-}
-
 bool selected_upgrade_button_matches(Button *button) {
-    return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 180.0, 220.0) &&
+    return button != nullptr && button->is_disabled() && button_minimum_size_is(button, 240.0, 220.0) &&
            button->get_theme_type_variation() == StringName("DefnCardSelectedButton") && card_shows_a_tinted_mark(button) &&
            has_all_labels(button, {"x2", "Rapid Reload", "Shoot more often."});
 }
@@ -278,7 +117,7 @@ bool progression_view_has_initial_entity_state(ProgressionStatsScreenView *view)
     Button *selected_button = find_card_by_title(view, "Breacher");
     Button *locked_button = find_card_by_title(view, "Marksman [Locked]");
     return has_label_text(view, "Breacher") && view->find_child("EntityPortraitFallback", true, false) != nullptr && selected_button != nullptr &&
-           button_minimum_size_is(selected_button, 210.0, 74.0) && roster_button_uses_variation(selected_button, "DefnRosterSelectedButton") &&
+           button_minimum_size_is(selected_button, 144.0, 56.0) && roster_button_uses_variation(selected_button, "DefnRosterSelectedButton") &&
            locked_button != nullptr && locked_button->is_disabled() && roster_button_uses_variation(locked_button, "DefnRosterButton");
 }
 
@@ -302,16 +141,15 @@ bool score_screen_view_matches_victory_layout(Node *parent, const ScoreScreenVie
 }
 
 bool score_screen_has_victory_content(Node *overlay) {
-    return has_all_labels(overlay, {"VICTORY", "FIRST CLEAR UPGRADE: Level 01", "Level 01 cleared for the first time.", "NEW UNLOCK: Level 02!",
-                                    "YOUR UPGRADES", "Rapid Reload", "Owned Upgrade"});
+    return has_all_labels(overlay, {"VICTORY", "Level Score:", "230", "Career Total:", "900", "NEW UNLOCK: Level 02!"}) &&
+           find_button_by_text(overlay, "Choose upgrade") != nullptr && find_button_by_text(overlay, "Your upgrades (1)") != nullptr;
 }
 
 bool score_screen_has_disabled_primary_actions(Node *overlay) {
     Button *next_button = find_button_by_text(overlay, "Next Level");
     Button *retry_button = find_button_by_text(overlay, "Retry");
     Button *campaign_button = find_button_by_text(overlay, "Campaign");
-    return next_button != nullptr && retry_button != nullptr && campaign_button != nullptr && next_button->is_disabled() && retry_button->is_disabled() &&
-           campaign_button->is_disabled();
+    return next_button == nullptr && retry_button != nullptr && campaign_button != nullptr && retry_button->is_disabled() && campaign_button->is_disabled();
 }
 
 bool hud_has_instrument_plates(HUD *hud) {
@@ -377,14 +215,6 @@ bool unit_has_passive_factory_stack(Unit *unit) {
 bool unit_has_combat_factory_stack(Unit *unit) { return has_all_named_nodes(unit, {"DetectionComponent", "MovementComponent", "CombatComponent"}); }
 
 // Entering the tree already triggers `_ready()`; only drive it manually when the node stayed detached.
-MenuManager *ready_menu_manager(const TreeMountedNode<MenuManager> &owner) {
-    MenuManager *menu_manager = owner.get();
-    if (menu_manager->get_node_or_null("UILayer") == nullptr) {
-        menu_manager->_ready();
-    }
-    return menu_manager;
-}
-
 /// The career score rides an `hud_pod` plate carrying a score readout, the same instrument the match HUD uses.
 bool menu_manager_shows_career_score(MenuManager *menu_manager) {
     return has_node_named(menu_manager, "CareerScorePlate") && has_label_containing(menu_manager, "CAREER");
@@ -410,6 +240,21 @@ bool menu_manager_shows_options_menu(MenuManager *menu_manager) {
            has_all_labels(menu_manager, {"Video", "Display Mode", "Resolution", "VSync", "Audio", "Master Volume"}) && has_all_buttons(menu_manager, {"Back"});
 }
 
+void check_touch_options(OptionsScreenView *screen, HSlider *slider) {
+    DEFN_CHECK(!find_label_by_text(screen, "Display Mode")->is_visible_in_tree());
+    DEFN_CHECK(!find_label_by_text(screen, "Audio")->is_visible_in_tree());
+    DEFN_CHECK(find_label_by_text(screen, "Master Volume")->is_visible_in_tree());
+    DEFN_CHECK(find_label_by_text(screen, "Master Volume")->get_parent() != slider->get_parent());
+}
+
+void check_progress_action(MenuScreenView *screen, bool enabled) {
+    auto *progress = find_button_by_text(screen, "Progress");
+    DEFN_REQUIRE(progress != nullptr);
+    DEFN_CHECK_EQ(progress->is_disabled(), !enabled);
+    DEFN_CHECK(!find_button_by_text(screen, "Campaign")->is_disabled());
+    DEFN_CHECK(!find_button_by_text(screen, "Main Menu")->is_disabled());
+}
+
 bool menu_manager_shows_level_select(MenuManager *menu_manager) {
     return has_all_labels(menu_manager, {"CAMPAIGN", "ENEMY PRESENCE"}) && has_all_buttons(menu_manager, {"BACK"}) &&
            (find_button_by_text(menu_manager, "DEPLOY") != nullptr || find_button_by_text(menu_manager, "REPLAY") != nullptr);
@@ -419,36 +264,9 @@ bool menu_manager_shows_progression(MenuManager *menu_manager) {
     return has_all_labels(menu_manager, {"COMMAND ROSTER"}) && has_all_buttons(menu_manager, {"All Owned Upgrades", "Back"});
 }
 
-bool pump_campaign_map_loading(CampaignMapView *campaign_map) {
-    if (campaign_map == nullptr) {
-        return false;
-    }
-    for (int attempt = 0; attempt < 10000 && campaign_map->loading_state() != CampaignMapView::LoadingState::Ready &&
-                          campaign_map->loading_state() != CampaignMapView::LoadingState::Failed;
-         ++attempt) {
-        campaign_map->_process(0.016);
-        OS::get_singleton()->delay_usec(1000);
-    }
-    return campaign_map->loading_state() == CampaignMapView::LoadingState::Ready;
-}
-
-CampaignMapView *find_campaign_map(Node *root) {
-    std::vector<CampaignMapView *> campaign_maps;
-    collect_nodes(root, campaign_maps);
-    return campaign_maps.size() == static_cast<std::size_t>(1) ? campaign_maps.front() : nullptr;
-}
-
 bool menu_manager_finishes_level_select_loading(MenuManager *menu_manager) {
     CampaignMapView *campaign_map = find_campaign_map(menu_manager);
     return pump_campaign_map_loading(campaign_map) && menu_manager_shows_level_select(menu_manager);
-}
-
-CampaignMapView *show_campaign_map(const TreeMountedNode<MenuManager> &owner) {
-    MenuManager *menu_manager = ready_menu_manager(owner);
-    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
-    CampaignMapView *campaign_map = find_campaign_map(menu_manager);
-    (void)pump_campaign_map_loading(campaign_map);
-    return campaign_map;
 }
 
 bool menu_manager_backdrop_covers_viewport(MenuManager *menu_manager) {
@@ -479,7 +297,7 @@ bool pause_menu_has_expected_buttons(PauseMenu *pause_menu) { return has_all_but
 bool pause_menu_overlay_visible(PauseMenu *pause_menu, bool expected_visible) {
     std::vector<ColorRect *> overlays;
     collect_nodes(pause_menu, overlays);
-    return !overlays.empty() && overlays.front()->is_visible() == expected_visible;
+    return !overlays.empty() && overlays.front()->is_visible_in_tree() == expected_visible;
 }
 
 GameplayRules make_camera_test_rules() {
@@ -533,21 +351,6 @@ BaseObjective *add_test_objective(Node *parent, UnitSide side, int max_hp, const
     return objective;
 }
 
-void check_state_medallion(CampaignMapView *campaign_map) {
-    const String medallion_path = "ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/StateMedallion";
-    auto *medallion = Object::cast_to<Panel>(campaign_map->get_node_or_null(medallion_path));
-    DEFN_REQUIRE(medallion != nullptr);
-    DEFN_CHECK(medallion->has_theme_stylebox_override("panel"));
-
-    auto *state_mark = Object::cast_to<TextureRect>(campaign_map->get_node_or_null(medallion_path + String("/StateMark")));
-    DEFN_REQUIRE(state_mark != nullptr);
-    DEFN_CHECK(state_mark->get_texture().is_valid());
-    // The mark spans the medallion exactly, so it stays concentric with the ring at any node scale.
-    DEFN_CHECK_CLOSE(static_cast<double>(state_mark->get_anchor(SIDE_RIGHT)), 1.0, 0.001);
-    DEFN_CHECK_CLOSE(static_cast<double>(state_mark->get_anchor(SIDE_BOTTOM)), 1.0, 0.001);
-    DEFN_CHECK(state_mark->get_modulate() != godot::Color(1, 1, 1, 1));
-}
-
 } // namespace
 
 DEFN_TEST(deploy_card_presenter_builds_card_content_from_unit_config) {
@@ -561,8 +364,8 @@ DEFN_TEST(deploy_card_presenter_builds_card_content_from_unit_config) {
     auto *button = DeployCardPresenter::create(config, make_valid_callable(receiver));
 
     DEFN_REQUIRE(button != nullptr);
-    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().x, 190.0, 0.001);
-    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().y, 110.0, 0.001);
+    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().x, UiThemeProvider::metric("deploy_card_width"), 0.001);
+    DEFN_CHECK_CLOSE(button->get_custom_minimum_size().y, UiThemeProvider::metric("deploy_card_height"), 0.001);
     DEFN_CHECK(button->get_theme_type_variation() == StringName("DefnDeployCardButton"));
     DEFN_CHECK(has_label_text(button, "Operator"));
     DEFN_CHECK(has_label_text(button, "25"));
@@ -763,6 +566,30 @@ DEFN_TEST(hud_supply_reads_against_the_allowance_in_force_rather_than_the_level_
     DEFN_CHECK(has_all_labels(hud, {"7", "/ 11"}));
 }
 
+DEFN_TEST(hud_original_readings_remain_visible_in_every_responsive_arrangement) {
+    const TreeMountedNode<HUD> owner;
+    HUD *hud = owner.get();
+    hud->set_level("Summar Beach");
+    hud->set_energy_cap(100);
+    hud->update_supply(3, 20, true);
+    hud->update_score(125);
+    for (const auto arrangement : {HudArrangement::Instruments, HudArrangement::Flow, HudArrangement::Gutters}) {
+        MatchLayout layout;
+        layout.hud = arrangement;
+        layout.metrics = {.x = 8, .y = 8, .width = 1200, .height = 200};
+        layout.details = {.x = 1216, .y = 8, .width = 300, .height = 100};
+        layout.tray = {.x = 8, .y = 600, .width = 1200, .height = 64};
+        apply_hud_layout(hud, layout);
+        std::vector<Label *> labels;
+        collect_nodes(hud, labels);
+        for (const String text : {"ENERGY", "INTEGRITY", "WAVE", "SUPPLY", "SCORE", "125", "SUMMAR BEACH", "/ 100", "/ 20"}) {
+            DEFN_CHECK(std::ranges::any_of(labels, [&text](Label *label) { return label->get_text() == text && label->is_visible_in_tree(); }));
+        }
+        DEFN_CHECK(hud_integrity_meter_shows(hud, 3));
+        DEFN_CHECK(find_meter<HudIntegrityMeter>(hud)->is_visible_in_tree());
+    }
+}
+
 DEFN_TEST(hud_builds_instrument_pods_and_tracks_match_state) {
     const TreeMountedNode<HUD> owner;
     HUD *hud = owner.get();
@@ -827,6 +654,51 @@ DEFN_TEST(hud_hides_the_level_reading_when_there_is_no_name) {
     Node *level_group = find_node_named(hud, "LevelGroup");
     DEFN_REQUIRE(level_group != nullptr);
     DEFN_CHECK(!Object::cast_to<Control>(level_group)->is_visible());
+}
+
+DEFN_TEST(hud_phone_landscape_preserves_readings_and_restores_level_and_desktop_cards) {
+    UiThemeProvider::resolve_profile(UiProfile::Small, true);
+    const TreeMountedNode<HUD> owner;
+    auto *hud = owner.get();
+    hud->set_size({844, 390});
+    hud->set_level("Summar Beach");
+    hud->set_friendly_units({make_presenter_unit_config("operator", 20)});
+    hud->set_energy_cap(80);
+    hud->update_supply(3, 8, true);
+    hud->update_score(123456);
+    auto *card = find_deploy_card_button(hud);
+    DEFN_REQUIRE(card != nullptr);
+    const auto card_id = card->get_instance_id();
+    const UiSize world{.width = 1920, .height = 1080};
+    DisplaySnapshot phone{.content = {.width = 844, .height = 390}, .safe_area_applied = true, .render_density = 3, .touch = true, .fine_pointer = false};
+    const auto &data = UiThemeProvider::data().responsive;
+    hud->apply_appearance(UiThemeProvider::appearance(UiThemeContext::PhoneLandscape));
+    const auto measured = hud->measure_layout(844);
+    const auto layout = resolve_match_layout(phone, data, data.small_card, world, 1, measured);
+    apply_hud_layout(hud, layout);
+    auto *level = Object::cast_to<Control>(find_node_named(hud, "LevelGroup"));
+    DEFN_REQUIRE(level != nullptr);
+    DEFN_CHECK(!level->is_visible());
+    DEFN_CHECK(has_all_labels(hud, {"ENERGY", "INTEGRITY", "WAVE", "SUPPLY", "/ 8", "SCORE", "123456"}));
+    DEFN_CHECK_EQ(card->find_child("Cost", true, false)->get_parent()->get_name(), StringName("CardBody"));
+    DEFN_CHECK_EQ(card->get_size(), godot::Vector2(176, 40));
+    auto *title = Object::cast_to<Label>(card->find_child("CardText", true, false)->get_child(0));
+    DEFN_REQUIRE(title != nullptr);
+    DEFN_CHECK_EQ(title->get_theme_font_size("font_size"), 16);
+    phone.content = {.width = 390, .height = 844};
+    hud->apply_appearance(UiThemeProvider::appearance(UiThemeContext::Default));
+    apply_hud_layout(hud, resolve_match_layout(phone, data, data.small_card, world, 1, hud->measure_layout(374)));
+    DEFN_CHECK(level->is_visible());
+    DEFN_CHECK_EQ(card->get_instance_id(), card_id);
+    DEFN_CHECK_EQ(card->get_size(), godot::Vector2(192, 44));
+    DEFN_CHECK_EQ(title->get_theme_font_size("font_size"), 18);
+    const DisplaySnapshot desktop{.content = {.width = 960, .height = 540}};
+    apply_hud_layout(hud, resolve_desktop_match_layout(desktop, UiThemeProvider::desktop_match_data().responsive, world, 1));
+    DEFN_CHECK(level->is_visible());
+    DEFN_CHECK_EQ(card->find_child("Cost", true, false)->get_parent()->get_name(), StringName("CardText"));
+    DEFN_CHECK_EQ(card->get_size().y, 110);
+    DEFN_CHECK_EQ(card->get_instance_id(), card_id);
+    UiThemeProvider::reload();
 }
 
 DEFN_TEST(hud_builds_deploy_cards_and_score_screen) {
@@ -1091,6 +963,7 @@ DEFN_TEST(health_component_reports_effective_damage_and_caps_overkill) {
 }
 
 DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
+    const TreeMountedNode<Node2D> host_owner;
     UnitConfig config = make_presenter_unit_config("operator", 20);
     config.side = UnitSide::FRIENDLY;
     config.melee_damage = 10;
@@ -1104,7 +977,7 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
         .ranged_attack_range = config.ranged_attack_range,
     };
     auto *unit = UnitFactory::create(config, {}, profile, resolved, {});
-    UnitFactory::initialize(unit);
+    host_owner.get()->add_child(unit);
     auto *health = godot::Object::cast_to<HealthComponent>(unit->get_node_or_null("HealthComponent"));
     DEFN_REQUIRE(health != nullptr);
     DEFN_CHECK_EQ(health->take_damage(60, DamageDelivery::RANGED), 60);
@@ -1116,6 +989,12 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
     DEFN_CHECK_EQ(unit->resolve_outgoing_damage(10), 11);
     auto *insignia = godot::Object::cast_to<godot::Label>(unit->get_node_or_null("FieldPromotionView/FieldPromotionInsignia"));
     DEFN_REQUIRE(insignia != nullptr);
+    for (const auto profile : {UiProfile::Standard, UiProfile::Small, UiProfile::Standard}) {
+        UiThemeProvider::resolve_profile(profile, profile == UiProfile::Small);
+        DEFN_CHECK_EQ(insignia->get_theme_font_size("font_size"), 72);
+        DEFN_CHECK_EQ(insignia->get_theme_constant("outline_size"), 9);
+        DEFN_CHECK(insignia->get_theme_color("font_color") == UiThemeProvider::color("accent"));
+    }
     DEFN_CHECK_CLOSE(insignia->get_position().x + (insignia->get_combined_minimum_size().x * 0.5F), config.health_bar_offset.x + 85.0F, 0.001);
     auto *combat = godot::Object::cast_to<CombatComponent>(unit->get_node_or_null("CombatComponent"));
     DEFN_REQUIRE(combat != nullptr);
@@ -1123,7 +1002,6 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
     DEFN_CHECK_CLOSE(combat->get_runtime_config().ranged_attack_period_seconds, 1.8, 0.000001);
     unit->record_effective_damage_dealt(500);
     DEFN_CHECK_CLOSE(combat->get_runtime_config().melee_attack_period_seconds, 0.9, 0.000001);
-    memdelete(unit);
 }
 
 DEFN_TEST(unit_selection_controller_selects_visible_sprite_and_clears_when_unit_exits_tree) {
@@ -1296,228 +1174,74 @@ DEFN_TEST(menu_manager_builds_data_driven_menu_flows) {
     DEFN_CHECK(campaign_maps.front()->is_queued_for_deletion());
 }
 
-DEFN_TEST(campaign_map_mounts_loading_overlay_before_composing_content) {
-    const TreeMountedNode<MenuManager> menu_manager_owner;
-    auto *menu_manager = ready_menu_manager(menu_manager_owner);
-    menu_manager->on_button_pressed(static_cast<int>(MenuIntentType::ShowLevelSelect), {});
-
-    std::vector<CampaignMapView *> campaign_maps;
-    collect_nodes(menu_manager, campaign_maps);
-    DEFN_REQUIRE(campaign_maps.size() == 1);
-    CampaignMapView *campaign_map = campaign_maps.front();
-    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::WaitingToStart);
-    DEFN_CHECK(campaign_map->get_node_or_null("LoadingOverlay") != nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface") == nullptr);
-
-    DEFN_CHECK(pump_campaign_map_loading(campaign_map));
-    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Ready);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface") != nullptr);
+DEFN_TEST(options_allow_more_desktop_height_and_keep_video_controls_in_narrow_pointer_windows) {
+    const TreeMountedNode<MenuManager> owner;
+    auto *manager = ready_menu_manager(owner);
+    manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "options_menu");
+    std::vector<OptionsScreenView *> screens;
+    collect_nodes(manager, screens);
+    DEFN_REQUIRE(screens.size() == 1);
+    auto *screen = screens.front();
+    screen->set_ui_context({.display = {.content = {.width = 390, .height = 844}, .touch = true, .fine_pointer = true}});
+    DEFN_CHECK(screen->spec.content_limit.y > UiThemeProvider::metric("menu_content_height", 360));
+    DEFN_CHECK(find_label_by_text(screen, "Display Mode")->is_visible_in_tree());
+    DEFN_CHECK(find_label_by_text(screen, "Resolution")->is_visible_in_tree());
+    DEFN_CHECK(find_label_by_text(screen, "VSync")->is_visible_in_tree());
+    DEFN_CHECK(find_label_by_text(screen, "Master Volume")->is_visible_in_tree());
 }
 
-DEFN_TEST(campaign_map_loading_failure_shows_retry_and_back_actions) {
-    GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
-    CampaignMapView *campaign_map = campaign_map_owner.get();
-    campaign_map->configure(static_cast<ProgressionService *>(nullptr), {}, {});
-
-    (void)pump_campaign_map_loading(campaign_map);
-    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Failed);
-    DEFN_CHECK(find_button_by_text(campaign_map, "Retry") != nullptr);
-    DEFN_CHECK(find_button_by_text(campaign_map, "Back") != nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface") == nullptr);
+DEFN_TEST(menu_progress_is_disabled_for_touch_devices_and_restored_for_desktop_pointer) {
+    const TreeMountedNode<MenuManager> owner;
+    auto *manager = ready_menu_manager(owner);
+    manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "game_menu");
+    std::vector<MenuScreenView *> screens;
+    collect_nodes(manager, screens);
+    DEFN_REQUIRE(!screens.empty());
+    auto *screen = screens.back();
+    check_progress_action(screen, true);
+    const UiContext portrait{.display = {.content = {.width = 390, .height = 783}, .touch = true, .primary_coarse_pointer = true}};
+    screen->set_ui_context(portrait);
+    check_progress_action(screen, false);
+    auto landscape = portrait;
+    landscape.display.content = {.width = 864, .height = 230};
+    landscape.phone_landscape = true;
+    screen->set_ui_context(landscape);
+    check_progress_action(screen, false);
+    screen->set_ui_context(portrait);
+    check_progress_action(screen, false);
+    screen->set_ui_context({.display = {.content = {.width = 390, .height = 783}, .touch = true, .fine_pointer = true}});
+    check_progress_action(screen, true);
+    screen->set_ui_context({.display = {.touch = true, .fine_pointer = false}});
+    check_progress_action(screen, false);
 }
 
-DEFN_TEST(campaign_map_loading_selects_the_presented_initial_mission) {
-    GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
-    CampaignMapView *campaign_map = campaign_map_owner.get();
-    const CampaignTextureDefinition texture{.path = "res://assets/campaign/desert_outpost_preview.jpg"};
-    CampaignMapViewModel view_model{
-        .background = texture,
-        .missions = {{.level_id = "level_01", .name = "First", .preview = {.texture = texture}},
-                     {.level_id = "level_02", .name = "Second", .preview = {.texture = texture}}},
-        .initial_selected_level_id = "level_02",
-    };
-    campaign_map->configure(std::move(view_model), {}, {});
-
-    DEFN_CHECK(pump_campaign_map_loading(campaign_map));
-    DEFN_CHECK_EQ(campaign_map->loading_state(), CampaignMapView::LoadingState::Ready);
-    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_02"));
-    DEFN_REQUIRE(campaign_map->dossier() != nullptr);
-}
-
-namespace {
-
-/// A one-mission map carrying the endless entry, ready for inspection.
-CampaignMapView *build_beacon_map(GodotObjectOwner<CampaignMapView> &owner) {
-    CampaignMapView *campaign_map = owner.get();
-    const CampaignTextureDefinition texture{.path = "res://assets/campaign/desert_outpost_preview.jpg"};
-    CampaignMapViewModel view_model{
-        .background = texture,
-        .missions = {{.level_id = "level_01", .name = "First", .preview = {.texture = texture}}},
-        .endless = CampaignEndlessViewModel{.title = "Standing Engagement",
-                                            .tagline = "Hold the line.",
-                                            .preview = {.texture = texture},
-                                            .position_x = 0.685F,
-                                            .position_y = 0.5F,
-                                            .best_wave = 17,
-                                            .best_score = 4820,
-                                            .base_starting_energy = 105,
-                                            .effective_starting_energy = 125,
-                                            .base_integrity = 4,
-                                            .effective_base_integrity = 5,
-                                            .record_label = "BEST  WAVE 17  /  4820",
-                                            .route_from_index = 0},
-        .initial_selected_level_id = "level_01",
-    };
-    campaign_map->configure(std::move(view_model), {}, {});
-    return pump_campaign_map_loading(campaign_map) ? campaign_map : nullptr;
-}
-
-} // namespace
-
-DEFN_TEST(campaign_map_shows_an_endless_mode_button_centred_on_the_header) {
-    GodotObjectOwner<CampaignMapView> owner(memnew(CampaignMapView));
-    CampaignMapView *campaign_map = build_beacon_map(owner);
-    DEFN_REQUIRE(campaign_map != nullptr);
-
-    Node *header_row = campaign_map->get_node_or_null("ReferenceSurface/HeaderRow");
-    DEFN_REQUIRE(header_row != nullptr);
-    Button *endless_button = find_card_by_title(header_row, "Endless Mode");
-    DEFN_REQUIRE(endless_button != nullptr);
-    DEFN_CHECK_EQ(endless_button->get_name(), String("EndlessButton"));
-
-    // The breadcrumb and the secured count sit either side of the button in the header row, so it lands between
-    // them rather than hugging one edge -- an HBoxContainer places children in child order, so this pins that
-    // order without depending on a layout pass having already run.
-    auto *breadcrumb = Object::cast_to<Control>(header_row->get_node_or_null("Breadcrumb"));
-    auto *secured = Object::cast_to<Control>(header_row->get_node_or_null("SecuredCount"));
-    DEFN_REQUIRE(breadcrumb != nullptr);
-    DEFN_REQUIRE(secured != nullptr);
-    DEFN_CHECK(breadcrumb->get_index() < endless_button->get_index());
-    DEFN_CHECK(endless_button->get_index() < secured->get_index());
-}
-
-DEFN_TEST(campaign_map_endless_button_deploys_directly_without_opening_the_dossier) {
-    GodotObjectOwner<CampaignMapView> owner(memnew(CampaignMapView));
-    GodotObjectOwner<Button> deployed_marker(memnew(Button));
-    CampaignMapView *campaign_map = build_beacon_map(owner);
-    DEFN_REQUIRE(campaign_map != nullptr);
-    deployed_marker.get()->show();
-    campaign_map->set_endless_action(Callable(deployed_marker.get(), "hide"));
-
-    Node *header_row = campaign_map->get_node_or_null("ReferenceSurface/HeaderRow");
-    DEFN_REQUIRE(header_row != nullptr);
-    Button *endless_button = find_card_by_title(header_row, "Endless Mode");
-    DEFN_REQUIRE(endless_button != nullptr);
-    OperationDossierView *dossier = campaign_map->dossier();
-    DEFN_REQUIRE(dossier != nullptr);
-
-    // Pressing the header button deploys straight into the run: there is no endless variant to compare it
-    // against the way a mission choice has siblings, so the dossier stays exactly as it was.
-    endless_button->emit_signal("pressed");
-
-    DEFN_CHECK(!deployed_marker.get()->is_visible());
-    DEFN_CHECK(!has_label_containing(dossier, "STANDING ENGAGEMENT"));
-}
-
-DEFN_TEST(campaign_map_panorama_fills_and_clips_reference_surface) {
-    const TreeMountedNode<MenuManager> menu_manager_owner;
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
-
-    DEFN_REQUIRE(campaign_map != nullptr);
-    DEFN_CHECK(Object::cast_to<CanvasLayer>(campaign_map->get_parent()) != nullptr);
-    auto *reference_surface = Object::cast_to<Control>(campaign_map->get_node_or_null("ReferenceSurface"));
-    DEFN_REQUIRE(reference_surface != nullptr);
-    DEFN_CHECK(reference_surface->is_clipping_contents());
-    auto *panorama = Object::cast_to<Sprite2D>(campaign_map->get_node_or_null("ReferenceSurface/Panorama"));
-    DEFN_REQUIRE(panorama != nullptr);
-    DEFN_REQUIRE(panorama->get_texture().is_valid());
-    DEFN_CHECK_CLOSE(static_cast<double>(panorama->get_texture()->get_width()) * panorama->get_scale().x, 1920.0, 0.001);
-    DEFN_CHECK_CLOSE(static_cast<double>(panorama->get_texture()->get_height()) * panorama->get_scale().y, 1080.0, 0.001);
-}
-
-DEFN_TEST(campaign_map_uses_compact_preview_nodes_without_auxiliary_navigation_controls) {
-    const TreeMountedNode<MenuManager> menu_manager_owner;
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
-
-    DEFN_REQUIRE(campaign_map != nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/CloseButton") == nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/HintsBackplate") == nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/InputHints") == nullptr);
-    auto *desert_node = Object::cast_to<Control>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01"));
-    DEFN_REQUIRE(desert_node != nullptr);
-    DEFN_CHECK_EQ(desert_node->get_size(), godot::Vector2(188.0F, 134.0F));
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/LabelPlate") == nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/MissionName") == nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/MissionDetail") == nullptr);
-}
-
-DEFN_TEST(campaign_map_preview_requires_click_and_double_click_deploys) {
-    GodotObjectOwner<CampaignMapView> campaign_map_owner(memnew(CampaignMapView));
-    GodotObjectOwner<Button> deployment_recorder(memnew(Button));
-    CampaignMapView *campaign_map = campaign_map_owner.get();
-    const CampaignTextureDefinition texture{.path = "res://assets/campaign/desert_outpost_preview.jpg"};
-    CampaignMapViewModel view_model{
-        .background = texture,
-        .missions = {{.level_id = "level_01", .name = "First", .preview = {.texture = texture}, .state = CampaignNodeState::AVAILABLE},
-                     {.level_id = "level_02", .name = "Second", .preview = {.texture = texture}, .state = CampaignNodeState::AVAILABLE}},
-        .initial_selected_level_id = "level_02",
-    };
-    campaign_map->configure(std::move(view_model), Callable(deployment_recorder.get(), "set_text"), {});
-
-    DEFN_REQUIRE(pump_campaign_map_loading(campaign_map));
-    auto *first = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
-    auto *second = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_02/Interaction"));
-    DEFN_REQUIRE(first != nullptr);
-    DEFN_REQUIRE(second != nullptr);
-
-    first->emit_signal("mouse_entered");
-    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_02"));
-
-    first->emit_signal("pressed");
-    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_01"));
-    DEFN_CHECK(deployment_recorder->get_text().is_empty());
-
-    Ref<InputEventMouseButton> double_click;
-    double_click.instantiate();
-    double_click->set_button_index(MOUSE_BUTTON_LEFT);
-    double_click->set_pressed(true);
-    double_click->set_double_click(true);
-    second->emit_signal("gui_input", double_click);
-    DEFN_CHECK_EQ(campaign_map->selected_level_id(), std::string("level_02"));
-    DEFN_CHECK_EQ(deployment_recorder->get_text(), String("level_02"));
-}
-
-DEFN_TEST(campaign_map_uses_readable_state_and_enemy_treatments) {
-    const TreeMountedNode<MenuManager> menu_manager_owner;
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
-
-    DEFN_REQUIRE(campaign_map != nullptr);
-    DEFN_CHECK(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_04/PostcardFrame") != nullptr);
-    check_state_medallion(campaign_map);
-    auto *node_interaction = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
-    DEFN_REQUIRE(node_interaction != nullptr);
-    DEFN_CHECK_EQ(node_interaction->get_focus_mode(), Control::FOCUS_NONE);
-    DEFN_CHECK(!node_interaction->has_theme_stylebox_override("focus"));
-    DEFN_CHECK(has_label_text(campaign_map, "Grime"));
-    DEFN_CHECK(!has_label_text(campaign_map, "[Grime]"));
-}
-
-/// Sound reaches a control through the one player the screen installed, wired by whatever built the control:
-/// the dossier's buttons come from the widget factory, the map node builds its own. Each has to end up with
-/// exactly one wiring -- none means the screen went silent, two means a second caller wired it as well.
-DEFN_TEST(campaign_map_wires_every_control_to_the_installed_sfx_player_once) {
-    const TreeMountedNode<MenuManager> menu_manager_owner;
-    CampaignMapView *campaign_map = show_campaign_map(menu_manager_owner);
-
-    DEFN_REQUIRE(campaign_map != nullptr);
-    OperationDossierView *dossier = campaign_map->dossier();
-    DEFN_REQUIRE(dossier != nullptr);
-    auto *node_interaction = Object::cast_to<Button>(campaign_map->get_node_or_null("ReferenceSurface/MapInteractionLayer/MissionNodes/level_01/Interaction"));
-    for (Button *button : {dossier->deploy_button(), dossier->back_button(), node_interaction}) {
-        DEFN_REQUIRE(button != nullptr);
-        DEFN_CHECK_EQ(button->get_signal_connection_list("mouse_entered").size(), static_cast<int64_t>(1));
-        DEFN_CHECK_EQ(button->get_signal_connection_list("button_down").size(), static_cast<int64_t>(1));
-    }
+DEFN_TEST(options_keep_the_volume_control_and_value_when_touch_layout_rotates) {
+    const TreeMountedNode<MenuManager> owner;
+    auto *manager = ready_menu_manager(owner);
+    manager->on_button_pressed(static_cast<int>(MenuIntentType::GotoMenu), "options_menu");
+    std::vector<OptionsScreenView *> screens;
+    collect_nodes(manager, screens);
+    DEFN_REQUIRE(screens.size() == 1);
+    auto *screen = screens.front();
+    std::vector<HSlider *> sliders;
+    collect_nodes(screen, sliders);
+    DEFN_REQUIRE(sliders.size() == 1);
+    auto *slider = sliders.front();
+    slider->set_value_no_signal(37);
+    const UiContext portrait{.display = {.content = {.width = 390, .height = 783}, .touch = true, .fine_pointer = true, .primary_coarse_pointer = true}};
+    screen->set_ui_context(portrait);
+    check_touch_options(screen, slider);
+    auto landscape = portrait;
+    landscape.display.content = {.width = 864, .height = 230};
+    landscape.phone_landscape = true;
+    screen->set_ui_context(landscape);
+    screen->set_ui_context(portrait);
+    DEFN_CHECK_CLOSE(slider->get_value(), 37, 0.001);
+    DEFN_CHECK(slider->is_visible_in_tree());
+    DEFN_CHECK(find_button_by_text(screen, "Back")->is_visible_in_tree());
+    screen->set_ui_context({});
+    DEFN_CHECK(find_label_by_text(screen, "Display Mode")->is_visible_in_tree());
+    DEFN_CHECK(find_label_by_text(screen, "Master Volume")->get_parent() == slider->get_parent());
 }
 
 DEFN_TEST(progression_stats_screen_view_switches_dossiers_and_preserves_selection_across_owned_grid) {

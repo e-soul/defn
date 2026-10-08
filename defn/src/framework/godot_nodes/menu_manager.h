@@ -30,12 +30,15 @@ namespace defn {
 using namespace godot;
 
 class SettingsRuntime;
+class ResponsiveUiRoot;
 
 class MenuManager : public Node2D {
     GDCLASS(MenuManager, Node2D)
 
   public:
     void _ready() override;
+    void _input(const Ref<InputEvent> &event) override;
+    void _notification(int what);
     void on_button_pressed(int intent_type, const String &target);
     void on_level_selected(const String &level_id);
     void on_endless_selected();
@@ -62,12 +65,13 @@ class MenuManager : public Node2D {
     void build_options_ui(const MenuScreenViewModel &view_model, const UiScreenScaffold &scaffold);
     [[nodiscard]] static SettingsRuntime *settings_runtime_for_change();
     bool refresh_settings_snapshot();
+    void navigate_back();
 
     MenuContentData menu_data_;
     String current_menu_;
     SettingsState settings_state_;
 
-    CanvasLayer *ui_layer_ = nullptr;
+    ResponsiveUiRoot *ui_layer_ = nullptr;
     MenuBackdrop *backdrop_ = nullptr;
     PanelContainer *career_score_plate_ = nullptr;
     Label *total_score_label_ = nullptr;

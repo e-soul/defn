@@ -36,6 +36,7 @@ src/domain/content/unit_animation_state.cpp
 """.split()
 
 PRESENTERS = """
+src/adapters/presenters/responsive_layout.cpp
 src/adapters/presenters/progression_presentation.cpp
 src/adapters/presenters/progression_stats_presenter.cpp
 src/adapters/presenters/progression_stat_visualization.cpp
@@ -48,6 +49,12 @@ src/adapters/presenters/score_screen_view_model.cpp
 """.split()
 
 ENGINE = """
+src/adapters/godot/ui/display_adapter.cpp
+src/adapters/godot/ui/menu_screen_view.cpp
+src/adapters/godot/ui/options_screen_view.cpp
+src/framework/godot_nodes/responsive_ui_root.cpp
+src/framework/godot_nodes/match_presentation.cpp
+src/framework/godot_nodes/deploy_tray.cpp
 src/framework/registration/register_types.cpp
 src/adapters/json/json_file_loader.cpp
 src/adapters/json/campaign_map_data_loader.cpp
@@ -64,7 +71,6 @@ src/adapters/godot/progression/progression_manager.cpp
 src/adapters/json/progression_catalog.cpp
 src/adapters/json/upgrade_catalog.cpp
 src/adapters/json/progression_save_repository.cpp
-src/adapters/godot/ui/owned_upgrades_panel.cpp
 src/adapters/godot/ui/progression_stats_screen_view.cpp
 src/adapters/godot/ui/progression_stat_meter.cpp
 src/adapters/godot/ui/meter_geometry.cpp
@@ -100,6 +106,7 @@ src/adapters/godot/ui/campaign_preview_view.cpp
 src/adapters/godot/ui/campaign_map_node_view.cpp
 src/adapters/godot/ui/operation_dossier_view.cpp
 src/adapters/godot/ui/campaign_map_view.cpp
+src/adapters/godot/ui/mobile_campaign_view.cpp
 src/adapters/godot/ui/deploy_card_presenter.cpp
 src/adapters/godot/ui/upgrade_card_presenter.cpp
 src/framework/godot_nodes/detection_component.cpp
@@ -157,11 +164,16 @@ tests/test_parsing.cpp
 tests/test_settings_adapters.cpp
 tests/test_shipped_content.cpp
 tests/test_ui_presenters.cpp
+tests/test_score_screen.cpp
+tests/test_campaign_ui.cpp
+tests/test_match_ui.cpp
 tests/test_ui_theme_provider.cpp
 tests/test_unit_profiles.cpp
 """.split()
 
 NATIVE_TESTS = """
+tests/test_score_pagination.cpp
+tests/test_responsive_layout.cpp
 tests/test_main.cpp
 tests/test_animation_clock.cpp
 tests/test_belt_positioning.cpp

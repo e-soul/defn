@@ -6,6 +6,7 @@
 #include "data_paths.h"
 #include "godot_color.h"
 #include "godot_string.h"
+#include "responsive_layout.h"
 #include "ui_theme_loader.h"
 
 #include <godot_cpp/classes/font.hpp>
@@ -28,7 +29,27 @@ using namespace godot;
 namespace {
 
 std::optional<UiThemeData> g_data;
+std::optional<UiThemeData> g_source;
+UiProfile g_profile = UiProfile::Standard;
+bool g_touch = false;
+std::size_t g_revision = 1;
 Ref<Theme> g_theme;
+std::optional<UiThemeData> g_desktop_match_data;
+Ref<Theme> g_desktop_match_theme;
+std::optional<UiThemeData> g_phone_landscape_data;
+Ref<Theme> g_phone_landscape_theme;
+
+const UiThemeData &source_data() {
+    if (!g_source.has_value()) {
+        auto loaded = UiThemeLoader::load(DataPaths::UI_THEME);
+        if (!loaded.has_value()) {
+            UtilityFunctions::printerr("UiThemeProvider: Failed to load ", String(DataPaths::UI_THEME), "; using built-in defaults");
+            loaded = UiThemeData{};
+        }
+        g_source = std::move(*loaded);
+    }
+    return *g_source;
+}
 
 std::string to_pascal_case(std::string_view snake_case) {
     std::string pascal;
@@ -101,6 +122,8 @@ Ref<StyleBoxFlat> build_button_state_style(const UiThemeData &theme_data, const 
 }
 
 void register_button_type(const Ref<Theme> &theme, const UiThemeData &theme_data, const StringName &type_name, const UiButtonVariant &button) {
+    theme->set_constant("min_width", type_name, button.min_width);
+    theme->set_constant("min_height", type_name, button.min_height);
     theme->set_stylebox("normal", type_name, build_button_state_style(theme_data, button, button.normal));
     theme->set_stylebox("hover", type_name, build_button_state_style(theme_data, button, button.hover));
     theme->set_stylebox("pressed", type_name, build_button_state_style(theme_data, button, button.pressed));
@@ -206,6 +229,7 @@ void register_base_types(const Ref<Theme> &theme, const UiThemeData &theme_data)
         register_button_type(theme, theme_data, "OptionButton", *menu_button);
         register_button_type(theme, theme_data, "CheckButton", *menu_button);
     }
+    theme->set_constant("arrow_margin", "OptionButton", theme_data.spacing.md);
 
     theme->set_color("font_color", "PopupMenu", text_primary);
     theme->set_color("font_hover_color", "PopupMenu", accent);
@@ -287,12 +311,7 @@ Ref<Theme> build_theme(const UiThemeData &theme_data) {
 
 const UiThemeData &UiThemeProvider::data() {
     if (!g_data.has_value()) {
-        auto loaded = UiThemeLoader::load(DataPaths::UI_THEME);
-        if (!loaded.has_value()) {
-            UtilityFunctions::printerr("UiThemeProvider: Failed to load ", String(DataPaths::UI_THEME), "; using built-in defaults");
-            loaded = UiThemeData{};
-        }
-        g_data = std::move(*loaded);
+        g_data = resolve_ui_theme(source_data(), g_profile, g_touch);
     }
     return *g_data;
 }
@@ -317,8 +336,99 @@ void UiThemeProvider::apply_to(Control *control) {
 }
 
 void UiThemeProvider::reload() {
+    ++g_revision;
     g_data.reset();
+    g_source.reset();
+    g_profile = UiProfile::Standard;
+    g_touch = false;
     g_theme.unref();
+    g_desktop_match_data.reset();
+    g_desktop_match_theme.unref();
+    g_phone_landscape_data.reset();
+    g_phone_landscape_theme.unref();
+}
+
+bool UiThemeProvider::resolve_profile(UiProfile profile, bool touch) {
+    (void)data();
+    if (g_profile == profile && g_touch == touch) {
+        return false;
+    }
+    g_profile = profile;
+    g_touch = touch;
+    ++g_revision;
+    g_data = resolve_ui_theme(source_data(), profile, touch);
+    const Ref<Theme> updated = build_theme(*g_data);
+    if (g_theme.is_valid()) {
+        g_theme->merge_with(updated);
+    } else {
+        g_theme = updated;
+    }
+    return true;
+}
+
+UiProfile UiThemeProvider::profile() { return g_profile; }
+std::size_t UiThemeProvider::revision() { return g_revision; }
+
+const UiThemeData &UiThemeProvider::phone_landscape_data() {
+    (void)data();
+    if (!g_phone_landscape_data.has_value()) {
+        const auto patch = UiThemeLoader::load_patch(DataPaths::UI_PHONE_LANDSCAPE_THEME);
+        const UiThemeData &source = source_data();
+        UiThemeData result = patch ? apply_theme_patch(source, *patch) : source;
+        const auto card = result.responsive.small_card;
+        result.metrics["deploy_card_width"] = static_cast<int>(card.width);
+        result.metrics["deploy_card_height"] = static_cast<int>(card.height);
+        result.metrics["deploy_card_portrait_size"] = static_cast<int>(card.portrait);
+        g_phone_landscape_data = std::move(result);
+    }
+    return *g_phone_landscape_data;
+}
+
+Ref<Theme> UiThemeProvider::phone_landscape_theme() {
+    if (g_phone_landscape_theme.is_null()) {
+        g_phone_landscape_theme = build_theme(phone_landscape_data());
+    }
+    return g_phone_landscape_theme;
+}
+
+const UiThemeData &UiThemeProvider::desktop_match_data() {
+    (void)data();
+    if (!g_desktop_match_data.has_value()) {
+        const auto patch = UiThemeLoader::load_patch(DataPaths::UI_DESKTOP_MATCH_THEME);
+        const UiThemeData &source = source_data();
+        UiThemeData result = patch ? apply_theme_patch(source, *patch) : source;
+        const auto card = result.responsive.standard_card;
+        result.metrics["deploy_card_width"] = static_cast<int>(card.width);
+        result.metrics["deploy_card_height"] = static_cast<int>(card.height);
+        result.metrics["deploy_card_portrait_size"] = static_cast<int>(card.portrait);
+        g_desktop_match_data = std::move(result);
+    }
+    return *g_desktop_match_data;
+}
+
+Ref<Theme> UiThemeProvider::desktop_match_theme() {
+    if (g_desktop_match_theme.is_null()) {
+        g_desktop_match_theme = build_theme(desktop_match_data());
+    }
+    return g_desktop_match_theme;
+}
+
+UiAppearance UiThemeProvider::appearance(UiThemeContext context) {
+    const UiThemeData *tokens = &data();
+    Ref<Theme> resolved = theme();
+    if (context == UiThemeContext::DesktopMatch) {
+        tokens = &desktop_match_data();
+        resolved = desktop_match_theme();
+    } else if (context == UiThemeContext::PhoneLandscape) {
+        tokens = &phone_landscape_data();
+        resolved = phone_landscape_theme();
+    }
+    const bool small = context != UiThemeContext::DesktopMatch && profile() == UiProfile::Small;
+    return {.data = tokens,
+            .theme = resolved,
+            .card = small ? tokens->responsive.small_card : tokens->responsive.standard_card,
+            .context = context,
+            .revision = revision()};
 }
 
 godot::Color UiThemeProvider::color(std::string_view role) { return role_color(data(), role); }

@@ -4,12 +4,12 @@
 #include "progression_stats_screen_view.h"
 
 #include "godot_string.h"
-#include "owned_upgrades_panel.h"
 #include "progression_stat_meter.h"
 #include "progression_stats_presenter.h"
 #include "ui_screen_scaffold.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
+#include "upgrade_card_presenter.h"
 
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/flow_container.hpp>
@@ -92,6 +92,7 @@ void ProgressionStatsScreenView::go_back() {
 }
 
 void ProgressionStatsScreenView::clear_content() {
+    dossier_columns_ = nullptr;
     exact_detail_label_ = nullptr;
     active_stat_id_ = godot::String();
     while (get_child_count() > 0) {
@@ -109,19 +110,15 @@ void ProgressionStatsScreenView::rebuild() {
     const UiScreenScaffold scaffold = build_screen(this, {.title = showing_all_upgrades_ ? "ALL OWNED UPGRADES" : "COMMAND ROSTER",
                                                           .show_backdrop = false,
                                                           .panelled_body = true,
-                                                          .scrollable_body = false,
-                                                          .max_content_size = get_custom_minimum_size()});
+                                                          .scrollable_body = true,
+                                                          .content_limit = get_custom_minimum_size()});
     if (scaffold.root == nullptr) {
         return;
     }
-    scaffold.footer->set_alignment(godot::BoxContainer::ALIGNMENT_CENTER);
+    scaffold.footer->set_alignment(godot::FlowContainer::ALIGNMENT_CENTER);
 
     if (showing_all_upgrades_) {
-        OwnedUpgradesPanel::Options options;
-        options.min_size = {UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("owned_upgrades_grid_height", 430)};
-        options.layout = OwnedUpgradesPanel::Layout::VerticalGrid;
-        options.grid_columns = 4;
-        scaffold.body->add_child(OwnedUpgradesPanel::build(owned_upgrades_, options));
+        scaffold.body->add_child(UpgradeCardPresenter::build_owned(owned_upgrades_));
         auto *return_button = make_button("Return to Command Roster", "secondary", callable_mp(this, &ProgressionStatsScreenView::show_dossier));
         return_button->set_name("ReturnToDossierButton");
         scaffold.footer->add_child(return_button);
@@ -172,7 +169,9 @@ void ProgressionStatsScreenView::rebuild() {
     auto *dossier = make_surface("dossier");
     dossier->set_name("EntityDossier");
     dossier->set_custom_minimum_size({UiThemeProvider::metric("progression_dossier_width", 880), UiThemeProvider::metric("progression_dossier_height", 330)});
-    auto *columns = memnew(godot::HBoxContainer);
+    auto *columns = memnew(godot::BoxContainer);
+    dossier_columns_ = columns;
+    columns->set_vertical(get_size().x < UiThemeProvider::metric("progression_dossier_min_width", 1600));
     columns->add_theme_constant_override("separation", UiThemeProvider::spacing("xl"));
     dossier->add_child(columns);
 
@@ -247,6 +246,12 @@ void ProgressionStatsScreenView::rebuild() {
     auto *back = make_button(to_godot_string(model.back_label), "secondary", callable_mp(this, &ProgressionStatsScreenView::go_back));
     back->set_name("ProgressionBackButton");
     scaffold.footer->add_child(back);
+}
+
+void ProgressionStatsScreenView::_notification(int what) {
+    if (what == NOTIFICATION_RESIZED && dossier_columns_ != nullptr) {
+        dossier_columns_->set_vertical(get_size().x < UiThemeProvider::metric("progression_dossier_min_width", 1600));
+    }
 }
 
 void ProgressionStatsScreenView::on_stat_detail_changed(const godot::String &stat_id, const godot::String &detail, bool active) {

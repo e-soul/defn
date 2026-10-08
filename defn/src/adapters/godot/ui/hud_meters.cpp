@@ -3,8 +3,8 @@
 
 #include "hud_meters.h"
 
+#include "godot_color.h"
 #include "meter_geometry.h"
-#include "ui_theme_provider.h"
 
 #include <algorithm>
 
@@ -21,15 +21,6 @@ struct SegmentMetrics {
     real_t gap;
     real_t outline_width;
 
-    static SegmentMetrics from_theme() {
-        return {
-            .width = UiThemeProvider::metric("hud_segment_width", 26),
-            .height = UiThemeProvider::metric("hud_segment_height", 15),
-            .gap = UiThemeProvider::metric("meter_segment_gap", 4),
-            .outline_width = UiThemeProvider::metric("meter_outline_width", 1),
-        };
-    }
-
     [[nodiscard]] real_t left_of(int index) const { return static_cast<real_t>(index) * (width + gap); }
     [[nodiscard]] real_t strip_width(int segments) const {
         return segments <= 0 ? 0.0F : (static_cast<real_t>(segments) * width) + (static_cast<real_t>(segments - 1) * gap);
@@ -41,25 +32,34 @@ struct SegmentMetrics {
 HudIntegrityMeter::HudIntegrityMeter() {
     set_name("IntegrityMeter");
     set_mouse_filter(MOUSE_FILTER_IGNORE);
-    set_custom_minimum_size({0.0F, SegmentMetrics::from_theme().height});
+    set_custom_minimum_size({0.0F, segment_height_});
 }
 
 void HudIntegrityMeter::_bind_methods() { ClassDB::bind_method(D_METHOD("get_segment_count"), &HudIntegrityMeter::get_segment_count); }
 
+void HudIntegrityMeter::apply_appearance(const UiThemeData &theme) {
+    segment_width_ = static_cast<float>(theme.metric("hud_segment_width", 26));
+    segment_height_ = static_cast<float>(theme.metric("hud_segment_height", 15));
+    segment_gap_ = static_cast<float>(theme.metric("meter_segment_gap", 4));
+    outline_width_ = static_cast<float>(theme.metric("meter_outline_width", 1));
+    max_width_ = static_cast<float>(theme.metric("hud_max_integrity_width", 160));
+    track_color_ = to_godot_color(theme.find_color_role("meter_track").value_or(theme.palette.surface_sunken));
+    outline_color_ = to_godot_color(theme.find_color_role("meter_outline").value_or(theme.palette.border));
+    const SegmentMetrics metrics{.width = segment_width_, .height = segment_height_, .gap = segment_gap_, .outline_width = outline_width_};
+    const godot::Vector2 strip{std::min(metrics.strip_width(model_.segments), max_width_), segment_height_};
+    set_custom_minimum_size(strip);
+    set_size(strip);
+    queue_redraw();
+}
 void HudIntegrityMeter::configure(const HudIntegrityModel &model, const godot::Color &color) {
-    if (model == model_ && color == color_) {
+    if (model_ == model && color_ == color) {
         return;
     }
-
-    // The strip only has to be re-measured when it gains or loses a segment; draining the leading one does not
-    // move its edges, and integrity drains far more often than a match changes its capacity.
-    const bool resized = model.segments != model_.segments;
     model_ = model;
     color_ = color;
-
-    if (resized) {
-        const SegmentMetrics metrics = SegmentMetrics::from_theme();
-        const godot::Vector2 strip{metrics.strip_width(model_.segments), metrics.height};
+    const SegmentMetrics metrics{.width = segment_width_, .height = segment_height_, .gap = segment_gap_, .outline_width = outline_width_};
+    const godot::Vector2 strip{std::min(metrics.strip_width(model_.segments), max_width_), segment_height_};
+    if (get_custom_minimum_size() != strip) {
         set_custom_minimum_size(strip);
         set_size(strip);
     }
@@ -73,21 +73,22 @@ void HudIntegrityMeter::_draw() {
         return;
     }
 
-    const SegmentMetrics metrics = SegmentMetrics::from_theme();
+    SegmentMetrics metrics{.width = segment_width_, .height = segment_height_, .gap = segment_gap_, .outline_width = outline_width_};
+    const real_t compression = std::min(1.0F, get_size().x / metrics.strip_width(model_.segments));
+    metrics.width *= compression;
+    metrics.gap *= compression;
     const real_t height = std::min(metrics.height, get_size().y);
-    const godot::Color track_color = UiThemeProvider::color("meter_track");
-    const godot::Color outline_color = UiThemeProvider::color("meter_outline");
 
     for (int index = 0; index < model_.segments; ++index) {
         const real_t left = metrics.left_of(index);
         const double fraction = std::clamp(model_.filled_segments - static_cast<double>(index), 0.0, 1.0);
         const PackedVector2Array outline = segment_polygon(left, 0.0F, metrics.width, height);
 
-        draw_colored_polygon(outline, track_color);
+        draw_colored_polygon(outline, track_color_);
         if (fraction > 0.0) {
             draw_colored_polygon(partial_segment_polygon(left, 0.0F, metrics.width, height, fraction), color_);
         }
-        draw_segment_outline(*this, outline, outline_color, metrics.outline_width);
+        draw_segment_outline(*this, outline, outline_color_, metrics.outline_width);
     }
 }
 

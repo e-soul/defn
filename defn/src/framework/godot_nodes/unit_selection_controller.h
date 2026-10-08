@@ -30,6 +30,7 @@ class UnitSelectionController : public Node2D {
     void select_unit(Unit *unit) { select(unit); }
     void clear_selection();
     [[nodiscard]] bool has_selection() const;
+    void set_presentation_scale(float scale, bool touch);
 
     void _process(double delta) override;
     void _unhandled_input(const Ref<InputEvent> &event) override;
@@ -69,6 +70,8 @@ class UnitSelectionController : public Node2D {
     Callable hovered_tree_exit_connection_{};
     UnitControlConfig config_{};
     bool gameplay_available_ = true;
+    float touch_radius_ = 0;
+    bool touch_pointer_ = false;
 };
 
 } // namespace defn

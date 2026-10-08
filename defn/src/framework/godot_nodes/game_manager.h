@@ -12,6 +12,7 @@
 #include "score_screen_models.h"
 #include "unit_data.h"
 #include <cstdint>
+#include <functional>
 #include <godot_cpp/classes/area2d.hpp>
 #include <godot_cpp/classes/camera2d.hpp>
 #include <godot_cpp/classes/input_event.hpp>
@@ -19,6 +20,7 @@
 #include <godot_cpp/classes/timer.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
+#include <godot_cpp/variant/rect2.hpp>
 #include <optional>
 #include <string>
 #include <vector>
@@ -44,11 +46,17 @@ class GameManager : public Node2D {
     void _ready() override;
     void _process(double delta) override;
     void _input(const Ref<InputEvent> &event) override;
+    using PresentationReady = std::function<void(HUD *, const UnitDataLoader &, godot::Node2D *, UnitSelectionController *)>;
+    void configure_presentation(godot::Node *ui_parent, UnitDataLoader content, PresentationReady ready, std::function<void()> invalidate_layout);
 
   protected:
     static void _bind_methods();
 
   private:
+    godot::Node *ui_parent_ = nullptr;
+    PresentationReady presentation_ready_;
+    std::function<void()> invalidate_layout_;
+    bool supplied_content_ = false;
     void setup_background();
     void setup_camera();
 #ifdef DEFN_DEBUG_RENDERING_ENABLED

@@ -1,0 +1,150 @@
+{
+  "name": "responsive_results",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 165,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "timeline": [
+    {
+      "at": 0.4,
+      "action": "deploy",
+      "unit": "breacher",
+      "travel": 0.1
+    },
+    {
+      "at": 0.8,
+      "action": "deploy",
+      "unit": "marksman",
+      "travel": 0.1
+    },
+    {
+      "at": 154,
+      "action": "still",
+      "label": "result"
+    },
+    {
+      "at": 155,
+      "action": "resize",
+      "size": [
+        667,
+        330
+      ]
+    },
+    {
+      "at": 156,
+      "action": "still",
+      "label": "landscape"
+    },
+    {
+      "at": 157,
+      "action": "resize",
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "at": 158,
+      "action": "still",
+      "label": "portrait_restored"
+    },
+    {
+      "at": 159.0,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 159.15,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 159.3,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 159.45,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 159.6,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 159.75,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 159.9,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 160.05,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 160.2,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 160.35,
+      "action": "wheel",
+      "canvas": [
+        195,
+        600
+      ]
+    },
+    {
+      "at": 161,
+      "action": "still",
+      "label": "scrolled"
+    },
+    {
+      "at": 154.1,
+      "action": "check",
+      "title": "VICTORY"
+    },
+    {
+      "at": 18,
+      "action": "deploy",
+      "unit": "breacher",
+      "travel": 0.1
+    }
+  ]
+}

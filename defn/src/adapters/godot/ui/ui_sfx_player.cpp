@@ -64,7 +64,8 @@ void UiSfxPlayer::connect_button(godot::BaseButton *button, std::string_view pre
     }
     const bool deploy_card = press_role == "deploy_card";
     if ((deploy_card ? deploy_card_player_ : click_player_) != nullptr) {
-        button->connect("button_down", callable_mp(this, &UiSfxPlayer::play_press).bind(button, deploy_card));
+        // The tray emits pressed only after accepting a tap; pointer-down can still become a cancelled swipe.
+        button->connect(deploy_card ? "pressed" : "button_down", callable_mp(this, &UiSfxPlayer::play_press).bind(button, deploy_card));
     }
 }
 

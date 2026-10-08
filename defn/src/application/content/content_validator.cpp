@@ -250,7 +250,41 @@ void validate_button_state(const UiThemeData &theme, const UiButtonState &state,
     require_color_role(theme, state.font_role, owner, issues);
 }
 
-void validate_ui_theme(const UiThemeData &theme, const std::vector<std::string> &missing_assets, std::vector<std::string> &issues) {
+void validate_responsive_theme(const UiThemeData &theme, std::vector<std::string> &issues, bool scoped) {
+    const auto &responsive = theme.responsive;
+    for (const char *slot : {"supporting", "body", "heading", "display"}) {
+        if (*theme.typography.slot(slot) <= 0 || *responsive.small_type.slot(slot) <= 0 ||
+            (!scoped && *responsive.small_type.slot(slot) < *theme.typography.slot(slot))) {
+            push_issue(issues, "ui_theme.json typography profiles must contain positive slots");
+        }
+    }
+    for (const auto &[role, slot] : theme.type_roles) {
+        if (!theme.typography.slot(slot).has_value()) {
+            push_issue(issues, std::string("ui_theme.json typography role ").append(role).append(" references unknown slot ").append(slot));
+        }
+    }
+    for (const auto card : {responsive.standard_card, responsive.small_card}) {
+        if (card.width <= card.portrait + static_cast<float>(4 * theme.spacing.xs) || card.height < card.portrait + static_cast<float>(2 * theme.spacing.xs) ||
+            card.portrait <= 0) {
+            push_issue(issues, "ui_theme.json responsive card content does not fit its geometry");
+        }
+    }
+    if (responsive.small_short_edge <= 0 || responsive.hysteresis < 0 || responsive.hysteresis >= responsive.small_short_edge || responsive.touch_target < 48 ||
+        responsive.pointer_target < 40 || responsive.gap < 0 || responsive.margin < 0 || responsive.gesture_slop <= 0 ||
+        responsive.metrics_height < responsive.touch_target || responsive.tall_metrics_height < responsive.metrics_height ||
+        responsive.wide_pointer_width <= 0 || responsive.wide_pointer_height <= 0 || responsive.gutter_field_fraction <= 0 ||
+        responsive.gutter_field_fraction > 1 || responsive.compact_hud_icon_size <= 0 || responsive.compact_integrity_segment_width <= 0 ||
+        responsive.tray_navigation < responsive.touch_target || responsive.campaign_min_width <= 0 || responsive.campaign_min_height <= 0 ||
+        responsive.touch_pick_radius <= 0) {
+        push_issue(issues, "ui_theme.json responsive dimensions or target minima are invalid");
+    }
+    if (responsive.sky_bottom <= 0 || responsive.sky_bottom >= responsive.bottom_top || responsive.bottom_top > 1) {
+        push_issue(issues, "ui_theme.json responsive overlay zones are invalid");
+    }
+}
+
+void validate_ui_theme(const UiThemeData &theme, const std::vector<std::string> &missing_assets, std::vector<std::string> &issues, bool scoped = false) {
+    validate_responsive_theme(theme, issues, scoped);
     for (const auto &[name, surface] : theme.surfaces) {
         const std::string owner = "surface " + quoted(name);
         require_color_role(theme, surface.bg_role, owner, issues);
@@ -339,6 +373,9 @@ ContentValidationReport ContentValidator::validate_loaded_content(const ContentV
     }
     if (input.menu_data.has_value()) {
         validate_menu_content(*input.menu_data, report.issues);
+    }
+    for (const auto &theme : input.scoped_ui_themes) {
+        validate_ui_theme(theme, input.missing_ui_theme_assets, report.issues, true);
     }
     if (input.ui_theme.has_value()) {
         validate_ui_theme(*input.ui_theme, input.missing_ui_theme_assets, report.issues);

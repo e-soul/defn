@@ -76,7 +76,7 @@
         "tagline": "Hold the line for as long as possible.",
         "requires_completed": "level_05",
         "preview": {
-            "path": "res://assets/campaign/feldkirchen_preview.jpg",
+            "path": "res://assets/campaign/port_terminal_preview.jpg",
             "focus": [0.38, 0.50],
             "node_zoom": 1.0,
             "dossier_zoom": 1.0

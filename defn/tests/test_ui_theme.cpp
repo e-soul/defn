@@ -21,7 +21,7 @@ UiThemeData make_theme() {
 
 DEFN_TEST(ui_theme_defaults_are_populated) {
     const UiThemeData theme;
-    DEFN_CHECK_EQ(theme.typography.body, 18);
+    DEFN_CHECK_EQ(theme.typography.body, 16);
     DEFN_CHECK_EQ(theme.spacing.section_gap, 16);
     DEFN_CHECK_EQ(theme.shape.corner_md, 8);
     DEFN_CHECK_EQ(theme.screen.panel_surface, std::string("panel"));
@@ -81,7 +81,7 @@ DEFN_TEST(ui_theme_role_lookups_resolve_tokens) {
 
     const auto title = theme.find_font_size_role("title");
     DEFN_REQUIRE(title.has_value());
-    DEFN_CHECK_EQ(*title, theme.typography.title);
+    DEFN_CHECK_EQ(*title, theme.typography.heading);
 
     const auto gap = theme.find_spacing_role("section_gap");
     DEFN_REQUIRE(gap.has_value());
@@ -107,4 +107,20 @@ DEFN_TEST(ui_theme_metrics_fall_back_when_missing) {
     DEFN_CHECK_EQ(theme.metric("unknown_metric"), 0);
 }
 
+DEFN_TEST(theme_patches_preserve_omitted_fields_and_allow_explicit_zero) {
+    UiThemeData base;
+    base.typography.display = 40;
+    base.text_styles["value"] = {.font_size_role = "display", .color_role = "accent", .outline_size = 4, .outline_role = "border"};
+    UiThemePatch patch;
+    patch.typography["body"] = 19;
+    patch.text_styles["value"].outline_size = 0;
+    patch.standard_card.width = 192;
+    const auto merged = apply_theme_patch(base, patch);
+    DEFN_CHECK_EQ(merged.typography.display, 40);
+    DEFN_CHECK_EQ(merged.typography.body, 19);
+    DEFN_CHECK_EQ(merged.text_styles.at("value").outline_size, 0);
+    DEFN_CHECK_EQ(merged.text_styles.at("value").color_role, "accent");
+    DEFN_CHECK_EQ(merged.responsive.standard_card.width, 192);
+    DEFN_CHECK_EQ(merged.responsive.standard_card.height, base.responsive.standard_card.height);
+}
 } // namespace

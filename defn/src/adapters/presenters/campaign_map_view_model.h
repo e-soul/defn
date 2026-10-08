@@ -52,6 +52,17 @@ struct CampaignMissionViewModel {
     CampaignMapAmbience ambience = CampaignMapAmbience::DUST;
     std::vector<std::string> enemy_labels;
 };
+struct CampaignSelection {
+    bool endless = false;
+    std::string level_id;
+    bool operator==(const CampaignSelection &) const = default;
+};
+struct CampaignItemPresentation {
+    std::string_view status;
+    std::string_view deployment;
+    bool locked = false;
+};
+[[nodiscard]] CampaignItemPresentation campaign_item_presentation(CampaignNodeState state);
 
 // What the campaign knows about the endless mode when the map is composed.
 struct CampaignEndlessPresentationSource {

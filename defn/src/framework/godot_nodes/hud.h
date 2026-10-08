@@ -8,12 +8,17 @@
 #include "hud_presenter.h"
 #include "icon_medallion.h"
 #include "match_result_cutscene_view_model.h"
+#include "responsive_layout.h"
 #include "score_screen_models.h"
+#include "ui_theme_provider.h"
+#include "ui_widgets.h"
 #include "unit_definition.h"
+#include <functional>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/color_rect.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
+#include <godot_cpp/classes/h_flow_container.hpp>
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -42,13 +47,20 @@ struct HudValueLabel {
     void set_value(const String &text);
 };
 
-class HUD : public CanvasLayer {
-    GDCLASS(HUD, CanvasLayer)
+class DeployTray;
+class HUD : public UiContextControl {
+    GDCLASS(HUD, UiContextControl)
 
   public:
     HUD();
 
     void _ready() override;
+    void apply_layout(const MatchLayout &layout);
+    void apply_appearance(const UiAppearance &appearance);
+    void set_layout_invalidation(std::function<void()> callback) { invalidate_layout_ = std::move(callback); }
+    HudLayoutMetrics measure_layout(float width);
+    std::size_t roster_size() const { return hud_input_.deploy_cards.size(); }
+    void set_pause_action(const Callable &action);
 
     void set_friendly_units(const std::vector<UnitConfig> &units);
     void set_level(const String &level_name);
@@ -72,6 +84,15 @@ class HUD : public CanvasLayer {
     static void _bind_methods();
 
   private:
+    bool configure_match_controls(const MatchLayout &layout);
+    void prepare_metrics();
+    void reserve_level_width();
+    void invalidate_measurement();
+    [[nodiscard]] std::array<Control *, 6> reading_groups() const;
+    HudLayoutMetrics measure_single_row() const;
+    void reflow_single_row();
+    void reflow_groups(HudArrangement arrangement);
+    void place_match_controls(const MatchLayout &layout);
     void build_ui();
     PanelContainer *build_plate(const char *name, std::string_view surface, Control::LayoutPreset preset);
     void build_energy_plate();
@@ -111,7 +132,32 @@ class HUD : public CanvasLayer {
     HudIntegrityMeter *integrity_meter = nullptr;
     std::optional<IntegrityTier> integrity_tier;
 
-    HBoxContainer *card_container = nullptr;
+    Control *match_controls_ = nullptr;
+    bool desktop_reference_ = false;
+    bool phone_landscape_ = false;
+    UiAppearance appearance_;
+    std::function<void()> invalidate_layout_;
+    bool measure_dirty_ = true;
+    bool appearance_ready_ = false;
+    float cached_measure_width_ = 0;
+    HudLayoutMetrics cached_measurement_;
+    DeployTray *tray_ = nullptr;
+    PanelContainer *metrics_ = nullptr;
+    HFlowContainer *flow_ = nullptr;
+    HBoxContainer *single_row_ = nullptr;
+    BoxContainer *info_row_ = nullptr;
+    HBoxContainer *energy_group_ = nullptr;
+    HBoxContainer *integrity_group_ = nullptr;
+    HBoxContainer *wave_group_ = nullptr;
+    HBoxContainer *score_group_ = nullptr;
+    PanelContainer *energy_plate_ = nullptr;
+    PanelContainer *info_plate_ = nullptr;
+    PanelContainer *integrity_plate_ = nullptr;
+    Button *pause_button_ = nullptr;
+    float metrics_width_ = 0;
+    HudArrangement arrangement_ = HudArrangement::Instruments;
+    bool show_pause_ = true;
+    bool reflowed_ = false;
     std::vector<DeployCardUI> deploy_cards;
     HudPresentationInput hud_input_{.energy = 100, .current_wave = 1, .total_waves = 3, .base_health = 300, .base_max_health = 300, .score = 0};
 

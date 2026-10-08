@@ -7,7 +7,10 @@
 #include "godot_color.h"
 #include "reposition_destination_marker.h"
 #include "selection_indicator.h"
+#include "ui_theme_provider.h"
 #include "unit.h"
+#include <godot_cpp/classes/input.hpp>
+#include <godot_cpp/classes/input_event_screen_touch.hpp>
 
 #include <algorithm>
 #include <cstdint>
@@ -111,6 +114,10 @@ void UnitSelectionController::set_gameplay_available(bool available) {
 
 bool UnitSelectionController::has_selection() const { return resolve_selected_unit() != nullptr; }
 
+void UnitSelectionController::set_presentation_scale(float scale, bool touch) {
+    touch_radius_ = touch ? UiThemeProvider::data().responsive.touch_pick_radius / std::max(0.001F, scale) : 0;
+}
+
 void UnitSelectionController::_process(double /*delta*/) {
     if (!selected_unit_id_.is_null() && resolve_selected_unit() == nullptr) {
         clear_selection();
@@ -139,9 +146,14 @@ void UnitSelectionController::_unhandled_input(const Ref<InputEvent> &event) {
     }
 
     const godot::Vector2 world_position = make_canvas_position_local(mouse_button->get_position());
+    touch_pointer_ = mouse_button->get_device() == InputEvent::DEVICE_ID_EMULATION;
     if (mouse_button->get_button_index() == MOUSE_BUTTON_LEFT) {
         if (Unit *candidate = pick_friendly(world_position); candidate != nullptr) {
-            select(candidate);
+            if (candidate == resolve_selected_unit() && mouse_button->get_device() == InputEvent::DEVICE_ID_EMULATION) {
+                clear_selection();
+            } else {
+                select(candidate);
+            }
             get_viewport()->set_input_as_handled();
             return;
         }
@@ -218,7 +230,10 @@ std::vector<Unit *> UnitSelectionController::query_friendly_candidates(const god
     const int child_count = entity_container_->get_child_count();
     for (int child_index = 0; child_index < child_count; ++child_index) {
         auto *unit = Object::cast_to<Unit>(entity_container_->get_child(child_index));
-        if (unit != nullptr && unit->contains_selection_point(world_position, config_.picking.fallback_radius) &&
+        const float radius = touch_pointer_ ? std::max(config_.picking.fallback_radius, touch_radius_) : config_.picking.fallback_radius;
+        if (unit != nullptr &&
+            (unit->contains_selection_point(world_position, radius) ||
+             (touch_pointer_ && unit->is_commandable() && unit->get_global_position().distance_to(world_position) <= radius)) &&
             std::ranges::find(candidates, unit) == candidates.end()) {
             candidates.push_back(unit);
         }

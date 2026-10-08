@@ -93,18 +93,47 @@ struct UiPalette {
 };
 
 struct UiTypography {
-    int banner = 72;
-    int display = 48;
-    int title = 34;
-    int menu = 32;
-    int section = 28;
-    int heading = 24;
-    int stat = 22;
-    int subheading = 20;
-    int body = 18;
-    int caption = 15;
-    int card_body = 14;
-    int micro = 13;
+    int supporting = 14;
+    int body = 16;
+    int heading = 22;
+    int display = 32;
+    [[nodiscard]] std::optional<int> slot(std::string_view name) const;
+};
+
+enum class UiProfile { Standard, Small };
+
+struct UiCardGeometry {
+    float width = 176;
+    float height = 48;
+    float portrait = 24;
+};
+
+struct UiResponsiveData {
+    UiTypography small_type{16, 18, 24, 36};
+    UiCardGeometry standard_card;
+    UiCardGeometry small_card{192, 48, 28};
+    float small_short_edge = 600;
+    float hysteresis = 16;
+    float touch_target = 48;
+    float pointer_target = 40;
+    float margin = 8;
+    float phone_edge_margin = 4;
+    float gap = 8;
+    float gesture_slop = 8;
+    float metrics_height = 56;
+    float tall_metrics_height = 104;
+    float wide_pointer_width = 900;
+    float wide_pointer_height = 500;
+    float gutter_field_fraction = 0.9F;
+    float compact_hud_icon_size = 24;
+    float compact_integrity_segment_width = 18;
+    float tray_navigation = 48;
+    float campaign_min_width = 1600;
+    float campaign_min_height = 1000;
+    // Only sky is eligible for a fixed overlay. The base and all belts are below this zone.
+    float sky_bottom = 0.54F;
+    float bottom_top = 0.92F;
+    float touch_pick_radius = 24;
 };
 
 struct UiSpacing {
@@ -208,6 +237,10 @@ struct UiScreenStyle {
 struct UiThemeData {
     UiPalette palette;
     UiTypography typography;
+    UiResponsiveData responsive;
+    std::map<std::string, std::string, std::less<>> type_roles = {{"banner", "display"},     {"title", "heading"},  {"menu", "body"},
+                                                                  {"section", "heading"},    {"stat", "body"},      {"subheading", "heading"},
+                                                                  {"caption", "supporting"}, {"card_body", "body"}, {"micro", "supporting"}};
     UiSpacing spacing;
     UiShape shape;
     UiMotion motion;
@@ -235,6 +268,30 @@ struct UiThemeData {
     [[nodiscard]] std::optional<int> find_shape_role(std::string_view role) const;
     [[nodiscard]] std::optional<float> find_motion_role(std::string_view role) const;
 };
+
+struct UiCardPatch {
+    std::optional<float> width;
+    std::optional<float> height;
+    std::optional<float> portrait;
+};
+struct UiTextStylePatch {
+    std::optional<std::string> font_size_role;
+    std::optional<std::string> color_role;
+    std::optional<int> outline_size;
+    std::optional<std::string> outline_role;
+};
+// Scoped files supply only these tokens; omission always preserves the base value.
+struct UiThemePatch {
+    std::map<std::string, int, std::less<>> typography;
+    std::map<std::string, int, std::less<>> spacing;
+    std::map<std::string, int, std::less<>> metrics;
+    std::map<std::string, UiTextStylePatch, std::less<>> text_styles;
+    UiCardPatch standard_card;
+    UiCardPatch small_card;
+    std::optional<float> gap;
+    std::optional<float> margin;
+};
+[[nodiscard]] UiThemeData apply_theme_patch(UiThemeData base, const UiThemePatch &patch);
 
 } // namespace defn
 

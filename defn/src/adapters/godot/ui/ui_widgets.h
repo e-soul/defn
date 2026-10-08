@@ -5,12 +5,15 @@
 #define UI_WIDGETS_H
 
 #include "icon_medallion.h"
+#include "responsive_layout.h"
 
 #include <godot_cpp/classes/base_button.hpp>
 #include <godot_cpp/classes/button.hpp>
 #include <godot_cpp/classes/control.hpp>
+#include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/classes/h_box_container.hpp>
 #include <godot_cpp/classes/label.hpp>
+#include <godot_cpp/classes/margin_container.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
@@ -21,6 +24,37 @@
 #include <string_view>
 
 namespace defn {
+// Typed notification boundary for mounted screens; only the scene root observes the display.
+class UiContextControl : public godot::Control {
+    GDCLASS(UiContextControl, godot::Control)
+  public:
+    void set_ui_context(const UiContext &context) {
+        context_ = context;
+        context_changed();
+    }
+    [[nodiscard]] const UiContext &ui_context() const { return context_; }
+
+  protected:
+    static void _bind_methods() {}
+    virtual void context_changed() {}
+    UiContext context_;
+};
+
+class UiButton : public godot::Button {
+    GDCLASS(UiButton, godot::Button)
+  public:
+    void set_variant(std::string_view variant);
+    void _notification(int what);
+
+  protected:
+    static void _bind_methods() {}
+
+  private:
+    std::string variant_;
+};
+
+float wrapped_text_height(const godot::Ref<godot::Font> &font, const godot::String &text, float width, int size);
+void place_wrapped_label(godot::Label *label, const godot::String &text, const godot::Rect2 &rect);
 
 /// One instrument reading: a tinted medallion followed by whatever the caller adds after it. The medallion
 /// comes back with the row because a reading such as base integrity re-tints its own as the value changes.
@@ -45,6 +79,7 @@ struct CardSpec {
 /// The slots every card in the game is assembled from. A card fills whichever ones it has content for; the
 /// frame, its padding and its selected treatment stay with the theme rather than with each call site.
 struct CardNodes {
+    godot::MarginContainer *margins = nullptr;
     godot::Button *button = nullptr;
     /// Holds the icon, then the text column, along the direction the layout asked for.
     godot::BoxContainer *body = nullptr;

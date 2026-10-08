@@ -5,25 +5,58 @@
 
 #include "godot_string.h"
 
+#include <godot_cpp/classes/packed_scene.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
 #include <cmath>
+#include <optional>
 #include <vector>
 
 namespace defn {
 
-Parallax2D *GameBackgroundBuilder::build(const String &background_path, const GameplayRules &rules) {
+namespace {
+struct BackgroundVisual {
+    Node2D *node;
+    godot::Vector2 source_size;
+};
+
+std::optional<BackgroundVisual> load_background_visual(const String &path) {
     auto *loader = ResourceLoader::get_singleton();
-    Ref<Texture2D> background_texture = loader->load(background_path);
-    if (!background_texture.is_valid()) {
-        UtilityFunctions::printerr("GameBackgroundBuilder: Failed to load background: ", background_path);
+    if (path.get_extension() == "tscn") {
+        const Ref<PackedScene> scene = loader->load(path);
+        if (scene.is_valid()) {
+            auto *instance = scene->instantiate();
+            auto *visual = Object::cast_to<Node2D>(instance);
+            const godot::Vector2 size = visual == nullptr ? godot::Vector2() : godot::Vector2(visual->get_meta("source_size", godot::Vector2()));
+            if (visual != nullptr && size.x > 0 && size.y > 0) {
+                return BackgroundVisual{.node = visual, .source_size = size};
+            }
+            memdelete(instance);
+        }
+    } else {
+        const Ref<Texture2D> texture = loader->load(path);
+        if (texture.is_valid()) {
+            auto *sprite = memnew(Sprite2D);
+            sprite->set_texture(texture);
+            sprite->set_centered(false);
+            return BackgroundVisual{.node = sprite, .source_size = texture->get_size()};
+        }
+    }
+    UtilityFunctions::printerr("GameBackgroundBuilder: Failed to load background: ", path);
+    return std::nullopt;
+}
+} // namespace
+
+Parallax2D *GameBackgroundBuilder::build(const String &background_path, const GameplayRules &rules) {
+    const auto visual = load_background_visual(background_path);
+    if (!visual) {
         return nullptr;
     }
 
-    const Vector2 texture_size = background_texture->get_size();
+    const godot::Vector2 texture_size = visual->source_size;
     const real_t scale_factor = rules.viewport_height / texture_size.y;
     const real_t display_width = texture_size.x * scale_factor;
 
@@ -37,11 +70,8 @@ Parallax2D *GameBackgroundBuilder::build(const String &background_path, const Ga
     parallax->set_repeat_times(repeat_times);
     parallax->set_scroll_scale(Vector2(1.0, 1.0));
 
-    auto *sprite = memnew(Sprite2D);
-    sprite->set_texture(background_texture);
-    sprite->set_centered(false);
-    sprite->set_scale(Vector2(scale_factor, scale_factor));
-    parallax->add_child(sprite);
+    visual->node->set_scale(Vector2(scale_factor, scale_factor));
+    parallax->add_child(visual->node);
 
     return parallax;
 }
@@ -50,16 +80,14 @@ Node2D *GameBackgroundBuilder::build_stack(const std::vector<BackgroundLayer> &l
     auto *root = memnew(Node2D);
     root->set_name("Background");
 
-    auto *loader = ResourceLoader::get_singleton();
     int drawn = 0;
     for (const BackgroundLayer &layer : layers) {
-        Ref<Texture2D> texture = loader->load(to_godot_string(layer.path));
-        if (!texture.is_valid()) {
-            UtilityFunctions::printerr("GameBackgroundBuilder: Failed to load background layer: ", to_godot_string(layer.path));
+        const auto visual = load_background_visual(to_godot_string(layer.path));
+        if (!visual) {
             continue;
         }
 
-        const Vector2 texture_size = texture->get_size();
+        const godot::Vector2 texture_size = visual->source_size;
         // Every layer is placed by fractions of viewport height, so each one's stored resolution is its own
         // business: the sky is authored at half the density of the floor and lands in exactly the right place.
         const real_t display_height = rules.viewport_height * layer.height_ratio;
@@ -77,12 +105,9 @@ Node2D *GameBackgroundBuilder::build_stack(const std::vector<BackgroundLayer> &l
         // long stretches where the front line is not advancing.
         parallax->set_autoscroll(Vector2(layer.autoscroll, 0.0));
 
-        auto *sprite = memnew(Sprite2D);
-        sprite->set_texture(texture);
-        sprite->set_centered(false);
-        sprite->set_scale(Vector2(scale_factor, scale_factor));
-        sprite->set_position(Vector2(0, (rules.viewport_height * layer.bottom_ratio) - display_height));
-        parallax->add_child(sprite);
+        visual->node->set_scale(Vector2(scale_factor, scale_factor));
+        visual->node->set_position(Vector2(0, (rules.viewport_height * layer.bottom_ratio) - display_height));
+        parallax->add_child(visual->node);
 
         // Tree order is draw order, and the list is authored back to front, so appending is all the depth
         // sorting this needs.

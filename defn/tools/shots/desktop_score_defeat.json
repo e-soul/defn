@@ -1,0 +1,28 @@
+{
+  "name": "desktop_score_defeat",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 168,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "Use --fixture max_roster --size 1920x1080 --no-cursor for desktop defeat with an owned collection.",
+    "No deployments: the normal enemy waves destroy the base and open the real result overlay."
+  ],
+  "timeline": [
+    {"at": 154, "action": "still", "label": "results"},
+    {"at": 154.1, "action": "check", "labels_visible": ["DEFEAT"], "buttons_enabled": ["Endless", "Retry", "Campaign"]},
+    {"at": 155, "action": "click", "label": "Your upgrades (3)", "travel": 0.1},
+    {"at": 156, "action": "still", "label": "owned"},
+    {"at": 157, "action": "resize", "size": [960, 540]},
+    {"at": 158, "action": "still", "label": "owned-compact"},
+    {"at": 159, "action": "click", "label": "Back", "travel": 0.1},
+    {"at": 160, "action": "still", "label": "results-compact"},
+    {"at": 161, "action": "resize", "size": [1920, 1080]},
+    {"at": 162, "action": "still", "label": "results-restored"},
+    {"at": 163, "action": "click", "label": "Retry", "travel": 0.1},
+    {"at": 165, "action": "check", "labels_visible": ["ENERGY", "WAVE", "SCORE"]},
+    {"at": 166, "action": "still", "label": "retry"}
+  ]
+}

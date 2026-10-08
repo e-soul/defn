@@ -1,0 +1,25 @@
+{
+  "name": "options_panels",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 5,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "timeline": [
+    { "at": 0.2, "action": "key" },
+    { "at": 0.6, "action": "click", "label": "Main Menu", "travel": 0.1 },
+    { "at": 1.1, "action": "click", "label": "Options", "travel": 0.1 },
+    { "at": 1.7, "action": "check", "title": "OPTIONS", "labels_visible": ["Video", "Display Mode", "Resolution", "VSync", "Audio", "Master Volume", "100%"], "buttons_visible": ["Back"] },
+    { "at": 1.8, "action": "still", "label": "desktop" },
+    { "at": 2.0, "action": "resize", "size": [960, 540] },
+    { "at": 2.6, "action": "check", "labels_visible": ["Master Volume", "100%"], "buttons_visible": ["Back"] },
+    { "at": 2.7, "action": "still", "label": "desktop_small" },
+    { "at": 3.0, "action": "resize", "size": [667, 220] },
+    { "at": 3.6, "action": "check", "buttons_visible": ["Back"] },
+    { "at": 3.7, "action": "still", "label": "desktop_short" },
+    { "at": 4.0, "action": "click", "label": "Back", "travel": 0.1 },
+    { "at": 4.2, "action": "resize", "size": [960, 540] },
+    { "at": 4.8, "action": "check", "title": "DEFN", "buttons_visible": ["Play", "Options", "Quit"] }
+  ]
+}

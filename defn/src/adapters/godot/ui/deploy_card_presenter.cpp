@@ -31,14 +31,17 @@ Ref<Texture2D> load_portrait(const std::string &path) {
 
 } // namespace
 
-Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const Callable &pressed_action) {
+DeployCardNodes DeployCardPresenter::create_nodes(const DeployCardViewModel &view_model, const Callable &pressed_action) {
     const CardNodes card = make_card({.variant = "deploy_card", .layout = CardLayout::Horizontal}, pressed_action);
+    card.text->add_theme_constant_override("separation", UiThemeProvider::data().metric("deploy_card_text_gap", 0));
+    card.button->set_tooltip_text(to_godot_string(view_model.title));
 
-    // The portrait leads, then the name over its cost: the same icon-then-text reading order the upgrade and
-    // roster cards use, turned on its side because a deploy card is wide rather than tall.
-    add_card_icon(card, make_card_portrait(load_portrait(view_model.portrait_path), UiThemeProvider::metric("deploy_card_portrait_size", 80)));
+    // Desktop keeps the original name above its cost. DeployTray moves Cost alongside the name on mobile.
+    auto *portrait = make_card_portrait(load_portrait(view_model.portrait_path), UiThemeProvider::metric("deploy_card_portrait_size", 80));
+    add_card_icon(card, portrait);
 
-    card.text->add_child(make_card_title(to_godot_string(view_model.title)));
+    auto *title = make_card_title(to_godot_string(view_model.title));
+    card.text->add_child(title);
 
     // The cost carries the same bolt the HUD's energy plate does, tinted from the same `energy` role, rather
     // than an emoji drawn from whichever colour font the machine happens to ship.
@@ -46,11 +49,16 @@ Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const
     cost_row->set_name("Cost");
     cost_row->add_theme_constant_override("separation", UiThemeProvider::spacing("xs"));
     cost_row->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
-    cost_row->add_child(make_icon("energy", UiThemeProvider::metric("card_icon_size", 20)));
+    auto *cost_icon = make_icon("energy", UiThemeProvider::metric("card_icon_size", 20));
+    cost_row->add_child(cost_icon);
     cost_row->add_child(make_label(String::num_int64(view_model.cost), "card_cost"));
     card.text->add_child(cost_row);
 
-    return card.button;
+    return {.frame = card, .portrait = portrait, .title = title, .cost = cost_row, .cost_icon = cost_icon};
+}
+
+Button *DeployCardPresenter::create(const DeployCardViewModel &view_model, const Callable &pressed_action) {
+    return create_nodes(view_model, pressed_action).frame.button;
 }
 
 Button *DeployCardPresenter::create(const UnitConfig &config, const Callable &pressed_action) {

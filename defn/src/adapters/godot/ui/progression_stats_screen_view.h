@@ -27,6 +27,7 @@ class ProgressionStatsScreenView : public godot::VBoxContainer {
     void show_owned_upgrades();
     void show_dossier();
     void go_back();
+    void _notification(int what);
 
   protected:
     static void _bind_methods();
@@ -43,6 +44,7 @@ class ProgressionStatsScreenView : public godot::VBoxContainer {
     bool showing_all_upgrades_ = false;
     godot::Label *exact_detail_label_ = nullptr;
     godot::String active_stat_id_;
+    godot::BoxContainer *dossier_columns_ = nullptr;
 };
 
 } // namespace defn

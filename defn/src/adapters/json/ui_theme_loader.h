@@ -19,6 +19,8 @@ class UiThemeLoader {
 
     static std::optional<UiThemeData> load(const godot::String &path);
     static UiThemeData load_from_data(const godot::Dictionary &data);
+    static std::optional<UiThemePatch> load_patch(const godot::String &path);
+    static UiThemePatch patch_from_data(const godot::Dictionary &data);
 };
 
 } // namespace defn

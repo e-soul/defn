@@ -1,0 +1,146 @@
+{
+  "name": "campaign_carousel_endless",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 6,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "timeline": [
+    {
+      "at": 0.2,
+      "action": "key"
+    },
+    {
+      "at": 0.5,
+      "action": "click",
+      "label": "Main Menu",
+      "travel": 0.1
+    },
+    {
+      "at": 0.9,
+      "action": "click",
+      "label": "Play",
+      "travel": 0.1
+    },
+    {
+      "at": 1.2,
+      "action": "click",
+      "label": "Campaign",
+      "travel": 0.1
+    },
+    {
+      "at": 1.8,
+      "action": "still",
+      "label": "portrait-replay"
+    },
+    {
+      "at": 2.0,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 2.3,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 2.6,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 2.9,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 3.2,
+      "action": "click",
+      "label": "Next mission",
+      "travel": 0.1
+    },
+    {
+      "at": 3.6,
+      "action": "check",
+      "labels_visible": [
+        "STANDING ENGAGEMENT",
+        "UNBOUNDED",
+        "UNTIL THE BASE FALLS",
+        "5 / 5 secured"
+      ],
+      "buttons_visible": [
+        "BEGIN WATCH"
+      ]
+    },
+    {
+      "at": 3.7,
+      "action": "still",
+      "label": "portrait-endless"
+    },
+    {
+      "at": 3.9,
+      "action": "resize",
+      "size": [
+        864,
+        230
+      ]
+    },
+    {
+      "at": 4.2,
+      "action": "check",
+      "labels_visible": [
+        "STANDING ENGAGEMENT",
+        "UNBOUNDED",
+        "UNTIL THE BASE FALLS"
+      ],
+      "buttons_visible": [
+        "BEGIN WATCH",
+        "BACK"
+      ]
+    },
+    {
+      "at": 4.3,
+      "action": "still",
+      "label": "short-landscape-endless"
+    },
+    {
+      "at": 4.5,
+      "action": "resize",
+      "size": [
+        667,
+        322
+      ]
+    },
+    {
+      "at": 4.8,
+      "action": "still",
+      "label": "landscape-endless"
+    },
+    {
+      "at": 5.0,
+      "action": "click",
+      "label": "BEGIN WATCH",
+      "travel": 0.1
+    },
+    {
+      "at": 5.6,
+      "action": "check",
+      "friendlies": 0,
+      "labels_visible": [
+        "ENERGY",
+        "WAVE",
+        "SCORE"
+      ]
+    },
+    {
+      "at": 5.7,
+      "action": "still",
+      "label": "endless-deployment"
+    }
+  ]
+}

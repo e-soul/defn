@@ -159,19 +159,49 @@ UiPalette parse_palette(const Dictionary &source, UiPalette palette) {
 }
 
 UiTypography parse_typography(const Dictionary &source, UiTypography typography) {
-    typography.banner = VariantTools::as_int(source.get("banner", typography.banner));
+    typography.supporting = VariantTools::as_int(source.get("supporting", typography.supporting));
     typography.display = VariantTools::as_int(source.get("display", typography.display));
-    typography.title = VariantTools::as_int(source.get("title", typography.title));
-    typography.menu = VariantTools::as_int(source.get("menu", typography.menu));
-    typography.section = VariantTools::as_int(source.get("section", typography.section));
     typography.heading = VariantTools::as_int(source.get("heading", typography.heading));
-    typography.stat = VariantTools::as_int(source.get("stat", typography.stat));
-    typography.subheading = VariantTools::as_int(source.get("subheading", typography.subheading));
     typography.body = VariantTools::as_int(source.get("body", typography.body));
-    typography.caption = VariantTools::as_int(source.get("caption", typography.caption));
-    typography.card_body = VariantTools::as_int(source.get("card_body", typography.card_body));
-    typography.micro = VariantTools::as_int(source.get("micro", typography.micro));
     return typography;
+}
+
+UiCardGeometry parse_card_geometry(const Dictionary &source, UiCardGeometry card) {
+    card.width = VariantTools::as_float(source.get("width", card.width));
+    card.height = VariantTools::as_float(source.get("height", card.height));
+    card.portrait = VariantTools::as_float(source.get("portrait", card.portrait));
+    return card;
+}
+
+UiResponsiveData parse_responsive(const Dictionary &source, UiResponsiveData data) {
+    data.small_type = parse_typography(source.get("small_type", Dictionary()), data.small_type);
+    data.standard_card = parse_card_geometry(source.get("standard_card", Dictionary()), data.standard_card);
+    data.small_card = parse_card_geometry(source.get("small_card", Dictionary()), data.small_card);
+    const std::array<std::pair<const char *, float *>, 21> fields = {{{"small_short_edge", &data.small_short_edge},
+                                                                      {"hysteresis", &data.hysteresis},
+                                                                      {"touch_target", &data.touch_target},
+                                                                      {"pointer_target", &data.pointer_target},
+                                                                      {"margin", &data.margin},
+                                                                      {"phone_edge_margin", &data.phone_edge_margin},
+                                                                      {"gap", &data.gap},
+                                                                      {"gesture_slop", &data.gesture_slop},
+                                                                      {"metrics_height", &data.metrics_height},
+                                                                      {"tall_metrics_height", &data.tall_metrics_height},
+                                                                      {"wide_pointer_width", &data.wide_pointer_width},
+                                                                      {"wide_pointer_height", &data.wide_pointer_height},
+                                                                      {"gutter_field_fraction", &data.gutter_field_fraction},
+                                                                      {"compact_hud_icon_size", &data.compact_hud_icon_size},
+                                                                      {"compact_integrity_segment_width", &data.compact_integrity_segment_width},
+                                                                      {"tray_navigation", &data.tray_navigation},
+                                                                      {"campaign_min_width", &data.campaign_min_width},
+                                                                      {"campaign_min_height", &data.campaign_min_height},
+                                                                      {"sky_bottom", &data.sky_bottom},
+                                                                      {"bottom_top", &data.bottom_top},
+                                                                      {"touch_pick_radius", &data.touch_pick_radius}}};
+    for (const auto &[key, value] : fields) {
+        *value = VariantTools::as_float(source.get(key, *value));
+    }
+    return data;
 }
 
 UiSpacing parse_spacing(const Dictionary &source, UiSpacing spacing) {
@@ -329,11 +359,73 @@ std::optional<UiThemeData> UiThemeLoader::load(const String &path) {
     return data ? std::optional<UiThemeData>(load_from_data(*data)) : std::nullopt;
 }
 
+std::optional<UiThemePatch> UiThemeLoader::load_patch(const String &path) {
+    const auto data = JsonFileLoader::load_dictionary(path, "UiThemeLoader");
+    return data ? std::optional<UiThemePatch>(patch_from_data(*data)) : std::nullopt;
+}
+UiThemePatch UiThemeLoader::patch_from_data(const Dictionary &data) {
+    UiThemePatch patch;
+    auto integers = [](const Dictionary &source, auto &target) {
+        for (const Variant &key : Array(source.keys())) {
+            target.insert_or_assign(to_std_string(String(key)), VariantTools::as_int(source[key]));
+        }
+    };
+    integers(data.get("typography", Dictionary()), patch.typography);
+    integers(data.get("spacing", Dictionary()), patch.spacing);
+    integers(data.get("metrics", Dictionary()), patch.metrics);
+    const Dictionary styles = data.get("text_styles", Dictionary());
+    for (const Variant &key : Array(styles.keys())) {
+        const Dictionary source = styles[key];
+        UiTextStylePatch style;
+        if (source.has("font_size")) {
+            style.font_size_role = to_std_string(String(source["font_size"]));
+        }
+        if (source.has("color")) {
+            style.color_role = to_std_string(String(source["color"]));
+        }
+        if (source.has("outline_size")) {
+            style.outline_size = VariantTools::as_int(source["outline_size"]);
+        }
+        if (source.has("outline")) {
+            style.outline_role = to_std_string(String(source["outline"]));
+        }
+        patch.text_styles.emplace(to_std_string(String(key)), std::move(style));
+    }
+    auto card = [](const Dictionary &source) {
+        UiCardPatch result;
+        if (source.has("width")) {
+            result.width = VariantTools::as_float(source["width"]);
+        }
+        if (source.has("height")) {
+            result.height = VariantTools::as_float(source["height"]);
+        }
+        if (source.has("portrait")) {
+            result.portrait = VariantTools::as_float(source["portrait"]);
+        }
+        return result;
+    };
+    const Dictionary responsive = data.get("responsive", Dictionary());
+    patch.standard_card = card(responsive.get("standard_card", Dictionary()));
+    patch.small_card = card(responsive.get("small_card", Dictionary()));
+    if (responsive.has("gap")) {
+        patch.gap = VariantTools::as_float(responsive["gap"]);
+    }
+    if (responsive.has("margin")) {
+        patch.margin = VariantTools::as_float(responsive["margin"]);
+    }
+    return patch;
+}
+
 UiThemeData UiThemeLoader::load_from_data(const Dictionary &data) {
     UiThemeData theme;
     theme.font_path = to_std_string(String(data.get("font", "")));
     theme.palette = parse_palette(data.get("palette", Dictionary()), theme.palette);
     theme.typography = parse_typography(data.get("typography", Dictionary()), theme.typography);
+    theme.responsive = parse_responsive(data.get("responsive", Dictionary()), theme.responsive);
+    const Dictionary type_roles = data.get("type_roles", Dictionary());
+    for (const Variant &key : Array(type_roles.keys())) {
+        theme.type_roles.insert_or_assign(to_std_string(String(key)), to_std_string(String(type_roles[key])));
+    }
     theme.spacing = parse_spacing(data.get("spacing", Dictionary()), theme.spacing);
     theme.shape = parse_shape(data.get("shape", Dictionary()), theme.shape);
     theme.motion = parse_motion(data.get("motion", Dictionary()), theme.motion);

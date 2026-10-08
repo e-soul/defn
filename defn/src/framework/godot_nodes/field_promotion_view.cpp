@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "field_promotion_view.h"
+#include "ui_theme_provider.h"
 
 #include "animation_controller.h"
 #include "field_promotion_effect.h"
@@ -62,6 +63,9 @@ void FieldPromotionView::show_promotion() {
 
 void FieldPromotionView::create_insignia() {
     insignia_ = make_label(String::chr(0x2605), "promotion_star");
+    // World annotations sit outside the themed screen subtree. Keep their style and reference-space size.
+    UiThemeProvider::apply_to(insignia_);
+    insignia_->add_theme_font_size_override("font_size", static_cast<int>(UiThemeProvider::metric("world_promotion_font_size", 72)));
     insignia_->set_name("FieldPromotionInsignia");
     insignia_->set_z_index(75);
     add_child(insignia_);

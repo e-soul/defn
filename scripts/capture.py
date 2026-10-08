@@ -13,7 +13,8 @@ picks the right engine flags for the mode, and hands the result to ffmpeg when o
 Modes:
   --video   Movie Maker mode. The frame delta is pinned to exactly 1/fps and rendering is decoupled from
             real time, so the recording is smooth at the target rate however slowly it renders. Output is
-            the project viewport size (1920x1080) regardless of the window or the display's DPI.
+            the full window at render density; --size chooses its logical dimensions. A private
+            project stages Movie Maker's fixed output dimensions without changing the game project.
   --stills  No recording, fixed delta, frames as fast as the machine manages. Stills come off the window
             backbuffer, which on a HiDPI display is 4K -- supersampled and downscaled here, which is
             sharper than grabbing 1080p directly.
@@ -24,13 +25,20 @@ Modes:
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import json
 import os
+import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
+from capture_fixtures import FIXTURE_NAMES, capture_profile
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
 PROJECT_DIR = REPO_ROOT / "defn"
 SHOTS_DIR = PROJECT_DIR / "tools" / "shots"
 DEFAULT_OUT_DIR = REPO_ROOT / "build" / "capture"
@@ -74,13 +82,69 @@ def resolve_shot(shot: str) -> tuple[str, str]:
     return f"res://tools/shots/{path.name}", path.stem
 
 
-def run_godot(godot: str, args: list[str], verbose: bool) -> None:
-    command = [godot, "--path", str(PROJECT_DIR), *args]
+def run_godot(godot: str, args: list[str], verbose: bool, env=None,
+              project: Path = PROJECT_DIR) -> tuple[int, int] | None:
+    command = [godot, "--path", str(project), "--disable-vsync", *args]
     if verbose:
         print(" ".join(command))
-    result = subprocess.run(command, cwd=REPO_ROOT, check=False)
-    if result.returncode != 0:
-        sys.exit(f"Godot exited with {result.returncode}")
+    # The Windows console launcher can lose the child's failure exit status. Keep rig checks authoritative.
+    failed = False
+    render_size = None
+    with subprocess.Popen(command, cwd=REPO_ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                          text=True, errors="replace") as process:
+        for line in process.stdout:
+            print(line, end="")
+            failed |= "[capture] check failed" in line or "[capture] missing visible button" in line or "SCRIPT ERROR:" in line
+            if match := re.search(r"render pixels: \((\d+), (\d+)\)", line):
+                render_size = tuple(map(int, match.groups()))
+        returncode = process.wait()
+    if returncode != 0 or failed:
+        sys.exit(f"Godot capture failed (exit {returncode})")
+    return render_size
+
+
+@contextmanager
+def movie_project(out_dir: Path, render_size: tuple[int, int], source_project: Path = PROJECT_DIR):
+    """Movie Maker fixes its dimensions before the runner can resize the window.
+
+    Share already-imported resources, but isolate settings and writable engine caches. Python's
+    Windows rmtree removes junctions themselves rather than traversing their resource targets.
+    """
+    with tempfile.TemporaryDirectory(prefix="movie-project-", dir=out_dir) as temporary:
+        project = Path(temporary).resolve()
+        if project.parent != out_dir.resolve():
+            raise ValueError("Movie staging directory escaped the capture output directory")
+
+        def link(source: Path, destination: Path) -> None:
+            if sys.platform == "win32":
+                import _winapi
+                _winapi.CreateJunction(str(source), str(destination))
+            else:
+                destination.symlink_to(source, target_is_directory=True)
+
+        for name in ("assets", "art", "bin", "data", "scenes", "tools"):
+            if (source_project / name).exists():
+                link(source_project / name, project / name)
+        if (source_project / "generated").exists():
+            link(source_project / "generated", project / "generated")
+        for name in ("defn_core.gdextension", "default_bus_layout.tres", "icon.svg", "icon.svg.import"):
+            if (source_project / name).is_file():
+                shutil.copy2(source_project / name, project / name)
+        cache = project / ".godot"
+        cache.mkdir()
+        link(source_project / ".godot/imported", cache / "imported")
+        for name in ("extension_list.cfg", "uid_cache.bin", "global_script_class_cache.cfg"):
+            source = source_project / ".godot" / name
+            if source.is_file():
+                shutil.copy2(source, cache / name)
+        settings = (source_project / "project.godot").read_text(encoding="utf-8")
+        for name, value in zip(("width", "height"), render_size):
+            settings, count = re.subn(rf"(?m)^window/size/viewport_{name}=\d+$",
+                                      f"window/size/viewport_{name}={value}", settings)
+            if count != 1:
+                raise ValueError(f"Expected one project viewport {name}")
+        (project / "project.godot").write_text(settings, encoding="utf-8")
+        yield project
 
 
 def downscale_stills(stills_dir: Path, name: str, width: int) -> None:
@@ -166,7 +230,10 @@ def main() -> None:
                         help="re-encode the existing recording without playing the shot again")
     parser.add_argument("--no-cursor", action="store_true", help="record without the drawn pointer")
     parser.add_argument("--godot", default="", help=f"Godot executable (default: ${GODOT_EXECUTABLE_ENV_VAR})")
+    parser.add_argument("--project-dir", type=Path, default=PROJECT_DIR, help="project snapshot to capture, including isolated Web texture staging")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--size", default="", help="logical window size, for example 390x844")
+    parser.add_argument("--fixture", choices=FIXTURE_NAMES, help="isolated save fixture; never reads or writes the player's save")
     args = parser.parse_args()
 
     if not (args.video or args.stills or args.recon or args.encode_only):
@@ -187,6 +254,18 @@ def main() -> None:
         return
 
     godot = prefer_console_build(resolve_godot(args.godot))
+    run_env = None
+    if args.fixture:
+        fixture = out_dir / "user"
+        run_env = os.environ.copy()
+        for key, suffix in {"APPDATA": "Roaming", "LOCALAPPDATA": "Local", "XDG_DATA_HOME": "xdg_data", "XDG_CONFIG_HOME": "xdg_config", "XDG_CACHE_HOME": "xdg_cache"}.items():
+            directory = fixture / suffix
+            directory.mkdir(parents=True, exist_ok=True)
+            run_env[key] = str(directory)
+        profile = capture_profile(args.fixture)
+        for directory in (fixture / "Roaming/Godot/app_userdata/defn", fixture / "xdg_data/godot/app_userdata/defn"):
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / "save_data.json").write_text(json.dumps(profile), encoding="utf-8")
 
     level_args = ["--level", args.level] if args.level else []
 
@@ -195,19 +274,25 @@ def main() -> None:
             godot,
             ["--fixed-fps", str(args.fps), "--script", "tools/capture_runner.gd", "--",
              "--recon", "--recon-seconds", str(args.recon_seconds), *level_args],
-            args.verbose,
+            args.verbose, run_env, args.project_dir,
         )
         return
 
     shot_res_path, name = resolve_shot(args.shot)
-    runner_args = ["--script", "tools/capture_runner.gd", "--", "--shot", shot_res_path, *level_args]
+    if args.video and args.size:
+        shot = json.loads((SHOTS_DIR / Path(shot_res_path).name).read_text(encoding="utf-8"))
+        if any(event.get("action") == "resize" for event in shot.get("timeline", [])):
+            sys.exit("Movie Maker has fixed dimensions; record a fixed-size shot and use --stills for resize shots.")
+    runner_args = [*(["--resolution", args.size] if args.size else []), "--script", "tools/capture_runner.gd", "--", "--shot", shot_res_path, *level_args,
+                   *(["--logical-size", args.size] if args.size else [])]
     if args.no_cursor:
         runner_args.append("--no-cursor")
 
+    render_size = None
     if args.stills:
         stills_dir.mkdir(parents=True, exist_ok=True)
         print(f"Stills pass: {name}")
-        run_godot(godot, ["--fixed-fps", str(args.fps), *runner_args, "--stills-dir", stills_dir.as_posix()], args.verbose)
+        render_size = run_godot(godot, ["--fixed-fps", str(args.fps), *runner_args, "--stills-dir", stills_dir.as_posix()], args.verbose, run_env, args.project_dir)
         if args.still_width:
             downscale_stills(stills_dir, name, args.still_width)
 
@@ -216,7 +301,17 @@ def main() -> None:
         print(f"Recording: {name} -> {avi.relative_to(REPO_ROOT)}")
         # The movie writer resolves its path itself and silently fails on a relative one, so it gets an
         # absolute path and a directory that already exists.
-        run_godot(godot, ["--write-movie", str(avi), "--fixed-fps", str(args.fps), *runner_args], args.verbose)
+        movie_args = ["--write-movie", str(avi), "--fixed-fps", str(args.fps), *runner_args]
+        if args.size:
+            if render_size is None:
+                render_size = run_godot(godot, ["--fixed-fps", str(args.fps), *runner_args,
+                                               "--recon", "--recon-seconds", "1"], args.verbose, run_env, args.project_dir)
+            if render_size is None:
+                sys.exit("Capture runner did not report the render dimensions for Movie Maker.")
+            with movie_project(out_dir, render_size, args.project_dir) as project:
+                run_godot(godot, movie_args, args.verbose, run_env, project)
+        else:
+            run_godot(godot, movie_args, args.verbose, run_env, args.project_dir)
         if not avi.is_file():
             sys.exit("Godot produced no recording.")
         print(f"  {avi.relative_to(REPO_ROOT)}  ({avi.stat().st_size / 1e6:.1f} MB)")

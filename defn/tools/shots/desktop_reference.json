@@ -1,0 +1,28 @@
+{
+  "name": "desktop_reference",
+  "level": "level_05",
+  "seed": 20260915,
+  "fps": 60,
+  "duration_seconds": 8,
+  "fade_in": 0,
+  "fade_out": 0,
+  "cursor": { "input_chip": false },
+  "timeline": [
+    { "at": 0.2, "action": "still", "label": "opening" },
+    { "at": 0.25, "action": "check", "hud_readouts": ["ENERGY", "INTEGRITY", "WAVE", "SCORE", "FELDKIRCHEN"], "landscape_field_height_ratio": 1.0, "desktop_reference": true },
+    { "at": 0.4, "action": "deploy", "unit": "marksman", "travel": 0.1 },
+    { "at": 1.0, "action": "deploy", "unit": "breacher", "travel": 0.1 },
+    { "at": 1.4, "action": "deploy", "unit": "impact", "travel": 0.1 },
+    { "at": 1.8, "action": "deploy", "unit": "operator", "travel": 0.1 },
+    { "at": 2.5, "action": "check", "friendlies": 4 },
+    { "at": 3.1, "action": "select", "target": "newest", "travel": 0.1 },
+    { "at": 3.25, "action": "check", "selected": true },
+    { "at": 3.3, "action": "move", "ahead": 300, "from": "newest", "travel": 0.1 },
+    { "at": 5.5, "action": "still", "label": "combat" },
+    { "at": 6.0, "action": "key" },
+    { "at": 6.4, "action": "check", "paused": true, "buttons_visible": ["Resume", "Main Menu"] },
+    { "at": 6.5, "action": "still", "label": "pause" },
+    { "at": 6.8, "action": "click", "label": "Resume", "travel": 0.1 },
+    { "at": 7.4, "action": "check", "paused": false }
+  ]
+}

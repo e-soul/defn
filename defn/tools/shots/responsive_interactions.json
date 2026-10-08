@@ -1,0 +1,266 @@
+{
+  "name": "responsive_interactions",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 11,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "timeline": [
+    {
+      "at": 0.2,
+      "action": "still",
+      "label": "opening"
+    },
+    {
+      "at": 0.4,
+      "action": "press_card",
+      "unit": "breacher",
+      "travel": 0.1
+    },
+    {
+      "at": 0.7,
+      "action": "drag",
+      "canvas": [
+        50,
+        450
+      ],
+      "travel": 0.2
+    },
+    {
+      "at": 0.8,
+      "action": "release",
+      "canvas": [
+        50,
+        450
+      ],
+      "travel": 0
+    },
+    {
+      "at": 1.0,
+      "action": "check",
+      "friendlies": 0
+    },
+    {
+      "at": 1.3,
+      "action": "deploy",
+      "unit": "breacher",
+      "travel": 0.1
+    },
+    {
+      "at": 1.5,
+      "action": "check",
+      "friendlies": 1
+    },
+    {
+      "at": 2.4,
+      "action": "press_card",
+      "unit": "breacher",
+      "travel": 0.1
+    },
+    {
+      "at": 2.5,
+      "action": "resize",
+      "size": [
+        667,
+        330
+      ]
+    },
+    {
+      "at": 2.9,
+      "action": "release",
+      "canvas": [
+        100,
+        290
+      ],
+      "travel": 0
+    },
+    {
+      "at": 3.1,
+      "action": "check",
+      "friendlies": 1
+    },
+    {
+      "at": 3.15,
+      "action": "select",
+      "target": "newest",
+      "travel": 0.1
+    },
+    {
+      "at": 3.3,
+      "action": "move",
+      "ahead": 300,
+      "from": "newest",
+      "travel": 0.1
+    },
+    {
+      "at": 3.45,
+      "action": "still",
+      "label": "landscape"
+    },
+    {
+      "at": 3.45,
+      "action": "still",
+      "label": "selection"
+    },
+    {
+      "at": 3.45,
+      "action": "check",
+      "selected": true
+    },
+    {
+      "at": 3.5,
+      "action": "key"
+    },
+    {
+      "at": 3.8,
+      "action": "check",
+      "paused": true,
+      "friendlies": 1
+    },
+    {
+      "at": 4.0,
+      "action": "resize",
+      "size": [
+        390,
+        844
+      ]
+    },
+    {
+      "at": 4.2,
+      "action": "check",
+      "selected": true,
+      "paused": true
+    },
+    {
+      "at": 4.3,
+      "action": "still",
+      "label": "pause_portrait"
+    },
+    {
+      "at": 4.5,
+      "action": "click",
+      "label": "Resume",
+      "travel": 0.1
+    },
+    {
+      "at": 4.8,
+      "action": "check",
+      "paused": false,
+      "friendlies": 1
+    },
+    {
+      "at": 5.0,
+      "action": "click",
+      "label": "Pause",
+      "travel": 0.1
+    },
+    {
+      "at": 5.3,
+      "action": "click",
+      "label": "Main Menu",
+      "travel": 0.1
+    },
+    {
+      "at": 5.7,
+      "action": "still",
+      "label": "main_menu"
+    },
+    {
+      "at": 5.9,
+      "action": "click",
+      "label": "Options",
+      "travel": 0.1
+    },
+    {
+      "at": 6.2,
+      "action": "still",
+      "label": "options"
+    },
+    {
+      "at": 6.4,
+      "action": "key"
+    },
+    {
+      "at": 6.7,
+      "action": "click",
+      "label": "Play",
+      "travel": 0.1
+    },
+    {
+      "at": 7.0,
+      "action": "click",
+      "label": "Progress",
+      "travel": 0.1
+    },
+    {
+      "at": 7.3,
+      "action": "still",
+      "label": "progression"
+    },
+    {
+      "at": 7.5,
+      "action": "key"
+    },
+    {
+      "at": 7.8,
+      "action": "click",
+      "label": "Campaign",
+      "travel": 0.1
+    },
+    {
+      "at": 8.2,
+      "action": "still",
+      "label": "campaign_list"
+    },
+    {
+      "at": 8.5,
+      "action": "key"
+    },
+    {
+      "at": 8.8,
+      "action": "still",
+      "label": "campaign_back"
+    },
+    {
+      "at": 9.0,
+      "action": "click",
+      "label": "Campaign",
+      "travel": 0.1
+    },
+    {
+      "at": 9.2,
+      "action": "resize",
+      "size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "at": 9.6,
+      "action": "still",
+      "label": "campaign_wide"
+    },
+    {
+      "at": 9.9,
+      "action": "resize",
+      "size": [
+        960,
+        540
+      ]
+    },
+    {
+      "at": 10.4,
+      "action": "still",
+      "label": "campaign_desktop"
+    },
+    {
+      "at": 10.5,
+      "action": "check",
+      "buttons_visible": [
+        "REPLAY",
+        "BACK"
+      ]
+    }
+  ]
+}

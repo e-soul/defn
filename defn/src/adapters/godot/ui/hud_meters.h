@@ -5,6 +5,7 @@
 #define HUD_METERS_H
 
 #include "hud_presenter.h"
+#include "ui_theme_models.h"
 
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -21,6 +22,7 @@ class HudIntegrityMeter : public godot::Control {
     HudIntegrityMeter();
 
     void configure(const HudIntegrityModel &model, const godot::Color &color);
+    void apply_appearance(const UiThemeData &theme);
     void _draw() override;
 
     [[nodiscard]] int get_segment_count() const;
@@ -31,6 +33,13 @@ class HudIntegrityMeter : public godot::Control {
   private:
     HudIntegrityModel model_;
     godot::Color color_;
+    float segment_width_ = 26;
+    float segment_height_ = 15;
+    float segment_gap_ = 4;
+    float outline_width_ = 1;
+    float max_width_ = 160;
+    godot::Color track_color_;
+    godot::Color outline_color_;
 };
 
 } // namespace defn

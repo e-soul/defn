@@ -26,6 +26,7 @@ class UnitDataLoader : public UnitCatalog {
     [[nodiscard]] std::vector<UnitConfig> get_friendly_units() const override;
 
     const GlobalUnitConfig &get_globals() const { return globals_; }
+    const std::vector<UnitConfig> &get_units() const { return units_; }
 
   private:
     GlobalUnitConfig globals_;

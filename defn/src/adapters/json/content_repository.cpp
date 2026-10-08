@@ -93,6 +93,15 @@ JsonLoadedContent JsonContentRepository::load_for_validation() const {
         content.load_issues.emplace_back("failed to load ui_theme.json");
     } else {
         content.missing_ui_theme_assets = missing_resources(theme_mark_paths(*content.ui_theme));
+        if (paths_.ui_theme_path == DataPaths::UI_THEME) {
+            for (const auto *path : {DataPaths::UI_DESKTOP_MATCH_THEME, DataPaths::UI_PHONE_LANDSCAPE_THEME}) {
+                if (const auto patch = UiThemeLoader::load_patch(path); patch) {
+                    content.scoped_ui_themes.push_back(apply_theme_patch(*content.ui_theme, *patch));
+                } else {
+                    content.load_issues.push_back(vformat("failed to load scoped UI theme %s", path));
+                }
+            }
+        }
     }
 
     content.music_playlist = MusicPlaylistLoader::load(paths_.music_playlist_path);
@@ -192,6 +201,7 @@ ContentValidationInput make_content_validation_input(const JsonLoadedContent &co
     input.campaign_map = content.campaign_map;
     input.missing_campaign_assets = content.missing_campaign_assets;
     input.ui_theme = content.ui_theme;
+    input.scoped_ui_themes = content.scoped_ui_themes;
     input.missing_ui_theme_assets = content.missing_ui_theme_assets;
     return input;
 }

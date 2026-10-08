@@ -1,0 +1,12 @@
+{
+  "name": "texture_tiles",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 1,
+  "background_only": true,
+  "fade_in": 0,
+  "fade_out": 0,
+  "timeline": [
+    { "at": 0.5, "action": "still", "label": "background" }
+  ]
+}

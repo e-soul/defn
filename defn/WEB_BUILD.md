@@ -35,6 +35,7 @@ both setup and subsequent build commands.
 From the repository root, use the same command locally and in CI:
 
 ```text
+python -m pip install -r scripts/requirements-web-build.txt
 python scripts/build_web.py --target both
 ```
 
@@ -46,8 +47,9 @@ The wrapper:
    editor. A configured editor with a different version is rejected.
 3. Installs matching export templates when absent and builds the native debug
    extension needed by the editor.
-4. Builds the requested Web libraries, checks packaging, imports resources and
-   exports through the `defn_web_release` preset.
+4. Builds the requested Web libraries, checks packaging, stages full-resolution
+   background tiles in a private project, imports its resources and exports
+   through the `defn_web_release` preset.
 5. Validates fresh export files before copying them to `build/web/debug` and
    `build/web/release`. Godot diagnostics are checked even when its exit code is
    zero. Existing unrelated files in the output directories are not removed.
@@ -72,6 +74,23 @@ and fail on a mismatch; they require an already activated SDK. Changing `PATH`
 to a newer compiler cannot silently bypass the check. Web objects, including
 godot-cpp, depend on the pin so an upgrade invalidates cached compilation.
 
+## Background texture compatibility
+
+The wrapper creates a temporary project beneath `build/web/` with its own Godot
+import cache. It copies the selected resources and replaces background images
+larger than 4096 pixels on either axis with generated scenes of adjacent texture
+tiles. Every source pixel is preserved; no image is resized. Each tile includes
+two pixels of neighboring image data beyond its drawn region for linear filtering.
+The scene records the original dimensions, so layer scale, placement, repeat
+period and parallax remain the same. Current background imports use no mipmaps;
+the generator rejects mipmapped inputs rather than silently altering that policy.
+
+The original project, source PNGs and assets-submodule `.import` files remain
+unchanged. Native exports continue using their full-resolution images. For a
+target requiring smaller textures, pass `--texture-tile-limit 2048`; this changes
+tile count, not image resolution. The private project and its cache are removed
+after export, including when a build fails. Generated resources stay in the PCK.
+
 ## Serve
 
 From the repository root:
@@ -80,11 +99,17 @@ From the repository root:
 python -m http.server 8000 --bind 127.0.0.1 --directory build/web/release
 ```
 
+Optionally:
+
+```text
+cloudflared tunnel --url http://127.0.0.1:8000
+```
+
 Open **http://127.0.0.1:8000/index.html**, not a `file://` URL. Any static HTTP
 server can be used instead. Keep all generated files together, including the
 extension WASM and engine side module; do not rename individual exported files.
-For editor exports, use the **defn_web_release** preset after building its Web
-library. Select **Export With Debug** only for a built debug library. The editor
+Use the build wrapper for compatible Web exports. A direct editor export uses
+the original oversized images because it skips texture staging. The editor also
 does not compile the extension or enforce the wrapper's Godot version check.
 
 The single-threaded 4.7.2 export works without cross-origin isolation headers or
@@ -107,11 +132,30 @@ if not exist "%ANDROID_AVD_HOME%" mkdir "%ANDROID_AVD_HOME%"
 echo no| "%ANDROID_HOME%\cmdline-tools\latest\bin\avdmanager.bat" create avd -n Defn_Phone -k "system-images;android-36;google_apis;x86_64" -d pixel_6a
 ```
 
-Start it:
+Start it with Vulkan disabled so Chrome can be used with Quick Boot snapshots:
 
 ```bat
-"%ANDROID_HOME%\emulator\emulator.exe" -avd Defn_Phone
+"%ANDROID_HOME%\emulator\emulator.exe" -avd Defn_Phone -feature -Vulkan
 ```
+
+Android documents [snapshot limitations with Vulkan and Chrome](https://developer.android.com/studio/run/emulator-troubleshooting#unable-create).
+Keep `-feature -Vulkan` on subsequent launches; OpenGL hardware acceleration
+remains available for WebGL.
+
+If Quick Boot shows a frozen screen or ignores input while cold boot works,
+the saved state may be unusable. Close the emulator, set
+`fastboot.forceColdBoot=no` in `%ANDROID_AVD_HOME%\Defn_Phone.avd\config.ini`,
+and bypass the old snapshot once:
+
+```bat
+"%ANDROID_HOME%\emulator\emulator.exe" -avd Defn_Phone -feature -Vulkan -no-snapshot-load
+```
+
+Wait for Android to finish booting, then close the emulator normally to save a
+fresh Quick Boot snapshot. Subsequent launches use the normal command above.
+This preserves installed apps and browser data; wiping or recreating the AVD is
+unnecessary. `fastboot.forceColdBoot=no` permits snapshot restoration, rather
+than changing how touch input is delivered.
 
 Keep the Python server from **Serve** running in another terminal. Once Android
 boots, map the emulator's port 8000 to the host server (repeat after restarting the emulator):
@@ -131,7 +175,10 @@ will be overwritten. Godot replaces its engine URL, configuration and head
 placeholders during export, so the shell also works with renamed export targets.
 
 The shell provides a responsive game viewport, branded download progress,
-startup errors with a retry action, and an optional fullscreen control. It uses
+startup errors with a retry action, and an optional fullscreen control. A small
+rotation hint appears beside Fullscreen in mobile portrait. Entering fullscreen
+requests landscape where supported; leaving fullscreen releases the orientation
+lock. Unsupported orientation APIs do not interrupt the game. It uses
 system fonts and inline styles/scripts. The Google tag is the shell's only
 external dependency and records web deployment analytics. Its CSS tokens mirror the dark neutrals and accent in
 [data/ui_theme.json](data/ui_theme.json); keep them aligned when changing the
@@ -167,6 +214,12 @@ asset checkout, setup and build wrapper; tests both debug and release exports;
 and uploads playable exports as an artifact. Standalone Web CI runs do not
 deploy a website. SDK and compiler caches are keyed by the toolchain pin.
 Browser checks serve exports below a URL prefix, matching a Pages project site.
+
+Responsive browser replay commands and their matrix are maintained in
+[CAPTURE_TOOLING.md](CAPTURE_TOOLING.md). Captures use isolated IDBFS fixtures, real
+input and bounded readiness; inspect images and record actual pointer/DPR
+capabilities separately from emulated dimensions. ResponsiveUiRoot observes display
+facts; the Web shell consumes CSS safe areas before canvas-local dimensions arrive.
 
 ## GitHub Pages
 

@@ -1,0 +1,24 @@
+{
+  "name": "field_promotion",
+  "level": "level_01",
+  "seed": 20260911,
+  "fps": 60,
+  "duration_seconds": 110,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "Use --fixture rewards. Deploy a Breacher and a Marksman; promotion is earned through real combat.",
+    "Check the world-space star's size and outlined gold appearance at desktop and phone sizes."
+  ],
+  "timeline": [
+    {"at": 0.4, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 0.8, "action": "deploy", "unit": "marksman", "travel": 0.1},
+    {"at": 1, "action": "check", "friendlies": 2},
+    {"at": 22, "action": "still", "label": "combat"},
+    {"at": 90, "action": "check", "promotion_star": true},
+    {"at": 90.1, "action": "still", "label": "promoted"},
+    {"at": 108, "action": "check", "promotion_star": true},
+    {"at": 108.1, "action": "still", "label": "promotion-retained"}
+  ]
+}

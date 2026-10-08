@@ -18,6 +18,7 @@
 #include "campaign_map_view.h"
 #include "campaign_preview_view.h"
 #include "combat_component.h"
+#include "deploy_tray.h"
 #include "detection_component.h"
 #include "field_promotion_effect.h"
 #include "field_promotion_view.h"
@@ -28,21 +29,29 @@
 #include "hitbox_component.h"
 #include "hud.h"
 #include "hud_meters.h"
+#include "match_presentation.h"
 #include "menu_backdrop.h"
 #include "menu_manager.h"
+#include "menu_screen_view.h"
+#include "mobile_campaign_view.h"
 #include "movement_component.h"
 #include "operation_dossier_view.h"
+#include "options_screen_view.h"
 #include "pause_menu.h"
 #include "progression_manager.h"
 #include "progression_stat_meter.h"
 #include "progression_stats_screen_view.h"
 #include "projectile_attack.h"
 #include "reposition_destination_marker.h"
+#include "responsive_ui_root.h"
+#include "score_screen_view.h"
 #include "selection_indicator.h"
 #include "settings_runtime.h"
 #include "sound_controller.h"
+#include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_theme_provider.h"
+#include "ui_widgets.h"
 #include "unit.h"
 #include "unit_control_component.h"
 #include "unit_selection_controller.h"
@@ -90,6 +99,14 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::BeltDebugOverlay>();
 #endif
     ClassDB::register_class<defn::GameManager>();
+    ClassDB::register_internal_class<defn::UiContextControl>();
+    ClassDB::register_internal_class<defn::UiButton>();
+    ClassDB::register_internal_class<defn::UiScreenControl>();
+    ClassDB::register_internal_class<defn::MenuScreenView>();
+    ClassDB::register_internal_class<defn::OptionsScreenView>();
+    ClassDB::register_internal_class<defn::ResponsiveUiRoot>();
+    ClassDB::register_class<defn::MatchPresentation>();
+    ClassDB::register_internal_class<defn::DeployTray>();
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();
     ClassDB::register_internal_class<defn::MenuBackdrop>();
@@ -101,6 +118,8 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::CampaignPreviewView>();
     ClassDB::register_internal_class<defn::CampaignMapNodeView>();
     ClassDB::register_internal_class<defn::OperationDossierView>();
+    ClassDB::register_internal_class<defn::ScoreScreenView>();
+    ClassDB::register_internal_class<defn::MobileCampaignView>();
     ClassDB::register_internal_class<defn::CampaignMapView>();
     ClassDB::register_class<defn::PauseMenu>();
 #ifdef DEFN_HOSTED_TESTS_ENABLED

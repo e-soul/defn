@@ -55,6 +55,9 @@
 		}
 		header { border-bottom: 1px solid var(--border); }
 		.brand { display: flex; align-items: baseline; gap: 16px; }
+		.browser-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; min-width: 0; }
+		#fullscreen { flex-shrink: 0; }
+		#orientation-hint { display: none; margin: 0; max-width: 11em; color: var(--muted); font-size: 12px; line-height: 1.3; text-align: right; }
 		.wordmark { color: var(--accent); font-size: 24px; font-weight: 900; letter-spacing: 0.18em; }
 		.tagline, footer { color: var(--muted); font-size: 12px; }
 		.tagline { letter-spacing: 0.12em; text-transform: uppercase; }
@@ -76,9 +79,8 @@
 		#canvas { display: block; width: 100%; height: 100%; outline: none; }
 		#canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 		:fullscreen footer { display: none; }
-		:fullscreen header { position: absolute; top: 0; right: 0; z-index: 2; background: transparent; border: 0; padding: 6px; }
+		:fullscreen header { justify-content: flex-end; padding: 4px 12px; }
 		:fullscreen .brand { display: none; }
-		:fullscreen #fullscreen { opacity: 0.65; }
 		#overlay {
 			position: absolute;
 			inset: 0;
@@ -114,6 +116,9 @@
 			.eyebrow { margin-bottom: 8px; }
 			.download { margin-top: 12px; }
 		}
+		@media (orientation: portrait) and (pointer: coarse) {
+			#orientation-hint { display: block; }
+		}
 	</style>
 	$GODOT_HEAD_INCLUDE
 </head>
@@ -121,7 +126,10 @@
 	<header>
 		<div class="brand"><span class="wordmark">Defn</span></div>
 		<p id="browser-notice" role="status" hidden></p>
-		<button id="fullscreen" type="button" aria-pressed="false" hidden>Fullscreen</button>
+		<div class="browser-actions">
+			<p id="orientation-hint">Rotate for a wider view</p>
+			<button id="fullscreen" type="button" aria-pressed="false" hidden>Fullscreen</button>
+		</div>
 	</header>
 	<main id="stage" aria-label="Defn game">
 		<canvas id="canvas" tabindex="-1" aria-label="Defn game viewport" aria-hidden="true">Your browser does not support canvas. Try a current browser with WebGL 2 support.</canvas>
@@ -186,8 +194,10 @@
 
 		function resizeCanvas() {
 			const ratio = window.devicePixelRatio || 1;
-			canvas.width = Math.max(1, Math.round(stage.clientWidth * ratio));
-			canvas.height = Math.max(1, Math.round(stage.clientHeight * ratio));
+			const width = Math.max(1, Math.round(stage.clientWidth * ratio));
+			const height = Math.max(1, Math.round(stage.clientHeight * ratio));
+			if (canvas.width !== width) canvas.width = width;
+			if (canvas.height !== height) canvas.height = height;
 		}
 
 		new ResizeObserver(resizeCanvas).observe(stage);
@@ -202,16 +212,10 @@
 					await document.exitFullscreen();
 				} else {
 					await document.documentElement.requestFullscreen();
-					if (window.screen?.orientation?.lock) {
-						try {
-							await window.screen.orientation.lock("landscape");
-						} catch (orientationError) {
-							console.info("Landscape lock unavailable:", orientationError);
-							if (window.innerHeight > window.innerWidth) {
-								notice.textContent = "Rotate your device for a wider game view.";
-								notice.hidden = false;
-							}
-						}
+					try {
+						await window.screen?.orientation?.lock?.("landscape");
+					} catch {
+						// Orientation locking is optional; rejected requests must leave fullscreen usable.
 					}
 				}
 			} catch (error) {
@@ -224,6 +228,13 @@
 			const active = !!document.fullscreenElement;
 			fullscreen.textContent = active ? "Exit fullscreen" : "Fullscreen";
 			fullscreen.setAttribute("aria-pressed", String(active));
+			if (!active) {
+				try {
+					window.screen?.orientation?.unlock?.();
+				} catch {
+					// A browser may expose orientation APIs without allowing their use.
+				}
+			}
 			if (state === "running") canvas.focus();
 		});
 

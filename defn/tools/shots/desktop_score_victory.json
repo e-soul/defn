@@ -1,0 +1,43 @@
+{
+  "name": "desktop_score_victory",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 171,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "Use --fixture rewards --size 1920x1080 --no-cursor for the current desktop first-clear result.",
+    "This plays the real match; the artificial isolated fixture supplies stronger friendly upgrades."
+  ],
+  "timeline": [
+    {"at": 0.4, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 0.8, "action": "deploy", "unit": "marksman", "travel": 0.1},
+    {"at": 3.8, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 6.8, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 9.8, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 12.8, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 15.8, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 18.8, "action": "deploy", "unit": "breacher", "travel": 0.1},
+    {"at": 154, "action": "still", "label": "results"},
+    {"at": 154.1, "action": "check", "labels_visible": ["VICTORY", "Level Score:", "328", "Career Total:", "123457117"], "buttons_disabled": ["Retry", "Campaign"]},
+    {"at": 155, "action": "click", "label": "Choose upgrade", "travel": 0.1},
+    {"at": 156, "action": "still", "label": "rewards"},
+    {"at": 156.1, "action": "check", "labels_visible": ["FIRST CLEAR UPGRADE: Level 01", "Level 01 cleared for the first time."], "buttons_visible": ["Demolition Permit", "Back"]},
+    {"at": 157, "action": "click", "label": "Back", "travel": 0.1},
+    {"at": 158, "action": "check", "buttons_disabled": ["Retry", "Campaign"]},
+    {"at": 159, "action": "click", "label": "Choose upgrade", "travel": 0.1},
+    {"at": 160, "action": "click", "label": "Demolition Permit", "travel": 0.1},
+    {"at": 161, "action": "still", "label": "after-selection"},
+    {"at": 161.1, "action": "check", "buttons_enabled": ["Next Level", "Retry", "Campaign"]},
+    {"at": 162, "action": "click", "label": "Your upgrades (4)", "travel": 0.1},
+    {"at": 163, "action": "still", "label": "owned"},
+    {"at": 164, "action": "resize", "size": [960, 540]},
+    {"at": 165, "action": "still", "label": "owned-compact"},
+    {"at": 166, "action": "resize", "size": [1920, 1080]},
+    {"at": 167, "action": "click", "label": "Back", "travel": 0.1},
+    {"at": 168, "action": "check", "buttons_enabled": ["Next Level", "Retry", "Campaign"]},
+    {"at": 169, "action": "click", "label": "Campaign", "travel": 0.1},
+    {"at": 170, "action": "still", "label": "campaign"}
+  ]
+}

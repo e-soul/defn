@@ -7,6 +7,7 @@
 #include "godot_string.h"
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
+#include "ui_test_helpers.h"
 #include "ui_theme_loader.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
@@ -26,6 +27,32 @@
 namespace defn {
 
 using namespace godot;
+
+DEFN_TEST(phone_landscape_theme_is_scoped_to_compact_readings) {
+    UiThemeProvider::reload();
+    UiThemeProvider::resolve_profile(UiProfile::Small, true);
+    const Ref<Theme> phone = UiThemeProvider::phone_landscape_theme();
+    DEFN_CHECK_EQ(phone->get_font_size("font_size", UiThemeProvider::label_variation("hud_label")), 14);
+    DEFN_CHECK_EQ(phone->get_font_size("font_size", UiThemeProvider::label_variation("hud_value")), 16);
+    DEFN_CHECK_EQ(UiThemeProvider::theme()->get_font_size("font_size", UiThemeProvider::label_variation("card_title")), 18);
+    DEFN_CHECK_EQ(UiThemeProvider::theme()->get_font_size("font_size", UiThemeProvider::label_variation("hud_label")), 16);
+    DEFN_CHECK_EQ(UiThemeProvider::desktop_match_theme()->get_font_size("font_size", UiThemeProvider::label_variation("hud_value")), 34);
+    UiThemeProvider::reload();
+}
+
+DEFN_TEST(desktop_match_theme_keeps_original_hierarchy_separate_from_responsive_screen_type) {
+    UiThemeProvider::reload();
+    UiThemeProvider::resolve_profile(UiProfile::Small, true);
+    const Ref<Theme> desktop = UiThemeProvider::desktop_match_theme();
+    DEFN_CHECK_EQ(desktop->get_font_size("font_size", UiThemeProvider::label_variation("hud_label")), 13);
+    DEFN_CHECK_EQ(desktop->get_font_size("font_size", UiThemeProvider::label_variation("hud_value")), 34);
+    DEFN_CHECK_EQ(desktop->get_font_size("font_size", UiThemeProvider::label_variation("hud_wave")), 22);
+    DEFN_CHECK_EQ(desktop->get_font_size("font_size", UiThemeProvider::label_variation("hud_wave_total")), 15);
+    DEFN_CHECK_EQ(desktop->get_font_size("font_size", UiThemeProvider::label_variation("card_title")), 15);
+    DEFN_CHECK_EQ(desktop->get_font_size("font_size", UiThemeProvider::label_variation("card_cost")), 13);
+    DEFN_CHECK_EQ(UiThemeProvider::theme()->get_font_size("font_size", UiThemeProvider::label_variation("hud_label")), 16);
+    UiThemeProvider::reload();
+}
 
 namespace {
 
@@ -212,7 +239,7 @@ DEFN_TEST(ui_theme_loader_merges_partial_data_over_defaults) {
     const UiThemeData theme = UiThemeLoader::load_from_data(data);
     DEFN_CHECK_CLOSE(theme.palette.accent.r, 0.1F, 0.0001F);
     DEFN_CHECK_EQ(theme.typography.body, 21);
-    DEFN_CHECK_EQ(theme.typography.title, UiThemeData().typography.title);
+    DEFN_CHECK_EQ(theme.typography.heading, UiThemeData().typography.heading);
 
     const UiSurfaceStyle *card = theme.find_surface("card");
     DEFN_REQUIRE(card != nullptr);
@@ -426,11 +453,14 @@ DEFN_TEST(ui_theme_gives_the_deploy_card_its_own_press_sound) {
 }
 
 DEFN_TEST(ui_widgets_make_button_takes_focus) {
+    auto *host = memnew(Control);
+    UiThemeProvider::apply_to(host);
     auto *button = make_button("Deploy", "menu");
+    host->add_child(button);
     DEFN_REQUIRE(button != nullptr);
     // The game is navigable by keyboard and pad; every button the factory builds participates.
     DEFN_CHECK_EQ(button->get_focus_mode(), Control::FOCUS_ALL);
-    memdelete(button);
+    memdelete(host);
 }
 
 DEFN_TEST(ui_widgets_make_card_leaves_a_display_only_card_inert) {
@@ -494,7 +524,7 @@ DEFN_TEST(ui_theme_provider_wires_the_score_screen_chrome_to_its_roles) {
     check_stylebox_bg(panel, "surface");
     check_stylebox_border(panel, "border");
     DEFN_CHECK_EQ(panel->get_corner_radius(CORNER_TOP_LEFT), 12);
-    DEFN_CHECK_CLOSE(panel->get_content_margin(SIDE_LEFT), 32.0F, 0.0001F);
+    DEFN_CHECK_CLOSE(panel->get_content_margin(SIDE_LEFT), 8.0F, 0.0001F);
 
     const Ref<StyleBoxFlat> action_button = theme->get_stylebox("normal", "DefnSecondaryButton");
     DEFN_REQUIRE(action_button.is_valid());
@@ -502,9 +532,9 @@ DEFN_TEST(ui_theme_provider_wires_the_score_screen_chrome_to_its_roles) {
     DEFN_CHECK_EQ(action_button->get_corner_radius(CORNER_TOP_LEFT), 8);
     DEFN_CHECK_CLOSE(action_button->get_content_margin(SIDE_LEFT), 12.0F, 0.0001F);
     DEFN_CHECK_CLOSE(action_button->get_content_margin(SIDE_RIGHT), 12.0F, 0.0001F);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnSecondaryButton"), 20);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnScoreStatLabel"), 22);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), 32);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnSecondaryButton"), UiThemeProvider::font_size("body"));
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnScoreStatLabel"), UiThemeProvider::font_size("body"));
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), UiThemeProvider::font_size("body"));
 }
 
 DEFN_TEST(ui_theme_provider_wires_the_menu_chrome_to_its_roles) {
@@ -517,27 +547,27 @@ DEFN_TEST(ui_theme_provider_wires_the_menu_chrome_to_its_roles) {
     DEFN_CHECK_EQ(normal->get_border_width(SIDE_TOP), 2);
     DEFN_CHECK_EQ(normal->get_corner_radius(CORNER_TOP_LEFT), 8);
 
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), 32);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnMenuButton"), UiThemeProvider::font_size("body"));
     check_theme_color(theme, "DefnMenuButton", "text_primary");
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionLabelLabel"), 24);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionValueLabel"), 20);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionLabelLabel"), UiThemeProvider::font_size("body"));
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnOptionValueLabel"), UiThemeProvider::font_size("body"));
     // The menu's career score is an instrument readout now, wearing the same styles as the HUD score plate.
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudScoreLabel"), 22);
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudLabelLabel"), 13);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudScoreLabel"), UiThemeProvider::font_size("body"));
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnHudLabelLabel"), UiThemeProvider::font_size("supporting"));
     // Deploy cards, roster chips and upgrade cards all name their card through one title style.
-    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnCardTitleLabel"), 15);
+    DEFN_CHECK_EQ(theme->get_font_size("font_size", "DefnCardTitleLabel"), UiThemeProvider::font_size("body"));
 
     const UiThemeData &data = UiThemeProvider::data();
     const UiButtonVariant *menu = data.find_button("menu");
     DEFN_REQUIRE(menu != nullptr);
-    DEFN_CHECK_EQ(menu->min_width, 400);
-    DEFN_CHECK_EQ(menu->min_height, 60);
-    DEFN_CHECK_EQ(data.metric("menu_button_separation", -1), 16);
+    DEFN_CHECK_EQ(menu->min_width, 240);
+    DEFN_CHECK_EQ(menu->min_height, 48);
+    DEFN_CHECK_EQ(data.metric("menu_button_separation", -1), 8);
 }
 
 DEFN_TEST(ui_theme_provider_resolves_token_roles) {
     const UiThemeData &data = UiThemeProvider::data();
-    DEFN_CHECK_EQ(UiThemeProvider::font_size("title"), data.typography.title);
+    DEFN_CHECK_EQ(UiThemeProvider::font_size("title"), data.typography.heading);
     DEFN_CHECK_EQ(UiThemeProvider::spacing("xl"), data.spacing.xl);
     DEFN_CHECK_EQ(UiThemeProvider::shape("corner_lg"), data.shape.corner_lg);
     DEFN_CHECK_CLOSE(UiThemeProvider::color("accent").r, data.palette.accent.r, 0.0001F);
@@ -545,7 +575,11 @@ DEFN_TEST(ui_theme_provider_resolves_token_roles) {
 }
 
 DEFN_TEST(ui_widgets_make_button_applies_theme_variation_and_min_size) {
+    ui_test::TreeMountedNode<Control> mounted;
+    auto *host = mounted.get();
+    UiThemeProvider::apply_to(host);
     auto *button = make_button("Deploy", "menu");
+    host->add_child(button);
     DEFN_REQUIRE(button != nullptr);
 
     const UiButtonVariant *menu = UiThemeProvider::data().find_button("menu");
@@ -554,20 +588,22 @@ DEFN_TEST(ui_widgets_make_button_applies_theme_variation_and_min_size) {
     DEFN_CHECK_EQ(static_cast<int>(button->get_custom_minimum_size().x), menu->min_width);
     DEFN_CHECK_EQ(static_cast<int>(button->get_custom_minimum_size().y), menu->min_height);
     DEFN_CHECK_EQ(button->get_text(), String("Deploy"));
-    DEFN_CHECK(button->get_theme().ptr() == UiThemeProvider::theme().ptr());
-
-    memdelete(button);
+    DEFN_CHECK(button->get_theme().is_null());
+    DEFN_CHECK_EQ(button->get_theme_font_size("font_size"), UiThemeProvider::font_size(menu->font_size_role));
 }
 
 DEFN_TEST(ui_widgets_make_label_uses_variation_without_local_overrides) {
+    ui_test::TreeMountedNode<Control> mounted;
+    auto *host = mounted.get();
+    UiThemeProvider::apply_to(host);
     auto *label = make_label("Career Score", "screen_title");
+    host->add_child(label);
     DEFN_REQUIRE(label != nullptr);
     DEFN_CHECK_EQ(label->get_theme_type_variation(), StringName("DefnScreenTitleLabel"));
     DEFN_CHECK(!label->has_theme_color_override("font_color"));
     DEFN_CHECK(!label->has_theme_font_size_override("font_size"));
-    DEFN_CHECK(label->get_theme().ptr() == UiThemeProvider::theme().ptr());
-
-    memdelete(label);
+    DEFN_CHECK(label->get_theme().is_null());
+    DEFN_CHECK_EQ(label->get_theme_font_size("font_size"), UiThemeProvider::font_size(UiThemeProvider::data().find_text_style("screen_title")->font_size_role));
 }
 
 DEFN_TEST(ui_widgets_apply_enabled_toggles_disabled_state) {
@@ -587,9 +623,9 @@ namespace {
 
 bool scaffold_has_expected_chrome(Control *host, const UiScreenScaffold &scaffold) {
     return scaffold.root != nullptr && scaffold.header != nullptr && scaffold.body != nullptr && scaffold.footer != nullptr &&
-           Object::cast_to<ColorRect>(scaffold.root) != nullptr && scaffold.root->get_parent() == host &&
+           host->find_child("ScreenBackdrop", true, false) != nullptr && scaffold.root->get_parent() == host &&
            host->find_child("ScreenPanel", true, false) != nullptr && host->find_child("ScreenScroll", true, false) != nullptr &&
-           scaffold.footer->get_alignment() == BoxContainer::ALIGNMENT_END;
+           scaffold.footer->get_alignment() == FlowContainer::ALIGNMENT_END;
 }
 
 bool scaffold_header_matches(const UiScreenScaffold &scaffold, const String &title_text, const String &subtitle_text) {
@@ -603,6 +639,7 @@ bool scaffold_header_matches(const UiScreenScaffold &scaffold, const String &tit
 
 DEFN_TEST(ui_screen_scaffold_builds_backdrop_header_body_and_right_aligned_footer) {
     auto *host = memnew(Control);
+    host->set_size({1280, 720});
     const UiScreenScaffold scaffold = build_screen(host, {.title = "DEBRIEF", .subtitle = "Sector 4"});
 
     DEFN_REQUIRE(scaffold_has_expected_chrome(host, scaffold));
@@ -613,12 +650,13 @@ DEFN_TEST(ui_screen_scaffold_builds_backdrop_header_body_and_right_aligned_foote
 
 DEFN_TEST(ui_screen_scaffold_honours_plain_root_and_supplied_content_size) {
     auto *host = memnew(Control);
+    host->set_size({1280, 720});
     const UiScreenScaffold scaffold =
-        build_screen(host, {.show_backdrop = false, .panelled_body = false, .scrollable_body = false, .max_content_size = godot::Vector2(640.0F, 480.0F)});
+        build_screen(host, {.show_backdrop = false, .panelled_body = false, .scrollable_body = false, .content_limit = godot::Vector2(640.0F, 480.0F)});
 
     DEFN_REQUIRE(scaffold.root != nullptr);
     DEFN_CHECK(Object::cast_to<ColorRect>(scaffold.root) == nullptr);
-    DEFN_CHECK_EQ(scaffold.root->get_custom_minimum_size(), godot::Vector2(640.0F, 480.0F));
+    DEFN_CHECK_EQ(scaffold.root->get_custom_minimum_size(), godot::Vector2());
     DEFN_CHECK(host->find_child("ScreenPanel", true, false) == nullptr);
     DEFN_CHECK(host->find_child("ScreenScroll", true, false) == nullptr);
     DEFN_CHECK_EQ(scaffold.header->get_child_count(), 0);
@@ -628,9 +666,9 @@ DEFN_TEST(ui_screen_scaffold_honours_plain_root_and_supplied_content_size) {
 
 DEFN_TEST(ui_screen_scaffold_applies_theme_and_can_constrain_a_scrollable_panel) {
     auto *host = memnew(Control);
-    const UiScreenScaffold scaffold = build_screen(
-        host,
-        {.title = "DEBRIEF", .panelled_body = true, .scrollable_body = true, .constrain_height = true, .max_content_size = godot::Vector2(720.0F, 560.0F)});
+    host->set_size({1280, 720});
+    const UiScreenScaffold scaffold =
+        build_screen(host, {.title = "DEBRIEF", .panelled_body = true, .scrollable_body = true, .content_limit = godot::Vector2(720.0F, 560.0F)});
 
     DEFN_REQUIRE(scaffold.root != nullptr);
     DEFN_REQUIRE(scaffold.panel != nullptr);

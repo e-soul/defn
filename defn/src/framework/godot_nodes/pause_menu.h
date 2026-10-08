@@ -7,7 +7,6 @@
 #include "menu_models.h"
 
 #include <godot_cpp/classes/button.hpp>
-#include <godot_cpp/classes/canvas_layer.hpp>
 #include <godot_cpp/classes/control.hpp>
 #include <godot_cpp/classes/input_event.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
@@ -17,14 +16,15 @@ namespace defn {
 
 using namespace godot;
 
-class PauseMenu : public CanvasLayer {
-    GDCLASS(PauseMenu, CanvasLayer)
+class PauseMenu : public Control {
+    GDCLASS(PauseMenu, Control)
 
   public:
     void _ready() override;
     void _input(const Ref<InputEvent> &event) override;
 
     void toggle_pause();
+    void _notification(int what);
 
   protected:
     static void _bind_methods();
@@ -41,7 +41,7 @@ class PauseMenu : public CanvasLayer {
 
     Control *screen_ = nullptr;
     VBoxContainer *button_container_ = nullptr;
-    Button *touch_pause_button_ = nullptr;
+    ObjectID previous_focus_;
 };
 
 } // namespace defn

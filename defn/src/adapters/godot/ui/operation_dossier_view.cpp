@@ -10,6 +10,7 @@
 
 #include <godot_cpp/classes/margin_container.hpp>
 #include <godot_cpp/classes/panel_container.hpp>
+#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -24,19 +25,6 @@ using GColor = godot::Color;
 namespace {
 
 Label *make_styled_label(std::string_view text_style) { return make_label({}, text_style); }
-
-String status_text(CampaignNodeState state) {
-    switch (state) {
-    case CampaignNodeState::COMPLETED:
-        return "SECURED";
-    case CampaignNodeState::AVAILABLE:
-    case CampaignNodeState::FRONTIER:
-        return "AVAILABLE";
-    case CampaignNodeState::LOCKED:
-        return "LOCKED";
-    }
-    return "LOCKED";
-}
 
 std::string_view status_color_role(CampaignNodeState state) {
     if (state == CampaignNodeState::COMPLETED) {
@@ -60,10 +48,23 @@ OperationDossierView::OperationDossierView() {
     set_custom_minimum_size({UiThemeProvider::metric("operation_dossier_width", 464), UiThemeProvider::metric("operation_dossier_height", 866)});
     set_theme_type_variation(UiThemeProvider::panel_variation("dossier"));
 
+    auto *column = memnew(VBoxContainer);
+    column->set_name("DossierColumn");
+    column->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
+    add_child(column);
+
+    auto *scroll = memnew(ScrollContainer);
+    scroll->set_name("DossierScroll");
+    scroll->set_h_size_flags(SIZE_EXPAND_FILL);
+    scroll->set_v_size_flags(SIZE_EXPAND_FILL);
+    scroll->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
+    scroll->set_follow_focus(true);
+    column->add_child(scroll);
     auto *content = memnew(VBoxContainer);
     content->set_name("DossierContent");
+    content->set_h_size_flags(SIZE_EXPAND_FILL);
     content->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
-    add_child(content);
+    scroll->add_child(content);
 
     auto *top = memnew(HBoxContainer);
     eyebrow_ = make_styled_label("eyebrow");
@@ -129,20 +130,15 @@ OperationDossierView::OperationDossierView() {
     locked_message_->set_custom_minimum_size({0.0F, UiThemeProvider::metric("operation_text_block_height", 54)});
     content->add_child(locked_message_);
 
-    auto *spacer = memnew(Control);
-    spacer->set_v_size_flags(SIZE_EXPAND_FILL);
-    spacer->set_mouse_filter(MOUSE_FILTER_IGNORE);
-    content->add_child(spacer);
-
     deploy_button_ = make_button({}, "primary", callable_mp(this, &OperationDossierView::on_deploy_pressed));
     deploy_button_->set_name("PrimaryAction");
     deploy_button_->set_custom_minimum_size({0.0F, deploy_button_->get_custom_minimum_size().y});
-    content->add_child(deploy_button_);
+    column->add_child(deploy_button_);
 
     back_button_ = make_button("BACK", "secondary", callable_mp(this, &OperationDossierView::on_back_pressed));
     back_button_->set_name("BackButton");
     back_button_->set_custom_minimum_size({0.0F, back_button_->get_custom_minimum_size().y});
-    content->add_child(back_button_);
+    column->add_child(back_button_);
 }
 
 void OperationDossierView::_bind_methods() {
@@ -155,7 +151,7 @@ void OperationDossierView::configure(const CampaignMissionViewModel &mission, co
     mission_ = mission;
     endless_selected_ = false;
     eyebrow_->set_text(vformat("OPERATION %02d", mission.sequence_number));
-    status_->set_text(status_text(mission.state));
+    status_->set_text(to_godot_string(std::string(campaign_item_presentation(mission.state).status)));
     set_state_tint(status_, status_color_role(mission.state));
     title_->set_text(to_godot_string(mission.name).to_upper());
     tagline_->set_text(to_godot_string(mission.tagline));
@@ -176,13 +172,7 @@ void OperationDossierView::configure(const CampaignMissionViewModel &mission, co
     locked_message_->set_visible(locked);
     locked_message_->set_text(locked ? "ROUTE BLOCKED\n" + to_godot_string(mission.unlock_requirement) : String());
     deploy_button_->set_disabled(locked);
-    String action_label = "DEPLOY";
-    if (locked) {
-        action_label = "LOCKED";
-    } else if (mission.state == CampaignNodeState::COMPLETED) {
-        action_label = "REPLAY";
-    }
-    deploy_button_->set_text(action_label);
+    deploy_button_->set_text(to_godot_string(std::string(campaign_item_presentation(mission.state).deployment)));
     deploy_button_->set_tooltip_text(locked ? to_godot_string(mission.unlock_requirement) : String());
 }
 

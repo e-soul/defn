@@ -1,0 +1,72 @@
+{
+  "name": "responsive_ui",
+  "level": "level_01",
+  "seed": 20260930,
+  "fps": 60,
+  "duration_seconds": 5,
+  "fade_in": 0,
+  "fade_out": 0,
+  "cursor": {
+    "input_chip": false
+  },
+  "timeline": [
+    {
+      "at": 0.2,
+      "action": "still",
+      "label": "opening"
+    },
+    {
+      "at": 0.25,
+      "action": "check",
+      "hud_readouts": [
+        "ENERGY",
+        "INTEGRITY",
+        "WAVE",
+        "SCORE"
+      ],
+      "landscape_field_height_ratio": 0.7
+    },
+    {
+      "at": 0.4,
+      "action": "deploy",
+      "unit": "breacher",
+      "travel": 0.1
+    },
+    {
+      "at": 3.1,
+      "action": "select",
+      "target": "newest",
+      "travel": 0.1
+    },
+    {
+      "at": 3.3,
+      "action": "move",
+      "ahead": 300,
+      "from": "newest",
+      "travel": 0.1
+    },
+    {
+      "at": 3.5,
+      "action": "still",
+      "label": "selection"
+    },
+    {
+      "at": 3.8,
+      "action": "key"
+    },
+    {
+      "at": 4.2,
+      "action": "check",
+      "paused": true,
+      "buttons_visible": [
+        "Resume",
+        "Main Menu"
+      ]
+    },
+    {
+      "at": 4.3,
+      "action": "still",
+      "label": "pause"
+    }
+  ]
+}

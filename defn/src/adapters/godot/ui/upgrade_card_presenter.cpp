@@ -6,6 +6,7 @@
 #include "godot_string.h"
 #include "ui_theme_provider.h"
 #include "ui_widgets.h"
+#include <godot_cpp/classes/h_flow_container.hpp>
 
 #include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/text_server.hpp>
@@ -40,6 +41,26 @@ Button *UpgradeCardPresenter::create(const UpgradeCardViewModel &upgrade_card, b
 
     card.button->set_disabled(disabled);
     return card.button;
+}
+
+Control *UpgradeCardPresenter::build_owned(const std::vector<UpgradeCardViewModel> &owned_upgrades) {
+    if (owned_upgrades.empty()) {
+        auto *empty_label = make_label(String::utf8("No upgrades yet — clear levels to earn them."), "empty_state");
+        empty_label->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
+        empty_label->set_custom_minimum_size(godot::Vector2{});
+        return empty_label;
+    }
+
+    {
+        auto *flow = memnew(HFlowContainer);
+        flow->set_h_size_flags(Control::SIZE_EXPAND_FILL);
+        flow->add_theme_constant_override("h_separation", 12);
+        flow->add_theme_constant_override("v_separation", 12);
+        for (const auto &card : owned_upgrades) {
+            flow->add_child(UpgradeCardPresenter::create(card, false, false, Callable(), false));
+        }
+        return flow;
+    }
 }
 
 } // namespace defn

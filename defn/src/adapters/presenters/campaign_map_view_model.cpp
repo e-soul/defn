@@ -9,6 +9,15 @@
 #include <unordered_set>
 
 namespace defn {
+CampaignItemPresentation campaign_item_presentation(CampaignNodeState state) {
+    if (state == CampaignNodeState::LOCKED) {
+        return {.status = "LOCKED", .deployment = "LOCKED", .locked = true};
+    }
+    if (state == CampaignNodeState::COMPLETED) {
+        return {.status = "SECURED", .deployment = "REPLAY", .locked = false};
+    }
+    return {.status = "AVAILABLE", .deployment = "DEPLOY", .locked = false};
+}
 
 namespace {
 

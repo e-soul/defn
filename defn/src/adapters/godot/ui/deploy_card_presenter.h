@@ -5,6 +5,7 @@
 #define DEPLOY_CARD_PRESENTER_H
 
 #include "deploy_card_view_model.h"
+#include "ui_widgets.h"
 #include "unit_definition.h"
 
 #include <godot_cpp/classes/button.hpp>
@@ -13,10 +14,18 @@
 namespace defn {
 
 using namespace godot;
+struct DeployCardNodes {
+    CardNodes frame;
+    TextureRect *portrait = nullptr;
+    Label *title = nullptr;
+    HBoxContainer *cost = nullptr;
+    Control *cost_icon = nullptr;
+};
 
 class DeployCardPresenter {
   public:
     DeployCardPresenter() = delete;
+    static DeployCardNodes create_nodes(const DeployCardViewModel &view_model, const Callable &pressed_action);
 
     static Button *create(const UnitConfig &config, const Callable &pressed_action);
     static Button *create(const DeployCardViewModel &view_model, const Callable &pressed_action);

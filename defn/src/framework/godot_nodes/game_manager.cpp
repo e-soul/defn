@@ -43,6 +43,8 @@
 #include <godot_cpp/classes/rectangle_shape2d.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
+#include <godot_cpp/classes/sprite2d.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/variant/callable_method_pointer.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 
@@ -138,16 +140,27 @@ void navigate_if_requested(SceneTree *tree, const MenuFlowResult &result) {
 
 GameManager::GameManager() = default;
 
+void GameManager::configure_presentation(Node *ui_parent, UnitDataLoader content, PresentationReady ready, std::function<void()> invalidate_layout) {
+    ui_parent_ = ui_parent;
+    unit_data_ = std::move(content);
+    supplied_content_ = true;
+    presentation_ready_ = std::move(ready);
+    invalidate_layout_ = std::move(invalidate_layout);
+}
+
 void GameManager::_bind_methods() {}
 
 void GameManager::_ready() {
+    set_process_mode(PROCESS_MODE_PAUSABLE);
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
     auto *progression = CampaignService::get_singleton();
     const String level_id = progression->get_current_level_id_godot();
 
     // Load unit data from JSON
-    unit_data_.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
+    if (!supplied_content_) {
+        unit_data_.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
+    }
 
     if (!compose_match(level_id)) {
         return;
@@ -175,7 +188,9 @@ void GameManager::_ready() {
     // HUD
     hud = memnew(HUD);
     hud->set_name("HUD");
-    add_child(hud);
+    Node *ui_parent = ui_parent_ != nullptr ? ui_parent_ : this;
+    hud->set_layout_invalidation(invalidate_layout_);
+    ui_parent->add_child(hud);
 
     hud->set_friendly_units(match_director_.build_available_friendlies());
     hud->set_level(to_godot_string(match_director_.get_level_name()));
@@ -218,8 +233,12 @@ void GameManager::_ready() {
     // Pause menu (ESC to toggle)
     auto *pause_menu = memnew(PauseMenu);
     pause_menu->set_name("PauseMenu");
-    add_child(pause_menu);
+    ui_parent->add_child(pause_menu);
+    hud->set_pause_action(callable_mp(pause_menu, &PauseMenu::toggle_pause));
     pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
+    if (presentation_ready_) {
+        presentation_ready_(hud, unit_data_, base_objective, unit_selection_controller_);
+    }
 }
 
 // The one place the mode is read. A campaign match is composed exactly as it always was; an endless run swaps the

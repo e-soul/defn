@@ -1,0 +1,23 @@
+{
+  "name": "desktop_score_rescue",
+  "level": "level_01",
+  "fps": 60,
+  "duration_seconds": 164,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": ["Use --fixture rescue: a real defeat is eligible for support at the Level 02 frontier."],
+  "timeline": [
+    {"at": 154, "action": "still", "label": "results"},
+    {"at": 154.1, "action": "check", "labels_visible": ["DEFEAT"], "buttons_disabled": ["Retry", "Campaign"]},
+    {"at": 155, "action": "click", "label": "Choose upgrade", "travel": 0.1},
+    {"at": 156, "action": "still", "label": "rewards"},
+    {"at": 156.1, "action": "check", "labels_visible": ["RESCUE DRAFT: Level 02", "Career progress unlocked emergency support for Level 02."], "buttons_visible": ["Demolition Permit", "Back"]},
+    {"at": 157, "action": "click", "label": "Back", "travel": 0.1},
+    {"at": 158, "action": "check", "buttons_disabled": ["Retry", "Campaign"]},
+    {"at": 159, "action": "click", "label": "Choose upgrade", "travel": 0.1},
+    {"at": 160, "action": "click", "label": "Demolition Permit", "travel": 0.1},
+    {"at": 161, "action": "check", "buttons_enabled": ["Retry", "Campaign"]},
+    {"at": 162, "action": "still", "label": "after-selection"}
+  ]
+}

@@ -6,11 +6,11 @@
 #include "campaign_map_data_loader.h"
 #include "campaign_map_node_view.h"
 #include "campaign_map_view_model.h"
-#include "campaign_preview_view.h"
 #include "data_paths.h"
 #include "endless_schedule_loader.h"
 #include "godot_string.h"
 #include "level_loader.h"
+#include "mobile_campaign_view.h"
 #include "operation_dossier_view.h"
 #include "progression_service.h"
 #include "ui_screen_scaffold.h"
@@ -29,7 +29,6 @@
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/property_tweener.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
-#include <godot_cpp/classes/scroll_container.hpp>
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/tween.hpp>
 #include <godot_cpp/classes/v_box_container.hpp>
@@ -158,7 +157,7 @@ void CampaignMapView::configure_loading(const Callable &deploy_action, const Cal
     deploy_action_ = deploy_action;
     back_action_ = back_action;
     view_model_ = {};
-    selected_level_id_.clear();
+    selection_ = {};
     requested_texture_paths_.clear();
     loaded_textures_.clear();
     loading_state_ = LoadingState::WaitingToStart;
@@ -185,7 +184,7 @@ void CampaignMapView::build_loading_overlay() {
 
     loading_actions_ = scaffold.footer;
     loading_actions_->set_name("LoadingActions");
-    loading_actions_->set_alignment(BoxContainer::ALIGNMENT_CENTER);
+    loading_actions_->set_alignment(FlowContainer::ALIGNMENT_CENTER);
     loading_actions_->hide();
 
     auto *retry = make_button("Retry", "secondary", callable_mp(this, &CampaignMapView::retry_loading));
@@ -358,7 +357,7 @@ void CampaignMapView::fail_loading(const String &message) {
 
 void CampaignMapView::retry_loading() {
     view_model_ = {};
-    selected_level_id_.clear();
+    selection_ = {};
     requested_texture_paths_.clear();
     loaded_textures_.clear();
     loading_animation_elapsed_ = 0.0;
@@ -508,136 +507,33 @@ void CampaignMapView::build_map_content() {
     dossier_->connect("endless_requested", callable_mp(this, &CampaignMapView::deploy_endless));
     dossier_->connect("back_requested", callable_mp(this, &CampaignMapView::request_back));
     reference_surface_->add_child(dossier_);
+    wide_ui_ = memnew(Control);
+    wide_ui_->set_name("WideUI");
+    wide_ui_->set_mouse_filter(MOUSE_FILTER_IGNORE);
+    add_child(wide_ui_);
+    node_layer->reparent(wide_ui_, false);
+    header_backplate->reparent(wide_ui_, false);
+    header_row->reparent(wide_ui_, false);
+    dossier_->reparent(wide_ui_, false);
     build_mobile_content();
 }
 
 void CampaignMapView::build_mobile_content() {
-    mobile_root_ = memnew(Control);
-    mobile_root_->set_name("MobileCampaign");
-    mobile_root_->set_clip_contents(true);
-    mobile_root_->set_mouse_filter(MOUSE_FILTER_STOP);
+    mobile_root_ = memnew(MobileCampaignView);
     add_child(mobile_root_);
-
-    auto *background = memnew(ColorRect);
-    background->set_color(UiThemeProvider::color("backdrop"));
-    background->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
-    mobile_root_->add_child(background);
-
-    auto *column = memnew(VBoxContainer);
-    column->set_name("MobileCampaignColumn");
-    column->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
-    column->set_offset(SIDE_LEFT, 24.0F);
-    column->set_offset(SIDE_TOP, 18.0F);
-    column->set_offset(SIDE_RIGHT, -24.0F);
-    column->set_offset(SIDE_BOTTOM, -18.0F);
-    column->set_h_size_flags(SIZE_EXPAND_FILL);
-    column->set_v_size_flags(SIZE_EXPAND_FILL);
-    column->add_theme_constant_override("separation", UiThemeProvider::spacing("md"));
-    mobile_root_->add_child(column);
-
-    auto *title = make_label("CAMPAIGN", "screen_heading");
-    title->set_horizontal_alignment(HORIZONTAL_ALIGNMENT_CENTER);
-    column->add_child(title);
-
-    auto *list_scroll = memnew(ScrollContainer);
-    list_scroll->set_name("MobileMissionScroll");
-    list_scroll->set_h_size_flags(SIZE_EXPAND_FILL);
-    list_scroll->set_v_size_flags(SIZE_EXPAND_FILL);
-    list_scroll->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
-    column->add_child(list_scroll);
-    mobile_list_ = list_scroll;
-    auto *missions = memnew(VBoxContainer);
-    missions->set_name("MobileMissions");
-    missions->set_h_size_flags(SIZE_EXPAND_FILL);
-    missions->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
-    list_scroll->add_child(missions);
+    std::vector<Ref<Texture2D>> previews;
+    previews.reserve(view_model_.missions.size() + (view_model_.endless.has_value() ? 1 : 0));
     for (const auto &mission : view_model_.missions) {
-        const String label = vformat("%02d   %s", mission.sequence_number, to_godot_string(mission.name));
-        auto *button = make_button(label, "secondary", callable_mp(this, &CampaignMapView::show_mobile_mission).bind(to_godot_string(mission.level_id)));
-        button->set_custom_minimum_size({0.0F, 84.0F});
-        button->set_h_size_flags(SIZE_EXPAND_FILL);
-        missions->add_child(button);
+        previews.push_back(texture_for(mission.preview.texture));
     }
     if (view_model_.endless.has_value()) {
-        auto *endless = make_button("ENDLESS MODE", "secondary", callable_mp(this, &CampaignMapView::deploy_endless));
-        endless->set_custom_minimum_size({0.0F, 84.0F});
-        missions->add_child(endless);
+        previews.push_back(texture_for(view_model_.endless->preview.texture));
     }
-
-    auto *detail_scroll = memnew(ScrollContainer);
-    detail_scroll->set_name("MobileDetailScroll");
-    detail_scroll->set_h_size_flags(SIZE_EXPAND_FILL);
-    detail_scroll->set_v_size_flags(SIZE_EXPAND_FILL);
-    detail_scroll->set_horizontal_scroll_mode(ScrollContainer::SCROLL_MODE_DISABLED);
-    column->add_child(detail_scroll);
-    mobile_detail_ = detail_scroll;
-    mobile_detail_body_ = memnew(VBoxContainer);
-    mobile_detail_body_->set_name("MobileDetailBody");
-    mobile_detail_body_->set_h_size_flags(SIZE_EXPAND_FILL);
-    mobile_detail_body_->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
-    detail_scroll->add_child(mobile_detail_body_);
-
-    auto *actions = memnew(HBoxContainer);
-    actions->set_name("MobileCampaignActions");
-    actions->add_theme_constant_override("separation", UiThemeProvider::spacing("sm"));
-    column->add_child(actions);
-    mobile_back_ = make_button("BACK", "secondary", callable_mp(this, &CampaignMapView::mobile_back));
-    mobile_back_->set_custom_minimum_size({0.0F, 80.0F});
-    mobile_back_->set_h_size_flags(SIZE_EXPAND_FILL);
-    actions->add_child(mobile_back_);
-    mobile_deploy_ = make_button("DEPLOY", "primary", callable_mp(this, &CampaignMapView::deploy_selected));
-    mobile_deploy_->set_custom_minimum_size({0.0F, 80.0F});
-    mobile_deploy_->set_h_size_flags(SIZE_EXPAND_FILL);
-    actions->add_child(mobile_deploy_);
-    show_mobile_list();
-}
-
-void CampaignMapView::show_mobile_mission(const String &level_id) {
-    select_level(level_id);
-    const CampaignMissionViewModel *mission = find_mission(to_std_string(level_id));
-    if (mission == nullptr) {
-        return;
-    }
-    for (int i = mobile_detail_body_->get_child_count() - 1; i >= 0; --i) {
-        mobile_detail_body_->get_child(i)->queue_free();
-    }
-    auto *heading = make_label(to_godot_string(mission->name).to_upper(), "dossier_title");
-    heading->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-    mobile_detail_body_->add_child(heading);
-    auto *status = make_label(mission->state == CampaignNodeState::LOCKED ? "LOCKED" : "AVAILABLE", "eyebrow");
-    mobile_detail_body_->add_child(status);
-    auto *tagline = make_label(to_godot_string(mission->tagline), "tagline");
-    tagline->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-    mobile_detail_body_->add_child(tagline);
-    auto *preview = memnew(CampaignPreviewView);
-    preview->set_custom_minimum_size({0.0F, 330.0F});
-    preview->configure(texture_for(mission->preview.texture), mission->preview.focus_x, mission->preview.focus_y, mission->preview.dossier_zoom);
-    mobile_detail_body_->add_child(preview);
-    mobile_detail_body_->add_child(make_label(vformat("THREAT  %s     WAVES  %d", to_godot_string(mission->threat_label), mission->wave_count), "body"));
-    mobile_detail_body_->add_child(make_label(vformat("DURATION  %s", to_godot_string(mission->duration_label)), "body"));
-    if (mission->state == CampaignNodeState::LOCKED) {
-        auto *requirement = make_label(to_godot_string(mission->unlock_requirement), "body");
-        requirement->set_autowrap_mode(TextServer::AUTOWRAP_WORD_SMART);
-        mobile_detail_body_->add_child(requirement);
-    }
-    mobile_list_->hide();
-    mobile_detail_->show();
-    mobile_deploy_->show();
-    mobile_deploy_->set_disabled(mission->state == CampaignNodeState::LOCKED);
-}
-
-void CampaignMapView::show_mobile_list() {
-    mobile_detail_->hide();
-    mobile_list_->show();
-    mobile_deploy_->hide();
-}
-
-void CampaignMapView::mobile_back() {
-    if (mobile_detail_->is_visible()) {
-        show_mobile_list();
-    } else {
-        request_back();
-    }
+    mobile_root_->configure(view_model_, std::move(previews),
+                            {.select = [this](const CampaignSelection &selection) { select_item(selection); },
+                             .deploy = callable_mp(this, &CampaignMapView::deploy_selected),
+                             .endless = callable_mp(this, &CampaignMapView::deploy_endless),
+                             .back = callable_mp(this, &CampaignMapView::request_back)});
 }
 
 void CampaignMapView::build_routes(Control *route_layer) {
@@ -688,7 +584,7 @@ void CampaignMapView::build_endless_button(HBoxContainer *header_row) {
     // A header button rather than a plate squeezed onto the map: it reads as a mode switch, not a sixth mission,
     // and it does not need to fight the mission chain for a free pocket of art. It deploys directly rather than
     // opening the dossier first -- there is nothing to compare it against the way a mission choice has siblings.
-    const CardNodes card = make_card({.variant = "secondary", .layout = CardLayout::Horizontal}, callable_mp(this, &CampaignMapView::deploy_endless));
+    const CardNodes card = make_card({.variant = "campaign_mode", .layout = CardLayout::Horizontal}, callable_mp(this, &CampaignMapView::deploy_endless));
     card.button->set_name("EndlessButton");
     card.button->set_h_size_flags(SIZE_SHRINK_CENTER);
     card.button->set_v_size_flags(SIZE_SHRINK_CENTER);
@@ -697,18 +593,32 @@ void CampaignMapView::build_endless_button(HBoxContainer *header_row) {
     header_row->add_child(card.button);
 }
 
-void CampaignMapView::select_level(const String &level_id) {
+void CampaignMapView::select_level(const String &level_id) { select_item({.level_id = to_std_string(level_id)}); }
+void CampaignMapView::select_item(const CampaignSelection &selection) {
+    if (selection.endless && view_model_.endless.has_value() && dossier_ != nullptr) {
+        selection_ = selection;
+        mobile_root_->select_item(selection);
+        for (auto *node : node_views_) {
+            node->set_selected(false);
+        }
+        dossier_->configure_endless(*view_model_.endless, texture_for(view_model_.endless->preview.texture));
+        return;
+    }
+    const String level_id = to_godot_string(selection.level_id);
     const std::string selected = to_std_string(level_id);
     const CampaignMissionViewModel *mission = find_mission(selected);
     if (mission == nullptr || dossier_ == nullptr) {
         return;
     }
-    if (selected == selected_level_id_) {
+    if (mobile_root_ != nullptr) {
+        mobile_root_->select_level(level_id);
+    }
+    if (selected == selection_.level_id) {
         return;
     }
-    selected_level_id_ = selected;
+    selection_ = selection;
     for (CampaignMapNodeView *node : node_views_) {
-        node->set_selected(node->level_id() == selected_level_id_);
+        node->set_selected(node->level_id() == selection_.level_id);
     }
     dossier_->configure(*mission, texture_for(mission->preview.texture));
     configure_ambience(*mission);
@@ -734,11 +644,11 @@ void CampaignMapView::deploy_endless() {
 }
 
 void CampaignMapView::deploy_selected() {
-    const CampaignMissionViewModel *mission = find_mission(selected_level_id_);
+    const CampaignMissionViewModel *mission = find_mission(selection_.level_id);
     if (mission == nullptr || mission->state == CampaignNodeState::LOCKED || !deploy_action_.is_valid()) {
         return;
     }
-    deploy_action_.call(to_godot_string(selected_level_id_));
+    deploy_action_.call(to_godot_string(selection_.level_id));
 }
 
 void CampaignMapView::request_back() {
@@ -752,26 +662,44 @@ void CampaignMapView::layout_reference_surface() {
         return;
     }
     const GVector2 reference = reference_size();
+    const auto &policy = UiThemeProvider::data().responsive;
+    const bool desktop = context_.display.fine_pointer && get_size().x >= policy.wide_pointer_width && get_size().y >= policy.wide_pointer_height;
     if (mobile_root_ != nullptr) {
-        bool mobile = false;
-        float css_width = 0.0F;
-        if (OS::get_singleton()->has_feature("web")) {
-            css_width = static_cast<float>(
-                static_cast<double>(JavaScriptBridge::get_singleton()->eval("document.getElementById('canvas')?.clientWidth || 1920", true)));
-            mobile = css_width < 900.0F;
-        }
+        auto display = context_.display;
+        display.content = {.width = get_size().x, .height = get_size().y};
+        const bool mobile = !resolve_ui_context(display, policy, context_.profile).wide_campaign;
         mobile_root_->set_visible(mobile);
         reference_surface_->set_visible(!mobile);
-        if (mobile) {
-            const float design_width = css_width < 600.0F ? 960.0F : 1600.0F;
-            const float mobile_scale = get_size().x / design_width;
-            mobile_root_->set_scale({mobile_scale, mobile_scale});
-            mobile_root_->set_size(get_size() / mobile_scale);
-        }
+        wide_ui_->set_visible(!mobile);
+        mobile_root_->set_scale({1, 1});
+        mobile_root_->set_size(get_size());
     }
     const float scale = std::min(get_size().x / reference.x, get_size().y / reference.y);
     reference_surface_->set_scale({scale, scale});
     reference_surface_->set_position((get_size() - (reference * scale)) * 0.5F);
+    const GVector2 ui_size = desktop ? reference : get_size();
+    wide_ui_->set_scale(desktop ? GVector2(scale, scale) : GVector2(1, 1));
+    wide_ui_->set_position(desktop ? reference_surface_->get_position() : GVector2());
+    wide_ui_->set_size(ui_size);
+    auto *nodes = Object::cast_to<Control>(wide_ui_->get_node_or_null("MissionNodes"));
+    if (nodes != nullptr) {
+        nodes->set_size(ui_size);
+    }
+    for (std::size_t i = 0; i < node_views_.size(); ++i) {
+        const GVector2 center =
+            desktop ? mission_center(view_model_.missions[i]) : reference_surface_->get_position() + mission_center(view_model_.missions[i]) * scale;
+        node_views_[i]->set_position(center - node_views_[i]->get_size() * 0.5F);
+    }
+    const float margin = UiThemeProvider::metric("map_header_margin", 64);
+    if (auto *header = Object::cast_to<Control>(wide_ui_->get_node_or_null("HeaderRow")); header != nullptr) {
+        header->set_position({margin, desktop ? 0.0F : static_cast<float>(UiThemeProvider::spacing("lg"))});
+        header->set_size({ui_size.x - (2 * margin), UiThemeProvider::metric("map_header_height", 104)});
+    }
+    if (auto *plate = Object::cast_to<Control>(wide_ui_->get_node_or_null("HeaderBackplate")); plate != nullptr) {
+        plate->set_size({ui_size.x, UiThemeProvider::metric("map_header_height", 104)});
+    }
+    dossier_->set_position({ui_size.x - UiThemeProvider::metric("operation_dossier_width", 464) - static_cast<float>(UiThemeProvider::spacing("screen_margin")),
+                            UiThemeProvider::metric("map_dossier_y", 124)});
 }
 
 void CampaignMapView::configure_ambience(const CampaignMissionViewModel &mission) {

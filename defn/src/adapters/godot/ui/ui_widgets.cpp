@@ -8,20 +8,49 @@
 
 #include <godot_cpp/classes/box_container.hpp>
 #include <godot_cpp/classes/canvas_item.hpp>
+#include <godot_cpp/classes/font.hpp>
 #include <godot_cpp/classes/margin_container.hpp>
 #include <godot_cpp/classes/text_server.hpp>
 #include <godot_cpp/core/memory.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <string>
 
 namespace defn {
 
 using namespace godot;
 
-namespace {
+float wrapped_text_height(const Ref<Font> &font, const String &text, float width, int size) {
+    const BitField<TextServer::LineBreakFlag> breaks(TextServer::BREAK_MANDATORY | TextServer::BREAK_WORD_BOUND | TextServer::BREAK_ADAPTIVE);
+    return std::ceil(font->get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, std::max(1.0F, width), size, -1, breaks).y);
+}
+void place_wrapped_label(Label *label, const String &text, const Rect2 &rect) {
+    label->set_text({});
+    label->set_position(rect.position);
+    label->set_size(rect.size);
+    label->set_text(text);
+    label->update_minimum_size();
+    label->set_position(rect.position);
+    label->set_size(rect.size);
+}
+void UiButton::set_variant(std::string_view variant) {
+    variant_ = variant;
+    set_theme_type_variation(UiThemeProvider::button_variation(variant));
+    _notification(NOTIFICATION_THEME_CHANGED);
+}
+void UiButton::_notification(int what) {
+    if (what != NOTIFICATION_THEME_CHANGED || variant_.empty() || !has_meta("ui_variant")) {
+        return;
+    }
+    const auto type = UiThemeProvider::button_variation(variant_);
+    const auto &fallback = UiThemeProvider::data();
+    if (const auto *style = fallback.find_button(variant_); style != nullptr) {
+        set_custom_minimum_size({static_cast<float>(get_theme_constant("min_width", type)), static_cast<float>(get_theme_constant("min_height", type))});
+    }
+}
 
-constexpr float DISABLED_MODULATE_ALPHA = 0.7F;
-constexpr float DISABLED_MODULATE_VALUE = 0.5F;
+namespace {
 
 /// How far a plate sits from the edge it is anchored to, and which way it grows from there. Deriving both from
 /// the preset is what keeps a right-anchored plate from ever being told to grow rightwards off the screen.
@@ -65,14 +94,12 @@ void anchor_hud_pod(Control *pod, Control::LayoutPreset preset) {
 
 void apply_label_style(Label *label, std::string_view text_style) {
     if (label != nullptr) {
-        UiThemeProvider::apply_to(label);
         label->set_theme_type_variation(UiThemeProvider::label_variation(text_style));
     }
 }
 
 void apply_button_style(Control *control, std::string_view variant) {
     if (control != nullptr) {
-        UiThemeProvider::apply_to(control);
         control->set_theme_type_variation(UiThemeProvider::button_variation(variant));
     }
 }
@@ -86,12 +113,14 @@ Label *make_label(const String &text, std::string_view text_style) {
 }
 
 Button *make_button(const String &text, std::string_view variant, const Callable &pressed) {
-    auto *button = memnew(Button);
+    auto *button = memnew(UiButton);
     button->set_text(text);
+    button->set_meta("ui_variant", String(std::string(variant).c_str()));
     // Every control takes focus, so the game is navigable by keyboard and pad. The theme gives focus its own
     // border colour, distinct from both an ordinary border and the accent a selected card wears.
     button->set_focus_mode(Control::FOCUS_ALL);
     apply_button_style(button, variant);
+    button->set_variant(variant);
 
     const UiButtonVariant *button_style = UiThemeProvider::data().find_button(variant);
     if (button_style != nullptr && (button_style->min_width > 0 || button_style->min_height > 0)) {
@@ -124,6 +153,7 @@ CardNodes make_card(const CardSpec &spec, const Callable &pressed) {
     const int inset = variant == nullptr || variant->content_margin_role.empty() ? 0 : UiThemeProvider::spacing(variant->content_margin_role);
 
     auto *margins = memnew(MarginContainer);
+    card.margins = margins;
     margins->set_name("CardMargins");
     margins->set_anchors_and_offsets_preset(Control::PRESET_FULL_RECT);
     margins->set_mouse_filter(Control::MOUSE_FILTER_IGNORE);
@@ -204,7 +234,6 @@ Label *make_card_title(const String &text) {
 
 PanelContainer *make_surface(std::string_view surface_name) {
     auto *panel = memnew(PanelContainer);
-    UiThemeProvider::apply_to(panel);
     panel->set_theme_type_variation(UiThemeProvider::panel_variation(surface_name));
     return panel;
 }
@@ -296,8 +325,8 @@ void set_state_tint(Control *control, std::string_view color_role) {
 void apply_enabled(BaseButton *button, bool enabled) {
     if (button != nullptr) {
         button->set_disabled(!enabled);
-        button->set_modulate(enabled ? godot::Color(1, 1, 1, 1)
-                                     : godot::Color(DISABLED_MODULATE_VALUE, DISABLED_MODULATE_VALUE, DISABLED_MODULATE_VALUE, DISABLED_MODULATE_ALPHA));
+        // Disabled frames use the theme state. Child names/costs retain their contrast and remain readable.
+        button->set_modulate(godot::Color(1, 1, 1, 1));
     }
 }
 

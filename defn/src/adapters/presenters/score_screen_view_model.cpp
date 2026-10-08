@@ -67,11 +67,12 @@ ScoreScreenViewModel build_score_screen_view_model(const ScoreScreenPresentation
     if (input.victory) {
         view_model.stat_rows.emplace_back("Completion Bonus:", std::to_string(input.completion_bonus));
     }
-    view_model.stat_rows.emplace_back(endless_run ? "Run Score:" : "Level Score:", with_record(std::to_string(input.level_score), input.endless.record_score));
+    view_model.stat_rows.emplace_back(endless_run ? "Run Score:" : "Level Score:", with_record(std::to_string(input.level_score), input.endless.record_score),
+                                      ScoreStatKind::MatchTotal);
     if (endless_run) {
         view_model.stat_rows.emplace_back("Best Run:", format_best_run(input.endless.best_wave, input.endless.best_score));
     }
-    view_model.stat_rows.emplace_back("Career Total:", std::to_string(input.new_total_score));
+    view_model.stat_rows.emplace_back("Career Total:", std::to_string(input.new_total_score), ScoreStatKind::CareerTotal);
 
     const bool actions_enabled = !input.reward_requires_selection;
     // A finished run has no next level and nothing to complete, so the forward action is a fresh run.

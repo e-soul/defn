@@ -174,7 +174,10 @@ Current boundary ownership:
   ground's contact line must carry the ground's scroll rate. See
   `defn/art/MODULAR_BACKGROUNDS.md` for why, and for the authoring pipeline
   that produces the layers.
-- `GameManager` is the match-level composition and lifecycle entry point. It
+- `MatchPresentation` is the match scene's composition and lifecycle entry point.
+  It owns a uniformly fitted 16:9 `SubViewportContainer`/`SubViewport` battlefield
+  and a sibling full-screen UI root. `GameManager` composes gameplay inside that
+  battlefield, whose 2D audio listener is enabled for spatial gameplay effects. It
   delegates camera movement to `CameraScrollController`, backgrounds to
   `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and
   `UnitFactory`, and match decisions to `MatchDirector`.
@@ -198,11 +201,20 @@ Current boundary ownership:
   campaign/level definition composition and threaded texture requests before it
   passes plain campaign state to `CampaignMapPresenter` and builds the map UI.
   Preview framing and Godot controls remain adapter concerns.
-  On narrow web viewports the adapter presents the same campaign model as a
-  scrollable mission list and a separate detail page with persistent Deploy and
-  Back actions; the illustrated map remains the wide-screen presentation.
-  The browser shell requests landscape when the player enters fullscreen, while
-  touch pause control stays in the Godot pause adapter.
+  When the available logical area cannot fit the wide map controls, `MobileCampaignView`
+  presents the same campaign model as an illustrated mission carousel. Portrait stacks
+  artwork and briefing; landscape places them side by side. Measured text reflows
+  without scrolling, while arrows/swipes browse and Deploy/Replay and Back stay pinned.
+  Selection survives orientation changes. Locked missions remain browseable; the optional
+  standing engagement is supplied by the existing unlock model and is not counted as a mission.
+  Map artwork scales against its reference surface. Wide pointer windows retain
+  the original map composition; compact areas use the carousel presentation.
+  The dossier scrolls its body while Deploy/Replay and Back remain pinned.
+  The browser shell shows a rotation hint in mobile portrait, requests landscape
+  on fullscreen entry when the browser permits it, and reserves its exit control
+  outside the game canvas. Unsupported orientation locks leave fullscreen usable.
+  Pause is a full-screen modal `Control` beside the battlefield, with a pinned
+  HUD action and Escape/Android Back navigation intent.
 
 Keep these translations at the edge. A new engine-facing value in domain or
 application code is an architectural regression, not a convenience shortcut.
@@ -698,110 +710,82 @@ flowchart TB
 
 ## Module 5: Presentation, UI, and Scene Flow
 
-Godot UI nodes are humble adapters: they render pure view models into controls and translate user input/signals into application intents. Presentation shaping, settings changes, and menu/post-match navigation decisions live in presenters and use cases; only Godot adapters touch `SceneTree`, display/audio APIs, and concrete engine services. `SettingsRuntime` is the settings-specific exception to scene lifetime: it is an autoload because the project replaces its root scene during navigation. It remains a narrow facade and must not become a general service locator.
+Godot controls render pure presentation models and translate input into application
+intents. Menu navigation, settings persistence, progression and reward acceptance
+remain application decisions. SettingsRuntime is a narrow autoload facade because
+navigation replaces scenes; it is not a general service locator.
 
-Look and feel is data-driven and shared. `data/ui_theme.json` is the single source of colors, typography, spacing, shapes, surfaces, button variants, text styles, campaign map medallions, HUD instrument icons, screen layout, named metrics, and UI SFX. `UiThemeLoader` parses it into the engine-neutral `UiThemeData` tokens in `src/domain/content/ui_theme_models.h`; `UiThemeProvider` turns those tokens into one Godot `Theme` of type variations installed on the `SceneTree` root. UI code builds controls through `ui_widgets` (`make_label`, `make_button`, `make_surface`, `make_chip`, ...) and `ui_screen_scaffold::build_screen`. `ContentValidator` checks that every role referenced by the theme resolves and that every mark the theme names exists on disk. Vector marks are white SVGs tinted at runtime: `icon_medallion` builds the plate-and-mark pair the campaign map and the HUD share, and `meter_geometry` holds the skewed segment shape used by both the progression stat meters and the HUD integrity meter.
+| Owner | Contract |
+| --- | --- |
+| DisplayAdapter | Read platform facts, normalize logical geometry/density, apply window canvas scaling. |
+| ResponsiveUiRoot | Observe window changes and one 250 ms fallback poll; consume safe insets once; notify typed UiContextControl children. |
+| responsive_layout | Pure profile/composition choices, match rectangles and tray arithmetic. Typography, pointer targets, campaign fit and match composition have separate rules. |
+| UiThemeLoader / UiThemeProvider | Parse base tokens and optional scoped patches; merge supplied fields deterministically; cache resolved Godot themes. |
+| UiScreenControl | Retain scaffold chrome; clamp content_limit to local bounds; own compact-menu reflow, natural-height fitting, scrolling and pinned footer. |
+| OptionsScreenView | Retain settings rows; show volume controls for a coarse primary pointer; reflow audio rows on rotation and let the desktop panel grow. SettingsRuntime owns changes and persistence. |
+| MenuScreenView | Retain desktop action availability and disable Progress for a coarse primary pointer; update the same buttons when the display context changes. MenuManager owns navigation. |
+| MatchPresentation | Compose world/UI and explicitly supply loaded content, UI parent and invalidation callbacks; measure visual exclusion bounds at the Godot edge. |
+| HUD | Update readings, apply appearance on context/revision changes, cache measured extents, reflow/place retained reading groups. |
+| DeployTray | Own final clip/capacity/navigation/scroll bounds and retained CardNodes. Scrolling changes offset and navigation state; appearance changes style. |
+| ScoreScreenPresenter / ScoreScreenView | Semantic breakdown/totals and shared Results/Rewards/Owned flow. Pure pagination consumes measured extents; anchors and semantic focus survive reflow. |
+| CampaignMapView / MobileCampaignView | One owner-selected mission or endless entry; wide map and carousel render that selection. Browsing emits intent separately from deployment. |
 
-The palette is a ramp, not a list. A small set of literal entries — the `neutral_*` steps at one hue, the accent, the text steps, and the four `state_*` colors — carry actual values; every other role reaches them by reference. A palette entry may be a literal `[r, g, b, a]`, another role's name (`"surface": "neutral_surface"`), or a name plus an opacity (`"overlay_scrim": ["neutral_ink", 0.72]`), which is how the same step serves both an opaque surface and the scrim over it. `UiThemeLoader` resolves the chains at load; a broken or circular reference drops the role so `ContentValidator` reports each place that names it. `UiPalette`'s field initialisers restate the same ramp through `palette_ramp` so a theme that fails to load still renders the designed colors.
+DisplaySnapshot carries complete value equality, including coarse-primary pointer
+and safe-area ownership. Web facts come from canvas CSS bounds and DPR; Windows
+uses client pixels divided by effective DPI/96; Android uses DPI/160 and native
+safe areas. Jitter below 1/64 logical pixel is normalized. Children receive usable
+root-local geometry and never observe the display independently.
 
-Two rules keep it that way:
+World coordinates, logical UI coordinates and render pixels stay distinct.
+MatchPresentation keeps the world viewport at the gameplay reference dimensions
+and applies the render-density/container transform. Desktop MatchControls retain
+their original uniform reference fit. HUD, deploy tray, pause and results sit
+outside the world texture; result panels use local bounds without subtracting safe
+insets again. World health/promotion annotations and spatial audio retain their
+world-space rules. GameManager stays pausable while responsive layout and modal
+navigation process during pause.
 
-- A new palette role names a *meaning*, not a component. `surface_raised` and `text_disabled` belong; `menu_normal` and `card_border` do not — a component that needs a colour references the semantic role that already describes it.
-- A view must not hardcode a colour, a size or a duration. All three come from the theme, through `ui_widgets` and `UiThemeProvider`. A figure a view still owns should be a named constant with a comment saying why it is not a token — a floor that keeps a layout drawable, not a design decision.
+data/ui_theme.json owns semantic palette roles, typography, spacing, surfaces,
+marks, metrics and sounds. ui_desktop_match_theme.json and
+ui_phone_landscape_theme.json are partial patches for real visual differences.
+Responsive card geometry is authoritative; legacy geometry metrics are derived.
+Content validation checks base and resolved scoped references and geometry.
+Themes inherit from explicit subtree boundaries. UiButton updates target minima
+on theme changes; measured cards/actions manage their own geometry. No recursive
+theme assignment or root metadata protocol is used. Palette roles describe meaning;
+views use shared theme tokens for colors, sizes and durations.
 
-The campaign map is composed against a reference resolution held in `map_reference_width`/`map_reference_height` and then scaled to the window, so every other `map_*` metric is expressed in that space and means nothing without it. `motion` names three transition lengths — `fast`, `base`, `slow` — so overlay fades and selection changes cannot drift onto durations of their own.
+The six HUD readings preserve their meaning in every composition. Desktop keeps
+the original plates; phone landscape hides only the level name, centers compact
+readings, pins pause and docks thin inline cards inside their touch areas.
+Portrait restores the level and a grid. Other fits may use flow, gutters,
+protected sky or an external dock. Protected bounds come from visual assets,
+never from gameplay rules or UI hierarchy discovery in GameManager.
 
-Every full-screen view is built by `ui_screen_scaffold::build_screen`, which owns the backdrop, panel, heading, body and footer. Menus, the options screen, the pause overlay, the score screen, the progression screen and the campaign map's loading state all go through it, so a screen carries no chrome of its own; `ScreenSpec::fit_content` is what lets a menu's panel shrink around a handful of buttons while a data-heavy screen still fills its content box. A menu's heading text comes from `menu_data.json`, because content owns what a menu is called and the theme owns how the heading looks — the pause overlay's scrim likewise comes from `screen.backdrop` rather than the menu data. The menu's own backdrop is `MenuBackdrop`, a `Control` that draws its composition from the palette instead of loading an image, so the menu carries no art asset and rescales with the window rather than with a texture.
+DeployTray accepts one activation per tap; movement beyond gesture slop scrolls
+without deployment. Resize, focus loss and pause cancel a pending press. Sound
+follows accepted activation, including keyboard activation. Battlefield input is
+forwarded through the viewport container; metrics, tray and modal surfaces consume
+their own input. Card identity/focus and a visible-item anchor survive reflow.
 
-Instrument readouts are shared the same way. `ui_widgets` builds the medallion-and-value row and anchors the plate it sits on, so the match HUD's energy, wave, score and integrity plates and the menu's career score are one object rather than four takes on it.
+Score rows carry ScoreStatKind instead of classifying English labels. The view
+reserves chrome before page capacity, retains action/footer controls, and restores
+focus by action or upgrade identity. Only the application callback confirms reward
+selection and enables navigation. Wrapped text shares one measurement/placement
+helper with the carousel, establishing width before assigning text.
 
-Cards share an anatomy. `ui_widgets::make_card` builds the frame every card in the game wears: a themed button variant, the padding that variant declares, and an icon slot ahead of a title-and-detail column. Deploy cards, upgrade cards and roster chips differ only in what they put in those slots and which variant they name; none of them invents an inset of its own. A Button is not a Container, so a card's children never grow it — `make_card_title` trims rather than letting a long name spill past the frame.
+Campaign locked entries remain browseable and cannot deploy; endless is distinct.
+Selection survives map/carousel transitions. Progression has its own dossier fit
+threshold and uses UpgradeCardPresenter's single wrapping owned-collection builder.
+Theme marks are tinted SVG textures; shared meter geometry draws integrity
+segments. Selected variants are derived once from the base frame. UI SFX connections
+belong to the factory or control owner, once per control; UiSfxPlayer has one active
+player per tree. Noninteractive cards do not hover, activate or acquire focus.
 
-Selection is one idea expressed once. A button variant may declare a `selected` block; `UiThemeLoader` then derives a `<name>_selected` sibling with `apply_selection`, so the provider, `find_button` and `ContentValidator` all see an ordinary variant. Every card therefore shows selection the same way — the accent on the frame at `border_width_strong`, over a lift up the neutral ramp — and the campaign map node reads the same roles for its own frame. `UiButtonVariant` carries a `border_width_role` for that, matching what `UiSurfaceStyle` already had.
-
-Controls take focus. `make_button` sets `FOCUS_ALL`, so the game is navigable by keyboard and pad, and `border_focus` is a colour distinct from both an ordinary strong border and the accent a selected card wears. Sound is likewise a property of a variant rather than of a call site: a button variant names its press sound through `sfx`, and `connect_sfx` reaches the player through `UiSfxPlayer::active()` rather than taking one as an argument. A screen calls `UiSfxPlayer::install` and gets the player already serving the tree if there is one, so a scene holds a single player; a control is wired once, by whatever builds it -- `make_button` and `make_card` for what the factory produces, the owning node for a `Button` it raises itself. Nothing wires a control it did not build, which is what keeps a control from carrying the same connection twice. A card that answers nothing is built with `interactive = false` so it does not hover, click or take focus as though it might.
-
-Marks are one vocabulary. The theme's `icons` map holds every mark the UI tints live, keyed by meaning rather than by the screen that draws it, so a stat row and the HUD plate that mean the same thing draw the same shape. `ui_widgets::make_icon` is the single way to put one on screen — the HUD's medallions wrap the same texture in a plate, and `theme_mark_texture` is what both go through. An upgrade in `upgrades.json` names an icon *key*, not a path: content says what kind of upgrade it is and the theme decides which mark and which tint that gets, which is also why one mark serves the several upgrades that change the same stat. Nothing in the UI draws a glyph from a colour emoji font, and nothing hand-draws an icon from line primitives.
-
-`control_icons` covers the last gap the palette could not otherwise reach. Godot draws a slider grabber, a dropdown arrow and a popup's selection marks from its own icon set, unmodulated, so `UiThemeProvider` recolours the named white SVGs into textures at build time and registers them. Controls with no themeable mark are avoided instead: the VSync setting is a themed toggle button wearing `option_control`, not a `CheckButton` with an engine-drawn switch.
-
-```mermaid
-flowchart TB
-    subgraph PresentationModels[Presentation Models]
-        HudModel[HudModel]
-        DeployCardModel[DeployCardModel]
-        ScoreScreenModel[ScoreScreenModel]
-        MenuScreenModel[MenuScreenModel]
-        CampaignMapModel[CampaignMapViewModel]
-        SettingsModel[SettingsModel]
-    end
-
-    subgraph Presenters[Pure Presenters]
-        HudPresenter[HudPresenter]
-        DeployCardPresenter[DeployCardPresenter]
-        ScorePresenter[ScoreScreenPresenter]
-        MenuPresenter[MenuPresenter]
-        CampaignMapPresenter[CampaignMapPresenter]
-        SettingsPresenter[SettingsPresenter]
-    end
-
-    subgraph UiAdapters[Humble UI Nodes]
-        HUD[HUD CanvasLayer]
-        MenuManager[MenuManager Node2D]
-        PauseMenu[PauseMenu]
-        SettingsRuntime[SettingsRuntime autoload]
-        CampaignMapView[CampaignMapView and dossier/node views]
-        GodotControls[Buttons, labels, panels]
-    end
-
-    subgraph SettingsApplication[Settings Application]
-        SettingsSession[SettingsSession]
-        SettingsUseCase[SettingsUseCase]
-    end
-
-    subgraph ThemeLayer[Shared UI Theme]
-        UiThemeJson[data/ui_theme.json]
-        UiThemeData[UiThemeData tokens]
-        UiThemeProvider[UiThemeProvider Theme]
-        UiWidgets[ui_widgets and ui_screen_scaffold]
-    end
-
-    subgraph ScenePorts[Scene and Settings Ports]
-        SceneNavigationPort[SceneNavigation]
-        SettingsPort[SettingsStore]
-        DisplaySettingsPort[DisplaySettings]
-        AudioSettingsPort[AudioSettings]
-    end
-
-    subgraph SettingsAdapters[Godot Settings Adapters]
-        ConfigFileStore[ConfigFileSettingsStore]
-        GodotDisplay[GodotDisplaySettings explicit WindowID]
-        GodotAudio[GodotAudioSettings]
-    end
-
-    Presenters --> PresentationModels
-    UiAdapters --> Presenters
-    UiAdapters --> ScenePorts
-    HUD --> GodotControls
-    MenuManager --> GodotControls
-    CampaignMapPresenter --> CampaignMapModel
-    CampaignMapView --> CampaignMapModel
-    MenuManager --> CampaignMapView
-    UiThemeJson --> UiThemeData
-    UiThemeData --> UiThemeProvider
-    UiThemeProvider --> UiWidgets
-    UiWidgets --> GodotControls
-    UiAdapters --> UiWidgets
-    MenuManager --> SettingsRuntime
-    SettingsRuntime --> SettingsSession
-    SettingsSession --> SettingsUseCase
-    SettingsUseCase --> SettingsPort
-    SettingsUseCase --> DisplaySettingsPort
-    SettingsUseCase --> AudioSettingsPort
-    ConfigFileStore -. implements .-> SettingsPort
-    GodotDisplay -. implements .-> DisplaySettingsPort
-    GodotAudio -. implements .-> AudioSettingsPort
-```
+Web texture compatibility belongs to the build: stage_web_project.py uses a private
+project/cache and exact full-resolution tiles with sampling borders. Source art,
+level data and asset-submodule imports remain unchanged. Operational commands and
+the regression matrix belong in defn/CAPTURE_TOOLING.md and defn/WEB_BUILD.md.
 
 ## Module 6: Godot Entity Construction
 

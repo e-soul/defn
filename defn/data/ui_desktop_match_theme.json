@@ -1,0 +1,30 @@
+{
+  "typography": { "supporting": 13, "body": 15, "heading": 22, "display": 34 },
+  "text_styles": {
+    "hud_value": { "font_size": "display", "color": "text_primary", "outline_size": 4, "outline": "text_outline" },
+    "hud_wave": { "font_size": "heading", "color": "accent", "outline_size": 4, "outline": "text_outline" },
+    "hud_wave_total": { "font_size": "body", "color": "text_muted", "outline_size": 3, "outline": "text_outline" },
+    "hud_label": { "font_size": "supporting", "color": "text_muted", "outline_size": 3, "outline": "text_outline" },
+    "hud_level": { "font_size": "heading", "color": "text_secondary", "outline_size": 4, "outline": "text_outline" },
+    "hud_score": { "font_size": "heading", "color": "text_secondary", "outline_size": 4, "outline": "text_outline" },
+    "card_title": { "font_size": "body", "color": "text_primary", "outline_size": 0, "outline": "" },
+    "card_cost": { "font_size": "supporting", "color": "energy", "outline_size": 0, "outline": "" }
+  },
+  "metrics": {
+    "hud_margin": 24,
+    "hud_plate_height": 64,
+    "hud_icon_size": 38,
+    "hud_group_gap": 32,
+    "hud_segment_width": 26,
+    "hud_segment_height": 15,
+    "deploy_card_text_gap": 4,
+    "card_icon_size": 20,
+    "deploy_disabled_value_percent": 50,
+    "deploy_disabled_alpha_percent": 70
+  },
+  "responsive": {
+    "standard_card": { "width": 190, "height": 110, "portrait": 80 },
+    "margin": 24,
+    "gap": 12
+  }
+}

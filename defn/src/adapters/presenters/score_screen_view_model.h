@@ -33,10 +33,17 @@ struct ScoreScreenPresentationInput {
     bool owned_upgrades_visible = false;
 };
 
+enum class ScoreStatKind { Breakdown, MatchTotal, CareerTotal };
+struct ScoreStatRow {
+    std::string label;
+    std::string value;
+    ScoreStatKind kind = ScoreStatKind::Breakdown;
+};
+
 struct ScoreScreenViewModel {
     std::string title;
     bool victory = false;
-    std::vector<std::pair<std::string, std::string>> stat_rows;
+    std::vector<ScoreStatRow> stat_rows;
     bool next_level_button_visible = false;
     bool next_level_button_enabled = true;
     bool retry_button_visible = true;

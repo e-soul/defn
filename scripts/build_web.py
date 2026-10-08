@@ -12,6 +12,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from stage_web_project import DEFAULT_TILE_LIMIT, stage_web_project
+
 from build import (
     PLATFORM_CONFIGS,
     ensure_godot_export_templates,
@@ -91,13 +93,13 @@ def verify_export(directory: Path, mode: str) -> None:
         raise RuntimeError("Exported HTML has unresolved placeholders or lacks the Web extension.")
 
 
-def export_game(godot: str, output_dir: Path, mode: str) -> None:
+def export_game(godot: str, output_dir: Path, mode: str, project_dir: Path = PROJECT_DIR) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     # Validate a fresh export, never files left by an earlier successful run.
     with tempfile.TemporaryDirectory(prefix=".web-export-", dir=output_dir) as temporary:
         staging = Path(temporary)
         run_godot([
-            godot, "--headless", "--path", str(PROJECT_DIR),
+            godot, "--headless", "--path", str(project_dir),
             f"--export-{mode}", EXPORT_PRESET, str(staging / "index.html"),
         ])
         verify_export(staging, mode)
@@ -115,6 +117,8 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--emsdk-dir", type=Path, default=DEFAULT_SDK_DIR)
     parser.add_argument("--godot-exe", help="Godot editor path; otherwise use GODOT_BIN or download the pinned editor.")
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "build" / "web")
+    parser.add_argument("--texture-tile-limit", type=int, default=DEFAULT_TILE_LIMIT,
+                        help="Maximum generated background tile dimension; original pixels are preserved.")
     return parser.parse_args(argv)
 
 
@@ -156,9 +160,14 @@ def main(argv=None) -> int:
 
     if godot:
         run([sys.executable, str(REPO_ROOT / "scripts" / "check_export_presets.py")])
-        run_godot([godot, "--headless", "--path", str(PROJECT_DIR), "--import"])
-        for mode in modes:
-            export_game(godot, args.output_dir.expanduser().resolve(), mode)
+        output_dir = args.output_dir.expanduser().resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=".web-project-", dir=output_dir) as temporary:
+            project = Path(temporary)
+            stage_web_project(PROJECT_DIR, project, args.texture_tile_limit)
+            run_godot([godot, "--headless", "--path", str(project), "--import"])
+            for mode in modes:
+                export_game(godot, output_dir, mode, project)
     return 0
 
 

@@ -35,6 +35,8 @@ same take with the new art.
 | `python scripts/capture.py --shot <name> --stills` | Plays the shot, saves its marked frames | 4K PNGs + 1920-wide copies |
 | `python scripts/capture.py --shot <name> --video` | Records the shot | MJPEG AVI, then MP4 (and GIF) if ffmpeg is present |
 | `python scripts/capture.py --shot <name> --encode-only --gif 13.65 6` | Re-encodes what is already recorded | MP4 + cover GIF |
+| `python scripts/capture.py --shot responsive_interactions --stills --size 390x844 --fixture max_roster` | Verifies gestures, rotation, pause and navigation through real input | PNGs and explicit checks |
+| `python scripts/capture.py --shot audio_restoration --video --stills --size 960x540 --fixture max_roster --no-cursor` | Records accepted card taps and combat with music muted | AVI with mixed effects audio and a combat still |
 
 `--shot` defaults to `level_03_opening`; with no mode flag, `--video` is assumed. `--level` overrides the level a
 shot names, and is how a recon pass picks one before any shot file exists for it. Godot is found via `--godot` or
@@ -42,6 +44,102 @@ shot names, and is how a recon pass picks one before any shot file exists for it
 `build/capture/`, which is git-ignored.
 
 ffmpeg is optional. Without it the AVI is still written and the script prints the command to convert it by hand.
+
+`--size` requests logical UI dimensions. The runner converts them to physical
+window pixels using the window's current content transform after the menu boots.
+World targets are converted through the battlefield viewport and its host
+rectangle; UI targets use their own control rectangles. This keeps click mapping
+correct after resize and at different desktop densities. The world remains
+1920 × 1080 while captures include the full-screen UI around it. With `--size`,
+the wrapper measures the actual render pixels and stages a private project with
+matching Movie Maker dimensions; it shares imported resources and leaves the
+game's project settings untouched. Movie dimensions are fixed at startup, so
+use fixed-size shots for video and stills passes for rotation/resize shots.
+
+`--fixture fresh`, `--fixture max_roster` and `--fixture rewards` redirect Godot user storage beneath
+the chosen output directory. They do not overwrite the player's save. The latter
+unlocks the campaign and all four friendly types and supplies a large career
+score. The rewards fixture supplies strong, explicitly artificial upgrade counts
+for a real first-clear reward draft; `responsive_results` deploys two units and
+requires a visible VICTORY title before photographing the result. Run it with
+`--fixture rewards`. `responsive_interactions` includes drag/tap count checks, release after
+resize, selection, pause/resume, menu navigation and the wide campaign map. `click`, `key`, `wheel`, `press_card`,
+`drag`, `release` and `resize` synthesize events or change the window; `key` defaults
+to Escape and also accepts `key: "Tab"`. `check`
+observes state and makes capture failures fatal. Still/check actions are ordered
+by their scheduled action time. Tools and shot fixtures remain excluded from
+exports.
+
+`responsive_ui` also checks the original HUD headings inside the window, requires
+a landscape battlefield at least 70% of stage height, and verifies both pause
+actions fit. `buttons_visible` checks complete button rectangles, including the
+desktop campaign's Replay and Back actions. Pause lookup uses its accessibility
+name when the visible control is the pause symbol. Use `--no-cursor` for layout
+inspection so the capture-only LMB/RMB indicators cannot cover real controls.
+
+`desktop_reference --fixture max_roster --no-cursor` captures Feldkirchen in the
+default 1920 × 1080 client window. It checks full battlefield height, the three
+original content-sized top plates, 13-point HUD labels, and four 190 × 110 cards
+with 80 × 80 portraits and 15/13-point title/cost text in reference coordinates.
+It also checks deployment, selection and pause/resume through synthesized input.
+These reference-coordinate checks remain valid at different client sizes and DPI.
+`campaign_carousel --stills --size 390x783 --fixture fresh --no-cursor` captures
+the mobile campaign through real arrow clicks and an illustration swipe. It checks
+locked missions, complete briefing labels, selection after rotation, cancellation
+of a gesture across resize, Back, and explicit deployment. `campaign_carousel_endless`
+with `--fixture max_roster` captures Replay and the optional standing engagement,
+including its explicit Begin Watch action. Both include 864 × 230 landscape.
+`labels_visible` and `buttons_disabled` observe the real controls; `press`, `drag`
+and `release` can exercise a gesture at canvas coordinates.
+`menu_panels --size 960x540 --fixture max_roster --no-cursor` captures the first
+pause opening and the main menu on desktop, portrait and landscape, then checks
+the options footer in a short window. `options_panels --size 1280x800 --fixture fresh --no-cursor`
+captures all desktop settings together and checks Back in a short window.
+`buttons_visible` also checks ancestor
+clipping, so a button inside a collapsed scroll viewport fails the capture.
+`responsive_interactions` uses Escape for its desktop landscape pause, then
+exercises the visible Pause control after returning to portrait.
+
+`texture_tiles --stills --size 960x540 --fixture max_roster --no-cursor` captures
+a frozen background for source-versus-tiled comparison. `--project-dir` can select
+an isolated project prepared by `scripts/stage_web_project.py` with `include_tools=True`.
+Use a smaller tile limit such as 1024 during verification to put many tile joins
+inside the frame. `--level` selects each campaign background.
+
+`responsive_overflow --size 667x330 --fixture max_roster` checks horizontal
+scrolling (zero deployments) followed by a tap on the revealed Operator (one).
+At 320 logical units, the result footer wraps its actions; that width is a
+best-effort stress target rather than a comfortable gameplay target.
+
+`python scripts/capture_responsive_web.py http://127.0.0.1:8000/index.html`
+uses Playwright against the real export, with a temporary browser context and
+an IDBFS save fixture. It captures navigation, mobile volume, disabled Progress,
+maximum-roster drag/tap, resize, pause, fullscreen and results. Install
+`scripts/requirements-web-test.txt` and Playwright Chromium first. Its coordinates
+are the current narrow UI anatomy: inspect the PNGs as well as its runtime log.
+`--cdp http://127.0.0.1:9223` attaches to a dedicated test Chrome (including Android
+Chrome forwarded by adb); use a test origin because it replaces that origin's
+campaign save. Browser captures complement the Godot rig; they do not invoke
+game handlers. Fullscreen captures fail if the shell's exit button overlaps the
+canvas. Android rotation remains a device operation.
+
+`--options --fixture fresh` captures the mobile volume panel in portrait, landscape
+and a 230-unit-tall stage. It changes volume through touch, observes its normal
+IDBFS settings file, uses Back, and reopens and reloads the panel to check persistence.
+It also taps the disabled Progress action in both orientations and a short landscape,
+then uses Main Menu to verify the surrounding actions remain accessible.
+
+`--shell` captures the portrait rotation hint beside Fullscreen, including a narrow
+320-unit viewport, fullscreen entry/exit and rotation. It checks hint visibility,
+header overflow and separation from the fullscreen button. Orientation lock behavior
+uses the actual browser API; emulated browsers may reject it and remain in portrait.
+
+`python scripts/capture_responsive_web.py http://127.0.0.1:8151/index.html
+--campaign-carousel --fixture fresh` captures touch swipes, touch arrows, rotation,
+all locked cards and the disabled deployment gate in the real release export.
+Repeat with `--fixture max_roster` to check the sixth, uncounted endless card and
+Begin Watch. Add `--cdp`, `--android-device` and `--adb` to exercise actual Android
+Chrome rotation. Use an isolated test origin because the fixture replaces its save.
 
 ```
 python scripts/capture.py --shot level_03_opening --video --stills --gif 13.65 6
@@ -115,6 +213,15 @@ RGB JPEG at **960 x 540**, replacing that level's existing `assets/campaign/*_pr
 `data/campaign_map.json`. Keep the full-resolution captures under `build/capture/`, not in the shipped assets.
 Re-import the project after replacing the previews.
 
+For Port Terminal, select the unlocked endless mode through the real menu:
+
+```
+python scripts/capture.py --shot background_preview --level endless --stills --size 1920x1080 --still-width 960 --fixture max_roster --out-dir build/capture/previews/port_terminal
+```
+
+Save its RGB JPEG as `assets/campaign/port_terminal_preview.jpg`. The endless preview uses the same real
+background layers, camera and painter order as the match, without gameplay or UI baked into the image.
+
 ---
 
 ## Five things that will bite
@@ -157,9 +264,12 @@ For the 38-second `level_03_opening` at 60 fps:
 | `level_03_opening.gif` | 1.6 MB | 630 px wide, 15 fps, generated palette — fits an itch.io cover |
 | `stills/*.png` | ~7 MB each | 3840×2160, plus a 1920-wide downscale of each |
 
-Two resolutions, on purpose. **Video records at the project viewport size — 1920×1080 — regardless of the window
-or the display's DPI**, so a recording is identical on any machine. **Stills come off the window backbuffer**,
-which on a HiDPI display is 4K; downsampling those to 1080p is visibly sharper than grabbing 1080p directly.
+Without `--size`, Movie Maker uses the project viewport size (1920×1080).
+With `--size`, video records the complete requested window at its render density:
+390×844 logical units at 200% scaling produce a 780×1688 movie. **Stills come
+off the window backbuffer**, preserving the same density; optional downscaled
+copies retain the captured aspect ratio. Inspect a recorded frame as well as the
+stills, because Movie Maker fixes its dimensions before the runner starts.
 
 Audio is captured and stays in sync because it is rendered offline alongside the video, not sampled live.
 
@@ -264,18 +374,98 @@ can still update the save.
   side.
 - **A new target kind**: add a branch to `_resolve()`. It is called every frame during a travel, so it may track
   something that moves.
-- **Deploy cards are matched by their title label** — "Breacher" is the card for `breacher` — because the HUD
-  keeps unit ids on the C++ side only. A card whose display name stops matching its id needs an explicit map here.
+- **Deploy cards carry `unit_id` metadata** so discovery survives reflow and name changes. Older fixtures fall
+  back to their title label.
 - **A deploy whose card is dark waits before the pointer sets off**, for up to 12 s, then skips with a warning.
   So a balance change slides a shot's timing instead of breaking it — but schedule the tactical beats *before* any
   deploy that might wait, because a waiting event holds up the ones behind it.
 
 ## Known limits
 
-- Video is 1080p; the movie writer follows the project viewport, so 4K video would mean overriding that at
-  startup. Stills are already 4K.
+- Video follows the requested logical root size. Density-aware stills use the physical window size.
 - The camera is wherever the game puts it. On levels whose scroll triggers do fire, a shot cannot currently frame
   a specific spot on the belt.
 - One pointer, one action at a time. Events are strictly sequential.
-- Shots start from the level, not from the menu. Menu navigation is clickable the same way, but no shot does it
-  yet.
+- Shots start from a level. `responsive_interactions` then visits menus through the real pause action.
+
+The native runner disables VSync while using a fixed frame delta, so synthesized
+input remains frame-scheduled and background captures can finish without display
+refresh throttling.
+
+## UI regression scenarios
+
+Native and browser entry points share scripts/capture_fixtures.py. fresh, max_roster,
+rewards and rescue create isolated saves; filesystem and IDBFS installation remain
+separate. Fixture upgrades stress presentation and make the victory/reward replay
+reliable; they do not represent normal progression balance.
+
+| Native shot | Unique contract |
+| --- | --- |
+| desktop_reference | Original battlefield/HUD reference fit and DPI-scaled input. |
+| responsive_ui | Portrait metrics and deploy-grid composition. |
+| responsive_overflow | Maximum roster, tray capacity and scroll navigation. |
+| responsive_interactions | Swipe/tap, pause, menus and resize cancellation. |
+| responsive_results | Compact result content and reward/owned navigation. |
+| menu_panels | Content-fitted menu, options and progression chrome. |
+| desktop_score_victory | First-clear reward gate, selection and enabled navigation. |
+| desktop_score_defeat | Defeat statistics and retry/campaign actions. |
+| desktop_score_rescue | Later-frontier rescue reward after defeat. |
+| desktop_score_endless | Run total, best run, records and fresh-run action. |
+| campaign_carousel | Locked browsing, selection, arrows/swipes and rotation. |
+| campaign_carousel_endless | Distinct unlocked endless entry and deployment. |
+| texture_tiles | Tiled-background pixels, painter order and composition. |
+| audio_restoration | Accepted deployment, battle and UI audio after transitions. |
+| field_promotion | World-space promotion star visibility, size and outline after real combat. Use --fixture rewards. |
+| background_preview | Clean campaign thumbnails from the real parallax composition. |
+
+From the repository root, replay fixed sizes with video and stills:
+
+~~~powershell
+python scripts/capture.py --shot desktop_reference --video --stills --size 1920x1080 --fixture max_roster --no-cursor --out-dir build/capture/ui-review/desktop
+python scripts/capture.py --shot responsive_ui --video --stills --size 390x844 --fixture max_roster --no-cursor --out-dir build/capture/ui-review/portrait
+python scripts/capture.py --shot desktop_score_victory --video --stills --size 1920x1080 --fixture rewards --no-cursor --out-dir build/capture/ui-review/victory
+~~~
+
+Use desktop_score_defeat with max_roster, desktop_score_rescue with rescue, and
+desktop_score_endless with max_roster and --level endless for the other outcomes.
+Resize flows use stills. Keep outputs under build/capture, outside source/assets.
+
+Build/serve the actual Web export as described in [WEB_BUILD.md](WEB_BUILD.md), then:
+
+~~~powershell
+python scripts/capture_responsive_web.py http://127.0.0.1:8137/index.html --phone-landscape --out-dir build/capture/ui-review/web-landscape
+python scripts/capture_responsive_web.py http://127.0.0.1:8137/index.html --campaign-carousel --fixture max_roster --out-dir build/capture/ui-review/web-campaign
+python scripts/capture_responsive_web.py http://127.0.0.1:8137/index.html --score-screens victory --score-interactions --out-dir build/capture/ui-review/web-victory
+~~~
+
+For Web defeat use --score-screens defeat with --fixture max_roster, fresh or rescue;
+use --score-screens endless for a run. --score-interactions covers reward Back,
+selection, owned paging, 864x230 stage stress and item preservation through rotation.
+The landscape flow covers compact menus, overflow, accepted taps, card enabled
+states, pause and portrait restoration.
+
+BrowserCapture shares error collection, canvas coordinates, touch dispatch,
+screenshots, bounded shell/log readiness and rotation. Scenarios still send ordinary
+browser input. Simulation/outcome and rendered-frame waits retain settling intervals
+where the engine exposes no reliable browser signal. Inspect PNGs and movies:
+successful navigation and a clean error log alone do not prove the expected outcome.
+
+Owned Chromium contexts emulate 390x844 and 667x375 browser viewports at DPR 3;
+the shell reserves its toolbar outside the game. These are browser emulation,
+not Android evidence. For a dedicated connected Android test browser, add
+--cdp http://127.0.0.1:9223 --android-device emulator-5554 --adb <adb executable>.
+Disable automatic rotation on that test device; the helper changes actual device
+orientation. Use a private test origin and owned ADB forwards/reverse mappings.
+browser-inputs.json in score captures records primary coarse and any fine pointer
+capabilities; a phone with a secondary mouse must retain mobile results.
+
+The bounded matrix includes native normal/high DPI, portrait, landscape and a
+230-unit stage, nonzero safe insets, coarse-primary plus secondary mouse, campaign
+selection/lock/endless, swipe/pause, and distinct score outcomes. Pure/hosted context
+tests supplement captures for coordinate/capability transitions. Record unavailable
+platform cases explicitly.
+
+Historical reports and debug.log are archived under
+D:/dev/src/defn-local/ui-redesign-history. The dated EVIDENCE_INDEX and SHA-256
+manifest preserve original capture locations. Fresh runs belong with their build
+revision, initial working-tree status, exact commands and observed limitations.
