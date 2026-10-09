@@ -530,12 +530,12 @@ func _check_desktop_reference() -> bool:
 
 func _check_promotion_star() -> bool:
 	for unit in _units("friendlies"):
-		var star := unit.get_node_or_null("FieldPromotionView/FieldPromotionInsignia") as Label
+		var star := unit.get_node_or_null("FieldPromotionView/FieldPromotionInsignia") as TextureRect
 		if star == null or not star.is_visible_in_tree():
 			continue
 		var center := _world_to_ui(star.get_parent() as Node2D, star.position + star.size / 2)
-		if root.get_visible_rect().has_point(center) and star.get_theme_font_size("font_size") == 72 and star.get_theme_constant("outline_size") == 9:
-			print("[capture] promotion star at ", center, " world font size: ", star.get_theme_font_size("font_size"))
+		if root.get_visible_rect().has_point(center) and star.size == Vector2(72, 72) and star.texture != null and star.texture.resource_path.ends_with("promotion_star.svg"):
+			print("[capture] solid SVG promotion star at ", center)
 			return true
 	return false
 

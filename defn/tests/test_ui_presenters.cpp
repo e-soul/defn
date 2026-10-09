@@ -69,6 +69,7 @@
 #include <godot_cpp/classes/sprite2d.hpp>
 #include <godot_cpp/classes/style_box.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 #include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/core/memory.hpp>
@@ -86,6 +87,21 @@ namespace defn {
 using namespace ui_test;
 
 namespace {
+void check_world_promotion_insignia(Unit *unit, const UnitConfig &config) {
+    auto *insignia = godot::Object::cast_to<godot::TextureRect>(unit->get_node_or_null("FieldPromotionView/FieldPromotionInsignia"));
+    DEFN_REQUIRE(insignia != nullptr);
+    DEFN_REQUIRE(insignia->get_texture().is_valid());
+    DEFN_CHECK_EQ(insignia->get_texture()->get_path(), String("res://assets/ui/hud/promotion_star.svg"));
+    for (const auto profile : {UiProfile::Standard, UiProfile::Small, UiProfile::Standard}) {
+        UiThemeProvider::resolve_profile(profile, profile == UiProfile::Small);
+        DEFN_CHECK_EQ(insignia->get_size(), godot::Vector2(72, 72));
+        DEFN_CHECK_EQ(insignia->get_pivot_offset(), godot::Vector2(36, 36));
+        DEFN_CHECK(insignia->get_self_modulate() == UiThemeProvider::color("accent"));
+    }
+    DEFN_CHECK_CLOSE(insignia->get_position().x + (insignia->get_size().x * 0.5F), config.health_bar_offset.x + 85.0F, 0.001);
+    DEFN_CHECK_CLOSE(insignia->get_position().y + insignia->get_size().y, config.health_bar_offset.y - 4.0F, 0.001);
+}
+
 void apply_hud_layout(HUD *hud, const MatchLayout &layout) {
     auto context = UiThemeContext::Default;
     if (layout.desktop_reference) {
@@ -987,15 +1003,7 @@ DEFN_TEST(friendly_combat_unit_promotes_once_and_updates_attack_periods) {
     DEFN_CHECK_EQ(health->get_max_hp(), 132);
     DEFN_CHECK_EQ(health->get_current_hp(), 132);
     DEFN_CHECK_EQ(unit->resolve_outgoing_damage(10), 11);
-    auto *insignia = godot::Object::cast_to<godot::Label>(unit->get_node_or_null("FieldPromotionView/FieldPromotionInsignia"));
-    DEFN_REQUIRE(insignia != nullptr);
-    for (const auto profile : {UiProfile::Standard, UiProfile::Small, UiProfile::Standard}) {
-        UiThemeProvider::resolve_profile(profile, profile == UiProfile::Small);
-        DEFN_CHECK_EQ(insignia->get_theme_font_size("font_size"), 72);
-        DEFN_CHECK_EQ(insignia->get_theme_constant("outline_size"), 9);
-        DEFN_CHECK(insignia->get_theme_color("font_color") == UiThemeProvider::color("accent"));
-    }
-    DEFN_CHECK_CLOSE(insignia->get_position().x + (insignia->get_combined_minimum_size().x * 0.5F), config.health_bar_offset.x + 85.0F, 0.001);
+    check_world_promotion_insignia(unit, config);
     auto *combat = godot::Object::cast_to<CombatComponent>(unit->get_node_or_null("CombatComponent"));
     DEFN_REQUIRE(combat != nullptr);
     DEFN_CHECK_CLOSE(combat->get_runtime_config().melee_attack_period_seconds, 0.9, 0.000001);

@@ -742,7 +742,9 @@ and applies the render-density/container transform. Desktop MatchControls retain
 their original uniform reference fit. HUD, deploy tray, pause and results sit
 outside the world texture; result panels use local bounds without subtracting safe
 insets again. World health/promotion annotations and spatial audio retain their
-world-space rules. GameManager stays pausable while responsive layout and modal
+world-space rules. FieldPromotionView uses the shared solid promotion SVG,
+with a theme tint and reference-space size independent of platform font fallback.
+GameManager stays pausable while responsive layout and modal
 navigation process during pause.
 
 data/ui_theme.json owns semantic palette roles, typography, spacing, surfaces,

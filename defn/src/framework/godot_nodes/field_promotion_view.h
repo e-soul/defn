@@ -4,8 +4,8 @@
 #ifndef FIELD_PROMOTION_VIEW_H
 #define FIELD_PROMOTION_VIEW_H
 
-#include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/node2d.hpp>
+#include <godot_cpp/classes/texture_rect.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
 namespace defn {
@@ -31,7 +31,7 @@ class FieldPromotionView : public godot::Node2D {
 
     AnimationController *animation_ = nullptr;
     HealthBarWidget *health_bar_ = nullptr;
-    godot::Label *insignia_ = nullptr;
+    godot::TextureRect *insignia_ = nullptr;
     bool shown_ = false;
 };
 

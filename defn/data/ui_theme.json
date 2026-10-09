@@ -525,12 +525,6 @@
     "empty_state": {
       "font_size": "subheading",
       "color": "text_secondary"
-    },
-    "promotion_star": {
-      "font_size": "banner",
-      "color": "accent",
-      "outline_size": 9,
-      "outline": "text_outline"
     }
   },
   "medallions": {
@@ -570,6 +564,10 @@
     },
     "score": {
       "mark": "res://assets/ui/hud/star.svg",
+      "color": "accent"
+    },
+    "promotion_star": {
+      "mark": "res://assets/ui/hud/promotion_star.svg",
       "color": "accent"
     },
     "battery": {
@@ -1158,7 +1156,7 @@
     "deploy_card_inline_height": 44,
     "deploy_disabled_value_percent": 50,
     "deploy_disabled_alpha_percent": 70,
-    "world_promotion_font_size": 72,
+    "world_promotion_size": 72,
     "hud_level_max_width": 180,
     "hud_max_integrity_width": 160,
     "hud_group_gap": 12

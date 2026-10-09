@@ -59,6 +59,48 @@ def browse_campaign(page, steps: int) -> None:
         page.wait_for_timeout(250)
 
 
+def capture_promotion(page, url: str, out: Path) -> None:
+    """Earn a promotion through combat in the desktop Web export, without font fallback."""
+    transport = BrowserCapture(page, out)
+    seed_profile(page, url, "rewards")
+    transport.load(url)
+
+    def click(x, y):
+        page.mouse.click(x, y)
+        page.wait_for_timeout(500)
+
+    def menu(row):
+        bounds = transport.box()
+        click(bounds["x"] + bounds["width"] / 2,
+              bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+
+    menu(0)
+    menu(0)
+    page.wait_for_timeout(1500)
+    transport.save("campaign")
+    bounds = transport.box()
+    click(bounds["x"] + bounds["width"] * .86,
+          bounds["y"] + bounds["height"] * .825)
+    if not transport.wait_for_log("GameManager: Initializing"):
+        (out / "runtime.log").write_text("\n".join(transport.messages), encoding="utf-8")
+        raise RuntimeError("Desktop browser input did not deploy the first mission")
+    page.wait_for_timeout(1000)
+    bounds = transport.box()
+    scale = min(bounds["width"] / 1920, bounds["height"] / 1080)
+    for offset in (-100, 100):
+        click(bounds["x"] + bounds["width"] / 2 + offset * scale,
+              bounds["y"] + bounds["height"] - 70 * scale)
+    transport.save("deployed")
+    for seconds in range(10, 111, 10):
+        page.wait_for_timeout(10_000)
+        print(f"promotion: {seconds}s combat elapsed", flush=True)
+        if seconds in (30, 90, 110):
+            transport.save(f"combat-{seconds}")
+    (out / "runtime.log").write_text("\n".join(transport.messages), encoding="utf-8")
+    if transport.failures:
+        raise RuntimeError("\n".join(transport.failures))
+
+
 def capture(page, url: str, out: Path, fixture: str, rotate=None) -> None:
     transport = BrowserCapture(page, out)
     messages, failures = transport.messages, transport.failures
@@ -635,14 +677,15 @@ def main() -> None:
     parser.add_argument("--campaign-carousel", action="store_true", help="Capture carousel swipes, arrows, rotation, lock gate and endless mode")
     parser.add_argument("--options", action="store_true", help="Capture mobile volume, rotation, saved settings and disabled Progress")
     parser.add_argument("--shell", action="store_true", help="Capture the portrait hint, narrow header, fullscreen and rotation")
+    parser.add_argument("--promotion", action="store_true", help="Capture an earned promotion in the desktop Web export")
     parser.add_argument("--phone-landscape", action="store_true", help="Capture the thin phone HUD and bottom deploy strip")
     parser.add_argument("--score-screens", choices=("victory", "defeat", "endless"), help="Play into results and capture portrait/landscape")
     parser.add_argument("--score-interactions", action="store_true", help="Exercise result/reward/collection paging and selection through touch")
     parser.add_argument("--android-device", help="ADB device for actual rotation in phone/score captures with --cdp")
     parser.add_argument("--adb", default="adb", help="ADB executable")
     args = parser.parse_args()
-    if sum(bool(mode) for mode in (args.phone_landscape, args.score_screens, args.campaign_carousel, args.options, args.shell)) > 1:
-        parser.error("Choose one of --campaign-carousel, --options, --shell, --phone-landscape or --score-screens")
+    if sum(bool(mode) for mode in (args.phone_landscape, args.score_screens, args.campaign_carousel, args.options, args.shell, args.promotion)) > 1:
+        parser.error("Choose one of --campaign-carousel, --options, --shell, --promotion, --phone-landscape or --score-screens")
     if args.score_interactions and not args.score_screens:
         parser.error("--score-interactions requires --score-screens")
     if (args.phone_landscape or args.score_screens or args.campaign_carousel or args.options or args.shell) and args.cdp and not args.android_device:
@@ -651,7 +694,9 @@ def main() -> None:
         if args.cdp:
             browser = pw.chromium.connect_over_cdp(args.cdp)
             page = browser.contexts[0].pages[-1]
-            if args.phone_landscape or args.score_screens or args.campaign_carousel or args.options or args.shell:
+            if args.promotion:
+                capture_promotion(page, args.url, args.out_dir)
+            elif args.phone_landscape or args.score_screens or args.campaign_carousel or args.options or args.shell:
                 def rotate(landscape):
                     rotate_browser(page, landscape, args.android_device, args.adb)
                 if args.shell:
@@ -668,11 +713,14 @@ def main() -> None:
                 capture(page, args.url, args.out_dir, args.fixture)
         else:
             with pw.chromium.launch(headless=True, args=["--enable-unsafe-swiftshader"]) as browser:
-                context = browser.new_context(viewport={"width": 390, "height": 844},
-                                              device_scale_factor=3, has_touch=True, is_mobile=True)
+                context = browser.new_context(viewport={"width": 1920, "height": 1141} if args.promotion else {"width": 390, "height": 844},
+                                              device_scale_factor=1 if args.promotion else 3,
+                                              has_touch=not args.promotion, is_mobile=not args.promotion)
                 page = context.new_page()
                 rotate = lambda landscape: rotate_browser(page, landscape)
-                if args.shell:
+                if args.promotion:
+                    capture_promotion(page, args.url, args.out_dir)
+                elif args.shell:
                     capture_shell(page, args.url, args.out_dir, rotate, page.set_viewport_size)
                 elif args.options:
                     capture_options(page, args.url, args.out_dir, args.fixture, rotate, page.set_viewport_size)

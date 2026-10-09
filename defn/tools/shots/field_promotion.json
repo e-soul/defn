@@ -9,7 +9,7 @@
   "mute_music": true,
   "_notes": [
     "Use --fixture rewards. Deploy a Breacher and a Marksman; promotion is earned through real combat.",
-    "Check the world-space star's size and outlined gold appearance at desktop and phone sizes."
+    "Check the world-space star's size and solid gold appearance at desktop and phone sizes."
   ],
   "timeline": [
     {"at": 0.4, "action": "deploy", "unit": "breacher", "travel": 0.1},

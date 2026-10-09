@@ -134,6 +134,11 @@ then uses Main Menu to verify the surrounding actions remain accessible.
 header overflow and separation from the fullscreen button. Orientation lock behavior
 uses the actual browser API; emulated browsers may reject it and remain in portrait.
 
+`--promotion` uses a desktop pointer and the rewards fixture, deploys two units
+through normal mouse input, and captures the solid SVG promotion star after real
+combat. Inspect the 90- and 110-second stills to verify the Web export renders the
+star without relying on system fonts.
+
 `python scripts/capture_responsive_web.py http://127.0.0.1:8151/index.html
 --campaign-carousel --fixture fresh` captures touch swipes, touch arrows, rotation,
 all locked cards and the disabled deployment gate in the real release export.
@@ -415,7 +420,7 @@ reliable; they do not represent normal progression balance.
 | campaign_carousel_endless | Distinct unlocked endless entry and deployment. |
 | texture_tiles | Tiled-background pixels, painter order and composition. |
 | audio_restoration | Accepted deployment, battle and UI audio after transitions. |
-| field_promotion | World-space promotion star visibility, size and outline after real combat. Use --fixture rewards. |
+| field_promotion | World-space promotion star visibility, size and gold fill after real combat. Use --fixture rewards. |
 | background_preview | Clean campaign thumbnails from the real parallax composition. |
 
 From the repository root, replay fixed sizes with video and stills:

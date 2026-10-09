@@ -15,8 +15,6 @@
 #include <godot_cpp/classes/audio_stream.hpp>
 #include <godot_cpp/classes/audio_stream_player2d.hpp>
 #include <godot_cpp/classes/callback_tweener.hpp>
-#include <godot_cpp/classes/control.hpp>
-#include <godot_cpp/classes/label.hpp>
 #include <godot_cpp/classes/property_tweener.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/tween.hpp>
@@ -62,18 +60,19 @@ void FieldPromotionView::show_promotion() {
 }
 
 void FieldPromotionView::create_insignia() {
-    insignia_ = make_label(String::chr(0x2605), "promotion_star");
-    // World annotations sit outside the themed screen subtree. Keep their style and reference-space size.
-    UiThemeProvider::apply_to(insignia_);
-    insignia_->add_theme_font_size_override("font_size", static_cast<int>(UiThemeProvider::metric("world_promotion_font_size", 72)));
+    const float diameter = UiThemeProvider::metric("world_promotion_size", 72);
+    insignia_ = make_icon("promotion_star", diameter);
     insignia_->set_name("FieldPromotionInsignia");
     insignia_->set_z_index(75);
+    insignia_->set_size({diameter, diameter});
+    // Keep the theme tint separate from the animated promotion flash.
+    insignia_->set_self_modulate(insignia_->get_modulate());
+    insignia_->set_modulate(godot::Color(1, 1, 1, 1));
     add_child(insignia_);
 
     const godot::Rect2 bar_rect = health_bar_ != nullptr ? health_bar_->get_bar_rect() : godot::Rect2(-85.0F, -128.0F, 170.0F, 10.0F);
-    const godot::Vector2 insignia_size = insignia_->get_combined_minimum_size();
-    insignia_->set_position({bar_rect.get_center().x - (insignia_size.x * 0.5F), bar_rect.position.y - insignia_size.y - STAR_BAR_GAP});
-    insignia_->set_pivot_offset(insignia_size * 0.5F);
+    insignia_->set_position({bar_rect.get_center().x - (diameter * 0.5F), bar_rect.position.y - diameter - STAR_BAR_GAP});
+    insignia_->set_pivot_offset({diameter * 0.5F, diameter * 0.5F});
 }
 
 void FieldPromotionView::play_pulse() {
