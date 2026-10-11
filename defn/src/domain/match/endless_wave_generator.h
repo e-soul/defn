@@ -205,6 +205,8 @@ class EndlessWaveGenerator {
     [[nodiscard]] MixShape shape(int wave_number) const;
 
     [[nodiscard]] WaveDefinition generate(int wave_number, RandomSource &random) const;
+    [[nodiscard]] ForceMix composition(int wave_number) const;
+    [[nodiscard]] int final_wave() const;
 
     // Income decays as difficulty compounds, or the mode resolves into a runaway defence. Never below
     // `bounty_floor`, and never negative.

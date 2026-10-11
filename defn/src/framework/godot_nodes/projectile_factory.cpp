@@ -11,8 +11,10 @@ namespace defn {
 
 ProjectileAttack *ProjectileFactory::create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, godot::ObjectID source_id,
                                             const godot::Color &flash_color, const godot::Vector2 &start_global_position,
-                                            const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage) {
+                                            const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage,
+                                            std::shared_ptr<MatchResources> resources) {
     auto *projectile = memnew(ProjectileAttack);
+    projectile->set_match_resources(std::move(resources));
     if (parent != nullptr) {
         parent->add_child(projectile);
     }

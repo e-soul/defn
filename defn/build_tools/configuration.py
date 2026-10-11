@@ -283,7 +283,7 @@ def extension_environment(arguments, compilation_database=False):
                               if str(node).endswith(".cpp"))
         # Binding outputs are not ordered consistently between SCons processes.
         vendor_sources.sort(key=lambda node: node.abspath)
-        vendor_root = Path("../godot-cpp").resolve()
+        vendor_root = Path(os.path.abspath("../godot-cpp"))
         vendor_objects = [
             godot_env.StaticObject(
                 target=str(root / "obj" / Path(node.abspath).relative_to(vendor_root).with_suffix("")),

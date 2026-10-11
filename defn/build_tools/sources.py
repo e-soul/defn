@@ -33,6 +33,7 @@ src/domain/content/force_mix.cpp
 src/domain/content/unit_runtime_profile.cpp
 src/domain/content/unit_runtime_config_resolver.cpp
 src/domain/content/unit_animation_state.cpp
+src/domain/content/match_resource_plan.cpp
 """.split()
 
 PRESENTERS = """
@@ -85,6 +86,7 @@ src/adapters/godot/content_startup_validator.cpp
 src/framework/godot_nodes/hitbox_component.cpp
 src/adapters/json/level_loader.cpp
 src/adapters/godot/game_background_builder.cpp
+src/adapters/godot/match_resources.cpp
 src/adapters/json/menu_data_loader.cpp
 src/adapters/godot/ui/menu_backdrop.cpp
 src/adapters/json/ui_theme_loader.cpp
@@ -191,6 +193,7 @@ tests/test_progression_stats_presenter.cpp
 tests/test_progression_stat_visualization.cpp
 tests/test_unit_runtime_config_resolver.cpp
 tests/test_spawn_timeline.cpp
+tests/test_match_resource_plan.cpp
 tests/test_hostile_scaling.cpp
 tests/test_endless_wave_generator.cpp
 tests/test_endless_director.cpp

@@ -8,6 +8,7 @@
 #include "camera_scroll_controller.h"
 #include "endless_director.h"
 #include "match_director.h"
+#include "match_resources.h"
 #include "match_result_cutscene_view_model.h"
 #include "score_screen_models.h"
 #include "unit_data.h"
@@ -21,6 +22,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/rect2.hpp>
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
@@ -46,6 +48,11 @@ class GameManager : public Node2D {
     void _ready() override;
     void _process(double delta) override;
     void _input(const Ref<InputEvent> &event) override;
+    void configure_prepared_match(PreparedMatch content, std::shared_ptr<MatchResources> resources);
+    [[nodiscard]] bool build_next_stage();
+    [[nodiscard]] bool construction_succeeded() const { return constructed_; }
+    [[nodiscard]] bool is_match_started() const { return started_; }
+    void start_match();
     using PresentationReady = std::function<void(HUD *, const UnitDataLoader &, godot::Node2D *, UnitSelectionController *)>;
     void configure_presentation(godot::Node *ui_parent, UnitDataLoader content, PresentationReady ready, std::function<void()> invalidate_layout);
 
@@ -57,6 +64,16 @@ class GameManager : public Node2D {
     PresentationReady presentation_ready_;
     std::function<void()> invalidate_layout_;
     bool supplied_content_ = false;
+    bool staged_start_ = false;
+    bool constructed_ = false;
+    bool started_ = false;
+    int build_stage_ = 0;
+    std::optional<LevelDefinition> prepared_level_;
+    std::optional<EndlessSchedule> prepared_endless_;
+    UnitControlConfig prepared_controls_;
+    std::optional<MusicPlaylist> prepared_music_;
+    std::string prepared_level_id_;
+    std::shared_ptr<MatchResources> resources_;
     void setup_background();
     void setup_camera();
 #ifdef DEFN_DEBUG_RENDERING_ENABLED

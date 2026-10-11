@@ -12,6 +12,7 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/core/math.hpp>
 #include <godot_cpp/variant/string_name.hpp>
+#include <memory>
 
 namespace defn {
 
@@ -26,6 +27,7 @@ class HitboxComponent;
 class MovementComponent;
 class SoundController;
 class FieldPromotionView;
+class MatchResources;
 class UnitFactory;
 class UnitControlComponent;
 
@@ -37,6 +39,8 @@ class Unit : public BattleEntity {
     ~Unit() override = default;
 
     void set_unit_config(const UnitConfig &cfg);
+    void set_match_resources(std::shared_ptr<MatchResources> resources) { resources_ = std::move(resources); }
+    const std::shared_ptr<MatchResources> &get_match_resources() const { return resources_; }
     void set_resolved_attack_ranges(real_t melee_range, real_t ranged_attack_range);
     void set_runtime_profile(const UnitRuntimeProfile &profile) { runtime_profile_ = profile; }
     void configure_field_promotion(const FieldPromotionRules &rules);
@@ -68,6 +72,7 @@ class Unit : public BattleEntity {
     static void _bind_methods();
 
   private:
+    std::shared_ptr<MatchResources> resources_;
     friend class UnitFactory;
 
     void on_died();

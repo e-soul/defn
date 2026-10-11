@@ -7,6 +7,7 @@
 #include "attack_target.h"
 #include "projectile_flight.h"
 #include "unit_definition.h"
+#include <memory>
 
 #include <godot_cpp/classes/animated_sprite2d.hpp>
 #include <godot_cpp/classes/audio_stream_player2d.hpp>
@@ -21,10 +22,13 @@ using namespace godot;
 
 // Presentation and lifetime for one shot. The flight itself is `ProjectileFlight`, an engine-free model the simulator
 // runs too; this node only shows where that flight has got to, plays the explosion, and frees itself afterwards.
+class MatchResources;
+
 class ProjectileAttack : public Node2D {
     GDCLASS(ProjectileAttack, Node2D)
 
   public:
+    void set_match_resources(std::shared_ptr<MatchResources> resources) { resources_ = std::move(resources); }
     void configure(const ProjectileAttackConfig &config, UnitSide shooter_side, godot::ObjectID source_id, const godot::Color &flash_color,
                    const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position, AttackTarget *direct_target, int fallback_damage);
 
@@ -38,7 +42,8 @@ class ProjectileAttack : public Node2D {
     static void _bind_methods();
 
   private:
-    static Ref<SpriteFrames> build_frames(const AnimConfig &animation);
+    std::shared_ptr<MatchResources> resources_;
+    Ref<SpriteFrames> build_frames(const AnimConfig &animation);
     void ensure_sprite();
     void start_flight_animation();
     void start_explosion_animation();

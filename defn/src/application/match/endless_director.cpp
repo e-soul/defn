@@ -5,14 +5,6 @@
 
 namespace defn {
 
-namespace {
-
-// A run that never passes its budget ceiling still has to terminate somewhere. Nothing reaches this: at any
-// escalation above 1.0 the ceiling arrives first, and at 1.0 or below the wall clock does.
-constexpr int MAXIMUM_WAVE = 100000;
-
-} // namespace
-
 void EndlessDirector::configure(MatchDirector *director, ProgressionService *progression, const EndlessSchedule &schedule, RandomSource *random) {
     director_ = director;
     progression_ = progression;
@@ -25,13 +17,7 @@ void EndlessDirector::configure(MatchDirector *director, ProgressionService *pro
     stopped_ = false;
     recorded_ = false;
 
-    final_wave_ = MAXIMUM_WAVE;
-    for (int wave = 1; wave <= MAXIMUM_WAVE; ++wave) {
-        if (generator_.budget(wave) > generator_.tuning().budget_ceiling) {
-            final_wave_ = wave;
-            break;
-        }
-    }
+    final_wave_ = generator_.final_wave();
 }
 
 void EndlessDirector::seed_first_wave() { top_up(); }

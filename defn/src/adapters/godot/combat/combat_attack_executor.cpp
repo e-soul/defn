@@ -72,7 +72,7 @@ void CombatAttackExecutor::spawn_pending_projectile(const std::optional<Projecti
 
         ProjectileFactory::create(projectile_parent, *projectile_config, pending_projectile.shooter_side, pending_projectile.source_id,
                                   to_godot_color(pending_projectile.flash_color), launch_position, pending_projectile.target_global_position, direct_target,
-                                  pending_projectile.fallback_damage);
+                                  pending_projectile.fallback_damage, animation != nullptr ? animation->get_match_resources() : nullptr);
     }
 
     pending_projectile = {};

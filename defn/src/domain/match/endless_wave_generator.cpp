@@ -116,18 +116,32 @@ MixShape EndlessWaveGenerator::shape(int wave_number) const {
     return schedule_.drift.back().weights;
 }
 
+ForceMix EndlessWaveGenerator::composition(int wave_number) const {
+    const int wave = std::max(wave_number, 1);
+    const std::span<const UnitCost> costs(schedule_.threat_costs);
+    return allocate_budget(costs, to_budget_shape(shape(wave), costs), budget(wave) / elite_cost_multiplier(wave)).mix;
+}
+
+int EndlessWaveGenerator::final_wave() const {
+    constexpr int MAXIMUM_WAVE = 100000;
+    for (int wave = 1; wave <= MAXIMUM_WAVE; ++wave) {
+        if (budget(wave) > tuning().budget_ceiling) {
+            return wave;
+        }
+    }
+    return MAXIMUM_WAVE;
+}
+
 WaveDefinition EndlessWaveGenerator::generate(int wave_number, RandomSource &random) const {
     const int wave = std::max(wave_number, 1);
     WaveDefinition definition;
     definition.wave_number = wave;
     definition.scale.damage = hostile_damage_scale(wave);
 
-    const std::span<const UnitCost> costs(schedule_.threat_costs);
     // The budget is deflated by what the elite share costs before it is spent, so promoting bodies buys fewer of
     // them rather than adding difficulty the schedule never priced. A wave of elites is a smaller wave worth the
     // same measured threat, which is the only way this ramp stays playable at a wave count the screen can hold.
-    const BudgetAllocation allocation = allocate_budget(costs, to_budget_shape(shape(wave), costs), budget(wave) / elite_cost_multiplier(wave));
-    const std::vector<std::string> mix_line = expand_mix(allocation.mix);
+    const std::vector<std::string> mix_line = expand_mix(composition(wave));
     if (mix_line.empty()) {
         return definition;
     }

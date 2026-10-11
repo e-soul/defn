@@ -40,28 +40,17 @@ const UpgradeDraftCard *pick_and_remove(std::vector<const UpgradeDraftCard *> &c
 
 } // namespace
 
+bool upgrade_draft_eligible(const ProgressionProfile &profile, const UpgradeDraftCard &card) {
+    return get_owned_upgrade_count(profile, card.id) < card.max_picks && get_completed_level_count(profile) >= card.minimum_completed_levels &&
+           std::ranges::all_of(card.prerequisites, [&](const std::string &prerequisite) { return has_upgrade(profile, prerequisite); });
+}
+
 std::vector<std::string> build_upgrade_draft(const ProgressionProfile &profile, const std::vector<UpgradeDraftCard> &cards, const UpgradeDraftConfig &config,
                                              RandomSource &random) {
     std::vector<const UpgradeDraftCard *> unit_candidates;
     std::vector<const UpgradeDraftCard *> general_candidates;
-    const int completed_levels = get_completed_level_count(profile);
-
     for (const auto &card : cards) {
-        if (get_owned_upgrade_count(profile, card.id) >= card.max_picks) {
-            continue;
-        }
-        if (completed_levels < card.minimum_completed_levels) {
-            continue;
-        }
-
-        bool prerequisites_met = true;
-        for (const auto &prerequisite : card.prerequisites) {
-            if (!has_upgrade(profile, prerequisite)) {
-                prerequisites_met = false;
-                break;
-            }
-        }
-        if (!prerequisites_met) {
+        if (!upgrade_draft_eligible(profile, card)) {
             continue;
         }
 

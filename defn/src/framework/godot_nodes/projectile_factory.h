@@ -5,6 +5,7 @@
 #define PROJECTILE_FACTORY_H
 
 #include "unit_definition.h"
+#include <memory>
 
 #include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/core/object_id.hpp>
@@ -17,6 +18,7 @@ using namespace godot;
 
 class AttackTarget;
 class ProjectileAttack;
+class MatchResources;
 
 class ProjectileFactory {
   public:
@@ -24,7 +26,7 @@ class ProjectileFactory {
 
     static ProjectileAttack *create(Node *parent, const ProjectileAttackConfig &config, UnitSide shooter_side, godot::ObjectID source_id,
                                     const godot::Color &flash_color, const godot::Vector2 &start_global_position, const godot::Vector2 &target_global_position,
-                                    AttackTarget *direct_target, int fallback_damage);
+                                    AttackTarget *direct_target, int fallback_damage, std::shared_ptr<MatchResources> resources = {});
 };
 
 } // namespace defn

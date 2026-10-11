@@ -181,6 +181,24 @@ Current boundary ownership:
   delegates camera movement to `CameraScrollController`, backgrounds to
   `GameBackgroundBuilder`, node creation to `BaseObjectiveFactory` and
   `UnitFactory`, and match decisions to `MatchDirector`.
+  Every game-scene entry starts with the same loading overlay, including direct
+  scene entry, replay, retry, next level and endless. `MatchPresentation` resolves
+  a `PreparedMatch` once, loads its deduplicated resource manifest, builds shared
+  animation frames and the inactive scene in stages, and renders textures behind
+  the opaque overlay before activating gameplay. `match_resource_plan` selects
+  only unlocked deployable friendlies, the base, and enemies in the complete
+  authored timeline or the reachable endless compositions. Endless composition
+  and its final wave are shared with the generator/director, so loading follows
+  the same budget, drift and set-piece rules as spawning without consuming RNG.
+  Resource loading and the retained `MatchResources` bundle stay in the Godot
+  adapter layer. Strong references survive empty fields and unit deaths and are
+  released with the match; units and projectiles share prepared `SpriteFrames`.
+  Native loads use bounded threaded requests; the threadless Web export yields
+  between synchronous loads. Headless verification uses that incremental path
+  and bypasses renderer warmup. `GameManager` construction does not advance the
+  simulation or start energy timers, music or gameplay input. Its explicit
+  activation follows the presentation gate. Capture tooling observes readiness
+  rather than assuming a fixed number of boot frames is enough.
 - `SettingsRuntime` is a narrow process-level autoload and settings composition
   boundary. The current root-scene replacement flow requires it to persist
   independently of `menu.tscn` and `game.tscn`. It owns one engine-neutral

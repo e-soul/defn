@@ -26,6 +26,8 @@ struct UpgradeDraftConfig {
     bool reserve_unit_slot = true;
 };
 
+[[nodiscard]] bool upgrade_draft_eligible(const ProgressionProfile &profile, const UpgradeDraftCard &card);
+
 [[nodiscard]] std::vector<std::string> build_upgrade_draft(const ProgressionProfile &profile, const std::vector<UpgradeDraftCard> &cards,
                                                            const UpgradeDraftConfig &config, RandomSource &random);
 

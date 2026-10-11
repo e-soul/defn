@@ -90,6 +90,7 @@ class CampaignService : public Object, public ProgressionService {
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_upgrade_draft_for_level_godot(const String &level_id);
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_rescue_draft_for_level_godot(const String &level_id);
     [[nodiscard]] std::vector<UpgradeCardViewModel> build_owned_upgrade_cards_godot() const;
+    [[nodiscard]] std::vector<std::string> match_upgrade_icon_keys(const std::string &level_id, bool endless) const;
     int get_completed_level_count() const;
 
     // Progression queries for gameplay and presentation

@@ -277,6 +277,30 @@ ProgressionOverviewSnapshot CampaignService::build_progression_overview() const 
 
 std::vector<UpgradeCardViewModel> CampaignService::build_owned_upgrade_cards_godot() const { return to_godot_upgrade_cards(build_owned_upgrade_cards()); }
 
+std::vector<std::string> CampaignService::match_upgrade_icon_keys(const std::string &level_id, bool endless) const {
+    std::vector<std::string> icons;
+    for (const auto &owned : build_owned_upgrade_cards()) {
+        icons.push_back(owned.icon);
+    }
+    if (endless) {
+        return icons;
+    }
+    // A victory can make a new minimum-completion tier eligible. Inspect that outcome without mutating the save or drawing rewards.
+    auto victory_profile = save_data_;
+    victory_profile.completed_levels.insert(level_id);
+    const auto cards = upgrade_catalog_.get_upgrade_draft_cards();
+    for (const auto &card : cards) {
+        const bool first_clear = !save_data_.claimed_level_upgrades.contains(level_id) && upgrade_draft_eligible(victory_profile, card);
+        const bool rescue = !get_frontier_level_id().empty() && upgrade_draft_eligible(save_data_, card);
+        if (first_clear || rescue) {
+            if (const auto presentation = upgrade_catalog_.find_upgrade_presentation(card.id); presentation.has_value()) {
+                icons.push_back(presentation->icon);
+            }
+        }
+    }
+    return icons;
+}
+
 void CampaignService::add_score(int amount) { ProgressionUseCases::add_score(save_data_, amount); }
 
 void CampaignService::mark_level_completed(const String &level_id, int level_score) {

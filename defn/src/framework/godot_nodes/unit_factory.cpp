@@ -45,7 +45,7 @@ AnimationController *create_animation_controller(Unit *unit) {
     auto *animation = memnew(AnimationController);
     animation->set_name("AnimationController");
     unit->add_child(animation);
-    animation->configure(unit, unit->get_unit_config());
+    animation->configure(unit, unit->get_unit_config(), true, unit->get_match_resources());
     return animation;
 }
 

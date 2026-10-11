@@ -1,6 +1,7 @@
 // Copyright (c) 2026 e-soul.org
 // SPDX-License-Identifier: BSD-2-Clause
 #include "deploy_tray.h"
+#include "game_manager.h"
 #include "hud.h"
 #include "match_presentation.h"
 #include "pause_menu.h"
@@ -12,7 +13,9 @@
 #include <godot_cpp/classes/audio_stream_player.hpp>
 #include <godot_cpp/classes/input_event_mouse_button.hpp>
 #include <godot_cpp/classes/input_event_mouse_motion.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/sub_viewport.hpp>
+#include <godot_cpp/classes/time.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <string>
 #include <vector>
@@ -74,6 +77,36 @@ void check_deploy_card_audio(bool desktop) {
     release(point);
     DEFN_CHECK(!player->is_playing());
 }
+void check_loading_match_is_inactive(MatchPresentation *presentation) {
+    auto *game = Object::cast_to<GameManager>(presentation->get_node_or_null("BattlefieldHost/Battlefield/GameManager"));
+    if (game == nullptr || presentation->is_match_ready()) {
+        return;
+    }
+    DEFN_CHECK(!game->is_match_started());
+    DEFN_CHECK_EQ(game->get_process_mode(), Node::PROCESS_MODE_DISABLED);
+    if (auto *timer = Object::cast_to<Timer>(game->get_node_or_null("CoreResourceTimer")); timer != nullptr) {
+        DEFN_CHECK(timer->is_stopped());
+    }
+}
+void wait_for_match_ready(MatchPresentation *presentation) {
+    DEFN_CHECK(!presentation->is_match_ready());
+    DEFN_CHECK(presentation->get_node_or_null("BattlefieldHost") == nullptr);
+    const auto deadline = Time::get_singleton()->get_ticks_msec() + 10000;
+    while (!presentation->is_match_ready() && !presentation->has_loading_failed() && Time::get_singleton()->get_ticks_msec() < deadline) {
+        presentation->_process(1.0 / 60.0);
+        check_loading_match_is_inactive(presentation);
+        OS::get_singleton()->delay_usec(1000);
+    }
+    DEFN_REQUIRE(presentation->is_match_ready());
+}
+void check_match_ownership(SubViewport *world, HUD *hud) {
+    DEFN_REQUIRE(world != nullptr);
+    DEFN_REQUIRE(hud != nullptr);
+    DEFN_CHECK(world->get_node_or_null("GameManager/HUD") == nullptr);
+    DEFN_CHECK_EQ(world->get_size_2d_override(), Vector2i(1920, 1080));
+    DEFN_CHECK(world->is_audio_listener_2d());
+    DEFN_CHECK_EQ(world->get_node_or_null("GameManager")->get_process_mode(), Node::PROCESS_MODE_PAUSABLE);
+}
 } // namespace
 
 DEFN_TEST(deploy_card_audio_plays_for_an_accepted_tap_but_not_a_swipe_or_disabled_card) {
@@ -86,14 +119,10 @@ DEFN_TEST(deploy_card_audio_plays_for_an_accepted_tap_but_not_a_swipe_or_disable
 DEFN_TEST(match_presentation_keeps_world_and_ui_ownership_separate_across_resize) {
     TreeMountedNode<MatchPresentation> mounted;
     auto *presentation = mounted.get();
+    wait_for_match_ready(presentation);
     auto *world = Object::cast_to<SubViewport>(presentation->get_node_or_null("BattlefieldHost/Battlefield"));
-    DEFN_REQUIRE(world != nullptr);
     auto *hud = Object::cast_to<HUD>(presentation->get_node_or_null("FullScreenUI/HUD"));
-    DEFN_REQUIRE(hud != nullptr);
-    DEFN_CHECK(world->get_node_or_null("GameManager/HUD") == nullptr);
-    DEFN_CHECK_EQ(world->get_size_2d_override(), Vector2i(1920, 1080));
-    DEFN_CHECK(world->is_audio_listener_2d());
-    DEFN_CHECK_EQ(world->get_node_or_null("GameManager")->get_process_mode(), Node::PROCESS_MODE_PAUSABLE);
+    check_match_ownership(world, hud);
     auto *pause_menu = Object::cast_to<PauseMenu>(presentation->get_node_or_null("FullScreenUI/PauseMenu"));
     DEFN_REQUIRE(pause_menu != nullptr);
     const auto game_id = world->get_node_or_null("GameManager")->get_instance_id();

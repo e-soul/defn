@@ -148,14 +148,26 @@ void GameManager::configure_presentation(Node *ui_parent, UnitDataLoader content
     invalidate_layout_ = std::move(invalidate_layout);
 }
 
+void GameManager::configure_prepared_match(PreparedMatch content, std::shared_ptr<MatchResources> resources) {
+    unit_data_ = std::move(content.units);
+    supplied_content_ = true;
+    staged_start_ = true;
+    prepared_level_ = std::move(content.level);
+    prepared_endless_ = std::move(content.endless);
+    prepared_controls_ = content.controls;
+    prepared_music_ = std::move(content.music);
+    prepared_level_id_ = std::move(content.level_id);
+    resources_ = std::move(resources);
+}
+
 void GameManager::_bind_methods() {}
 
 void GameManager::_ready() {
-    set_process_mode(PROCESS_MODE_PAUSABLE);
+    set_process_mode(staged_start_ ? PROCESS_MODE_DISABLED : PROCESS_MODE_PAUSABLE);
     UtilityFunctions::print("GameManager: Initializing belt scroller game...");
 
     auto *progression = CampaignService::get_singleton();
-    const String level_id = progression->get_current_level_id_godot();
+    const String level_id = staged_start_ ? to_godot_string(prepared_level_id_) : progression->get_current_level_id_godot();
 
     // Load unit data from JSON
     if (!supplied_content_) {
@@ -166,78 +178,127 @@ void GameManager::_ready() {
         return;
     }
 
-    // Setup camera and visual layers using background from level data
-    setup_background();
-    setup_camera();
+    build_stage_ = 1;
+    if (!staged_start_) {
+        while (!build_next_stage()) {
+        }
+        start_match();
+    }
+}
+
+bool GameManager::build_next_stage() {
+    switch (build_stage_++) {
+    case 1: {
+        // Setup camera and visual layers using background from level data
+        setup_background();
+        setup_camera();
 #ifdef DEFN_DEBUG_RENDERING_ENABLED
-    setup_belt_debug_overlay();
+        setup_belt_debug_overlay();
 #endif
 
-    // Entity container (y-sort so closer-to-bottom entities render in front)
-    entity_container = memnew(Node2D);
-    entity_container->set_name("EntityContainer");
-    entity_container->set_y_sort_enabled(true);
-    add_child(entity_container);
-
-    unit_selection_controller_ = memnew(UnitSelectionController);
-    unit_selection_controller_->set_name("UnitSelectionController");
-    add_child(unit_selection_controller_);
-    const UnitControlConfig unit_control_config = UnitControlConfigLoader::load(DataPaths::UNIT_CONTROL).value_or(UnitControlConfig{});
-    unit_selection_controller_->configure(entity_container, unit_control_config);
-
-    // HUD
-    hud = memnew(HUD);
-    hud->set_name("HUD");
-    Node *ui_parent = ui_parent_ != nullptr ? ui_parent_ : this;
-    hud->set_layout_invalidation(invalidate_layout_);
-    ui_parent->add_child(hud);
-
-    hud->set_friendly_units(match_director_.build_available_friendlies());
-    hud->set_level(to_godot_string(match_director_.get_level_name()));
-    hud->update_core_resource(match_director_.get_core_resource());
-    hud->set_energy_cap(match_director_.get_energy_cap());
-    // Seeded rather than left to the first energy tick: a level whose opening grant is already at its cap has an
-    // engaged ceiling before the player does anything, and the readout has to say so from the first frame.
-    refresh_supply_readout();
-    hud->update_wave(1, match_director_.get_total_waves());
-    hud->update_integrity(match_director_.get_base_health(), match_director_.get_base_max_health());
-    hud->update_score(0);
-    hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
-    hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
-    hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
-    hud->connect("score_screen_endless", callable_mp(this, &GameManager::on_score_screen_endless));
-    hud->connect("score_screen_campaign", callable_mp(this, &GameManager::on_score_screen_campaign));
-    hud->connect("score_screen_upgrade_selected", callable_mp(this, &GameManager::on_score_screen_upgrade_selected));
-
-    setup_base_objective();
-    setup_scroll_triggers();
-
-    // Core resource generation timer
-    core_resource_timer = memnew(Timer);
-    core_resource_timer->set_wait_time(1.0);
-    core_resource_timer->set_one_shot(false);
-    core_resource_timer->connect("timeout", callable_mp(this, &GameManager::on_core_resource_tick));
-    add_child(core_resource_timer);
-    core_resource_timer->start();
-    setup_match_result_cutscene_timer();
-    setup_match_result_reveal_timer();
-
-    const auto music_playlist = MusicPlaylistLoader::load(DataPaths::MUSIC_PLAYLIST_DATA);
-    if (music_playlist.has_value()) {
-        auto *background_music = memnew(BackgroundMusicPlayer);
-        background_music->set_name("BackgroundMusicPlayer");
-        background_music->configure(*music_playlist);
-        add_child(background_music);
+        break;
     }
+    case 2: {
+        // Entity container (y-sort so closer-to-bottom entities render in front)
+        entity_container = memnew(Node2D);
+        entity_container->set_name("EntityContainer");
+        entity_container->set_y_sort_enabled(true);
+        add_child(entity_container);
 
-    // Pause menu (ESC to toggle)
-    auto *pause_menu = memnew(PauseMenu);
-    pause_menu->set_name("PauseMenu");
-    ui_parent->add_child(pause_menu);
-    hud->set_pause_action(callable_mp(pause_menu, &PauseMenu::toggle_pause));
-    pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
-    if (presentation_ready_) {
-        presentation_ready_(hud, unit_data_, base_objective, unit_selection_controller_);
+        unit_selection_controller_ = memnew(UnitSelectionController);
+        unit_selection_controller_->set_name("UnitSelectionController");
+        add_child(unit_selection_controller_);
+        const UnitControlConfig unit_control_config =
+            staged_start_ ? prepared_controls_ : UnitControlConfigLoader::load(DataPaths::UNIT_CONTROL).value_or(UnitControlConfig{});
+        unit_selection_controller_->configure(entity_container, unit_control_config);
+
+        break;
+    }
+    case 3: {
+        // HUD
+        hud = memnew(HUD);
+        hud->set_name("HUD");
+        Node *ui_parent = ui_parent_ != nullptr ? ui_parent_ : this;
+        hud->set_layout_invalidation(invalidate_layout_);
+        ui_parent->add_child(hud);
+        if (staged_start_) {
+            hud->set_process_mode(PROCESS_MODE_DISABLED);
+        }
+
+        hud->set_friendly_units(match_director_.build_available_friendlies());
+        hud->set_level(to_godot_string(match_director_.get_level_name()));
+        hud->update_core_resource(match_director_.get_core_resource());
+        hud->set_energy_cap(match_director_.get_energy_cap());
+        // Seeded rather than left to the first energy tick: a level whose opening grant is already at its cap has an
+        // engaged ceiling before the player does anything, and the readout has to say so from the first frame.
+        refresh_supply_readout();
+        hud->update_wave(1, match_director_.get_total_waves());
+        hud->update_integrity(match_director_.get_base_health(), match_director_.get_base_max_health());
+        hud->update_score(0);
+        hud->connect("deploy_requested", callable_mp(this, &GameManager::on_deploy_requested));
+        hud->connect("score_screen_next_level", callable_mp(this, &GameManager::on_score_screen_next_level));
+        hud->connect("score_screen_retry", callable_mp(this, &GameManager::on_score_screen_retry));
+        hud->connect("score_screen_endless", callable_mp(this, &GameManager::on_score_screen_endless));
+        hud->connect("score_screen_campaign", callable_mp(this, &GameManager::on_score_screen_campaign));
+        hud->connect("score_screen_upgrade_selected", callable_mp(this, &GameManager::on_score_screen_upgrade_selected));
+
+        break;
+    }
+    case 4: {
+        setup_base_objective();
+        setup_scroll_triggers();
+
+        // Core resource generation timer
+        core_resource_timer = memnew(Timer);
+        core_resource_timer->set_name("CoreResourceTimer");
+        core_resource_timer->set_wait_time(1.0);
+        core_resource_timer->set_one_shot(false);
+        core_resource_timer->connect("timeout", callable_mp(this, &GameManager::on_core_resource_tick));
+        add_child(core_resource_timer);
+        setup_match_result_cutscene_timer();
+        setup_match_result_reveal_timer();
+
+        break;
+    }
+    case 5: {
+        Node *ui_parent = ui_parent_ != nullptr ? ui_parent_ : this;
+        // Pause menu (ESC to toggle)
+        auto *pause_menu = memnew(PauseMenu);
+        pause_menu->set_name("PauseMenu");
+        ui_parent->add_child(pause_menu);
+        pause_menu->set_process_input(false);
+        hud->set_pause_action(callable_mp(pause_menu, &PauseMenu::toggle_pause));
+        pause_menu->connect("main_menu_requested", callable_mp(this, &GameManager::on_pause_menu_main_menu));
+        if (presentation_ready_) {
+            presentation_ready_(hud, unit_data_, base_objective, unit_selection_controller_);
+        }
+        constructed_ = true;
+        break;
+    }
+    default:
+        return true;
+    }
+    return constructed_;
+}
+
+void GameManager::start_match() {
+    if (!constructed_ || started_) {
+        return;
+    }
+    started_ = true;
+    set_process_mode(PROCESS_MODE_PAUSABLE);
+    hud->set_process_mode(PROCESS_MODE_INHERIT);
+    core_resource_timer->start();
+    Node *ui_parent = ui_parent_ != nullptr ? ui_parent_ : this;
+    if (auto *pause = Object::cast_to<PauseMenu>(ui_parent->get_node_or_null("PauseMenu")); pause != nullptr) {
+        pause->set_process_input(true);
+    }
+    const auto playlist = staged_start_ ? prepared_music_ : MusicPlaylistLoader::load(DataPaths::MUSIC_PLAYLIST_DATA);
+    if (playlist.has_value()) {
+        auto *music = memnew(BackgroundMusicPlayer);
+        music->set_name("BackgroundMusicPlayer");
+        music->configure(*playlist);
+        add_child(music);
     }
 }
 
@@ -246,11 +307,19 @@ void GameManager::_ready() {
 bool GameManager::compose_match(const String &level_id) {
     belt_positioning_.clear();
     auto *progression = CampaignService::get_singleton();
-    const bool endless = progression->get_match_mode() == MatchMode::ENDLESS;
+    const bool endless = staged_start_ ? prepared_endless_.has_value() : progression->get_match_mode() == MatchMode::ENDLESS;
 
     std::optional<LevelDefinition> loaded_level;
     std::optional<EndlessDefinition> endless_definition;
-    if (endless) {
+    if (staged_start_) {
+        loaded_level = prepared_level_;
+        if (!loaded_level.has_value()) {
+            return false;
+        }
+        if (prepared_endless_.has_value()) {
+            endless_definition = EndlessDefinition{.level = *loaded_level, .schedule = *prepared_endless_};
+        }
+    } else if (endless) {
         endless_definition = EndlessScheduleLoader::load(DataPaths::ENDLESS_DATA);
         if (!endless_definition.has_value()) {
             UtilityFunctions::printerr("GameManager: Failed to load the endless definition: ", String(DataPaths::ENDLESS_DATA));
@@ -266,6 +335,9 @@ bool GameManager::compose_match(const String &level_id) {
         }
     }
 
+    if (!loaded_level.has_value()) {
+        return false;
+    }
     if (auto *grid = GridManager::get_singleton()) {
         grid->configure(unit_data_.get_globals().gameplay_rules, loaded_level->belt_width_ratio.x, loaded_level->belt_width_ratio.y);
         camera_scroll_controller_.configure(grid->get_rules());
@@ -274,7 +346,7 @@ bool GameManager::compose_match(const String &level_id) {
     match_director_.configure(progression, &unit_data_, GridManager::get_singleton());
     match_director_.load_level_definition(*loaded_level, endless ? std::string(ENDLESS_MATCH_ID) : to_std_string(level_id));
 
-    if (endless) {
+    if (endless_definition.has_value()) {
         // Seeded after the load, which clears the timeline, and before the match begins, which starts it.
         endless_director_.emplace();
         endless_director_->configure(&match_director_, progression, endless_definition->schedule, &endless_random_);
@@ -290,7 +362,7 @@ bool GameManager::compose_match(const String &level_id) {
 }
 
 void GameManager::_process(double delta) {
-    if (match_director_.is_game_over()) {
+    if (!started_ || match_director_.is_game_over()) {
         return;
     }
 
@@ -517,7 +589,9 @@ Unit *GameManager::materialize_spawn_intent(const SpawnUnitIntent &intent) {
         }
     }
 
-    return UnitFactory::materialize(intent, *config, unit_data_.get_globals().field_promotion);
+    auto *unit = UnitFactory::materialize(intent, *config, unit_data_.get_globals().field_promotion);
+    unit->set_match_resources(resources_);
+    return unit;
 }
 
 void GameManager::setup_match_result_cutscene_timer() {
@@ -736,7 +810,7 @@ void GameManager::on_base_destroyed() { apply_match_update(match_director_.handl
 void GameManager::on_core_resource_tick() { apply_match_update(match_director_.handle_core_resource_tick()); }
 
 void GameManager::on_deploy_requested(const String &unit_type) {
-    if (match_result_cutscene_active_ || match_director_.is_game_over()) {
+    if (!started_ || match_result_cutscene_active_ || match_director_.is_game_over()) {
         return;
     }
 

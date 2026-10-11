@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "animation_controller.h"
+#include "match_resources.h"
 
 #include "godot_string.h"
 #include "godot_vector.h"
@@ -20,7 +21,8 @@ namespace defn {
 
 void AnimationController::_bind_methods() { ADD_SIGNAL(MethodInfo("shoot_effect_triggered")); }
 
-void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite) {
+void AnimationController::configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite, std::shared_ptr<MatchResources> resources) {
+    resources_ = std::move(resources);
     this->owner_node = Object::cast_to<Node2D>(owner_node);
     state_.configure(cfg.animations);
     muzzle_offset = to_godot_vector(muzzle_anchor(cfg));
@@ -59,6 +61,14 @@ void AnimationController::_process(double delta) {
 }
 
 void AnimationController::setup_sprite_frames(const UnitConfig &cfg) {
+    if (resources_ != nullptr) {
+        for (const auto &[name, animation] : cfg.animations) {
+            animation_offsets_[name] = to_godot_vector(animation.offset);
+        }
+        sprite->set_sprite_frames(resources_->unit_frames(cfg.name).body);
+        sprite->set_flip_h(cfg.sprite_flip_h);
+        return;
+    }
     auto *loader = ResourceLoader::get_singleton();
     Ref<SpriteFrames> frames;
     frames.instantiate();
@@ -94,23 +104,26 @@ void AnimationController::setup_muzzle_flash(Node *owner_node, const UnitConfig 
     muzzle_flash = memnew(AnimatedSprite2D);
     auto *loader = ResourceLoader::get_singleton();
     Ref<SpriteFrames> frames;
-    frames.instantiate();
+    if (resources_ != nullptr) {
+        frames = resources_->unit_frames(cfg.name).muzzle;
+    } else {
+        frames.instantiate();
 
-    frames->add_animation("muzzle");
-    frames->set_animation_speed("muzzle", 20.0);
-    frames->set_animation_loop("muzzle", false);
-    for (int i = 0; i <= 9; ++i) {
-        String path = vformat(to_godot_string(cfg.muzzle.path_template), i);
-        Ref<Texture2D> tex = loader->load(path);
-        if (tex.is_valid()) {
-            frames->add_frame("muzzle", tex);
+        frames->add_animation("muzzle");
+        frames->set_animation_speed("muzzle", 20.0);
+        frames->set_animation_loop("muzzle", false);
+        for (int i = 0; i <= 9; ++i) {
+            String path = vformat(to_godot_string(cfg.muzzle.path_template), i);
+            Ref<Texture2D> tex = loader->load(path);
+            if (tex.is_valid()) {
+                frames->add_frame("muzzle", tex);
+            }
+        }
+
+        if (frames->has_animation("default")) {
+            frames->remove_animation("default");
         }
     }
-
-    if (frames->has_animation("default")) {
-        frames->remove_animation("default");
-    }
-
     muzzle_flash->set_sprite_frames(frames);
     muzzle_flash->set_position(muzzle_offset);
     if (cfg.muzzle.flip_h) {

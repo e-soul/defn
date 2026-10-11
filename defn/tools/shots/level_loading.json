@@ -1,0 +1,18 @@
+{
+  "name": "level_loading",
+  "level": "level_05",
+  "fps": 60,
+  "duration_seconds": 3,
+  "fade_in": 0,
+  "fade_out": 0,
+  "capture_loading": true,
+  "timeline": [
+    { "at": 0.2, "action": "still", "label": "ready" },
+    { "at": 0.4, "action": "deploy", "unit": "breacher", "travel": 0.1 },
+    { "at": 0.9, "action": "deploy", "unit": "breacher", "travel": 0.1 },
+    { "at": 1.4, "action": "deploy", "unit": "marksman", "travel": 0.1 },
+    { "at": 1.9, "action": "deploy", "unit": "marksman", "travel": 0.1 },
+    { "at": 2.5, "action": "check", "friendlies": 4 },
+    { "at": 2.6, "action": "still", "label": "deployed" }
+  ]
+}

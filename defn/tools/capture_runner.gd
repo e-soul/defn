@@ -178,7 +178,21 @@ func _boot() -> bool:
 			printerr("[capture] level %s was refused; current selection is %s" % [level, selected])
 			return false
 		change_scene_to_file("res://scenes/game.tscn")
-	await _frames(BOOT_FRAMES)
+	await _frames(2)
+	if bool(_shot.get("capture_loading", false)) and _stills_dir != "":
+		_set_cover_alpha(0)
+		await _save_still("loading")
+		_set_cover_alpha(1)
+
+	# A scene is mounted before asynchronous preparation has finished. Observe the same gate gameplay uses.
+	var load_deadline := Time.get_ticks_msec() + 30000
+	while current_scene != null and current_scene.has_method("is_match_ready") and not current_scene.call("is_match_ready"):
+		if current_scene.call("has_loading_failed") or Time.get_ticks_msec() >= load_deadline:
+			printerr("[capture] match loading failed or timed out")
+			return false
+		OS.delay_msec(1)
+		await _frames(1)
+	await _frames(4)
 
 	_hud = root.find_child("HUD", true, false)
 	_entities = root.find_child("EntityContainer", true, false)

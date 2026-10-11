@@ -186,6 +186,7 @@ for the render again.
 | `cursor.start` | — | Where the pointer begins, in canvas coordinates |
 | `timeline` | `[]` | The actions |
 | `background_only` | `false` | Freeze the loaded match and hide everything except its background and camera, including the cursor |
+| `capture_loading` | `false` | Save a `loading` still during boot; the shot clock starts only after the match reports readiness |
 | `mute_music` | `false` | Silence the background music player for an effects-only recording; leave gameplay and UI sounds intact |
 
 Every timeline entry takes `at` (seconds from the start of the shot) and an optional `travel` (seconds of cursor

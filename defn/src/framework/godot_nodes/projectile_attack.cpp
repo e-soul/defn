@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 
 #include "projectile_attack.h"
+#include "match_resources.h"
 
 #include "attack_target_resolver.h"
 #include "damage_dispatcher.h"
@@ -79,6 +80,9 @@ void ProjectileAttack::_process(double delta) {
 }
 
 Ref<SpriteFrames> ProjectileAttack::build_frames(const AnimConfig &animation) {
+    if (resources_ != nullptr) {
+        return resources_->animation_frames(animation);
+    }
     auto *loader = ResourceLoader::get_singleton();
     Ref<SpriteFrames> frames;
     frames.instantiate();

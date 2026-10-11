@@ -12,11 +12,14 @@
 #include <godot_cpp/core/class_db.hpp>
 
 #include <map>
+#include <memory>
 #include <string>
 
 namespace defn {
 
 using namespace godot;
+
+class MatchResources;
 
 enum class FacingDirection { FORWARD, BACKWARD };
 
@@ -26,7 +29,8 @@ class AnimationController : public Node {
     GDCLASS(AnimationController, Node)
 
   public:
-    void configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite = true);
+    void configure(Node *owner_node, const UnitConfig &cfg, bool enable_sprite = true, std::shared_ptr<MatchResources> resources = {});
+    const std::shared_ptr<MatchResources> &get_match_resources() const { return resources_; }
 
     UnitPose get_anim_state() const { return state_.get_pose(); }
     void set_anim_state(UnitPose pose);
@@ -68,6 +72,7 @@ class AnimationController : public Node {
     void start_death_fade();
     void trigger_shoot_effects(bool show_muzzle_flash);
 
+    std::shared_ptr<MatchResources> resources_;
     UnitAnimationState state_;
     std::string presented_animation_;
     // Per-clip anchor corrections, keyed by animation name. See `AnimConfig::offset`.
