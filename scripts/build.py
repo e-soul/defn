@@ -11,6 +11,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 import zipfile
@@ -321,6 +322,41 @@ def create_archive(source_dir: Path, archive_path: Path) -> None:
     shutil.make_archive(str(base_name), "zip", root_dir=source_dir)
 
 
+def smoke_native_export(
+    godot_executable: str,
+    export_dir: Path,
+    platform_config: PlatformConfig,
+) -> None:
+    """Check the exported PCK with the actual release library before archiving."""
+    with tempfile.TemporaryDirectory(prefix="native-smoke-", dir=export_dir.parent) as temporary:
+        stage = Path(temporary)
+        shutil.copytree(export_dir, stage, dirs_exist_ok=True)
+        # The editor can execute an external test script; export templates cannot.
+        # Its debug feature must resolve to the exported release library, even
+        # when a different debug library exists in the developer's source tree.
+        debug_library = stage / "bin" / platform_config.debug_extension_library_name
+        debug_library.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(stage / platform_config.extension_library_name, debug_library)
+        pack = (stage / platform_config.export_executable_name).with_suffix(".pck")
+        if not pack.exists():
+            pack = stage / platform_config.export_executable_name
+        env = os.environ.copy()
+        for variable in ("APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"):
+            directory = stage / "user" / variable
+            directory.mkdir(parents=True, exist_ok=True)
+            env[variable] = str(directory)
+        script = Path(__file__).resolve().with_name("smoke_native.gd")
+        command = [godot_executable, "--headless", "--path", str(stage),
+                   "--main-pack", str(pack), "--script", str(script)]
+        print(f"Running: {format_command(command)}", flush=True)
+        result = subprocess.run(command, cwd=stage, env=env, capture_output=True,
+                                text=True, timeout=60)
+        output = result.stdout + result.stderr
+        print(output, end="")
+        if result.returncode or "ERROR:" in output or "NATIVE_EXPORT_SMOKE_PASS" not in output:
+            raise RuntimeError("Native export menu smoke test failed")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Build and export a native release headlessly."
@@ -496,6 +532,8 @@ def main() -> int:
         raise FileNotFoundError(
             f"Godot export did not produce any files under {export_dir}"
         )
+
+    smoke_native_export(godot_executable, export_dir, platform_config)
 
     if not args.skip_archive:
         create_archive(export_dir, archive_path)

@@ -59,6 +59,13 @@ reports listed assets that nothing reaches.
 Create a native release archive from the repository root with
 `python scripts/build.py --platform windows` or
 `python scripts/build.py --platform linux`.
+Before archiving, the build checks the exported PCK and release extension in an
+isolated Godot process: menu callbacks, unclipped buttons, navigation and resize.
+The editor runtime supplies the test script; the extension comes from the export.
+
+Windows extension links disable identical COMDAT folding (`/OPT:NOICF`).
+godot-cpp compares binding-method addresses when registering virtual callbacks;
+folding identical empty bindings can skip registration in optimized releases.
 
 For implementation details, see [SConstruct](SConstruct) and
 [build_tools](build_tools/).

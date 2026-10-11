@@ -69,6 +69,9 @@ def configure_project(env):
     ]
     if env.get("is_msvc", False):
         env.Append(CXXFLAGS=["/std:c++latest", "/EHsc"])
+        # GDCLASS compares _bind_methods addresses before registering virtuals.
+        # Folding empty bindings together skips callbacks such as menu _process.
+        env.AppendUnique(LINKFLAGS=["/OPT:NOICF"])
     elif env["platform"] == "web":
         env.Append(CXXFLAGS=["-std=c++23", "-fno-exceptions"])
         env["SHLIBPREFIX"] = "lib"
