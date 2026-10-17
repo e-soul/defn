@@ -42,6 +42,10 @@ func _check_buttons(labels: Array[String]) -> bool:
 
 func _click(label: String) -> void:
 	var button := _button(label)
+	await _click_control(button)
+
+
+func _click_control(button: Button) -> void:
 	for pressed in [true, false]:
 		var event := InputEventMouseButton.new()
 		event.button_index = MOUSE_BUTTON_LEFT
@@ -70,6 +74,23 @@ func _run() -> void:
 	if not _check_buttons(["Campaign", "Progress", "Main Menu"]):
 		quit(1)
 		return
+	await _click("Progress")
+	# Base formats a fractional fire rate. Run with rendering enabled as well
+	# to catch C++ locale collisions with the graphics driver's runtime on Linux.
+	for entity_id in ["base", "operations", "breacher", "base"]:
+		var selector := current_scene.find_child("Selector_" + entity_id, true, false) as Button
+		if selector == null:
+			push_error("Native export: missing Progress selector: " + entity_id)
+			quit(1)
+			return
+		await _click_control(selector)
+		# Selection rebuilds the controls; inspect the replacement, not the old button.
+		selector = current_scene.find_child("Selector_" + entity_id, true, false) as Button
+		if selector == null or selector.theme_type_variation != &"DefnRosterSelectedButton":
+			push_error("Native export: Progress selection failed: " + entity_id)
+			quit(1)
+			return
+	await _click("Back")
 	await _click("Main Menu")
 	await _click("Options")
 	if not _check_buttons(["Back"]):

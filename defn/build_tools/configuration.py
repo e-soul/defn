@@ -80,6 +80,11 @@ def configure_project(env):
         env["SHLINKCOM"] = "${TEMPFILE(SHLINKCOM_POSIX)}"
     else:
         env.Append(CXXFLAGS=["-std=c++23", "-fexceptions"])
+        if env["platform"] == "linux" and env.get("use_static_cpp", False):
+            # Keep the bundled C++ runtime private. Godot and graphics drivers
+            # may load another libstdc++; interposed locale facets can crash
+            # even an ostringstream formatting a fractional Progress stat.
+            env.AppendUnique(LINKFLAGS=["-Wl,--exclude-libs,ALL"])
     if env["target"] == "template_debug":
         env.Append(CPPDEFINES=["DEFN_DEBUG_RENDERING_ENABLED"])
     return env

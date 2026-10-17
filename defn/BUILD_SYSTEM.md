@@ -67,5 +67,10 @@ Windows extension links disable identical COMDAT folding (`/OPT:NOICF`).
 godot-cpp compares binding-method addresses when registering virtual callbacks;
 folding identical empty bindings can skip registration in optimized releases.
 
+Linux extensions that statically link the C++ runtime hide archive symbols with
+`--exclude-libs,ALL`. This keeps their locale state separate from another
+libstdc++ loaded by a graphics driver; sharing that state can crash fractional
+number formatting on the Progress screen while headless checks still pass.
+
 For implementation details, see [SConstruct](SConstruct) and
 [build_tools](build_tools/).
