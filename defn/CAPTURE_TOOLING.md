@@ -106,6 +106,22 @@ an isolated project prepared by `scripts/stage_web_project.py` with `include_too
 Use a smaller tile limit such as 1024 during verification to put many tile joins
 inside the frame. `--level` selects each campaign background.
 
+`web_sprite_review --video --stills --fps 30 --size 960x540 --fixture max_roster --no-cursor`
+deploys all four friendly types through real card input, then records movement and
+combat with HUD portraits visible. Use `--project-dir` to compare staging snapshots
+with the same art quality and different `sprite_quality` values. Inspect animation
+in motion and the 7/14/22-second stills for silhouette halos, softened detail and
+inconsistent colors between frames. The base and muzzle/projectile effects are
+included in unit texture compression; source dimensions and animation offsets must
+stay unchanged. Sprite compression defaults to 0.8; tune it with `--sprite-quality`
+or compare authored imports with `--lossless-sprites`.
+
+`web_music_review --video --stills --fps 30 --size 960x540 --fixture max_roster --no-cursor`
+records the normal music player during a short opening with no deployments or
+UI clicks. Use isolated `--project-dir` snapshots to check alternate music encodes.
+The playlist shuffles, so these recordings verify playback; use matching source
+excerpts for listening comparisons between codecs or bitrates.
+
 `responsive_overflow --size 667x330 --fixture max_roster` checks horizontal
 scrolling (zero deployments) followed by a tap on the revealed Operator (one).
 At 320 logical units, the result footer wraps its actions; that width is a

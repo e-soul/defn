@@ -7,6 +7,10 @@ extension; it does not compile a native library into WebAssembly.
 
 - Python 3.10+ and SCons available in your shell (a virtual environment is recommended).
 - Git, the repository's submodules and Git LFS assets.
+- FFmpeg with the `libmp3lame` encoder on PATH for web music compression.
+  On Ubuntu, install it with `sudo apt-get install ffmpeg`; on Windows, use
+  `winget install Gyan.FFmpeg`. An existing installation can be selected with
+  `--ffmpeg-exe <path>`. `--original-music` and `--build-only` do not need FFmpeg.
 - A native C++ build environment for your host, just as for a desktop build.
   Automatic exports support Windows and Linux; the editor needs a native debug
   extension to import the game's classes.
@@ -48,7 +52,7 @@ The wrapper:
 3. Installs matching export templates when absent and builds the native debug
    extension needed by the editor.
 4. Builds the requested Web libraries, checks packaging, stages full-resolution
-   background tiles in a private project, imports its resources and exports
+   background tiles and compressed music in a private project, imports its resources and exports
    through the `defn_web_release` preset.
 5. Validates fresh export files before copying them to `build/web/debug` and
    `build/web/release`. Godot diagnostics are checked even when its exit code is
@@ -79,7 +83,7 @@ godot-cpp, depend on the pin so an upgrade invalidates cached compilation.
 The wrapper creates a temporary project beneath `build/web/` with its own Godot
 import cache. It copies the selected resources and replaces background images
 larger than 4096 pixels on either axis with generated scenes of adjacent texture
-tiles. Every source pixel is preserved; no image is resized. Each tile includes
+tiles. The tiles retain the full source resolution; no image is resized. Each tile includes
 two pixels of neighboring image data beyond its drawn region for linear filtering.
 The scene records the original dimensions, so layer scale, placement, repeat
 period and parallax remain the same. Current background imports use no mipmaps;
@@ -90,6 +94,71 @@ unchanged. Native exports continue using their full-resolution images. For a
 target requiring smaller textures, pass `--texture-tile-limit 2048`; this changes
 tile count, not image resolution. The private project and its cache are removed
 after export, including when a build fails. Generated resources stay in the PCK.
+
+## Web art compression
+
+The private project's background and campaign PNG/JPEG imports use Godot's Lossy
+mode at quality **0.8**. This also applies to generated background tiles. It reduces
+the downloaded PCK while retaining texture dimensions, alpha, sampling borders,
+layer placement and parallax. UI and authored nonlossless texture import modes keep
+their existing settings. Lossy compression changes color pixels;
+it does not reduce decoded texture memory. Check rendered gradients, silhouettes
+and tile joins when changing quality or replacing art.
+
+Use `--art-quality 0.95` to compare a higher setting, or `--lossless-art` for the
+original compression. For paired exports from the same source revision:
+
+```text
+python scripts/build_web.py --target release --lossless-art --output-dir build/web-lossless
+python scripts/build_web.py --target release --output-dir build/web-compressed
+```
+
+Compare the resulting `release/index.pck` sizes and replay the same capture shots
+against staged projects (with `include_tools=True`) before accepting quality changes.
+The staging report `texture_tiles.json` records `art_quality`; `null` means lossless.
+
+Sprite compression defaults to **0.8**, independently of background/campaign art.
+Override it with `--sprite-quality 0.95`, or use `--lossless-sprites` to retain the
+authored unit texture imports.
+This uses the same unit-catalog frame expansion as the packaging check, including
+the base, animation frames, muzzle flashes and projectile textures. It affects
+only selected PNG/JPEG imports, preserving dimensions, offsets, alpha-processing
+options and native imports. The staging report records `sprite_quality` (`null`
+means authored imports). For independent sprite comparisons with art fixed at 0.8:
+
+```text
+python scripts/build_web.py --target release --lossless-sprites --output-dir build/web-sprites-lossless
+python scripts/build_web.py --target release --sprite-quality 0.95 --output-dir build/web-sprites-q95
+python scripts/build_web.py --target release --sprite-quality 0.8 --output-dir build/web-sprites-q80
+```
+
+Review animation in motion, transparent silhouettes and the reused HUD portraits
+at gameplay scale when changing sprite quality. Use both `--lossless-art` and
+`--lossless-sprites` to compare against all original texture imports.
+
+## Web music compression
+
+Playlist tracks default to **128 kbps MP3**, encoded with FFmpeg's `libmp3lame`
+in the private web project. Source MP3s and native exports are unchanged. Tracks
+keep their existing resource paths, sample rate, channel count and Godot import
+parameters; sound effects are copied unchanged. Every build encodes from the
+original source files, never from a previous web encode.
+
+Use `--music-bitrate 160` for a different standard MP3 bitrate, or
+`--original-music` to copy the original tracks without re-encoding:
+
+```text
+python scripts/build_web.py --target release --music-bitrate 160 --output-dir build/web-music-160
+python scripts/build_web.py --target release --original-music --output-dir build/web-music-original
+```
+
+The current four tracks shrink from about 14.94 MB to 9.95 MB at the default
+setting. The staging log reports source and web byte counts; `texture_tiles.json`
+also records `music_bitrate_kbps` (`null` for originals) and per-track sizes.
+The bitrate is independent of the art and sprite quality options. `--original-music`
+can be combined with both original-texture switches for a full comparison.
+Missing FFmpeg or failed encoding stops the export with a diagnostic. Web CI
+installs FFmpeg before running the same wrapper used locally.
 
 ## Serve
 
@@ -109,7 +178,7 @@ Open **http://127.0.0.1:8000/index.html**, not a `file://` URL. Any static HTTP
 server can be used instead. Keep all generated files together, including the
 extension WASM and engine side module; do not rename individual exported files.
 Use the build wrapper for compatible Web exports. A direct editor export uses
-the original oversized images because it skips texture staging. The editor also
+the original oversized images and original music because it skips asset staging. The editor also
 does not compile the extension or enforce the wrapper's Godot version check.
 
 The single-threaded 4.7.2 export works without cross-origin isolation headers or

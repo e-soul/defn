@@ -12,7 +12,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from stage_web_project import DEFAULT_TILE_LIMIT, stage_web_project
+from stage_web_project import (
+    DEFAULT_ART_QUALITY, DEFAULT_MUSIC_BITRATE, DEFAULT_SPRITE_QUALITY, DEFAULT_TILE_LIMIT,
+    MP3_BITRATES, resolve_ffmpeg, stage_web_project,
+)
 
 from build import (
     PLATFORM_CONFIGS,
@@ -118,8 +121,31 @@ def parse_args(argv=None) -> argparse.Namespace:
     parser.add_argument("--godot-exe", help="Godot editor path; otherwise use GODOT_BIN or download the pinned editor.")
     parser.add_argument("--output-dir", type=Path, default=REPO_ROOT / "build" / "web")
     parser.add_argument("--texture-tile-limit", type=int, default=DEFAULT_TILE_LIMIT,
-                        help="Maximum generated background tile dimension; original pixels are preserved.")
-    return parser.parse_args(argv)
+                        help="Maximum generated background tile dimension; original resolution is preserved.")
+    art = parser.add_mutually_exclusive_group()
+    art.add_argument("--art-quality", type=float, default=DEFAULT_ART_QUALITY,
+                     help=("Web background/campaign texture quality in (0, 1]; dimensions are preserved "
+                           f"(default: {DEFAULT_ART_QUALITY:g})."))
+    art.add_argument("--lossless-art", dest="art_quality", action="store_const", const=None,
+                     help="Keep original art compression for size and visual comparisons.")
+    sprites = parser.add_mutually_exclusive_group()
+    sprites.add_argument("--sprite-quality", type=float, default=DEFAULT_SPRITE_QUALITY,
+                         help=("Web unit texture compression quality in (0, 1]; includes animation, muzzle "
+                               f"and projectile textures (default: {DEFAULT_SPRITE_QUALITY:g})."))
+    sprites.add_argument("--lossless-sprites", dest="sprite_quality", action="store_const", const=None,
+                         help="Keep original unit texture imports for size and visual comparisons.")
+    music = parser.add_mutually_exclusive_group()
+    music.add_argument("--music-bitrate", type=int, choices=MP3_BITRATES, default=DEFAULT_MUSIC_BITRATE,
+                       help=f"Web playlist MP3 bitrate in kbps (default: {DEFAULT_MUSIC_BITRATE}); sources are preserved.")
+    music.add_argument("--original-music", dest="music_bitrate", action="store_const", const=None,
+                       help="Copy original playlist tracks without re-encoding; FFmpeg is not needed.")
+    parser.add_argument("--ffmpeg-exe", default="ffmpeg", help="FFmpeg executable with libmp3lame (default: ffmpeg on PATH).")
+    args = parser.parse_args(argv)
+    for name in ("art_quality", "sprite_quality"):
+        quality = getattr(args, name)
+        if quality is not None and not 0 < quality <= 1:
+            parser.error(f"--{name.replace('_', '-')} must be greater than 0 and at most 1")
+    return args
 
 
 def main(argv=None) -> int:
@@ -139,6 +165,8 @@ def main(argv=None) -> int:
     if not args.build_only:
         if sys.platform not in ("win32", "linux"):
             raise RuntimeError("Automatic export supports Windows/Linux hosts. Use --build-only for WASM compilation.")
+        if args.music_bitrate is not None:
+            args.ffmpeg_exe = resolve_ffmpeg(args.ffmpeg_exe)
         host = "windows" if sys.platform == "win32" else "linux"
         config = PLATFORM_CONFIGS[host]
         cache_dir = REPO_ROOT / "build"
@@ -164,7 +192,9 @@ def main(argv=None) -> int:
         output_dir.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix=".web-project-", dir=output_dir) as temporary:
             project = Path(temporary)
-            stage_web_project(PROJECT_DIR, project, args.texture_tile_limit)
+            stage_web_project(PROJECT_DIR, project, args.texture_tile_limit,
+                              art_quality=args.art_quality, sprite_quality=args.sprite_quality,
+                              music_bitrate=args.music_bitrate, ffmpeg_exe=args.ffmpeg_exe)
             run_godot([godot, "--headless", "--path", str(project), "--import"])
             for mode in modes:
                 export_game(godot, output_dir, mode, project)

@@ -1,6 +1,6 @@
 # Copyright (c) 2026 e-soul.org
 # SPDX-License-Identifier: BSD-2-Clause
-"""Stage a Web project with lossless background tiles and its own Godot import cache.
+"""Stage a Web project with compressed assets and its own Godot import cache.
 
 Nothing in the source project is changed. Only resources selected by the export
 preset are copied, so unused artwork is not imported into the temporary project.
@@ -11,12 +11,76 @@ from __future__ import annotations
 import json
 import re
 import shutil
+import subprocess
 from pathlib import Path
 
 DEFAULT_TILE_LIMIT = 4096
+DEFAULT_ART_QUALITY = 0.8
+DEFAULT_SPRITE_QUALITY = 0.8
+DEFAULT_MUSIC_BITRATE = 128
+MP3_BITRATES = (32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320)
 # Linear sampling needs the neighboring source pixels beyond each tile's drawn region.
 TILE_BORDER = 2
 EXPORT_PRESET = "defn_web_release"
+
+
+def resolve_ffmpeg(executable: str = "ffmpeg") -> str:
+    resolved = shutil.which(executable)
+    if resolved is None:
+        raise RuntimeError(
+            "Web music compression needs FFmpeg with libmp3lame. Install FFmpeg on PATH, "
+            "pass --ffmpeg-exe <path>, or use --original-music to keep the source files."
+        )
+    return resolved
+
+
+def music_resources(project: Path, selected: list[str]) -> set[str]:
+    """Compress only selected playlist tracks, leaving sound effects untouched."""
+    playlist = "res://data/music_playlist.json"
+    if playlist not in selected:
+        return set()
+    tracks = set(json.loads(resource_path(project, playlist).read_text(encoding="utf-8"))["tracks"])
+    for track in tracks:
+        if track not in selected or not track.lower().endswith(".mp3"):
+            raise ValueError(f"Web music compression requires explicitly selected MP3 tracks: {track}")
+    return tracks
+
+
+def encode_music(source: Path, destination: Path, bitrate: int, ffmpeg: str) -> None:
+    result = subprocess.run(
+        [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(source),
+         "-map", "0:a:0", "-map_metadata", "-1", "-c:a", "libmp3lame", "-b:a", f"{bitrate}k",
+         str(destination)],
+        capture_output=True, text=True, errors="replace",
+    )
+    if result.returncode or not destination.is_file() or destination.stat().st_size == 0:
+        raise RuntimeError(f"Web music encoding failed for {source.name}: {result.stderr.strip()}")
+
+
+def art_import_settings(text: str, quality: float | None) -> str:
+    """Compress authored lossless textures in the private project; preserve other settings."""
+    if quality is None:
+        return text
+    header, separator, params = text.partition("[params]")
+    if not separator or not re.search(r"(?m)^compress/mode=0$", params):
+        return text
+    params = re.sub(r"(?m)^compress/mode=0$", "compress/mode=1", params)
+    setting = f"compress/lossy_quality={quality:g}"
+    if re.search(r"(?m)^compress/lossy_quality=", params):
+        params = re.sub(r"(?m)^compress/lossy_quality=.*$", setting, params)
+    else:
+        params += "\n" + setting + "\n"
+    return header + separator + params
+
+
+def unit_texture_resources(project: Path) -> set[str]:
+    """Use the packaging check's catalog expansion, including muzzle/projectile frames."""
+    from check_export_presets import walk_unit
+
+    reached = {}
+    for unit, config in json.loads((project / "data/unit_data.json").read_text(encoding="utf-8"))["units"].items():
+        walk_unit(config, unit, "", reached)
+    return {resource for resource in reached if resource.lower().endswith((".png", ".jpg", ".jpeg"))}
 
 
 def export_resources(text: str, preset: str) -> tuple[re.Match, list[str]]:
@@ -66,14 +130,17 @@ def padded_tile(image, x: int, y: int, width: int, height: int):
     return tile
 
 
-def background_tiles(source: Path, stage: Path, resource: str, limit: int) -> tuple[str, list[str]]:
+def background_tiles(source: Path, stage: Path, resource: str, limit: int, *,
+                     art_quality: float | None = None) -> tuple[str, list[str]]:
     from PIL import Image
 
     original = resource_path(source, resource)
     relative = Path(resource[6:]).relative_to("assets/backgrounds")
     base = stage / "generated/background_tiles" / relative.with_suffix("")
     base.mkdir(parents=True, exist_ok=True)
-    sidecar = original.with_suffix(original.suffix + ".import").read_text(encoding="utf-8")
+    sidecar = art_import_settings(
+        original.with_suffix(original.suffix + ".import").read_text(encoding="utf-8"), art_quality,
+    )
     params = sidecar.split("[params]", 1)[1]
     if "mipmaps/generate=true" in params:
         raise ValueError(f"Tiled backgrounds require non-mipmapped source imports: {resource}")
@@ -116,7 +183,11 @@ def background_tiles(source: Path, stage: Path, resource: str, limit: int) -> tu
     return "res://" + scene.relative_to(stage).as_posix(), textures
 
 
-def stage_web_project(source: Path, stage: Path, limit: int = DEFAULT_TILE_LIMIT, *, include_tools: bool = False) -> dict:
+def stage_web_project(source: Path, stage: Path, limit: int = DEFAULT_TILE_LIMIT, *,
+                      include_tools: bool = False, art_quality: float | None = DEFAULT_ART_QUALITY,
+                      sprite_quality: float | None = DEFAULT_SPRITE_QUALITY,
+                      music_bitrate: int | None = DEFAULT_MUSIC_BITRATE,
+                      ffmpeg_exe: str = "ffmpeg") -> dict:
     try:
         from PIL import Image
     except ImportError as error:
@@ -132,9 +203,18 @@ def stage_web_project(source: Path, stage: Path, limit: int = DEFAULT_TILE_LIMIT
         raise ValueError("Web staging must start in an empty directory")
     if limit <= 2 * TILE_BORDER or limit > DEFAULT_TILE_LIMIT:
         raise ValueError(f"Texture tile limit must be between {2 * TILE_BORDER + 1} and {DEFAULT_TILE_LIMIT}")
+    for name, quality in (("art", art_quality), ("sprite", sprite_quality)):
+        if quality is not None and not 0 < quality <= 1:
+            raise ValueError(f"Web {name} quality must be greater than 0 and at most 1, or None for authored imports")
+    if music_bitrate is not None and music_bitrate not in MP3_BITRATES:
+        raise ValueError(f"Web music bitrate must be one of {MP3_BITRATES} kbps, or None for source files")
     stage.mkdir(parents=True, exist_ok=True)
     presets = (source / "export_presets.cfg").read_text(encoding="utf-8")
     block, selected = export_resources(presets, EXPORT_PRESET)
+    sprites = unit_texture_resources(source) if sprite_quality is not None else set()
+    music = music_resources(source, selected) if music_bitrate is not None else set()
+    ffmpeg = resolve_ffmpeg(ffmpeg_exe) if music else None
+    music_sizes = {}
     replacements = {}
     tile_resources = []
     for resource in selected:
@@ -143,16 +223,28 @@ def stage_web_project(source: Path, stage: Path, limit: int = DEFAULT_TILE_LIMIT
             with Image.open(path) as image:
                 oversized = max(image.size) > limit
             if oversized:
-                scene, textures = background_tiles(source, stage, resource, limit)
+                scene, textures = background_tiles(source, stage, resource, limit, art_quality=art_quality)
                 replacements[resource] = scene
                 tile_resources.extend(textures)
                 continue
         destination = resource_path(stage, resource)
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(path, destination)
+        if resource in music:
+            encode_music(path, destination, music_bitrate, ffmpeg)
+            music_sizes[resource] = {"source_bytes": path.stat().st_size, "web_bytes": destination.stat().st_size}
+        else:
+            shutil.copy2(path, destination)
         sidecar = path.with_suffix(path.suffix + ".import")
         if sidecar.exists():
-            shutil.copy2(sidecar, destination.with_suffix(destination.suffix + ".import"))
+            staged_sidecar = destination.with_suffix(destination.suffix + ".import")
+            shutil.copy2(sidecar, staged_sidecar)
+            quality = sprite_quality if resource in sprites else None
+            if (resource.startswith(("res://assets/backgrounds/", "res://assets/campaign/"))
+                    and path.suffix.lower() in (".png", ".jpg", ".jpeg")):
+                quality = art_quality
+            if quality is not None:
+                staged_sidecar.write_text(art_import_settings(sidecar.read_text(encoding="utf-8"), quality),
+                                          encoding="utf-8")
     for name in ("project.godot", "defn_core.gdextension"):
         shutil.copy2(source / name, stage / name)
     shutil.copytree(source / "bin", stage / "bin", ignore=shutil.ignore_patterns("*.pdb", "*.exp", "*.lib"), dirs_exist_ok=True)
@@ -176,7 +268,18 @@ def stage_web_project(source: Path, stage: Path, limit: int = DEFAULT_TILE_LIMIT
     for resource in shipped:
         if not resource_path(stage, resource).is_file():
             raise ValueError(f"Missing staged export resource: {resource}")
-    report = {"tile_limit": limit, "backgrounds": replacements, "tile_count": len(tile_resources)}
+    report = {"tile_limit": limit, "backgrounds": replacements, "tile_count": len(tile_resources),
+              "art_quality": art_quality, "sprite_quality": sprite_quality,
+              "music_bitrate_kbps": music_bitrate, "music": music_sizes}
     (stage / "texture_tiles.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Web textures: {len(replacements)} full-resolution backgrounds in {len(tile_resources)} tiles (limit {limit})", flush=True)
+    print(f"Web background/campaign art: {'lossless' if art_quality is None else f'lossy quality {art_quality:g}'}", flush=True)
+    print(f"Web unit textures: {'authored imports' if sprite_quality is None else f'lossy quality {sprite_quality:g}'}", flush=True)
+    if music_bitrate is None:
+        print("Web music: original source files", flush=True)
+    else:
+        source_bytes = sum(track["source_bytes"] for track in music_sizes.values())
+        web_bytes = sum(track["web_bytes"] for track in music_sizes.values())
+        print(f"Web music: {len(music)} MP3 tracks at {music_bitrate} kbps "
+              f"({source_bytes:,} -> {web_bytes:,} bytes)", flush=True)
     return report

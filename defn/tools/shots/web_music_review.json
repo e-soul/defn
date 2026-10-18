@@ -1,0 +1,18 @@
+{
+  "name": "web_music_review",
+  "level": "level_05",
+  "seed": 20260915,
+  "fps": 30,
+  "duration_seconds": 4,
+  "fade_in": 0,
+  "fade_out": 0,
+  "_notes": [
+    "Use --fixture max_roster --fps 30 --video --stills --no-cursor to verify staged music encodes.",
+    "No deployments or UI clicks: the opening soundtrack is recorded without gameplay effects.",
+    "The normal player shuffles its playlist, so pair controlled source excerpts for listening comparisons."
+  ],
+  "timeline": [
+    {"at": 1.0, "action": "check", "friendlies": 0},
+    {"at": 1.5, "action": "still", "label": "music-playing"}
+  ]
+}

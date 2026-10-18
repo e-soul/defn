@@ -22,6 +22,37 @@ class WebToolchainTests(unittest.TestCase):
     def setUp(self):
         self.pin = web_toolchain.load_toolchain()
 
+    def test_art_quality_defaults_comparison_switch_and_invalid_values(self):
+        self.assertEqual(build_web.parse_args([]).art_quality, 0.8)
+        self.assertEqual(build_web.parse_args(["--art-quality", "0.98"]).art_quality, 0.98)
+        self.assertIsNone(build_web.parse_args(["--lossless-art"]).art_quality)
+        for value in ("0", "-1", "1.01", "nan"):
+            with self.subTest(value=value), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                build_web.parse_args(["--art-quality", value])
+
+    def test_sprite_compression_default_and_independent_overrides(self):
+        self.assertEqual(build_web.parse_args([]).sprite_quality, 0.8)
+        self.assertIsNone(build_web.parse_args(["--lossless-sprites"]).sprite_quality)
+        self.assertEqual(build_web.parse_args(["--lossless-sprites"]).art_quality, 0.8)
+        args = build_web.parse_args(["--art-quality", "0.8", "--sprite-quality", "0.95"])
+        self.assertEqual((args.art_quality, args.sprite_quality), (0.8, 0.95))
+        for value in ("0", "-1", "1.01", "nan"):
+            with self.subTest(value=value), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                build_web.parse_args(["--sprite-quality", value])
+
+    def test_music_compression_default_overrides_and_original_comparison(self):
+        self.assertEqual(build_web.parse_args([]).music_bitrate, 128)
+        args = build_web.parse_args(["--music-bitrate", "160", "--ffmpeg-exe", "tools/ffmpeg"])
+        self.assertEqual((args.music_bitrate, args.ffmpeg_exe), (160, "tools/ffmpeg"))
+        args = build_web.parse_args(["--original-music"])
+        self.assertIsNone(args.music_bitrate)
+        self.assertEqual((args.art_quality, args.sprite_quality), (0.8, 0.8))
+        for value in ("0", "-1", "129", "321", "nan"):
+            with self.subTest(value=value), redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                build_web.parse_args(["--music-bitrate", value])
+        with redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            build_web.parse_args(["--music-bitrate", "160", "--original-music"])
+
     def test_pin_is_exact_and_matches_native_godot_version(self):
         from build import DEFAULT_GODOT_VERSION
         self.assertEqual(self.pin.emscripten, "4.0.20")

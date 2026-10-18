@@ -803,9 +803,13 @@ belong to the factory or control owner, once per control; UiSfxPlayer has one ac
 player per tree. Noninteractive cards do not hover, activate or acquire focus.
 
 Web texture compatibility belongs to the build: stage_web_project.py uses a private
-project/cache and exact full-resolution tiles with sampling borders. Source art,
-level data and asset-submodule imports remain unchanged. Operational commands and
-the regression matrix belong in defn/CAPTURE_TOOLING.md and defn/WEB_BUILD.md.
+project/cache and full-resolution tiles with sampling borders. Background/campaign
+and unit texture compression apply only in that private project's import settings;
+unit texture paths reuse the packaging check's catalog expansion.
+Playlist MP3s are re-encoded at the configured web bitrate only in that private
+project, keeping resource paths and import parameters; sound effects stay unchanged.
+Source art/audio, level data and asset-submodule imports remain unchanged. Operational
+commands and the regression matrix belong in defn/CAPTURE_TOOLING.md and defn/WEB_BUILD.md.
 
 ## Module 6: Godot Entity Construction
 

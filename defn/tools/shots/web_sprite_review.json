@@ -1,0 +1,26 @@
+{
+  "name": "web_sprite_review",
+  "level": "level_05",
+  "seed": 20260915,
+  "fps": 30,
+  "duration_seconds": 24,
+  "fade_in": 0,
+  "fade_out": 0,
+  "mute_music": true,
+  "_notes": [
+    "Use --fixture max_roster --fps 30 --no-cursor for sprite compression comparisons.",
+    "Deploy all four friendlies through the real cards; review portraits, moving silhouettes and combat effects."
+  ],
+  "cursor": {"input_chip": false, "start": [1620, 900]},
+  "timeline": [
+    {"at": 0.2, "action": "still", "label": "portraits"},
+    {"at": 1.0, "action": "deploy", "unit": "breacher", "travel": 0.15},
+    {"at": 2.0, "action": "deploy", "unit": "marksman", "travel": 0.15},
+    {"at": 3.0, "action": "deploy", "unit": "impact", "travel": 0.15},
+    {"at": 5.0, "action": "deploy", "unit": "operator", "travel": 0.15},
+    {"at": 6.0, "action": "check", "friendlies": 4},
+    {"at": 7.0, "action": "still", "label": "advancing"},
+    {"at": 14.0, "action": "still", "label": "contact"},
+    {"at": 22.0, "action": "still", "label": "combat"}
+  ]
+}

@@ -56,6 +56,8 @@ jobs:
 
       - name: Install build and browser test dependencies
         run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg
           python -m pip install scons==${{ env.SCONS_VERSION }} -r scripts/requirements-web-test.txt -r scripts/requirements-web-build.txt
           python -m playwright install --with-deps chromium
 
