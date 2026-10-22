@@ -213,6 +213,12 @@ Current boundary ownership:
 - `MenuManager` is a framework UI adapter. It delegates menu decisions and
   screen models to `MenuFlowUseCase` and presenter builders, renders a settings
   snapshot, and forwards settings intents to `SettingsRuntime`. The
+  browser adapter supplies plain menu capabilities so presenters omit Quit and
+  native display controls; `SettingsRuntime` uses its no-op display adapter on
+  Web. Browser focus loss pauses an active battle through `PauseMenu` without
+  automatically resuming it on focus return. Standalone and itch exports share
+  their engine/assets and loader; an explicit HTML host profile controls the
+  shell chrome without entering game rules. The
   level-selection composition mounts one full-screen `CampaignMapView` directly
   under its UI layer and supplies progression access plus navigation callbacks.
   `CampaignMapView` first presents its loading overlay, then owns synchronous

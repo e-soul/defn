@@ -901,6 +901,8 @@ DEFN_TEST(progression_save_repository_round_trips_player_profile) {
     profile.claimed_rescue_drafts["level_02"] = 1;
     profile.endless_best_wave[0] = 17;
     profile.endless_best_score[0] = 4820;
+    profile.endless_best_wave[3] = 9;
+    profile.endless_best_score[3] = 2100;
 
     DEFN_REQUIRE(ProgressionSaveRepository::save(path, profile));
     const auto loaded = ProgressionSaveRepository::load(path);
@@ -914,6 +916,8 @@ DEFN_TEST(progression_save_repository_round_trips_player_profile) {
     DEFN_CHECK_EQ(loaded->claimed_rescue_drafts.at("level_02"), 1);
     DEFN_CHECK_EQ(loaded->endless_best_wave.at(0), 17);
     DEFN_CHECK_EQ(loaded->endless_best_score.at(0), 4820);
+    DEFN_CHECK_EQ(loaded->endless_best_wave.at(3), 9);
+    DEFN_CHECK_EQ(loaded->endless_best_score.at(3), 2100);
 
     remove_test_file(path);
 }
@@ -951,12 +955,16 @@ DEFN_TEST(progression_save_repository_handles_missing_invalid_and_clamped_counts
     write_text_file(invalid_path, "{");
     DEFN_CHECK(!ProgressionSaveRepository::load(invalid_path).has_value());
 
-    write_text_file(clamped_path, R"({"total_score": 12, "owned_upgrade_counts": {"bad_debt": -3}, "rescue_drafts_claimed": {"level_02": -2}})");
+    write_text_file(clamped_path, R"({"total_score": 12, "best_level_scores": {"level_01": -1}, "owned_upgrade_counts": {"bad_debt": -3},
+                                   "rescue_drafts_claimed": {"level_02": -2}, "endless_best_wave": {"3": -4}, "endless_best_score": {"3": -5}})");
     const auto loaded = ProgressionSaveRepository::load(clamped_path);
     DEFN_REQUIRE(loaded.has_value());
     DEFN_CHECK_EQ(loaded->total_score, 12);
     DEFN_CHECK_EQ(loaded->owned_upgrade_counts.at("bad_debt"), 0);
     DEFN_CHECK_EQ(loaded->claimed_rescue_drafts.at("level_02"), 0);
+    DEFN_CHECK_EQ(loaded->best_level_scores.at("level_01"), -1);
+    DEFN_CHECK_EQ(loaded->endless_best_wave.at(3), 0);
+    DEFN_CHECK_EQ(loaded->endless_best_score.at(3), 0);
 
     remove_test_file(invalid_path);
     remove_test_file(clamped_path);

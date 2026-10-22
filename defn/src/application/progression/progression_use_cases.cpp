@@ -3,7 +3,7 @@
 
 #include "progression_use_cases.h"
 
-#include "unit_definition.h"
+#include "unit_progression_mapper.h"
 
 #include <algorithm>
 #include <optional>
@@ -12,15 +12,6 @@
 namespace defn {
 
 namespace {
-
-const ProgressionUpgradeCard *find_upgrade_card(const std::vector<ProgressionUpgradeCard> &cards, const std::string &upgrade_id) {
-    for (const auto &card : cards) {
-        if (card.id == upgrade_id) {
-            return &card;
-        }
-    }
-    return nullptr;
-}
 
 bool can_grant_upgrade(const ProgressionProfile &profile, const std::vector<ProgressionUpgradeCard> &cards, const std::string &upgrade_id) {
     const ProgressionUpgradeCard *card = find_upgrade_card(cards, upgrade_id);
@@ -79,18 +70,9 @@ bool effect_targets_entity(const ProgressionUpgradeEffect &effect, const Progres
            effect.type == ProgressionUpgradeEffectType::BOUNTY_MULTIPLIER_DELTA;
 }
 
-ProgressionUnitStats to_progression_stats(const UnitConfig &unit) {
-    return {.unit_id = unit.name,
-            .friendly = unit.side == UnitSide::FRIENDLY,
-            .hp = unit.hp,
-            .ranged_damage = unit.ranged_damage,
-            .move_speed = unit.move_speed_pixels_per_second,
-            .has_projectile_attack = unit.projectile_attack.has_value()};
-}
-
 ProgressionEntitySnapshot make_character_entity(const UnitConfig &unit, ProgressionEntityKind kind, bool unlocked, const PlayerProfile &profile,
                                                 const std::vector<ProgressionUpgradeCard> &cards) {
-    const ProgressionUnitStats effective_stats = apply_owned_upgrade_effects(profile, cards, to_progression_stats(unit));
+    const ProgressionUnitStats effective_stats = apply_owned_upgrade_effects(profile, cards, to_progression_unit_stats(unit));
     ProgressionEntitySnapshot entity{
         .id = unit.name, .kind = kind, .unlocked = unlocked, .description = unit.description, .portrait_path_template = find_idle_portrait(unit)};
     if (kind == ProgressionEntityKind::BASE) {

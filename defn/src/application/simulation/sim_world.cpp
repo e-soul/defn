@@ -16,34 +16,6 @@ namespace defn {
 
 namespace {
 
-// Mirrors UnitFactory::make_combat_config: a range of -1 tells classify_target_by_distance the unit has no attack of
-// that kind, because every real distance is non-negative.
-CombatConfig make_combat_config(const UnitConfig &config, const ResolvedUnitRuntimeConfig &resolved) {
-    const bool has_melee_attack = config.melee_damage > 0;
-    const bool has_ranged_attack = config.ranged_damage > 0 || config.projectile_attack.has_value();
-
-    CombatConfig combat_config;
-    combat_config.side = config.side;
-    combat_config.melee_damage = config.melee_damage;
-    combat_config.melee_attack_period_seconds = config.melee_attack_period_seconds;
-    combat_config.ranged_damage = config.ranged_damage;
-    combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
-    combat_config.attack_range = has_melee_attack ? resolved.melee_attack_range : -1.0F;
-    combat_config.ranged_range = has_ranged_attack ? resolved.ranged_attack_range : -1.0F;
-    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
-    combat_config.threat_weight = config.threat_weight;
-    combat_config.target_preference = config.target_preference;
-    combat_config.role = config.role;
-    combat_config.role_bias = config.preferred_roles;
-    combat_config.aggro_range = config.aggro_range;
-    combat_config.melee_flash_color = config.melee_flash_color;
-    combat_config.ranged_flash_color = config.ranged_flash_color;
-    if (config.projectile_attack.has_value()) {
-        combat_config.projectile_attack = to_projectile_damage_config(*config.projectile_attack);
-    }
-    return combat_config;
-}
-
 // Mirrors HealthComponent::take_damage, including the overkill cap: the return value is what actually landed.
 int take_damage(SimEntity &entity, int amount, DamageDelivery delivery) {
     amount = std::max(amount, 0);
@@ -90,7 +62,7 @@ SimSpawnResult SimWorld::spawn(const std::string &unit_id, UnitSide side, Vector
     entity.bounty = config->bounty;
     entity.spawn_tick = tick_index_;
     entity.spawn_time_seconds = elapsed_seconds_;
-    entity.combat = make_combat_config(*config, resolved);
+    entity.combat = to_combat_config(*config, resolved.melee_attack_range, resolved.ranged_attack_range);
     entity.combat.side = side;
     // Mirrors the sensor radius in UnitFactory, and reads the *resolved catalog* range rather than the combat
     // config's, because a melee-only unit carries -1 there and would end up sensing nothing at all.

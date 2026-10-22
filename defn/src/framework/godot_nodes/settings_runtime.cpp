@@ -9,6 +9,8 @@
 
 #include <godot_cpp/classes/display_server.hpp>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/java_script_bridge.hpp>
+#include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/window.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -54,7 +56,8 @@ void SettingsRuntime::_ready() {
     store_ = std::make_unique<ConfigFileSettingsStore>();
     audio_ = std::make_unique<GodotAudioSettings>();
 
-    if (engine->is_embedded_in_editor()) {
+    const bool web = godot::OS::get_singleton()->has_feature("web");
+    if (engine->is_embedded_in_editor() || web) {
         display_ = std::make_unique<NoOpDisplaySettings>();
     } else {
         godot::Window *root_window = get_tree() != nullptr ? get_tree()->get_root() : nullptr;
@@ -69,6 +72,9 @@ void SettingsRuntime::_ready() {
 
     session_ = std::make_unique<SettingsSession>(*store_, *display_, *audio_);
     session_->start();
+    if (web && !godot::OS::get_singleton()->is_userfs_persistent()) {
+        godot::JavaScriptBridge::get_singleton()->eval("document.getElementById('storage-notice')?.removeAttribute('hidden')", true);
+    }
 }
 
 void SettingsRuntime::_exit_tree() {

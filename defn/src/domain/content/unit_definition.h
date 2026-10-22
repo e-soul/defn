@@ -179,6 +179,29 @@ struct UnitConfig {
     std::vector<std::pair<std::string, AnimConfig>> animations;
 };
 
+// Disabled attacks use -1 because every real target distance is nonnegative. Ranges are supplied after any
+// per-spawn variation, so the scene runtime and simulation use the same combat configuration.
+inline CombatConfig to_combat_config(const UnitConfig &config, float melee_range, float ranged_range) {
+    return {
+        .side = config.side,
+        .melee_damage = config.melee_damage,
+        .melee_attack_period_seconds = config.melee_attack_period_seconds,
+        .ranged_damage = config.ranged_damage,
+        .ranged_attack_period_seconds = config.ranged_attack_period_seconds,
+        .attack_range = config.melee_damage > 0 ? melee_range : -1.0F,
+        .ranged_range = config.ranged_damage > 0 || config.projectile_attack.has_value() ? ranged_range : -1.0F,
+        .minimum_ranged_range = config.minimum_ranged_attack_range,
+        .threat_weight = config.threat_weight,
+        .role = config.role,
+        .target_preference = config.target_preference,
+        .aggro_range = config.aggro_range,
+        .role_bias = config.preferred_roles,
+        .melee_flash_color = config.melee_flash_color,
+        .ranged_flash_color = config.ranged_flash_color,
+        .projectile_attack = config.projectile_attack ? std::optional(to_projectile_damage_config(*config.projectile_attack)) : std::nullopt,
+    };
+}
+
 // Where the muzzle flash sits and where a projectile leaves the unit, in unscaled pixels. The flash hangs off the
 // unit rather than off the sprite, so it does not inherit the shoot clip's anchor correction the way the body does;
 // folding that correction in here keeps the flash on the barrel. Both the game and the simulation kernel read this

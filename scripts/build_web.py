@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 from pathlib import Path
 
 from stage_web_project import (
@@ -36,6 +37,36 @@ from web_toolchain import (
 
 PROJECT_DIR = REPO_ROOT / "defn"
 EXPORT_PRESET = "defn_web_release"
+ITCH_ARCHIVE = "defn-itch.zip"
+STANDALONE_SHELL = '<html lang="en" data-host="standalone">'
+ITCH_SHELL = '<html lang="en" data-host="itch">'
+
+
+def package_itch(directory: Path, archive_path: Path) -> None:
+    """Package a fresh release export; only the shell presentation differs from Pages."""
+    verify_export(directory, "release")
+    html = (directory / "index.html").read_text(encoding="utf-8")
+    if html.count(STANDALONE_SHELL) != 1:
+        raise RuntimeError("The exported HTML is missing the standalone shell host marker.")
+    files = sorted(path for path in directory.rglob("*") if path.is_file())
+    if len(files) > 1000 or sum(path.stat().st_size for path in files) > 500_000_000:
+        raise RuntimeError("The itch export exceeds the HTML upload file-count or total-size limit.")
+    for path in files:
+        name = path.relative_to(directory).as_posix()
+        if path.is_symlink() or len(name) > 240 or path.stat().st_size > 200_000_000:
+            raise RuntimeError(f"The itch export contains an unsupported file: {name}")
+    archive_path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".itch-package-", dir=archive_path.parent) as temporary:
+        archive = Path(temporary) / archive_path.name
+        with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as output:
+            for path in files:
+                name = path.relative_to(directory).as_posix()
+                if name == "index.html":
+                    output.writestr(name, html.replace(STANDALONE_SHELL, ITCH_SHELL))
+                else:
+                    output.write(path, name)
+        archive.replace(archive_path)
+    print(f"itch.io HTML upload: {archive_path}", flush=True)
 
 
 def run(command: list[str], *, cwd: Path = REPO_ROOT, env=None) -> None:
@@ -106,6 +137,8 @@ def export_game(godot: str, output_dir: Path, mode: str, project_dir: Path = PRO
             f"--export-{mode}", EXPORT_PRESET, str(staging / "index.html"),
         ])
         verify_export(staging, mode)
+        if mode == "release":
+            package_itch(staging, output_dir / ITCH_ARCHIVE)
         destination = output_dir / mode
         shutil.copytree(staging, destination, dirs_exist_ok=True)
     print(f"Web {mode} export: {destination / 'index.html'}")

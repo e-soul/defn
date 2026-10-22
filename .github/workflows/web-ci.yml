@@ -97,13 +97,22 @@ jobs:
         run: python scripts/build_web.py --target both
 
       - name: Launch real exports in Chromium
-        run: python scripts/smoke_web.py build/web/debug build/web/release
+        run: python scripts/smoke_web.py build/web/debug build/web/release --itch-archive build/web/defn-itch.zip
 
       - name: Upload playable Web exports
         uses: actions/upload-artifact@v7
         with:
           name: web-exports
-          path: build/web/
+          path: |
+            build/web/debug/
+            build/web/release/
+          if-no-files-found: error
+
+      - name: Upload itch.io HTML archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: itch-html
+          path: build/web/defn-itch.zip
           if-no-files-found: error
 
       - name: Upload GitHub Pages artifact

@@ -19,30 +19,10 @@ namespace defn {
 
 namespace {
 
-constexpr float DEFAULT_ALPHA = 1.0F;
 constexpr float DEFAULT_HEALTH_BAR_OFFSET_X = 0.0F;
 constexpr float DEFAULT_HEALTH_BAR_OFFSET_Y = -241.0F;
 constexpr float LEGACY_MOVE_SPEED_SCALE = 128.0F;
 constexpr float FRACTION_PERCENT_SCALE = 100.0F;
-
-Color parse_color(const Array &arr, const Color &fallback) {
-    if (arr.size() >= 3) {
-        const auto red = VariantTools::as_float(arr[0]);
-        const auto green = VariantTools::as_float(arr[1]);
-        const auto blue = VariantTools::as_float(arr[2]);
-        const auto alpha = arr.size() >= 4 ? VariantTools::as_float(arr[3]) : DEFAULT_ALPHA;
-        return {.r = red, .g = green, .b = blue, .a = alpha};
-    }
-    return fallback;
-}
-
-Vector2 parse_vector2(const Variant &value, const Vector2 &fallback) {
-    Array arr = value;
-    if (arr.size() >= 2) {
-        return {.x = VariantTools::as_float(arr[0]), .y = VariantTools::as_float(arr[1])};
-    }
-    return fallback;
-}
 
 RangeVariationConfig parse_range_variation(const Variant &value, const RangeVariationConfig &fallback) {
     Array arr = value;
@@ -61,7 +41,7 @@ std::optional<AnimConfig> parse_anim_config(const Dictionary &animation_dict, co
     animation.frame_count = VariantTools::as_int(animation_dict.get("frame_count", animation.frame_count));
     animation.speed = VariantTools::as_double(animation_dict.get("speed", animation.speed));
     animation.loop = VariantTools::as_bool(animation_dict.get("loop", animation.loop));
-    animation.offset = parse_vector2(animation_dict.get("offset", Array()), animation.offset);
+    animation.offset = VariantTools::as_vector2(animation_dict.get("offset", Array()), animation.offset);
     if (!std::isfinite(animation.speed) || animation.speed <= 0.0 || animation.frame_count <= 0 || !std::isfinite(animation.offset.x) ||
         !std::isfinite(animation.offset.y)) {
         UtilityFunctions::printerr("UnitDataLoader: animation speed and frame count must be positive");
@@ -178,20 +158,20 @@ bool load_global_config(const Dictionary &global_data, GlobalUnitConfig &globals
 
     if (global_data.has("health_bar_color")) {
         Dictionary global_health_bar_colors = global_data["health_bar_color"];
-        globals.friendly_health_bar_color = parse_color(global_health_bar_colors.get("friendly", Array()), globals.friendly_health_bar_color);
-        globals.hostile_health_bar_color = parse_color(global_health_bar_colors.get("hostile", Array()), globals.hostile_health_bar_color);
+        globals.friendly_health_bar_color = VariantTools::as_color(global_health_bar_colors.get("friendly", Array()), globals.friendly_health_bar_color);
+        globals.hostile_health_bar_color = VariantTools::as_color(global_health_bar_colors.get("hostile", Array()), globals.hostile_health_bar_color);
     }
 
     if (global_data.has("melee_flash_color")) {
         Dictionary global_melee_flash_colors = global_data["melee_flash_color"];
-        globals.friendly_melee_flash_color = parse_color(global_melee_flash_colors.get("friendly", Array()), globals.friendly_melee_flash_color);
-        globals.hostile_melee_flash_color = parse_color(global_melee_flash_colors.get("hostile", Array()), globals.hostile_melee_flash_color);
+        globals.friendly_melee_flash_color = VariantTools::as_color(global_melee_flash_colors.get("friendly", Array()), globals.friendly_melee_flash_color);
+        globals.hostile_melee_flash_color = VariantTools::as_color(global_melee_flash_colors.get("hostile", Array()), globals.hostile_melee_flash_color);
     }
 
     if (global_data.has("ranged_flash_color")) {
         Dictionary global_ranged_flash_colors = global_data["ranged_flash_color"];
-        globals.friendly_ranged_flash_color = parse_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
-        globals.hostile_ranged_flash_color = parse_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
+        globals.friendly_ranged_flash_color = VariantTools::as_color(global_ranged_flash_colors.get("friendly", Array()), globals.friendly_ranged_flash_color);
+        globals.hostile_ranged_flash_color = VariantTools::as_color(global_ranged_flash_colors.get("hostile", Array()), globals.hostile_ranged_flash_color);
     }
     return true;
 }
@@ -270,10 +250,11 @@ void apply_unit_colors(const Dictionary &unit_dict, const GlobalUnitConfig &glob
     const Color default_melee_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_melee_flash_color : globals.friendly_melee_flash_color;
     const Color default_ranged_flash_color = config.side == UnitSide::HOSTILE ? globals.hostile_ranged_flash_color : globals.friendly_ranged_flash_color;
 
-    config.health_bar_color = parse_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
-    config.health_bar_offset = parse_vector2(unit_dict.get("health_bar_offset", Array()), {.x = DEFAULT_HEALTH_BAR_OFFSET_X, .y = DEFAULT_HEALTH_BAR_OFFSET_Y});
-    config.melee_flash_color = parse_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
-    config.ranged_flash_color = parse_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
+    config.health_bar_color = VariantTools::as_color(unit_dict.get("health_bar_color", Array()), default_health_bar_color);
+    config.health_bar_offset =
+        VariantTools::as_vector2(unit_dict.get("health_bar_offset", Array()), {.x = DEFAULT_HEALTH_BAR_OFFSET_X, .y = DEFAULT_HEALTH_BAR_OFFSET_Y});
+    config.melee_flash_color = VariantTools::as_color(unit_dict.get("melee_flash_color", Array()), default_melee_flash_color);
+    config.ranged_flash_color = VariantTools::as_color(unit_dict.get("ranged_flash_color", Array()), default_ranged_flash_color);
 }
 
 void apply_muzzle_flash(const Dictionary &unit_dict, UnitConfig &config) {
@@ -283,10 +264,7 @@ void apply_muzzle_flash(const Dictionary &unit_dict, UnitConfig &config) {
 
     Dictionary muzzle_flash_dict = unit_dict["muzzle_flash"];
     config.muzzle.path_template = to_std_string(String(muzzle_flash_dict.get("path_template", "")));
-    Array offset = muzzle_flash_dict.get("offset", Array());
-    if (offset.size() >= 2) {
-        config.muzzle.offset = {.x = VariantTools::as_float(offset[0]), .y = VariantTools::as_float(offset[1])};
-    }
+    config.muzzle.offset = VariantTools::as_vector2(muzzle_flash_dict.get("offset", Array()), config.muzzle.offset);
     config.muzzle.flip_h = VariantTools::as_bool(muzzle_flash_dict.get("flip_h", false));
 }
 

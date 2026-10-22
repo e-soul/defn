@@ -20,23 +20,9 @@ using namespace godot;
 
 namespace {
 
-constexpr float DEFAULT_ALPHA = 1.0F;
-
 /// How many references one palette entry may follow before the chain is treated as broken. Chains in practice
 /// are one hop deep; the limit only exists so a cycle cannot hang the load.
 constexpr int MAX_PALETTE_REFERENCE_DEPTH = 8;
-
-Color parse_color(const Array &values, const Color &fallback) {
-    if (values.size() >= 3) {
-        return {
-            .r = VariantTools::as_float(values[0]),
-            .g = VariantTools::as_float(values[1]),
-            .b = VariantTools::as_float(values[2]),
-            .a = values.size() >= 4 ? VariantTools::as_float(values[3]) : DEFAULT_ALPHA,
-        };
-    }
-    return fallback;
-}
 
 std::string parse_role(const Dictionary &source, const char *key, const std::string &fallback) {
     const String value = source.get(key, "");
@@ -70,7 +56,7 @@ PaletteEntry parse_palette_entry(const Variant &value) {
         return entry;
     }
 
-    entry.literal = parse_color(values, Color{});
+    entry.literal = VariantTools::as_color(values, Color{});
     return entry;
 }
 

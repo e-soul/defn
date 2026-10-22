@@ -17,29 +17,6 @@ namespace defn {
 
 namespace {
 
-ProgressionUpgradeEffectType to_progression_effect_type(UpgradeEffectType type) {
-    switch (type) {
-    case UpgradeEffectType::STARTING_ENERGY_DELTA:
-        return ProgressionUpgradeEffectType::STARTING_ENERGY_DELTA;
-    case UpgradeEffectType::ENERGY_REGEN_DELTA:
-        return ProgressionUpgradeEffectType::ENERGY_REGEN_DELTA;
-    case UpgradeEffectType::BOUNTY_MULTIPLIER_DELTA:
-        return ProgressionUpgradeEffectType::BOUNTY_MULTIPLIER_DELTA;
-    case UpgradeEffectType::BASE_INTEGRITY_DELTA:
-        return ProgressionUpgradeEffectType::BASE_INTEGRITY_DELTA;
-    case UpgradeEffectType::UNIT_HP_DELTA:
-        return ProgressionUpgradeEffectType::UNIT_HP_DELTA;
-    case UpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA:
-        return ProgressionUpgradeEffectType::UNIT_RANGED_DAMAGE_DELTA;
-    case UpgradeEffectType::UNIT_MOVE_SPEED_DELTA:
-        return ProgressionUpgradeEffectType::UNIT_MOVE_SPEED_DELTA;
-    case UpgradeEffectType::UNIT_UNLOCK:
-        return ProgressionUpgradeEffectType::UNIT_UNLOCK;
-    }
-
-    return ProgressionUpgradeEffectType::STARTING_ENERGY_DELTA;
-}
-
 ProgressionUpgradePresentation to_progression_upgrade_presentation(const UpgradeCardDefinition &card) {
     return {
         .id = to_std_string(card.id),
@@ -193,7 +170,7 @@ std::vector<ProgressionUpgradeCard> UpgradeCatalog::get_progression_upgrade_card
         progression_card.effects.reserve(card.effects.size());
         for (const auto &effect : card.effects) {
             progression_card.effects.push_back({
-                .type = to_progression_effect_type(effect.type),
+                .type = effect.type,
                 .value = static_cast<float>(effect.value),
                 .unit_id = to_std_string(effect.unit_id),
             });

@@ -14,6 +14,31 @@
 
 namespace defn {
 
+namespace {
+
+std::string read_string(const Variant &value) { return to_std_string(String(value)); }
+int read_count(const Variant &value) { return std::max(0, VariantTools::as_int(value)); }
+
+void read_map(const Dictionary &data, const char *name, auto &target, auto read_key, auto read_value) {
+    const Dictionary source = data.get(name, Dictionary());
+    for (const Variant &key : source.keys()) {
+        target[read_key(key)] = read_value(source[key]);
+    }
+}
+
+Variant save_value(const std::string &value) { return to_godot_string(value); }
+Variant save_value(int value) { return value; }
+
+Dictionary write_map(const auto &source) {
+    Dictionary result;
+    for (const auto &[key, value] : source) {
+        result[save_value(key)] = save_value(value);
+    }
+    return result;
+}
+
+} // namespace
+
 std::optional<PlayerProfile> ProgressionSaveRepository::load_profile() const { return load(path_); }
 
 bool ProgressionSaveRepository::save_profile(const PlayerProfile &profile) const { return save(path_, profile); }
@@ -43,47 +68,13 @@ std::optional<PlayerProfile> ProgressionSaveRepository::load(const String &path)
         save_data.completed_levels.insert(to_std_string(String(level_var)));
     }
 
-    Dictionary highest = data.get("best_level_scores", Dictionary());
-    Array keys = highest.keys();
-    for (const auto &key_var : keys) {
-        const String key = key_var;
-        const int score = VariantTools::as_int(highest[key]);
-        save_data.best_level_scores[to_std_string(key)] = score;
-    }
-
-    Dictionary owned_upgrades = data.get("owned_upgrade_counts", Dictionary());
-    Array owned_upgrade_ids = owned_upgrades.keys();
-    for (const Variant &upgrade_var : owned_upgrade_ids) {
-        const String upgrade_id = upgrade_var;
-        save_data.owned_upgrade_counts[to_std_string(upgrade_id)] = std::max(0, VariantTools::as_int(owned_upgrades[upgrade_id]));
-    }
-
-    Dictionary claimed = data.get("claimed_level_upgrades", Dictionary());
-    Array claimed_levels = claimed.keys();
-    for (const Variant &level_var : claimed_levels) {
-        const String level_id = level_var;
-        const String upgrade_id = String(claimed[level_id]);
-        save_data.claimed_level_upgrades[to_std_string(level_id)] = to_std_string(upgrade_id);
-    }
-
-    Dictionary rescue_claimed = data.get("rescue_drafts_claimed", Dictionary());
-    Array rescue_levels = rescue_claimed.keys();
-    for (const Variant &level_var : rescue_levels) {
-        const String level_id = level_var;
-        const int claimed_count = VariantTools::as_int(rescue_claimed[level_id]);
-        save_data.claimed_rescue_drafts[to_std_string(level_id)] = std::max(0, claimed_count);
-    }
-
+    read_map(data, "best_level_scores", save_data.best_level_scores, read_string, VariantTools::as_int);
+    read_map(data, "owned_upgrade_counts", save_data.owned_upgrade_counts, read_string, read_count);
+    read_map(data, "claimed_level_upgrades", save_data.claimed_level_upgrades, read_string, read_string);
+    read_map(data, "rescue_drafts_claimed", save_data.claimed_rescue_drafts, read_string, read_count);
     // Absent in a pre-endless save, which loads as an empty record rather than as a failure.
-    const Dictionary endless_waves = data.get("endless_best_wave", Dictionary());
-    for (const Variant &threat_var : Array(endless_waves.keys())) {
-        save_data.endless_best_wave[VariantTools::as_int(threat_var)] = std::max(0, VariantTools::as_int(endless_waves[threat_var]));
-    }
-
-    const Dictionary endless_scores = data.get("endless_best_score", Dictionary());
-    for (const Variant &threat_var : Array(endless_scores.keys())) {
-        save_data.endless_best_score[VariantTools::as_int(threat_var)] = std::max(0, VariantTools::as_int(endless_scores[threat_var]));
-    }
+    read_map(data, "endless_best_wave", save_data.endless_best_wave, VariantTools::as_int, read_count);
+    read_map(data, "endless_best_score", save_data.endless_best_score, VariantTools::as_int, read_count);
 
     return save_data;
 }
@@ -98,41 +89,12 @@ bool ProgressionSaveRepository::save(const String &path, const PlayerProfile &sa
     }
     data["levels_completed"] = completed;
 
-    Dictionary best_level_scores;
-    for (const auto &[level_id, score] : save_data.best_level_scores) {
-        best_level_scores[to_godot_string(level_id)] = score;
-    }
-    data["best_level_scores"] = best_level_scores;
-
-    Dictionary owned_upgrade_counts;
-    for (const auto &[upgrade_id, count] : save_data.owned_upgrade_counts) {
-        owned_upgrade_counts[to_godot_string(upgrade_id)] = count;
-    }
-    data["owned_upgrade_counts"] = owned_upgrade_counts;
-
-    Dictionary claimed_level_upgrades;
-    for (const auto &[level_id, upgrade_id] : save_data.claimed_level_upgrades) {
-        claimed_level_upgrades[to_godot_string(level_id)] = to_godot_string(upgrade_id);
-    }
-    data["claimed_level_upgrades"] = claimed_level_upgrades;
-
-    Dictionary rescue_drafts_claimed;
-    for (const auto &[level_id, claimed_count] : save_data.claimed_rescue_drafts) {
-        rescue_drafts_claimed[to_godot_string(level_id)] = claimed_count;
-    }
-    data["rescue_drafts_claimed"] = rescue_drafts_claimed;
-
-    Dictionary endless_best_wave;
-    for (const auto &[threat_level, wave] : save_data.endless_best_wave) {
-        endless_best_wave[threat_level] = wave;
-    }
-    data["endless_best_wave"] = endless_best_wave;
-
-    Dictionary endless_best_score;
-    for (const auto &[threat_level, score] : save_data.endless_best_score) {
-        endless_best_score[threat_level] = score;
-    }
-    data["endless_best_score"] = endless_best_score;
+    data["best_level_scores"] = write_map(save_data.best_level_scores);
+    data["owned_upgrade_counts"] = write_map(save_data.owned_upgrade_counts);
+    data["claimed_level_upgrades"] = write_map(save_data.claimed_level_upgrades);
+    data["rescue_drafts_claimed"] = write_map(save_data.claimed_rescue_drafts);
+    data["endless_best_wave"] = write_map(save_data.endless_best_wave);
+    data["endless_best_score"] = write_map(save_data.endless_best_score);
 
     const String json_text = JSON::stringify(data, "  ");
     Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);

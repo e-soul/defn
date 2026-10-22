@@ -16,7 +16,7 @@ const source = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
 	.replace("$GODOT_THREADS_ENABLED", "false")
 	.replace("$GODOT_URL", "renamed-game.js");
 
-function harness({ missing = [], startGame = async () => {}, fullscreenEnabled = true } = {}) {
+function harness({ missing = [], startGame = async () => {}, fullscreenEnabled = true, host = "standalone" } = {}) {
 	const elements = new Map();
 	const calls = { errors: [], reloads: 0, fullscreenRequests: 0, fullscreenExits: 0 };
 	const makeElement = () => ({
@@ -42,6 +42,7 @@ function harness({ missing = [], startGame = async () => {}, fullscreenEnabled =
 		createElement: makeElement,
 		body: { appendChild(script) { calls.script = script; } },
 		documentElement: {
+			dataset: { host },
 			async requestFullscreen() {
 				calls.fullscreenRequests++;
 				document.fullscreenElement = document.documentElement;
@@ -120,6 +121,16 @@ test("startup preserves exported configuration and focuses the visible game", as
 	assert.equal(h.element("canvas").attributes["aria-hidden"], "false");
 	assert.equal(h.calls.focus, h.element("canvas"));
 	assert.equal(h.calls.errors.length, 0);
+});
+
+test("itch uses the same engine configuration and leaves fullscreen to the host", async () => {
+	const h = harness({ host: "itch" });
+	await h.calls.script.onload();
+	assert.equal(h.element("fullscreen").hidden, true);
+	assert.equal(h.element("overlay").hidden, true);
+	assert.equal(JSON.stringify(h.calls.config), JSON.stringify(config));
+	assert.equal(h.calls.fullscreenRequests, 0);
+	assert.equal(h.element("storage-notice").hidden, true);
 });
 
 test("the canvas follows its container and device pixel ratio, not window height", () => {

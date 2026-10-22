@@ -13,18 +13,9 @@ namespace {
 
 int round_effect_delta(float value) { return static_cast<int>(std::lround(static_cast<double>(value))); }
 
-const ProgressionUpgradeCard *find_card(const std::vector<ProgressionUpgradeCard> &cards, const std::string &card_id) {
-    for (const auto &card : cards) {
-        if (card.id == card_id) {
-            return &card;
-        }
-    }
-    return nullptr;
-}
-
 template <typename Func> void for_each_owned_upgrade_effect(const ProgressionProfile &profile, const std::vector<ProgressionUpgradeCard> &cards, Func &&func) {
     for (const auto &[owned_upgrade, count] : profile.owned_upgrade_counts) {
-        const ProgressionUpgradeCard *card = find_card(cards, owned_upgrade);
+        const ProgressionUpgradeCard *card = find_upgrade_card(cards, owned_upgrade);
         if (card == nullptr || count <= 0) {
             continue;
         }
@@ -44,6 +35,11 @@ void push_unique(std::vector<std::string> &values, const std::string &value) {
 }
 
 } // namespace
+
+const ProgressionUpgradeCard *find_upgrade_card(const std::vector<ProgressionUpgradeCard> &cards, const std::string &upgrade_id) {
+    const auto found = std::ranges::find(cards, upgrade_id, &ProgressionUpgradeCard::id);
+    return found == cards.end() ? nullptr : &*found;
+}
 
 const ProgressionLevelUnlock *find_level_unlock(const std::vector<ProgressionLevelUnlock> &level_unlocks, const std::string &level_id) {
     for (const auto &unlock : level_unlocks) {

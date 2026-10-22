@@ -104,6 +104,10 @@ void PauseMenu::toggle_pause() { set_paused(!paused_); }
 void PauseMenu::_notification(int what) {
     if (what == NOTIFICATION_WM_GO_BACK_REQUEST) {
         toggle_pause();
+    } else if ((what == NOTIFICATION_APPLICATION_FOCUS_OUT || what == NOTIFICATION_WM_WINDOW_FOCUS_OUT) && screen_ != nullptr && is_processing_input() &&
+               OS::get_singleton()->has_feature("web")) {
+        // Clicking the host page must not leave a battle running; returning focus never resumes it implicitly.
+        set_paused(true);
     }
 }
 

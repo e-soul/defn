@@ -55,18 +55,24 @@ MenuIntent build_menu_intent(MenuIntentType intent_type, const std::string &targ
     };
 }
 
-MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input) {
+MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input, MenuCapabilities capabilities) {
     MenuScreenViewModel view_model;
     view_model.name = input.name;
     view_model.title = input.title;
     view_model.type = input.type;
     view_model.buttons.reserve(input.entries.size());
     for (const auto &entry : input.entries) {
+        if (!capabilities.quit && entry.intent_type == MenuIntentType::Quit) {
+            continue;
+        }
         view_model.buttons.push_back(build_button_view_model(entry));
     }
 
     view_model.settings.reserve(input.settings.size());
     for (const auto &setting : input.settings) {
+        if (!capabilities.display_settings && setting.kind != MenuSettingViewKind::BusVolume) {
+            continue;
+        }
         view_model.settings.push_back(build_setting_view_model(setting));
     }
 

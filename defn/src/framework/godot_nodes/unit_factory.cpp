@@ -92,37 +92,12 @@ MovementComponent *create_movement_component(Unit *unit) {
     return movement;
 }
 
-CombatComponent::Config make_combat_config(const Unit *unit) {
-    const auto &config = unit->get_unit_config();
-    CombatComponent::Config combat_config;
-    const bool has_melee_attack = config.melee_damage > 0;
-    const bool has_ranged_attack = config.ranged_damage > 0 || config.projectile_attack.has_value();
-    combat_config.side = config.side;
-    combat_config.melee_damage = config.melee_damage;
-    combat_config.melee_attack_period_seconds = config.melee_attack_period_seconds;
-    combat_config.ranged_damage = config.ranged_damage;
-    combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
-    combat_config.attack_range = has_melee_attack ? unit->get_attack_range() : -1.0F;
-    combat_config.ranged_range = has_ranged_attack ? unit->get_ranged_range() : -1.0F;
-    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
-    combat_config.threat_weight = config.threat_weight;
-    combat_config.target_preference = config.target_preference;
-    combat_config.role = config.role;
-    combat_config.role_bias = config.preferred_roles;
-    combat_config.aggro_range = config.aggro_range;
-    combat_config.melee_flash_color = config.melee_flash_color;
-    combat_config.ranged_flash_color = config.ranged_flash_color;
-    if (config.projectile_attack.has_value()) {
-        combat_config.projectile_attack = to_projectile_damage_config(*config.projectile_attack);
-    }
-    return combat_config;
-}
-
 CombatComponent *create_combat_component(Unit *unit, HealthComponent *health, AnimationController *animation, Area2D *detection_area) {
     auto *combat = memnew(CombatComponent);
     combat->set_name("CombatComponent");
     unit->add_child(combat);
-    combat->configure(unit, health, animation, detection_area, make_combat_config(unit), unit->get_unit_config().projectile_attack);
+    combat->configure(unit, health, animation, detection_area, to_combat_config(unit->get_unit_config(), unit->get_attack_range(), unit->get_ranged_range()),
+                      unit->get_unit_config().projectile_attack);
     return combat;
 }
 

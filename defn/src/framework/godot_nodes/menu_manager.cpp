@@ -448,7 +448,8 @@ void MenuManager::show_menu(const String &menu_name) {
         return;
     }
 
-    const MenuScreenViewModel view_model = build_menu_screen_view_model(to_screen_input(*menu));
+    const bool web = OS::get_singleton()->has_feature("web");
+    const MenuScreenViewModel view_model = build_menu_screen_view_model(to_screen_input(*menu), {.quit = !web, .display_settings = !web});
     UiScreenControl *controller = view_model.type == MenuScreenType::Options ? static_cast<UiScreenControl *>(memnew(OptionsScreenView))
                                                                              : static_cast<UiScreenControl *>(memnew(MenuScreenView));
     const UiScreenScaffold scaffold = build_screen(ui_layer_,

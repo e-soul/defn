@@ -20,15 +20,13 @@
         {"time":  6.3, "type": "grime"},
         {"time":  7.6, "type": "wrecker"},
         {"time":  8.9, "type": "grime"},
-        {"time":  9.5, "type": "hound"},
-        {"time": 10.2, "type": "wrecker"}
+        {"time":  9.5, "type": "hound"}
       ]
     },
     {
       "wave_number": 2,
       "spawns": [
         {"time": 25.5, "type": "grime"},
-        {"time": 26.6, "type": "wrecker"},
         {"time": 27.2, "type": "hound"},
         {"time": 27.7, "type": "grime"},
         {"time": 28.8, "type": "wrecker"},
@@ -43,8 +41,7 @@
         {"time": 48.3, "type": "grime"},
         {"time": 49.2, "type": "wrecker"},
         {"time": 49.7, "type": "hound"},
-        {"time": 51.3, "type": "grime"},
-        {"time": 52.2, "type": "grime"}
+        {"time": 51.3, "type": "grime"}
       ]
     },
     {
@@ -55,7 +52,6 @@
         {"time": 74.3, "type": "grime"},
         {"time": 74.8, "type": "hound"},
         {"time": 75.2, "type": "wrecker"},
-        {"time": 78.0, "type": "wrecker"},
         {"time": 78.5, "type": "hound"},
         {"time": 79.0, "type": "wrecker"}
       ]

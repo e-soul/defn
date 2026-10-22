@@ -17,16 +17,7 @@ namespace defn {
 
 using namespace godot;
 
-enum class UpgradeEffectType {
-    STARTING_ENERGY_DELTA,
-    ENERGY_REGEN_DELTA,
-    BOUNTY_MULTIPLIER_DELTA,
-    BASE_INTEGRITY_DELTA,
-    UNIT_HP_DELTA,
-    UNIT_RANGED_DAMAGE_DELTA,
-    UNIT_MOVE_SPEED_DELTA,
-    UNIT_UNLOCK,
-};
+using UpgradeEffectType = ProgressionUpgradeEffectType;
 
 struct UpgradeCardEffect {
     UpgradeEffectType type = UpgradeEffectType::STARTING_ENERGY_DELTA;

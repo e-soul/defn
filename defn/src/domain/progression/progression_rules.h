@@ -56,6 +56,7 @@ struct CampaignModifiers {
     int base_integrity_delta = 0;
 };
 
+[[nodiscard]] const ProgressionUpgradeCard *find_upgrade_card(const std::vector<ProgressionUpgradeCard> &cards, const std::string &upgrade_id);
 [[nodiscard]] const ProgressionLevelUnlock *find_level_unlock(const std::vector<ProgressionLevelUnlock> &level_unlocks, const std::string &level_id);
 [[nodiscard]] bool is_level_completed(const ProgressionProfile &profile, const std::string &level_id);
 [[nodiscard]] bool is_level_unlocked(const ProgressionProfile &profile, const std::vector<ProgressionLevelUnlock> &level_unlocks, const std::string &level_id);

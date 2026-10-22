@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-host="standalone">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -77,6 +77,10 @@
 		button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 		#stage { position: relative; flex: 1; min-height: 0; overflow: hidden; }
 		#canvas { display: block; width: 100%; height: 100%; outline: none; }
+		:root[data-host="itch"] body { overflow: hidden; overscroll-behavior: none; }
+		:root[data-host="itch"] header { display: none; }
+		:root[data-host="itch"] #canvas { touch-action: none; }
+		#storage-notice { position: absolute; bottom: 8px; left: 8px; right: 8px; margin: 0; padding: 8px; background: var(--sunken); color: var(--text); font-size: 12px; text-align: center; pointer-events: none; }
 		#canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 		:fullscreen footer { display: none; }
 		:fullscreen header { justify-content: flex-end; padding: 4px 12px; }
@@ -146,6 +150,7 @@
 				<button id="retry" type="button" hidden>Try again</button>
 			</div>
 		</section>
+		<p id="storage-notice" role="status" hidden>Browser storage is unavailable. Progress will last only for this session.</p>
 		<noscript>Enable JavaScript to play Defn, then reload this page.</noscript>
 	</main>
 	<script>
@@ -153,6 +158,7 @@
 		"use strict";
 		const config = $GODOT_CONFIG;
 		const threads = $GODOT_THREADS_ENABLED;
+		const itch = document.documentElement.dataset.host === "itch";
 		const canvas = document.getElementById("canvas");
 		const stage = document.getElementById("stage");
 		const overlay = document.getElementById("overlay");
@@ -204,7 +210,7 @@
 		window.addEventListener("resize", resizeCanvas);
 		resizeCanvas();
 
-		fullscreen.hidden = !document.fullscreenEnabled;
+		fullscreen.hidden = itch || !document.fullscreenEnabled;
 		fullscreen.addEventListener("click", async () => {
 			notice.hidden = true;
 			try {

@@ -44,31 +44,6 @@ bool objective_can_attack(const std::optional<UnitConfig> &config) {
     return config.has_value() && (config->melee_damage > 0 || config->ranged_damage > 0 || config->projectile_attack.has_value());
 }
 
-CombatComponent::Config make_combat_config(const UnitConfig &config) {
-    CombatComponent::Config combat_config;
-    const bool has_melee_attack = config.melee_damage > 0;
-    const bool has_ranged_attack = config.ranged_damage > 0 || config.projectile_attack.has_value();
-    combat_config.side = config.side;
-    combat_config.melee_damage = config.melee_damage;
-    combat_config.melee_attack_period_seconds = config.melee_attack_period_seconds;
-    combat_config.ranged_damage = config.ranged_damage;
-    combat_config.ranged_attack_period_seconds = config.ranged_attack_period_seconds;
-    combat_config.attack_range = has_melee_attack ? config.melee_attack_range : -1.0F;
-    combat_config.ranged_range = has_ranged_attack ? config.ranged_attack_range : -1.0F;
-    combat_config.minimum_ranged_range = config.minimum_ranged_attack_range;
-    combat_config.threat_weight = config.threat_weight;
-    combat_config.target_preference = config.target_preference;
-    combat_config.role = config.role;
-    combat_config.role_bias = config.preferred_roles;
-    combat_config.aggro_range = config.aggro_range;
-    combat_config.melee_flash_color = config.melee_flash_color;
-    combat_config.ranged_flash_color = config.ranged_flash_color;
-    if (config.projectile_attack.has_value()) {
-        combat_config.projectile_attack = to_projectile_damage_config(*config.projectile_attack);
-    }
-    return combat_config;
-}
-
 } // namespace
 
 BaseObjective::BaseObjective() { set_process(false); }
@@ -144,7 +119,8 @@ void BaseObjective::ensure_attack_components() {
         combat_ = memnew(CombatComponent);
         combat_->set_name("CombatComponent");
         add_child(combat_);
-        combat_->configure(this, get_health_component(), animation_, detection_->get_detection_area(), make_combat_config(config), config.projectile_attack);
+        combat_->configure(this, get_health_component(), animation_, detection_->get_detection_area(),
+                           to_combat_config(config, config.melee_attack_range, config.ranged_attack_range), config.projectile_attack);
     }
 }
 

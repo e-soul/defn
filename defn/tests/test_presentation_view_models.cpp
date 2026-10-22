@@ -309,6 +309,25 @@ DEFN_TEST(menu_view_model_builds_standard_progression_screen) {
     DEFN_CHECK_EQ(progression.back_button.intent.type, MenuIntentType::GotoMenu);
 }
 
+DEFN_TEST(browser_menu_capabilities_keep_play_and_audio_without_quit_or_native_display_controls) {
+    const MenuScreenViewModel model = build_menu_screen_view_model(
+        {
+            .entries = {{.id = "play", .intent_type = MenuIntentType::GotoMenu, .target = "game_menu"}, {.id = "quit", .intent_type = MenuIntentType::Quit}},
+            .settings = {{.kind = MenuSettingViewKind::Section},
+                         {.kind = MenuSettingViewKind::DisplayMode},
+                         {.kind = MenuSettingViewKind::Resolution},
+                         {.kind = MenuSettingViewKind::Vsync},
+                         {.id = "master_volume", .bus_name = "Master", .kind = MenuSettingViewKind::BusVolume}},
+        },
+        {.quit = false, .display_settings = false});
+    DEFN_REQUIRE(model.buttons.size() == static_cast<size_t>(1));
+    DEFN_CHECK_EQ(model.buttons[0].id, std::string("play"));
+    DEFN_CHECK_EQ(model.buttons[0].intent.target, std::string("game_menu"));
+    DEFN_REQUIRE(model.settings.size() == static_cast<size_t>(1));
+    DEFN_CHECK_EQ(model.settings[0].id, std::string("master_volume"));
+    DEFN_CHECK_EQ(model.settings[0].bus_name, std::string("Master"));
+}
+
 DEFN_TEST(hud_presenter_refuses_every_deploy_card_once_the_line_is_full) {
     HudPresentationInput input;
     input.energy = 500; // plenty; affordability is not what is being tested

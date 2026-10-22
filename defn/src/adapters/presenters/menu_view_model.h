@@ -81,13 +81,18 @@ struct MenuScreenViewModel {
     std::optional<MenuButtonViewModel> back_button;
 };
 
+struct MenuCapabilities {
+    bool quit = true;
+    bool display_settings = true;
+};
+
 struct ProgressionScreenViewModel {
     std::string title = "YOUR UPGRADES";
     MenuButtonViewModel back_button;
 };
 
 [[nodiscard]] MenuIntent build_menu_intent(MenuIntentType intent_type, const std::string &target = {});
-[[nodiscard]] MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input);
+[[nodiscard]] MenuScreenViewModel build_menu_screen_view_model(const MenuScreenPresentationInput &input, MenuCapabilities capabilities = {});
 [[nodiscard]] ProgressionScreenViewModel build_progression_screen_view_model();
 
 } // namespace defn

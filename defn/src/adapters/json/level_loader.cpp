@@ -23,20 +23,8 @@ std::optional<LevelDefinition> LevelLoader::load_from_data(const Dictionary &dat
     // Absent means uncapped, which is every authored campaign level.
     level_definition.energy_cap = VariantTools::as_int(data.get("energy_cap", 0));
     level_definition.supply_cap = VariantTools::as_int(data.get("supply_cap", 0));
-    const Array base_position = data.get("base_position", Array());
-    if (base_position.size() >= 2) {
-        level_definition.base_position_ratio = {
-            .x = VariantTools::as_float(base_position[0]),
-            .y = VariantTools::as_float(base_position[1]),
-        };
-    }
-    const Array belt_width = data.get("belt_width", Array());
-    if (belt_width.size() >= 2) {
-        level_definition.belt_width_ratio = {
-            .x = VariantTools::as_float(belt_width[0]),
-            .y = VariantTools::as_float(belt_width[1]),
-        };
-    }
+    level_definition.base_position_ratio = VariantTools::as_vector2(data.get("base_position", Array()), level_definition.base_position_ratio);
+    level_definition.belt_width_ratio = VariantTools::as_vector2(data.get("belt_width", Array()), level_definition.belt_width_ratio);
     level_definition.background_path = to_std_string(String(data.get("background", "")));
 
     const Array background_layers = data.get("background_layers", Array());

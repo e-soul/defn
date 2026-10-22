@@ -57,6 +57,9 @@ The wrapper:
 5. Validates fresh export files before copying them to `build/web/debug` and
    `build/web/release`. Godot diagnostics are checked even when its exit code is
    zero. Existing unrelated files in the output directories are not removed.
+6. Packages each release export as `build/web/defn-itch.zip` directly from the
+   fresh export, before copying to the standalone output. No second compilation
+   or asset import is needed. Debug-only and compile-only runs do not create it.
 
 The default target is `release`; `--target debug` builds only the debug export.
 Use `--output-dir <directory>` to change the export root,
@@ -253,6 +256,41 @@ external dependency and records web deployment analytics. Its CSS tokens mirror 
 [data/ui_theme.json](data/ui_theme.json); keep them aligned when changing the
 game palette. Only the browser shell uses JavaScript; gameplay stays in C++.
 
+## itch.io HTML upload
+
+The same build command also produces **`build/web/defn-itch.zip`**. Web CI,
+Release, and Deploy Web to Pages upload it as the separate **`itch-html`**
+Actions artifact. Download that artifact, extract its outer Actions archive,
+and upload the contained `defn-itch.zip` to the existing itch project. The ZIP
+contains `index.html` at its root and all generated engine, extension and asset
+files. Packaging enforces itch's default file-count, path-length and size limits.
+
+The archive uses the shared shell with `data-host="itch"`. Its canvas fills the
+iframe, the standalone header and fullscreen control are hidden, and loading
+progress, startup diagnostics and retry remain available. Itch owns the launch
+and fullscreen controls. The normal debug/release directories keep the standalone
+shell, and the Pages deployment still publishes `build/web/release`.
+
+Recommended itch settings:
+
+- Kind of project: **HTML**; mark `defn-itch.zip` as playable in the browser.
+- **Embed in page**, initially **960 x 540**, **Click to Play** enabled.
+- Enable itch's **Fullscreen button** and disable iframe scrollbars.
+- Set a gameplay image behind the launch button in the theme editor.
+- Enable **Mobile Friendly** after checking the actual itch preview on phones.
+
+Both browser exports omit Quit and native display settings. Browser focus loss
+pauses an active battle; returning focus leaves Resume explicit. Browser storage
+uses Godot's normal `user://` persistence. A notice appears if the engine reports
+that persistent storage is unavailable. Saves on Pages do not transfer to itch,
+and restricted/private browser storage may not survive a new session.
+
+The iframe check extracts the actual upload ZIP, serves it on a separate site
+from a simulated host page, checks several frame sizes and parent-controlled
+fullscreen, enables audio through an interaction inside the game, and round-trips
+a campaign save through IDBFS and engine restart.
+It is a local approximation; check the real itch preview before publishing.
+
 ## Tests and CI
 
 From the repository root, check the wrapper, packaging and shell behavior
@@ -269,7 +307,7 @@ To test actual exported WASM in Chromium:
 ```text
 python -m pip install -r scripts/requirements-web-test.txt
 python -m playwright install chromium
-python scripts/smoke_web.py build/web/debug build/web/release
+python scripts/smoke_web.py build/web/debug build/web/release --itch-archive build/web/defn-itch.zip
 ```
 
 Linux CI uses `python -m playwright install --with-deps chromium` to install

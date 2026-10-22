@@ -69,12 +69,12 @@ def capture_promotion(page, url: str, out: Path) -> None:
         page.mouse.click(x, y)
         page.wait_for_timeout(500)
 
-    def menu(row):
+    def menu(row, rows=3):
         bounds = transport.box()
         click(bounds["x"] + bounds["width"] / 2,
-              bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+              bounds["y"] + bounds["height"] / 2 - 40 + (3 - rows) * 28 + row * 56)
 
-    menu(0)
+    menu(0, rows=2)
     menu(0)
     page.wait_for_timeout(1500)
     transport.save("campaign")
@@ -122,20 +122,20 @@ def capture(page, url: str, out: Path, fixture: str, rotate=None) -> None:
                                                     "windowsVirtualKeyCode": virtual})
         page.wait_for_timeout(350)
 
-    def menu(row):
+    def menu(row, rows=3):
         bounds = box()
-        # Three-row menus now fit their content; target the actual centered rows.
-        tap(bounds["x"] + bounds["width"] / 2, bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+        # The browser main menu has two rows; the game menu retains three.
+        tap(bounds["x"] + bounds["width"] / 2, bounds["y"] + bounds["height"] / 2 - 40 + (3 - rows) * 28 + row * 56)
 
     save("main-menu")
-    menu(1)
+    menu(1, rows=2)
     save("options")
     # Touch devices expose volume rather than window/display controls.
     bounds = box()
     tap(bounds["x"] + bounds["width"] * .4, bounds["y"] + bounds["height"] / 2 + 8)
     save("options-volume")
     key()
-    menu(0)
+    menu(0, rows=2)
     menu(1)
     save("progress-disabled")
     menu(0)
@@ -229,10 +229,10 @@ def capture_phone_landscape(page, url: str, out: Path, rotate, android_device=No
 
     save = transport.save
 
-    def menu(row):
+    def menu(row, rows=3):
         bounds = box()
         tap(bounds["x"] + bounds["width"] / 2,
-            bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+            bounds["y"] + bounds["height"] / 2 - 40 + (3 - rows) * 28 + row * 56)
 
     save("main-portrait")
     if stress_resize:
@@ -240,7 +240,7 @@ def capture_phone_landscape(page, url: str, out: Path, rotate, android_device=No
         stress_resize({"width": 864, "height": 303})
         page.wait_for_timeout(700)
         save("main-landscape-short-250")
-        menu(0)
+        menu(0, rows=2)
         save("game-menu-landscape-short-250")
         stress_resize({"width": 864, "height": 283})
         page.wait_for_timeout(700)
@@ -250,7 +250,7 @@ def capture_phone_landscape(page, url: str, out: Path, rotate, android_device=No
         rotate(False)
         page.wait_for_timeout(700)
         save("main-portrait-restored")
-    menu(0)
+    menu(0, rows=2)
     page.wait_for_timeout(1000)
     menu(0)
     page.wait_for_timeout(1000)
@@ -336,15 +336,15 @@ def capture_score_screens(page, url: str, out: Path, outcome: str, rotate, defea
 
     tap = lambda x, y: transport.tap(x, y, settle=350)
 
-    def menu(row):
+    def menu(row, rows=3):
         bounds = box()
         tap(bounds["x"] + bounds["width"] / 2,
-            bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+            bounds["y"] + bounds["height"] / 2 - 40 + (3 - rows) * 28 + row * 56)
 
     save = transport.save
 
     save("main-menu")
-    menu(0)
+    menu(0, rows=2)
     page.wait_for_timeout(1000)
     save("campaign-menu")
     menu(0)
@@ -472,15 +472,15 @@ def capture_campaign_carousel(page, url: str, out: Path, fixture: str, rotate) -
 
     tap = lambda x, y: transport.tap(x, y, settle=400)
 
-    def menu(row=0):
+    def menu(row=0, rows=3):
         bounds = box()
         tap(bounds["x"] + bounds["width"] / 2,
-            bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+            bounds["y"] + bounds["height"] / 2 - 40 + (3 - rows) * 28 + row * 56)
 
     def swipe(direction):
         transport.swipe(transport.point(.5, .4), (direction * 160, 0))
 
-    menu()
+    menu(rows=2)
     menu()
     page.wait_for_timeout(1500)
     save("portrait-initial")
@@ -602,7 +602,7 @@ def capture_options(page, url: str, out: Path, fixture: str, rotate, stress_resi
     def open_options():
         bounds = transport.box()
         transport.tap(bounds["x"] + bounds["width"] / 2,
-                      bounds["y"] + bounds["height"] / 2 + 16)
+                      bounds["y"] + bounds["height"] / 2 + 44)
 
     open_options()
     transport.save("portrait")
@@ -643,12 +643,12 @@ def capture_options(page, url: str, out: Path, fixture: str, rotate, stress_resi
     page.keyboard.press("Escape")
     page.wait_for_timeout(350)
 
-    def menu(row):
+    def menu(row, rows=3):
         bounds = transport.box()
         transport.tap(bounds["x"] + bounds["width"] / 2,
-                      bounds["y"] + bounds["height"] / 2 - 40 + row * 56)
+                      bounds["y"] + bounds["height"] / 2 - 40 + (3 - rows) * 28 + row * 56)
 
-    menu(0)
+    menu(0, rows=2)
     transport.save("game-menu-portrait")
     menu(1)  # A disabled Progress action must leave the game menu open.
     transport.save("progress-disabled-portrait")
