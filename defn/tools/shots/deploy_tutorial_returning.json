@@ -1,0 +1,11 @@
+{
+  "name": "deploy_tutorial_returning",
+  "level": "level_01",
+  "duration_seconds": 3,
+  "fade_in": 0,
+  "fade_out": 0,
+  "timeline": [
+    { "at": 2.0, "action": "check", "tutorial_visible": false },
+    { "at": 2.2, "action": "still", "label": "no_prompt" }
+  ]
+}

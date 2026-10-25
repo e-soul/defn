@@ -56,6 +56,7 @@ src/adapters/godot/ui/options_screen_view.cpp
 src/framework/godot_nodes/responsive_ui_root.cpp
 src/framework/godot_nodes/match_presentation.cpp
 src/framework/godot_nodes/deploy_tray.cpp
+src/framework/godot_nodes/deploy_tutorial_prompt.cpp
 src/framework/registration/register_types.cpp
 src/adapters/json/json_file_loader.cpp
 src/adapters/json/campaign_map_data_loader.cpp

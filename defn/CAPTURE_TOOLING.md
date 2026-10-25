@@ -70,6 +70,13 @@ observes state and makes capture failures fatal. Still/check actions are ordered
 by their scheduled action time. Tools and shot fixtures remain excluded from
 exports.
 
+`deploy_tutorial --fixture first_run --video --stills --no-cursor` verifies the
+first mission's delayed deployment cue and its dismissal through a real card
+click. `first_run` removes only the isolated fixture's save before each pass,
+whereas `fresh` supplies an existing empty save. Use `deploy_tutorial_early`
+with `first_run` to check clicking before the cue, and `deploy_tutorial_returning`
+with `fresh` to check returning-player suppression.
+
 `responsive_ui` also checks the original HUD headings inside the window, requires
 a landscape battlefield at least 70% of stage height, and verifies both pause
 actions fit. `buttons_visible` checks complete button rectangles, including the

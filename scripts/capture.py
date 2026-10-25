@@ -233,7 +233,7 @@ def main() -> None:
     parser.add_argument("--project-dir", type=Path, default=PROJECT_DIR, help="project snapshot to capture, including isolated Web texture staging")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--size", default="", help="logical window size, for example 390x844")
-    parser.add_argument("--fixture", choices=FIXTURE_NAMES, help="isolated save fixture; never reads or writes the player's save")
+    parser.add_argument("--fixture", choices=(*FIXTURE_NAMES, "first_run"), help="isolated save fixture; first_run starts without a save; never reads or writes the player's save")
     args = parser.parse_args()
 
     if not (args.video or args.stills or args.recon or args.encode_only):
@@ -262,10 +262,14 @@ def main() -> None:
             directory = fixture / suffix
             directory.mkdir(parents=True, exist_ok=True)
             run_env[key] = str(directory)
-        profile = capture_profile(args.fixture)
+        profile = None if args.fixture == "first_run" else capture_profile(args.fixture)
         for directory in (fixture / "Roaming/Godot/app_userdata/defn", fixture / "xdg_data/godot/app_userdata/defn"):
             directory.mkdir(parents=True, exist_ok=True)
-            (directory / "save_data.json").write_text(json.dumps(profile), encoding="utf-8")
+            save_path = directory / "save_data.json"
+            if profile is None:
+                save_path.unlink(missing_ok=True)
+            else:
+                save_path.write_text(json.dumps(profile), encoding="utf-8")
 
     level_args = ["--level", args.level] if args.level else []
 
@@ -297,6 +301,10 @@ def main() -> None:
             downscale_stills(stills_dir, name, args.still_width)
 
     if args.video:
+        if args.fixture == "first_run":
+            # The stills/probe pass boots the campaign and creates its default save.
+            for suffix in ("Roaming/Godot/app_userdata/defn", "xdg_data/godot/app_userdata/defn"):
+                (out_dir / "user" / suffix / "save_data.json").unlink(missing_ok=True)
         avi = out_dir / f"{name}.avi"
         print(f"Recording: {name} -> {avi.relative_to(REPO_ROOT)}")
         # The movie writer resolves its path itself and silently fails on a relative one, so it gets an
@@ -306,6 +314,9 @@ def main() -> None:
             if render_size is None:
                 render_size = run_godot(godot, ["--fixed-fps", str(args.fps), *runner_args,
                                                "--recon", "--recon-seconds", "1"], args.verbose, run_env, args.project_dir)
+                if args.fixture == "first_run":
+                    for suffix in ("Roaming/Godot/app_userdata/defn", "xdg_data/godot/app_userdata/defn"):
+                        (out_dir / "user" / suffix / "save_data.json").unlink(missing_ok=True)
             if render_size is None:
                 sys.exit("Capture runner did not report the render dimensions for Movie Maker.")
             with movie_project(out_dir, render_size, args.project_dir) as project:

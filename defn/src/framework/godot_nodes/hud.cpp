@@ -4,6 +4,7 @@
 #include "hud.h"
 #include "deploy_card_presenter.h"
 #include "deploy_tray.h"
+#include "deploy_tutorial_prompt.h"
 #include "godot_color.h"
 #include "godot_string.h"
 #include "score_screen_view.h"
@@ -638,11 +639,35 @@ void HUD::render_deploy_cards(const std::vector<HudDeployCardModel> &cards) {
 }
 
 void HUD::clear_deploy_cards() {
+    cancel_deploy_tutorial();
     tray_->clear_cards();
     deploy_cards.clear();
 }
 
-void HUD::on_card_pressed(const String &unit_type) { emit_signal("deploy_requested", unit_type); }
+void HUD::start_deploy_tutorial() {
+    if (deploy_cards.empty()) {
+        return;
+    }
+    if (deploy_tutorial_ == nullptr) {
+        deploy_tutorial_ = memnew(DeployTutorialPrompt);
+        deploy_tutorial_->set_name("DeployTutorialPrompt");
+        match_controls_->add_child(deploy_tutorial_);
+    }
+    deploy_tutorial_->start(deploy_cards.front().button);
+}
+
+void HUD::cancel_deploy_tutorial() {
+    if (deploy_tutorial_ != nullptr) {
+        deploy_tutorial_->cancel();
+    }
+}
+
+void HUD::on_card_pressed(const String &unit_type) {
+    if (deploy_tutorial_ != nullptr) {
+        deploy_tutorial_->dismiss();
+    }
+    emit_signal("deploy_requested", unit_type);
+}
 
 void HUD::update_core_resource(int value) {
     hud_input_.energy = value;
@@ -679,6 +704,7 @@ void HUD::update_score(int score) {
 }
 
 void HUD::show_match_result_banner(const MatchResultCutsceneModel &model) {
+    cancel_deploy_tutorial();
     hide_match_result_banner();
 
     match_result_overlay = memnew(ColorRect);
@@ -718,6 +744,7 @@ void HUD::hide_match_result_banner() {
 }
 
 void HUD::show_score_screen(const ScoreScreenModel &summary) {
+    cancel_deploy_tutorial();
     hide_match_result_banner();
 
     if (score_screen_overlay != nullptr && !score_screen_overlay->is_queued_for_deletion()) {

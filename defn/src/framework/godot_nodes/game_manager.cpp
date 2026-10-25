@@ -288,6 +288,9 @@ void GameManager::start_match() {
     started_ = true;
     set_process_mode(PROCESS_MODE_PAUSABLE);
     hud->set_process_mode(PROCESS_MODE_INHERIT);
+    if (CampaignService::get_singleton()->take_deploy_tutorial()) {
+        hud->start_deploy_tutorial();
+    }
     core_resource_timer->start();
     Node *ui_parent = ui_parent_ != nullptr ? ui_parent_ : this;
     if (auto *pause = Object::cast_to<PauseMenu>(ui_parent->get_node_or_null("PauseMenu")); pause != nullptr) {
@@ -668,6 +671,9 @@ void GameManager::apply_match_update(MatchUpdate update) {
 void GameManager::start_match_result_cutscene(const MatchEnded &match_end) {
     if (match_result_cutscene_active_) {
         return;
+    }
+    if (hud != nullptr) {
+        hud->cancel_deploy_tutorial();
     }
 
     pending_score_screen_model_ = to_score_screen_model(match_end);

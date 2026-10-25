@@ -19,6 +19,7 @@
 #include "campaign_preview_view.h"
 #include "combat_component.h"
 #include "deploy_tray.h"
+#include "deploy_tutorial_prompt.h"
 #include "detection_component.h"
 #include "field_promotion_effect.h"
 #include "field_promotion_view.h"
@@ -107,6 +108,7 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::ResponsiveUiRoot>();
     ClassDB::register_class<defn::MatchPresentation>();
     ClassDB::register_internal_class<defn::DeployTray>();
+    ClassDB::register_internal_class<defn::DeployTutorialPrompt>();
     ClassDB::register_class<defn::HUD>();
     ClassDB::register_class<defn::MenuManager>();
     ClassDB::register_internal_class<defn::MenuBackdrop>();

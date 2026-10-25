@@ -647,6 +647,13 @@ func _play() -> void:
 					wheel.pressed = true
 					Input.parse_input_event(wheel)
 				"check":
+					if entry.has("tutorial_visible"):
+						var tutorial := root.find_child("DeployTutorialPrompt", true, false) as Control
+						var visible := tutorial != null and tutorial.is_visible_in_tree()
+						if visible != bool(entry["tutorial_visible"]):
+							printerr("[capture] check failed: deployment tutorial visibility expected ", entry["tutorial_visible"])
+							quit(1)
+							return
 					if entry.get("promotion_star", false) and not _check_promotion_star():
 						printerr("[capture] check failed: missing, offscreen or undersized promotion star")
 						quit(1)

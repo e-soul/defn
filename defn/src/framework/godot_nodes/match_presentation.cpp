@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-2-Clause
 #include "match_presentation.h"
 #include "data_paths.h"
+#include "deploy_tutorial_prompt.h"
 #include "endless_schedule_loader.h"
 #include "game_manager.h"
 #include "godot_string.h"
@@ -36,6 +37,7 @@ namespace defn {
 namespace {
 std::vector<std::string> presentation_resource_paths(const PreparedMatch &match, const CampaignService &progression) {
     std::vector<std::string> presentation_paths;
+    presentation_paths.emplace_back(DeployTutorialPrompt::SOUND_PATH);
     for (const bool victory : {false, true}) {
         const auto result = MatchResultCutscenePresenter::build(victory);
         presentation_paths.push_back(result.primary_sfx_path);

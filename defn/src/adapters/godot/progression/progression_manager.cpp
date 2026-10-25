@@ -12,8 +12,10 @@
 
 #include <cstdint>
 #include <godot_cpp/classes/engine.hpp>
+#include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/memory.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
+#include <utility>
 
 namespace defn {
 
@@ -98,6 +100,9 @@ void CampaignService::initialize() {
 }
 
 void CampaignService::load_save() {
+    // Loading a new campaign writes its default save immediately. Remember the original absence first;
+    // an existing (even unreadable) save belongs to a returning player.
+    deploy_tutorial_pending_ = !FileAccess::file_exists(DataPaths::SAVE_DATA);
     const auto loaded_save = save_repository_.load_profile();
     if (!loaded_save) {
         UtilityFunctions::print("CampaignService: No save file found, creating default");
@@ -109,6 +114,13 @@ void CampaignService::load_save() {
     UtilityFunctions::print("CampaignService: Loaded save - total_score=", save_data_.total_score,
                             ", completed_levels=", static_cast<uint64_t>(save_data_.completed_levels.size()),
                             ", owned_upgrades=", static_cast<uint64_t>(save_data_.owned_upgrade_counts.size()));
+}
+
+bool CampaignService::take_deploy_tutorial() {
+    if (match_mode_ != MatchMode::CAMPAIGN || current_level_id_ != "level_01") {
+        return false;
+    }
+    return std::exchange(deploy_tutorial_pending_, false);
 }
 
 void CampaignService::create_default_save() { save_data_ = use_cases_.load_campaign(); }

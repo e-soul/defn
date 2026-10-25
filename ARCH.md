@@ -199,6 +199,11 @@ Current boundary ownership:
   simulation or start energy timers, music or gameplay input. Its explicit
   activation follows the presentation gate. Capture tooling observes readiness
   rather than assuming a fixed number of boot frames is enough.
+  `CampaignService` remembers save absence before creating the default campaign
+  and offers the first mission's deployment cue once per fresh process.
+  `GameManager` starts it only at match activation; `HUD` cancels it on card
+  activation, roster replacement or match end. `DeployTutorialPrompt` owns only
+  presentation timing, card-relative positioning, drawing and its one-shot audio.
 - `SettingsRuntime` is a narrow process-level autoload and settings composition
   boundary. The current root-scene replacement flow requires it to persist
   independently of `menu.tscn` and `game.tscn`. It owns one engine-neutral

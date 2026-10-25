@@ -39,6 +39,8 @@ class CampaignService : public Object, public ProgressionService {
     static void unregister_singleton();
 
     void initialize();
+    /// Available only for the first mission in a process that booted without a save.
+    bool take_deploy_tutorial();
 
     // Engine-neutral progression service
     [[nodiscard]] int get_total_score() const override { return save_data_.total_score; }
@@ -124,6 +126,7 @@ class CampaignService : public Object, public ProgressionService {
     // Transient
     std::string current_level_id_ = "level_01";
     MatchMode match_mode_ = MatchMode::CAMPAIGN;
+    bool deploy_tutorial_pending_ = false;
 };
 
 } // namespace defn

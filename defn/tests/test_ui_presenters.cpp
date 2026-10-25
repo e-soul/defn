@@ -18,6 +18,7 @@
 #include "defn_sim_runner.h"
 #include "deploy_card_presenter.h"
 #include "deploy_tray.h"
+#include "deploy_tutorial_prompt.h"
 #include "game_background_builder.h"
 #include "grid_manager.h"
 #include "health_component.h"
@@ -734,6 +735,50 @@ DEFN_TEST(hud_builds_deploy_cards_and_score_screen) {
     summary.hearts_total = 3;
     hud->show_score_screen(summary);
     DEFN_CHECK(has_label_text(hud, "DEFEAT"));
+}
+
+DEFN_TEST(hud_deploy_tutorial_delays_then_fades_on_card_activation) {
+    const TreeMountedNode<HUD> owner;
+    auto *hud = owner.get();
+    hud->set_friendly_units({make_presenter_unit_config("operator", 25)});
+    hud->start_deploy_tutorial();
+    auto *prompt = Object::cast_to<DeployTutorialPrompt>(find_node_named(hud, "DeployTutorialPrompt"));
+    DEFN_REQUIRE(prompt != nullptr);
+    prompt->_process(1.4);
+    DEFN_CHECK(!prompt->is_visible());
+    prompt->_process(0.4);
+    DEFN_CHECK(prompt->is_visible());
+    auto *card = find_deploy_card_button(hud);
+    DEFN_REQUIRE(card != nullptr);
+    card->emit_signal("pressed");
+    prompt->_process(0.15);
+    DEFN_CHECK(prompt->is_visible());
+    DEFN_CHECK(prompt->get_modulate().a < 0.6F);
+    prompt->_process(0.2);
+    DEFN_CHECK(!prompt->is_visible());
+    prompt->_process(2);
+    DEFN_CHECK(!prompt->is_visible());
+}
+
+DEFN_TEST(hud_deploy_tutorial_cancels_an_early_click_and_roster_rebuild) {
+    const TreeMountedNode<HUD> owner;
+    auto *hud = owner.get();
+    hud->set_friendly_units({make_presenter_unit_config("operator", 25)});
+    hud->start_deploy_tutorial();
+    auto *prompt = Object::cast_to<DeployTutorialPrompt>(find_node_named(hud, "DeployTutorialPrompt"));
+    DEFN_REQUIRE(prompt != nullptr);
+    auto *card = find_deploy_card_button(hud);
+    DEFN_REQUIRE(card != nullptr);
+    card->emit_signal("pressed");
+    prompt->_process(2);
+    DEFN_CHECK(!prompt->is_visible());
+    auto *sound = Object::cast_to<AudioStreamPlayer>(prompt->get_node_or_null("TutorialPop"));
+    DEFN_REQUIRE(sound != nullptr);
+    DEFN_CHECK(!sound->is_playing());
+    hud->start_deploy_tutorial();
+    hud->set_friendly_units({make_presenter_unit_config("breacher", 25)});
+    prompt->_process(2);
+    DEFN_CHECK(!prompt->is_visible());
 }
 
 DEFN_TEST(hud_shows_and_hides_match_result_banner) {

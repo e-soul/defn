@@ -48,6 +48,7 @@ struct HudValueLabel {
 };
 
 class DeployTray;
+class DeployTutorialPrompt;
 class HUD : public UiContextControl {
     GDCLASS(HUD, UiContextControl)
 
@@ -63,6 +64,8 @@ class HUD : public UiContextControl {
     void set_pause_action(const Callable &action);
 
     void set_friendly_units(const std::vector<UnitConfig> &units);
+    void start_deploy_tutorial();
+    void cancel_deploy_tutorial();
     void set_level(const String &level_name);
     void update_core_resource(int value);
     // The reserve ceiling this match plays under. Fixed for the match, so it is pushed once.
@@ -142,6 +145,7 @@ class HUD : public UiContextControl {
     float cached_measure_width_ = 0;
     HudLayoutMetrics cached_measurement_;
     DeployTray *tray_ = nullptr;
+    DeployTutorialPrompt *deploy_tutorial_ = nullptr;
     PanelContainer *metrics_ = nullptr;
     HFlowContainer *flow_ = nullptr;
     HBoxContainer *single_row_ = nullptr;
