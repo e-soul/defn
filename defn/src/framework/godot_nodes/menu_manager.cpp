@@ -354,8 +354,6 @@ void MenuManager::_ready() {
 
     refresh_settings_snapshot();
 
-    UiThemeProvider::install(get_tree());
-
     UiSfxPlayer::install(this);
 
     auto *canvas = memnew(CanvasLayer);

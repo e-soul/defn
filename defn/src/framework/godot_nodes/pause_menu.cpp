@@ -24,7 +24,7 @@ namespace defn {
 void PauseMenu::_bind_methods() { ADD_SIGNAL(MethodInfo("main_menu_requested")); }
 
 void PauseMenu::_ready() {
-    UiThemeProvider::install(get_tree());
+    UiThemeProvider::apply_to(this);
     // Render on top of everything
     set_z_index(100);
     set_anchors_and_offsets_preset(PRESET_FULL_RECT);

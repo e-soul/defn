@@ -7,7 +7,6 @@
 #include "ui_theme_models.h"
 
 #include <godot_cpp/classes/control.hpp>
-#include <godot_cpp/classes/scene_tree.hpp>
 #include <godot_cpp/classes/style_box_flat.hpp>
 #include <godot_cpp/classes/theme.hpp>
 #include <godot_cpp/variant/color.hpp>
@@ -32,7 +31,7 @@ class UiThemeProvider {
 
     static const UiThemeData &data();
     static godot::Ref<godot::Theme> theme();
-    static void install(godot::SceneTree *tree);
+    /// Themes are subtree boundaries: the game never restyles the window that hosts it.
     static void apply_to(godot::Control *control);
     static void reload();
     static bool resolve_profile(UiProfile profile, bool touch);

@@ -177,6 +177,7 @@ tests/test_unit_profiles.cpp
 NATIVE_TESTS = """
 tests/test_score_pagination.cpp
 tests/test_responsive_layout.cpp
+tests/test_runtime_capabilities.cpp
 tests/test_main.cpp
 tests/test_animation_clock.cpp
 tests/test_belt_positioning.cpp

@@ -28,6 +28,8 @@ class ResponsiveUiRoot : public godot::Control {
     double poll_seconds_ = 0;
     bool dirty_ = true;
     bool initial_ = true;
+    // Set by _ready from the host capabilities; outside the game the root neither scales nor themes anything.
+    bool game_ui_ = false;
 };
 } // namespace defn
 #endif

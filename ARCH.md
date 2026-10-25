@@ -200,7 +200,9 @@ Current boundary ownership:
   activation follows the presentation gate. Capture tooling observes readiness
   rather than assuming a fixed number of boot frames is enough.
   `CampaignService` remembers save absence before creating the default campaign
-  and offers the first mission's deployment cue once per fresh process.
+  and offers the first mission's deployment cue once per fresh process. The
+  editor also loads the extension and shares `user://` with the runs it launches,
+  so under the editor hint the service neither creates nor writes the save.
   `GameManager` starts it only at match activation; `HUD` cancels it on card
   activation, roster replacement or match end. `DeployTutorialPrompt` owns only
   presentation timing, card-relative positioning, drawing and its one-shot audio.
@@ -213,6 +215,27 @@ Current boundary ownership:
   that the `SettingsRuntime` class cannot be instantiated from its autoload
   scene; this diagnostic is expected, and the project remains openable so the
   extension can be restored for a normal launch.
+- The editor loads the same extension and opens the same scenes, and a node
+  reaching for "its" window under the editor reaches the editor's own. The nodes
+  that `menu.tscn`, `game.tscn` and the settings autoload name -- `MenuManager`,
+  `MatchPresentation` with its `ResponsiveUiRoot` base, and `SettingsRuntime` --
+  are therefore registered with `register_runtime_class`, so the editor holds
+  inert placeholders and none of their callbacks run. Every other game node is
+  constructed in code by those, and process-level singletons created at module
+  initialization guard their own side effects instead. Inside the game,
+  `RuntimeCapabilities`
+  (`adapters/presenters/runtime_capabilities.h`) is the one policy both
+  `SettingsRuntime` and `ResponsiveUiRoot` read from `read_runtime_host()`:
+
+  | Host | Game UI and canvas scaling | User settings | Native window settings |
+  | --- | --- | --- | --- |
+  | Editor | no | no | no |
+  | Standalone | yes | yes | yes |
+  | Embedded in the editor | yes | yes | no |
+  | Web | yes | yes | no |
+  | Headless | yes | no | no |
+
+  An embedded run still scales its own canvas; it is a game, not the editor.
 - `SettingsSession` owns the process-scoped `SettingsState`, starts
   idempotently, coordinates `SettingsUseCase`, and persists each mutation.
 - `MenuManager` is a framework UI adapter. It delegates menu decisions and
@@ -781,7 +804,9 @@ marks, metrics and sounds. ui_desktop_match_theme.json and
 ui_phone_landscape_theme.json are partial patches for real visual differences.
 Responsive card geometry is authoritative; legacy geometry metrics are derived.
 Content validation checks base and resolved scoped references and geometry.
-Themes inherit from explicit subtree boundaries. UiButton updates target minima
+Themes inherit from explicit subtree boundaries: `ResponsiveUiRoot`, `HUD` and
+`PauseMenu` apply the resolved theme to themselves and never to the hosting
+window, whose theme does not cross a `CanvasLayer` anyway. UiButton updates target minima
 on theme changes; measured cards/actions manage their own geometry. No recursive
 theme assignment or root metadata protocol is used. Palette roles describe meaning;
 views use shared theme tokens for colors, sizes and durations.

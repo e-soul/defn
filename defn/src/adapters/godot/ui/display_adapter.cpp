@@ -4,11 +4,24 @@
 #include <algorithm>
 #include <cmath>
 #include <godot_cpp/classes/display_server.hpp>
+#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/input.hpp>
 #include <godot_cpp/classes/java_script_bridge.hpp>
 #include <godot_cpp/classes/os.hpp>
 
 namespace defn {
+RuntimeHostFacts read_runtime_host() {
+    auto *engine = godot::Engine::get_singleton();
+    auto *server = godot::DisplayServer::get_singleton();
+    auto *operating_system = godot::OS::get_singleton();
+    return {
+        // A missing engine cannot prove this is not the editor, so it is treated as one.
+        .editor = engine == nullptr || engine->is_editor_hint(),
+        .embedded = engine != nullptr && engine->is_embedded_in_editor(),
+        .headless = server == nullptr || server->get_name().to_lower() == "headless",
+        .web = operating_system != nullptr && operating_system->has_feature("web"),
+    };
+}
 DisplaySnapshot read_display(godot::Window *window) {
     DisplaySnapshot display;
     if (window == nullptr) {

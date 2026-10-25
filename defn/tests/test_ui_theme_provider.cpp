@@ -5,6 +5,7 @@
 
 #include "data_paths.h"
 #include "godot_string.h"
+#include "responsive_ui_root.h"
 #include "ui_screen_scaffold.h"
 #include "ui_sfx_player.h"
 #include "ui_test_helpers.h"
@@ -676,6 +677,22 @@ DEFN_TEST(ui_screen_scaffold_applies_theme_and_can_constrain_a_scrollable_panel)
     DEFN_CHECK_EQ(scaffold.panel->get_custom_minimum_size(), godot::Vector2(720.0F, 560.0F));
 
     memdelete(host);
+}
+
+DEFN_TEST(responsive_root_themes_its_own_subtree_and_leaves_the_hosting_window_alone) {
+    Window *window = ui_test::scene_root();
+    DEFN_REQUIRE(window != nullptr);
+    const Ref<Theme> window_theme = window->get_theme();
+    const Vector2i previous_scale = window->get_content_scale_size();
+    {
+        const ui_test::TreeMountedNode<ResponsiveUiRoot> root;
+        root.get()->apply_snapshot({.content = {.width = 800, .height = 600}});
+        DEFN_CHECK(root.get()->get_theme().ptr() == UiThemeProvider::theme().ptr());
+    }
+    // Under the editor this window is the editor's own; restyling it restyles the editor.
+    DEFN_CHECK(window->get_theme().ptr() == window_theme.ptr());
+    DEFN_CHECK(window->get_theme().ptr() != UiThemeProvider::theme().ptr());
+    window->set_content_scale_size(previous_scale);
 }
 
 } // namespace defn

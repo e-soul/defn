@@ -323,12 +323,6 @@ Ref<Theme> UiThemeProvider::theme() {
     return g_theme;
 }
 
-void UiThemeProvider::install(SceneTree *tree) {
-    if (tree != nullptr && tree->get_root() != nullptr) {
-        tree->get_root()->set_theme(theme());
-    }
-}
-
 void UiThemeProvider::apply_to(Control *control) {
     if (control != nullptr) {
         control->set_theme(theme());

@@ -73,6 +73,10 @@ void initialize_module(ModuleInitializationLevel p_level) {
         return;
     }
 
+    // The editor loads this extension too. The nodes our scenes and autoloads name are runtime classes, so opening
+    // one in the editor builds an inert placeholder rather than running game code against the editor's window and
+    // theme. Godot requires a runtime class's extension ancestors to be runtime classes too, hence ResponsiveUiRoot.
+    // Every other node is only ever constructed in code by those, and the singletons guard their own side effects.
     ClassDB::register_class<defn::GridManager>();
     defn::GridManager::register_singleton();
     ClassDB::register_class<defn::CampaignService>();
@@ -105,14 +109,14 @@ void initialize_module(ModuleInitializationLevel p_level) {
     ClassDB::register_internal_class<defn::UiScreenControl>();
     ClassDB::register_internal_class<defn::MenuScreenView>();
     ClassDB::register_internal_class<defn::OptionsScreenView>();
-    ClassDB::register_internal_class<defn::ResponsiveUiRoot>();
-    ClassDB::register_class<defn::MatchPresentation>();
+    ClassDB::register_runtime_class<defn::ResponsiveUiRoot>();
+    ClassDB::register_runtime_class<defn::MatchPresentation>();
     ClassDB::register_internal_class<defn::DeployTray>();
     ClassDB::register_internal_class<defn::DeployTutorialPrompt>();
     ClassDB::register_class<defn::HUD>();
-    ClassDB::register_class<defn::MenuManager>();
+    ClassDB::register_runtime_class<defn::MenuManager>();
     ClassDB::register_internal_class<defn::MenuBackdrop>();
-    ClassDB::register_class<defn::SettingsRuntime>();
+    ClassDB::register_runtime_class<defn::SettingsRuntime>();
     ClassDB::register_internal_class<defn::ProgressionStatsScreenView>();
     ClassDB::register_internal_class<defn::ProgressionStatMeter>();
     ClassDB::register_internal_class<defn::HudIntegrityMeter>();

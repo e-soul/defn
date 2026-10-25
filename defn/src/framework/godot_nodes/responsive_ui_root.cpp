@@ -13,6 +13,11 @@ namespace defn {
 void ResponsiveUiRoot::_ready() {
     set_mouse_filter(MOUSE_FILTER_IGNORE);
     set_process_mode(PROCESS_MODE_ALWAYS);
+    // The window reached from a node is whichever window hosts it; under the editor that is the editor's own.
+    game_ui_ = resolve_runtime_capabilities(read_runtime_host()).game_ui;
+    if (!game_ui_) {
+        return;
+    }
     if (get_window() != nullptr) {
         get_window()->connect("size_changed", callable_mp(this, &ResponsiveUiRoot::request_layout));
     }
@@ -20,6 +25,9 @@ void ResponsiveUiRoot::_ready() {
 }
 void ResponsiveUiRoot::request_layout() { dirty_ = true; }
 void ResponsiveUiRoot::_process(double delta) {
+    if (!game_ui_) {
+        return;
+    }
     poll_seconds_ += delta;
     // Web DPR/host CSS bounds and desktop monitor DPI have no common engine notification.
     if (dirty_ || poll_seconds_ >= 0.25) {
@@ -27,7 +35,11 @@ void ResponsiveUiRoot::_process(double delta) {
         refresh_display();
     }
 }
-void ResponsiveUiRoot::refresh_display() { apply_snapshot(read_display(get_window())); }
+void ResponsiveUiRoot::refresh_display() {
+    if (game_ui_) {
+        apply_snapshot(read_display(get_window()));
+    }
+}
 void ResponsiveUiRoot::apply_snapshot(const DisplaySnapshot &next) {
     const bool changed = initial_ || dirty_ || next != display_ || theme_revision_ != UiThemeProvider::revision();
     if (!changed) {
@@ -45,7 +57,8 @@ void ResponsiveUiRoot::apply_snapshot(const DisplaySnapshot &next) {
     initial_ = false;
     apply_display(get_window(), display_);
     UiThemeProvider::resolve_profile(profile, next.touch);
-    UiThemeProvider::install(get_tree());
+    // The theme is a subtree boundary: the hosting window and its other children are not the game's to restyle.
+    UiThemeProvider::apply_to(this);
     // Safe-area geometry is consumed here; children resolve inside this rectangle without subtracting it again.
     const auto area = usable_rect(next);
     set_position({area.x, area.y});

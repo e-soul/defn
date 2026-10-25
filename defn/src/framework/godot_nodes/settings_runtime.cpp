@@ -3,12 +3,12 @@
 
 #include "settings_runtime.h"
 
+#include "display_adapter.h"
 #include "godot_string.h"
 #include "settings_adapters.h"
 #include "settings_session.h"
 
 #include <godot_cpp/classes/display_server.hpp>
-#include <godot_cpp/classes/engine.hpp>
 #include <godot_cpp/classes/java_script_bridge.hpp>
 #include <godot_cpp/classes/os.hpp>
 #include <godot_cpp/classes/scene_tree.hpp>
@@ -43,23 +43,18 @@ void SettingsRuntime::_ready() {
         return;
     }
 
-    auto *engine = godot::Engine::get_singleton();
-    if (engine == nullptr || engine->is_editor_hint()) {
-        return;
-    }
-
-    auto *display_server = godot::DisplayServer::get_singleton();
-    if (display_server == nullptr || display_server->get_name().to_lower() == "headless") {
+    const RuntimeCapabilities capabilities = resolve_runtime_capabilities(read_runtime_host());
+    if (!capabilities.user_settings) {
         return;
     }
 
     store_ = std::make_unique<ConfigFileSettingsStore>();
     audio_ = std::make_unique<GodotAudioSettings>();
 
-    const bool web = godot::OS::get_singleton()->has_feature("web");
-    if (engine->is_embedded_in_editor() || web) {
+    if (!capabilities.window_settings) {
         display_ = std::make_unique<NoOpDisplaySettings>();
     } else {
+        auto *display_server = godot::DisplayServer::get_singleton();
         godot::Window *root_window = get_tree() != nullptr ? get_tree()->get_root() : nullptr;
         const int32_t window_id = root_window != nullptr ? root_window->get_window_id() : godot::DisplayServer::INVALID_WINDOW_ID;
         if (window_id == godot::DisplayServer::INVALID_WINDOW_ID || !display_server->get_window_list().has(window_id)) {
@@ -72,7 +67,7 @@ void SettingsRuntime::_ready() {
 
     session_ = std::make_unique<SettingsSession>(*store_, *display_, *audio_);
     session_->start();
-    if (web && !godot::OS::get_singleton()->is_userfs_persistent()) {
+    if (godot::OS::get_singleton()->has_feature("web") && !godot::OS::get_singleton()->is_userfs_persistent()) {
         godot::JavaScriptBridge::get_singleton()->eval("document.getElementById('storage-notice')?.removeAttribute('hidden')", true);
     }
 }

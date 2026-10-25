@@ -96,6 +96,11 @@ void CampaignService::initialize() {
     catalog_.load(DataPaths::PROGRESSION_DATA);
     upgrade_catalog_.load(DataPaths::UPGRADES_DATA);
     unit_catalog_.load(DataPaths::UNIT_DATA, DataPaths::UNIT_GLOBALS);
+    // The editor loads this extension too and shares user:// with the game it launches. Creating the default
+    // save here would make every editor-launched run look like a returning player's.
+    if (Engine::get_singleton()->is_editor_hint()) {
+        return;
+    }
     load_save();
 }
 
@@ -126,7 +131,7 @@ bool CampaignService::take_deploy_tutorial() {
 void CampaignService::create_default_save() { save_data_ = use_cases_.load_campaign(); }
 
 void CampaignService::save() {
-    if (!use_cases_.save_campaign(save_data_)) {
+    if (Engine::get_singleton()->is_editor_hint() || !use_cases_.save_campaign(save_data_)) {
         return;
     }
 

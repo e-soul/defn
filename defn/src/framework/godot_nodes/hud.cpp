@@ -76,7 +76,7 @@ void HUD::_bind_methods() {
 void HUD::_ready() {
     set_anchors_and_offsets_preset(PRESET_FULL_RECT);
     set_mouse_filter(MOUSE_FILTER_IGNORE);
-    UiThemeProvider::install(get_tree());
+    UiThemeProvider::apply_to(this);
     UiSfxPlayer::install(this);
     build_ui();
 }
